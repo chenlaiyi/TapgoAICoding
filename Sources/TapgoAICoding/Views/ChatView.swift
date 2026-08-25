@@ -1714,9 +1714,9 @@ struct ComposerView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .frame(maxWidth: contentWidth - 48)
             .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
-            .frame(maxWidth: contentWidth - 28)
             .frame(maxWidth: .infinity, alignment: .center)
         }
     }
