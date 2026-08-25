@@ -403,7 +403,7 @@ struct SettingsView: View {
     @ViewBuilder
     private var aboutTab: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0")")
+            Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3")")
                 .font(.title3).bold()
                 .textSelection(.enabled)
             Text("固定模型: \(TapgoConfig.modelName)")
@@ -454,7 +454,7 @@ struct SettingsView: View {
     }
 
     private func copyDiagnostics() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3"
         let text = [
             "Tapgo AICoding \(version)",
             "模型: \(TapgoConfig.modelName)",

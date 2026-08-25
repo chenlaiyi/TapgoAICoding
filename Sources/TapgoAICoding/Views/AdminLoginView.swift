@@ -203,7 +203,7 @@ struct AdminLoginView: View {
             Text("Tapgo 管理系统内部工具")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0") · 微信扫码登录")
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3") · 微信扫码登录")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
