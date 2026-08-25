@@ -279,69 +279,10 @@ struct ChatView: View {
 
     /// Session-goal banner set via `/goal`, shown above the conversation.
     @ViewBuilder
-    /// Session-goal card shown above the conversation when a goal is set:
-    /// a live "进行中" status, the goal text, an elapsed-time ticker, and a
-    /// "clear" affordance.
-    private func goalCard(thread: TapgoCore.Thread) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "scope")
-                .font(.title3)
-                .foregroundStyle(DSHTheme.brand)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Circle().fill(.green).frame(width: 7, height: 7)
-                    Text("进行中")
-                    Spacer()
-                    TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                        if let setAt = thread.goalSetAt {
-                            Text(goalElapsedText(ctx.date.timeIntervalSince(setAt)))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                Text(thread.goal ?? "")
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .textSelection(.enabled)
-                    .lineLimit(3)
-            }
-            Spacer()
-            Button {
-                store.setActiveThreadGoal(nil)
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(.tertiary)
-            }
-            .buttonStyle(.borderless)
-            .help("清除目标")
-            .accessibilityLabel("清除目标")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(DSHTheme.surface)
-        .overlay(alignment: .bottom) { Divider() }
-    }
-
-    /// Compact elapsed time ("1h20m", "2m05s", "45s") for the goal card.
-    private func goalElapsedText(_ interval: TimeInterval) -> String {
-        let s = Int(interval)
-        if s >= 3600 { return "\(s / 3600)h\(String(format: "%02dm", (s % 3600) / 60))" }
-        if s >= 60 { return "\(s / 60)m\(s % 60)s" }
-        return "\(s)s"
-    }
-
-    @ViewBuilder
     private func threadBody(thread: TapgoCore.Thread) -> some View {
         VStack(spacing: 0) {
             threadHeader(thread: thread)
             Divider()
-            if thread.goal != nil {
-                goalCard(thread: thread)
-            }
             if searchActive {
                 searchBar
             }
@@ -1167,6 +1108,8 @@ struct ComposerView: View {
                 }
             }
 
+            goalCard
+
             VStack(spacing: -cardOverlap) {
                 queueStatusBar
                     .zIndex(0)
@@ -1975,8 +1918,9 @@ struct ComposerView: View {
     }
 
     private var titleForGoalChip: String {
-        if isGoalMode { return "目标" }
-        if let g = activeThreadGoal, !g.isEmpty { return g }
+        // The goal card above the input already shows the full text; the chip
+        // is a compact toggle.
+        if isGoalMode || activeThreadGoal != nil { return "目标" }
         return "设为目标"
     }
 
@@ -1993,6 +1937,64 @@ struct ComposerView: View {
         } else {
             isGoalMode.toggle()
         }
+    }
+
+    /// Goal card rendered just above the input box (not at the top of the
+    /// conversation): 进行中 / 已设目标 + goal text + live elapsed time +
+    /// clear. Status is dynamic — "进行中" only while the agent is actually
+    /// running.
+    @ViewBuilder
+    private var goalCard: some View {
+        if let thread = activeThread, let goal = thread.goal, !goal.isEmpty {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "scope")
+                    .foregroundStyle(DSHTheme.brand)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(isRunning ? .green : DSHTheme.brand.opacity(0.6))
+                        .frame(width: 7, height: 7)
+                    Text(isRunning ? "进行中" : "已设目标")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+                Text(goal)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+                TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                    if let setAt = thread.goalSetAt {
+                        Text(goalElapsedText(ctx.date.timeIntervalSince(setAt)))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                Button {
+                    store.setActiveThreadGoal(nil)
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.borderless)
+                .help("清除目标")
+                .accessibilityLabel("清除目标")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.brand.opacity(0.25), lineWidth: 1))
+            .frame(maxWidth: contentWidth - 48)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    /// Compact elapsed time ("1h20m", "2m05s", "45s") for the goal card.
+    private func goalElapsedText(_ interval: TimeInterval) -> String {
+        let s = Int(interval)
+        if s >= 3600 { return "\(s / 3600)h\(String(format: "%02dm", (s % 3600) / 60))" }
+        if s >= 60 { return "\(s / 60)m\(s % 60)s" }
+        return "\(s)s"
     }
 
     private var composerContextPercent: Int? {
