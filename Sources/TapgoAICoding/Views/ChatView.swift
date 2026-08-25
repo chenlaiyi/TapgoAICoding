@@ -1512,6 +1512,9 @@ struct ComposerView: View {
             .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
                 acceptDroppedImages(providers)
             }
+            .onPasteCommand(of: [.fileURL, .image]) { providers in
+                handlePaste(providers)
+            }
             .zIndex(1)
             }
 
@@ -1943,6 +1946,56 @@ struct ComposerView: View {
                 }            }
         }
         return true
+    }
+
+    /// Attach an image/file pasted from the clipboard (⌘V). Image data is
+    /// written to a temp PNG; file URLs are added directly.
+    private func handlePaste(_ providers: [NSItemProvider]) {
+        for p in providers {
+            if p.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                _ = p.loadObject(ofClass: URL.self) { url, _ in
+                    if let url = url {
+                        DispatchQueue.main.async { store.addImages([url]) }
+                    }
+                }
+            } else if p.hasItemConformingToTypeIdentifier(UTType.image.identifier),
+                      let typeID = p.registeredTypeIdentifiers.first(where: {
+                          (UTType($0)?.conforms(to: .image)) ?? false
+                      }) {
+                p.loadDataRepresentation(forTypeIdentifier: typeID) { data, _ in
+                    if let data = data {
+                        self.decodeAndAttachImage(data)
+                    }
+                }
+            }
+        }
+    }
+
+    private func decodeAndAttachImage(_ data: Data) {
+        var png = data
+        if let ns = NSImage(data: data),
+           let tiff = ns.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let converted = rep.representation(using: .png, properties: [:]) {
+            png = converted
+        }
+        if let url = Self.writePastedImage(png, ext: "png") {
+            DispatchQueue.main.async { store.addImages([url]) }
+        }
+    }
+
+    /// Write pasted image bytes to a temp file so it can be attached.
+    private static func writePastedImage(_ data: Data, ext: String) -> URL? {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tapgo-paste", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("paste-\(UUID().uuidString).\(ext)")
+        do {
+            try data.write(to: url)
+            return url
+        } catch {
+            return nil
+        }
     }
 
     /// Open Terminal at the given directory.
