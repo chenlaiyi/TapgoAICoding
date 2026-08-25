@@ -16,7 +16,6 @@ struct SidebarView: View {
     @State private var searchQuery: String = ""
     @FocusState private var searchFocused: Bool
     @State private var searchScope = false
-    @State private var projectScope = 0  // 0=all, 1=local, 2=remote
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
@@ -27,7 +26,6 @@ struct SidebarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             topBar
-            projectHeader
             searchField
             Divider()
             threadList
@@ -147,54 +145,7 @@ struct SidebarView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Project header
-
-    @ViewBuilder
-    private var projectHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "folder")
-                Text(L10n.projectPickerTitle)
-                    .font(.headline)
-                Spacer()
-                Button {
-                    if collapsedGroups.count >= grouped.count {
-                        collapsedGroups.removeAll()
-                    } else {
-                        collapsedGroups = Set(grouped.map(\.id))
-                    }
-                } label: {
-                    Image(systemName: collapsedGroups.count >= grouped.count && !grouped.isEmpty ? "chevron.down.2" : "chevron.up.2")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.borderless)
-                .help("全部展开/收起项目")
-                .accessibilityLabel("全部展开/收起项目")
-                Menu {
-                    ForEach([0, 1, 2], id: \.self) { s in
-                        Button { projectScope = s } label: {
-                            if s == projectScope {
-                                Label(projectScopeLabel(s), systemImage: "checkmark")
-                            } else {
-                                Text(projectScopeLabel(s))
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: projectScopeLabelIcon)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .menuStyle(.borderlessButton)
-                .help("筛选项目: \(projectScopeLabel(projectScope))")
-                .accessibilityLabel("筛选项目")
-            }
-            currentProjectChip
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
+    // MARK: - Search
 
     @ViewBuilder
     private var searchField: some View {
@@ -237,65 +188,6 @@ struct SidebarView: View {
         .padding(.bottom, 6)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("搜索会话")
-    }
-
-    @ViewBuilder
-    private var currentProjectChip: some View {
-        if let p = workspace.state.activeProject {
-            HStack(spacing: 4) {
-                Image(systemName: p.isRemote ? "globe" : "folder.fill")
-                    .foregroundStyle(p.isRemote ? .blue : .accentColor)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(p.displayName).lineLimit(1)
-                    Text(p.displayPath)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: DSHTheme.radiusPill))
-            .contentShape(Rectangle())
-            .onTapGesture(count: 2) {
-                if !p.isRemote { NSWorkspace.shared.open(p.worktreeRoot) }
-            }
-            .help("双击在访达中打开项目")
-            .contextMenu {
-                Button {
-                    copyToPasteboard(p.displayName)
-                } label: {
-                    Label("复制项目名", systemImage: "doc.on.doc")
-                }
-                Button {
-                    copyToPasteboard(p.displayPath)
-                } label: {
-                    Label("复制路径", systemImage: "doc.on.doc")
-                }
-                if !p.isRemote {
-                    Button {
-                        NSWorkspace.shared.open(p.worktreeRoot)
-                    } label: {
-                        Label("在访达中显示", systemImage: "folder")
-                    }
-                    Button {
-                        openInTerminal(p.worktreeRoot.path)
-                    } label: {
-                        Label("在终端中打开", systemImage: "terminal")
-                    }
-                }
-            }
-            .accessibilityLabel("当前项目 \(p.displayName), 路径 \(p.displayPath)")
-        } else {
-            HStack(spacing: 4) {
-                Image(systemName: "questionmark.folder")
-                    .foregroundStyle(.secondary)
-                Text(L10n.noProjectSelected)
-                    .font(.subheadline)
-            }
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: DSHTheme.radiusPill))
-        }
     }
 
     // MARK: - TapgoCore.Thread list
@@ -552,21 +444,6 @@ struct SidebarView: View {
         }
     }
 
-    private func projectScopeLabel(_ s: Int) -> String {
-        switch s {
-        case 1: return "仅本地"
-        case 2: return "仅远程"
-        default: return "全部"
-        }
-    }
-    private var projectScopeLabelIcon: String {
-        switch projectScope {
-        case 1: return "folder.fill"
-        case 2: return "globe"
-        default: return "square.3.layers.3d"
-        }
-    }
-
     /// True when any thread in the group has a turn running or awaiting
     /// approval — drives the blue "running" dot on the project header.
     private func groupHasRunningTask(_ group: ThreadGroup) -> Bool {
@@ -776,13 +653,6 @@ struct SidebarView: View {
         return true
     }
 
-    private func openInTerminal(_ path: String) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        p.arguments = ["-a", "Terminal", path]
-        try? p.run()
-    }
-
     @ViewBuilder
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -910,12 +780,6 @@ struct SidebarView: View {
         for t in store.liveThreads {
             // "仅当前项目" scope narrows to the active project's threads.
             if searchScope, t.projectId != workspace.state.activeProjectId { continue }
-            // Local / remote project filter.
-            if projectScope != 0,
-               let project = t.projectId.flatMap({ workspace.project(byId: $0) }) {
-                if projectScope == 1, project.isRemote { continue }
-                if projectScope == 2, !project.isRemote { continue }
-            }
             // Match against title, first user input, and the project
             // display name. Codex's sidebar search is broad on
             // content; we mirror that.
