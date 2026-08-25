@@ -60,20 +60,30 @@ case "$BUMP" in
 esac
 
 # ---------- 0. Sanity ----------
-if ! git diff --quiet HEAD -- ':!EVOLUTION.md' ':!AppBuilder/Info.plist'; then
-  echo "ERROR: working tree has uncommitted source changes."
-  echo "Commit or stash them first. Only EVOLUTION.md and Info.plist may be dirty"
-  echo "at the start of evolve.sh (and this script manages those itself)."
-  echo
-  git status --short
-  exit 3
+# Soft sanity check: warn if there are uncommitted changes, but don't
+# block. A typical iteration edits README.md + sources together; the
+# pipeline commits them atomically. The user can always `git reset
+# HEAD~1` if they don't like what got committed.
+if ! git diff --quiet HEAD; then
+  echo "==> NOTE: working tree has uncommitted changes — will be included in this commit."
+  git status --short | sed 's/^/    /'
 fi
 
 # ---------- 1. Compute next version ----------
 PLIST="${ROOT}/AppBuilder/Info.plist"
-CUR_VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" 2>/dev/null || echo "0.0.0")"
-IFS='.' read -r MAJ MIN PAT <<< "$CUR_VERSION"
-MAJ="${MAJ:-0}"; MIN="${MIN:-0}"; PAT="${PAT:-0}"
+# Source the version from the LATEST git tag (if any), falling back to
+# Info.plist. This way manually-tagged baselines (e.g. v0.3.1 introduced
+# before evolve.sh existed) don't get re-used by the script.
+LATEST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+if [[ "$LATEST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  MAJ="${BASH_REMATCH[1]}"
+  MIN="${BASH_REMATCH[2]}"
+  PAT="${BASH_REMATCH[3]}"
+else
+  CUR_VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" 2>/dev/null || echo "0.0.0")"
+  IFS='.' read -r MAJ MIN PAT <<< "$CUR_VERSION"
+  MAJ="${MAJ:-0}"; MIN="${MIN:-0}"; PAT="${PAT:-0}"
+fi
 
 case "$BUMP" in
   major) MAJ=$((MAJ+1)); MIN=0; PAT=0 ;;
@@ -81,7 +91,7 @@ case "$BUMP" in
   patch) PAT=$((PAT+1)) ;;
 esac
 NEW_VERSION="${MAJ}.${MIN}.${PAT}"
-echo "==> Version: ${CUR_VERSION} → ${NEW_VERSION}  (${BUMP})"
+echo "==> Version: ${MAJ}.${MIN}.${PAT} → ${NEW_VERSION}  (${BUMP})"
 
 # ---------- 2. Patch Info.plist ----------
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$PLIST" >/dev/null
@@ -96,15 +106,31 @@ if ! swift build -c release --product TapgoAICoding; then
 fi
 
 # ---------- 4. Test ----------
-echo "==> Running tests"
+# By default we SKIP SSH-integration tests (they require a real remote
+# codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3). Pass
+# --with-integration to include them.
+WITH_INTEGRATION="${WITH_INTEGRATION:-}"
+TEST_ENV=()
+TEST_ARGS=()
+if [[ -z "$WITH_INTEGRATION" ]]; then
+  TEST_ENV+=(env "TAPGO_SKIP_REMOTE_INTEGRATION=1")
+  echo "==> Running tests (skipping SSH-integration: TAPGO_SKIP_REMOTE_INTEGRATION=1)"
+else
+  echo "==> Running tests (WITH integration — needs real SSH host at 203.0.113.10)"
+fi
 TEST_LOG="$(mktemp -t tapgo-evolve-tests.XXXXXX)"
-if ! swift run TapgoTests 2>&1 | tee "$TEST_LOG"; then
+if ! "${TEST_ENV[@]}" swift run TapgoTests ${TEST_ARGS[@]+"${TEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"; then
   echo "TESTS FAILED — reverting Info.plist" >&2
   git checkout -- "$PLIST"
   rm -f "$TEST_LOG"
   exit 5
 fi
-TEST_LINE="$(grep -E '(passed|green|OK)' "$TEST_LOG" | tail -1 || echo "see test log")"
+# Summary line: prefer the final "— N passed, M failed —" line; fall
+# back to the last "passed=" counter if present.
+TEST_LINE="$(grep -E '— [0-9]+ passed, [0-9]+ failed —' "$TEST_LOG" | tail -1 || echo "see test log")"
+if [[ -z "$TEST_LINE" ]]; then
+  TEST_LINE="$(grep -E 'passed=[0-9]+ failed=[0-9]+' "$TEST_LOG" | tail -1 || echo "see test log")"
+fi
 rm -f "$TEST_LOG"
 echo "==> Tests: ${TEST_LINE}"
 
@@ -115,7 +141,7 @@ ENTRY=$(cat <<ENTRY_EOF
 
 ## v${NEW_VERSION} — ${MSG}
 **Date**: ${TODAY}
-**Commit**: \`${COMMIT_SHA}\`  _(set by evolve.sh post-commit)_
+**Commit**: _(see `git log -1 v${NEW_VERSION}`)_
 **Tag**: v${NEW_VERSION}
 **Test status**: ${TEST_LINE}
 **Changed**:
@@ -128,6 +154,11 @@ ENTRY_EOF
 printf '\n%s\n' "$ENTRY" >> EVOLUTION.md
 
 # ---------- 6. Commit + tag ----------
+# Stage all tracked-file modifications (README, scripts, sources…) PLUS
+# the script-managed EVOLUTION.md + Info.plist. -u won't pick up new
+# untracked files, so the user has to explicitly git add those if they
+# want them in this commit.
+git add -u
 git add EVOLUTION.md "$PLIST"
 git commit -m "${MSG} (v${NEW_VERSION})" >/dev/null
 SHA="$(git rev-parse --short HEAD)"

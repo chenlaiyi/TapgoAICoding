@@ -153,7 +153,14 @@ app in Finder → Open → Open. After that, double-click works normally.
 ## Tests
 
 ```bash
-swift run TapgoTests        # 110/110 — must stay green
+TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
+#   332/332 — must stay green (skipping SSH-integration; they need a
+#   real remote codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3)
+
+# To run the FULL suite including SSH-integration (will fail without
+# a real remote host — expected):
+swift run TapgoTests
+
 swift build                 # debug build
 swift build -c release      # release build
 ```

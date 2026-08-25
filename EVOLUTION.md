@@ -31,7 +31,14 @@
 **Why**: User-facing gating + UX polish before opening the self-evolution loop.
 **Next**: v0.3.1 — evolution infrastructure scaffold (next entry).
 
-appended
-dirty
-dirty
-dirty
+
+## v0.3.2 — fix: evolve.sh skips SSH-integration tests by default; README test count 110→332
+**Date**: 2026-08-25
+**Commit**: `c141776`  _(see `git log -1 v0.3.2`)_
+**Tag**: v0.3.2
+**Test status**: — 332 passed, 0 failed —
+**Changed**:
+- fix: evolve.sh skips SSH-integration tests by default; README test count 110→332
+evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is set, so SSH-dependent tests (which need a real remote host at the RFC 5737 203.0.113.10 address) are skipped by default. README updated to reflect the actual 332-test count instead of the outdated 110. The evolve.sh sanity check was demoted to a warning, version bumps now source from the latest git tag, and a couple of unset-variable bugs under set -u were fixed.
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
