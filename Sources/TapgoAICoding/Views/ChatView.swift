@@ -85,7 +85,7 @@ struct ChatView: View {
             // content; in the empty / initial state it is centered in the body.
             if hasConversation {
                 Divider()
-                ComposerView(contentWidth: wideContent ? 1280 : 1000)
+                ComposerView(contentWidth: wideContent ? 980 : 720)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -268,7 +268,7 @@ struct ChatView: View {
             Text("我们该处理什么工作？")
                 .font(.largeTitle.bold())
                 .foregroundStyle(.primary)
-            ComposerView(contentWidth: 1000)
+            ComposerView(contentWidth: 720)
                 .padding(.horizontal, 16)
             Text("从左侧选择会话继续，或直接输入开始新任务。")
                 .font(.caption)
@@ -310,7 +310,7 @@ struct ChatView: View {
                         Color.clear.frame(height: 1).id("BOTTOM")
                     }
                     .padding(16)
-                    .frame(maxWidth: wideContent ? 1280 : 1000, alignment: .leading)
+                    .frame(maxWidth: wideContent ? 980 : 720, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .background(GeometryReader { g in
                         Color.clear.preference(
