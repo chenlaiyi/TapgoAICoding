@@ -921,6 +921,91 @@ struct ChatView: View {
     }
 }
 
+/// Identifiable payload that opens the goal-edit sheet, carrying the current
+/// goal text so the editor can initialise its own @State reliably.
+private struct GoalEditItem: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
+/// Goal edit sheet. Uses `@State(initialValue:)` so the TextEditor reliably
+/// shows the current goal text (a binding pre-set before `.sheet` presentation
+/// can be ignored by TextEditor).
+private struct GoalEditorSheet: View {
+    @EnvironmentObject var store: SessionStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var text: String
+
+    init(initial: String) {
+        _text = State(initialValue: initial)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("编辑目标").font(.headline)
+            TextEditor(text: $text)
+                .font(.body)
+                .frame(minHeight: 80, maxHeight: 140)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
+                .padding(6)
+            Text("保存后会暂停计时；需要时点 ▶ 开始重新执行。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }
+                Button("保存") {
+                    let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { store.setActiveThreadGoal(t) }
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+}
+
+/// Queued-message edit sheet. Uses `@State(initialValue:)` so the TextEditor
+/// reliably shows the queued message's current text.
+private struct QueuedMessageEditor: View {
+    @EnvironmentObject var store: SessionStore
+    @Environment(\.dismiss) private var dismiss
+    let item: QueuedMessage
+    @State private var text: String
+
+    init(item: QueuedMessage) {
+        self.item = item
+        _text = State(initialValue: item.text)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("编辑排队消息").font(.headline)
+            TextEditor(text: $text)
+                .font(.body)
+                .frame(minHeight: 100, maxHeight: 180)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
+                .padding(6)
+            Text("图片附件会保留。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }
+                Button("保存") {
+                    store.updateQueuedMessage(item.id, text: text)
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+}
+
 /// Compact context meter shown in the composer metrics bar: a "context N%"
 /// label plus a small progress bar, colour-coded green → yellow → red.
 private struct ContextMeter: View {
@@ -956,8 +1041,7 @@ private struct ContextMeter: View {
 
 /// Animated "typing" dots shown while a turn is streaming. Replaces the
 /// plain spinner so the chat reads like Codex while the model generates.
-private struct StreamingIndicator: View {
-    var label: String = "生成中"
+private struct StreamingIndicator: View {    var label: String = "生成中"
     var startedAt: Date = Date()
     @State private var blinking = false
     @State private var now = Date()
@@ -1044,12 +1128,10 @@ struct ComposerView: View {
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
     @State private var isGoalMode = false
-    /// Goal-card "edit" sheet state.
-    @State private var editingGoal = false
-    @State private var goalDraft = ""
+    /// Goal-card "edit" sheet state (the item carries the initial goal text).
+    @State private var editingGoalItem: GoalEditItem?
     /// Queued-message edit sheet state.
     @State private var editingQueued: QueuedMessage?
-    @State private var queuedDraft = ""
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1479,62 +1561,12 @@ struct ComposerView: View {
             // composer so the user can start typing immediately.
             if store.activeThreadId != nil { focused = true }
         }
-        .sheet(isPresented: $editingGoal) { goalEditor }
+        .sheet(item: $editingGoalItem) { item in
+            GoalEditorSheet(initial: item.text)
+        }
         .sheet(item: $editingQueued) { item in
-            queuedMessageEditor(item)
+            QueuedMessageEditor(item: item)
         }
-    }
-
-    /// Goal-card "edit" sheet — edit the goal text in place.
-    private var goalEditor: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("编辑目标").font(.headline)
-            TextEditor(text: $goalDraft)
-                .font(.body)
-                .frame(minHeight: 80, maxHeight: 140)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
-                .padding(6)
-            Text("保存后会暂停计时；需要时点 ▶ 开始重新执行。")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            HStack {
-                Spacer()
-                Button("取消") { editingGoal = false }
-                Button("保存") {
-                    let t = goalDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !t.isEmpty { store.setActiveThreadGoal(t) }
-                    editingGoal = false
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(20)
-        .frame(width: 460)
-    }
-
-    private func queuedMessageEditor(_ item: QueuedMessage) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("编辑排队消息").font(.headline)
-            TextEditor(text: $queuedDraft)
-                .font(.body)
-                .frame(minHeight: 100, maxHeight: 180)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
-                .padding(6)
-            Text("图片附件会保留。")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            HStack {
-                Spacer()
-                Button("取消") { editingQueued = nil }
-                Button("保存") {
-                    store.updateQueuedMessage(item.id, text: queuedDraft)
-                    editingQueued = nil
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(20)
-        .frame(width: 460)
     }
 
     /// Resend the last turn's user input when it failed / was interrupted.
@@ -1748,7 +1780,6 @@ struct ComposerView: View {
                                     Spacer()
                                     Button {
                                         editingQueued = q
-                                        queuedDraft = q.text
                                     } label: {
                                         Image(systemName: "pencil")
                                             .font(.caption)
@@ -2096,8 +2127,7 @@ struct ComposerView: View {
                     .accessibilityLabel("开始执行目标")
                 }
                 Button {
-                    goalDraft = goal
-                    editingGoal = true
+                    editingGoalItem = GoalEditItem(text: goal)
                 } label: {
                     Image(systemName: "pencil")
                         .foregroundStyle(.secondary)

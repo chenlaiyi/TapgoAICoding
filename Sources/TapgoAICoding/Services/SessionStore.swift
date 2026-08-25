@@ -633,7 +633,31 @@ final class SessionStore: ObservableObject {
     private func finishTurnAndDrain() {
         let shouldDrain = !suppressAutoDrain
         suppressAutoDrain = false
-        if shouldDrain { drainQueueIfIdle() }
+        if shouldDrain, !queue.isEmpty {
+            // A queued message will start the next turn — the goal keeps going.
+            drainQueueIfIdle()
+        } else {
+            // Nothing more to work on: close the goal's running segment so the
+            // card stops showing "进行中" / ticking once the turn actually
+            // ended (e.g. after an interrupt or a completed turn).
+            pauseGoalRunningSegment()
+        }
+    }
+
+    /// End the goal's current running span (accumulate its worked seconds and
+    /// mark paused) if it was running. Called when the agent has nothing more
+    /// to do.
+    private func pauseGoalRunningSegment() {
+        guard let id = activeThreadId,
+              let idx = liveThreads.firstIndex(where: { $0.id == id }),
+              liveThreads[idx].goalStatus == "running",
+              let resumedAt = liveThreads[idx].goalResumedAt else { return }
+        var updated = liveThreads[idx]
+        updated.goalWorkedSeconds += Date().timeIntervalSince(resumedAt)
+        updated.goalStatus = "paused"
+        updated.goalResumedAt = nil
+        updated.updatedAt = Date()
+        replaceThread(updated)
     }
 
     // MARK: - Event application
