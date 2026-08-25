@@ -476,7 +476,6 @@ struct ChatView: View {
                     }
                 }
             }
-            contextIndicator(thread: thread)
             statusPill(thread: thread)
             Button {
                 renamingCurrentId = thread.id
@@ -586,45 +585,7 @@ struct ChatView: View {
         .padding(.vertical, 8)
     }
 
-    /// Compact "context used" indicator from the most recent turn that
-    /// reported usage. Mirrors Codex's context meter so the user can see
-    /// how much of the window is being consumed.
-    @ViewBuilder
-    private func contextIndicator(thread: TapgoCore.Thread) -> some View {        // The most recent completed turn with reported usage.
-        if let usage = thread.turns.last(where: { $0.usage != nil })?.usage,
-           let pct = usage.contextPercent {
-            let color = Self.contextColor(usage.contextLevel)
-            HStack(spacing: 5) {
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(.gray.opacity(0.15))
-                        .frame(width: 44, height: 4)
-                    Capsule()
-                        .fill(color)
-                        .frame(width: 44 * CGFloat(pct) / 100, height: 4)
-                }
-                Text("上下文 \(pct)%")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                if usage.total > 0, let cw = usage.contextWindow, cw > 0 {
-                    Text("\(tapgoFormatCount(usage.total)) / \(tapgoFormatCount(cw))")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .help("上下文已用 \(pct)%")
-            .accessibilityLabel("上下文已用 \(pct)%")
-        }
-    }
-
-    private static func contextColor(_ level: TapgoCore.ContextLevel?) -> Color {
-        switch level {
-        case .critical: return .red
-        case .warn: return .orange
-        case .normal: return .green
-        case .none: return .secondary
-        }
-    }
+    // MARK: - Status pill (running / failed / idle)
 
     private func copyConversation(_ thread: TapgoCore.Thread) {
         let md = thread.turns.map { TurnMarkdown.render($0) }.joined(separator: "\n\n---\n\n")
