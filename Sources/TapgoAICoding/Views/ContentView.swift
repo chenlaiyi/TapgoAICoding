@@ -19,6 +19,7 @@ struct ContentView: View {
                 mainSplit
             }
         }
+        .dynamicTypeSize(.xLarge)
         .frame(minWidth: 1100, minHeight: 720)
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenSettings)) { _ in
             showSettings = true

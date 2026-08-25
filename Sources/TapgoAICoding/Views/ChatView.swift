@@ -320,6 +320,7 @@ struct ChatView: View {
                     })
                 }
                 .coordinateSpace(name: "chat")
+                .dynamicTypeSize(chatDynamicType)
                 .onReceive(NotificationCenter.default.publisher(for: .tapgoJumpToTurn)) { note in
                     if let id = note.object as? String {
                         withAnimation(.easeOut(duration: 0.25)) {
@@ -723,6 +724,14 @@ struct ChatView: View {
         let f = DateFormatter()
         f.dateFormat = "yyyy年M月d日"
         return f.string(from: date)
+    }
+
+    private var chatDynamicType: DynamicTypeSize {
+        switch fontScale {
+        case "small": return .medium
+        case "large": return .xxLarge
+        default: return .xLarge
+        }
     }
 
     private func fontLabel(_ s: String) -> String {

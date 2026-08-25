@@ -8,7 +8,6 @@ struct TapgoAICodingApp: App {
     @StateObject private var store: SessionStore
     @StateObject private var authStore: AdminAuthStore
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
-    @AppStorage("tapgo.fontScale") private var fontScale = "medium"
 
     init() {
         let workspace = WorkspaceStore()
@@ -30,15 +29,6 @@ struct TapgoAICodingApp: App {
         }
     }
 
-    /// Global UI/text scale (small / medium / large) applied app-wide.
-    private var globalScale: CGFloat {
-        switch fontScale {
-        case "small": return 0.85
-        case "large": return 1.2
-        default: return 1.0
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
             Group {
@@ -46,7 +36,6 @@ struct TapgoAICodingApp: App {
                     ContentView()
                         .environmentObject(store)
                         .environmentObject(workspace)
-                        .scaleEffect(globalScale)
                 } else {
                     AdminLoginView(onComplete: {})
                         .task { await authStore.bootstrap() }
