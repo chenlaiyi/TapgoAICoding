@@ -325,10 +325,6 @@ struct ChatView: View {
                project.isRemote {
                 RemoteBanner(project: project, host: workspace.remoteHost(byId: project.remoteHostId ?? ""))
             }
-            if let usage = thread.turns.last(where: { $0.usage != nil })?.usage,
-               usage.contextLevel == .critical {
-                ContextWarningBanner(percent: usage.contextPercent ?? 0)
-            }
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
@@ -985,35 +981,36 @@ struct ChatView: View {
     }
 }
 
-/// Warns when the active thread's context window is nearly full, nudging
-/// the user to start a fresh thread instead of letting the harness
-/// silently compact. Mirrors Codex's context meter.
-private struct ContextWarningBanner: View {
+/// Compact context meter shown in the composer metrics bar: a "context N%"
+/// label plus a small progress bar, colour-coded green → yellow → red.
+private struct ContextMeter: View {
     let percent: Int
-    @EnvironmentObject var store: SessionStore
+
+    private var color: Color {
+        switch percent {
+        case 80...: return .red
+        case 50...: return DSHTheme.warn
+        default:    return .green
+        }
+    }
+
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "exclamationmark.triangle.fill")
-            Text("上下文已用 \(percent)% — 建议新建会话以留出空间")
-                .font(.caption)
-            Spacer(minLength: 8)
-            Button {
-                store.newThread()
-            } label: {
-                Label("新建会话", systemImage: "plus.message")
-                    .font(.caption)
+            Text("context \(percent)%")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(DSHTheme.border)
+                    Capsule()
+                        .fill(color)
+                        .frame(width: g.size.width * CGFloat(min(max(percent, 0), 100)) / 100)
+                }
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(DSHTheme.warn)
-            .help("新建一个会话以留出上下文空间")
-            .accessibilityLabel("新建会话")
+            .frame(width: 72, height: 5)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DSHTheme.warn.opacity(0.12), in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.warn.opacity(0.3), lineWidth: 1))
-        .foregroundStyle(DSHTheme.warn)
+        .help("当前离线上下文占用 \(percent)%（80% 触发自动压缩）")
+        .accessibilityLabel("上下文占用 \(percent)%")
     }
 }
 
@@ -1432,22 +1429,6 @@ struct ComposerView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            if let pct = composerContextPercent {
-                                HStack(spacing: 2) {
-                                    if pct >= 90 {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .font(.caption)
-                                    }
-                                    Text("\(pct)%")
-                                        .font(.caption)
-                                    if let counts = composerContextCounts {
-                                        Text(counts)
-                                            .font(.caption)
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                }
-                                .foregroundStyle(pct >= 90 ? DSHTheme.warn : .secondary)
-                            }
                             Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.tertiary)
                         }
                         .foregroundStyle(DSHTheme.brand)
@@ -1489,6 +1470,8 @@ struct ComposerView: View {
             .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
                 acceptDroppedImages(providers)
             }
+
+            composerMetricsBar
         }
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
@@ -1598,6 +1581,64 @@ struct ComposerView: View {
     }
 
     private var isRunning: Bool { store.isRunning }
+
+    /// Active thread (if any) — the source for the composer metrics bar.
+    private var activeThread: TapgoCore.Thread? {
+        guard let id = store.activeThreadId else { return nil }
+        return store.liveThreads.first(where: { $0.id == id })
+    }
+
+    /// DSH-style metrics bar below the input: rounds · steps · LLM time ·
+    /// cache hit · input tokens · a live context meter (replaces the old top
+    /// context banner).
+    @ViewBuilder
+    private var composerMetricsBar: some View {
+        if let thread = activeThread {
+            let rounds = thread.turns.count
+            let steps = thread.turns.reduce(0) { acc, t in
+                acc + t.items.filter { item in
+                    switch item {
+                    case .toolCall, .commandExecution: return true
+                    default: return false
+                    }
+                }.count
+            }
+            let lastUsage = thread.turns.last(where: { $0.usage != nil })?.usage
+            let pct = lastUsage?.contextPercent
+            let cacheHit = cacheHitPercent(lastUsage)
+
+            HStack(spacing: 12) {
+                HStack(spacing: 2) {
+                    Text("\(rounds) 轮")
+                    Text("·")
+                    Text("\(steps) 步")
+                }
+                if let d = thread.durationTotalText {
+                    Text("LLM \(d)")
+                }
+                if let c = cacheHit {
+                    Text("缓存命中 \(c)%")
+                }
+                if thread.usageTotal > 0 {
+                    Text("输入 \(tapgoFormatCount(thread.usageTotal))")
+                }
+                Spacer()
+                if let pct {
+                    ContextMeter(percent: pct)
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: contentWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func cacheHitPercent(_ usage: TokenUsage?) -> Int? {
+        guard let usage, usage.input > 0 else { return nil }
+        return Int((Double(usage.cached) / Double(usage.input) * 100).rounded())
+    }
 
     private var canSend: Bool {
         if store.setupError != nil { return false }
