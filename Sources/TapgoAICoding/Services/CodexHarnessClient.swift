@@ -74,6 +74,7 @@ final class CodexHarnessClient {
         resumeThreadId: String?,
         cwd: String?,
         images: [URL],
+        baseInstructions: String? = nil,
         onEvent: @escaping @MainActor (ExecEvent) -> Void
     ) async -> RunState {
         if case .running = state {
@@ -122,6 +123,9 @@ final class CodexHarnessClient {
                 }
                 if let effort = TapgoConfig.reasoningEffort {
                     startParams["effort"] = .string(effort)
+                }
+                if let baseInstructions, !baseInstructions.isEmpty {
+                    startParams["baseInstructions"] = .string(baseInstructions)
                 }
                 let resp = try await request(method: "thread/start", params: startParams)
                 guard let id = resp.objectValue?["thread"]?.objectValue?["id"]?.stringValue else {

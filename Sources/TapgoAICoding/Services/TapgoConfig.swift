@@ -31,6 +31,25 @@ enum TapgoConfig {
     static let clientInfoTitle = "Tapgo AICoding"
     static let clientInfoVersion = "0.3.0"
 
+    /// Token threshold at which the codex harness auto-compacts the transcript
+    /// into a summary (replaces the user having to manually start a new
+    /// session). Sits below `model_context_window` so compaction happens
+    /// before the model hits the wall.
+    static let autoCompactTokenLimit = 800_000
+
+    /// User-level persistent memory file, injected as `baseInstructions` into
+    /// every new thread so the model "remembers" context across conversations.
+    static var userMemoryURL: URL {
+        codexHome.deletingLastPathComponent().appendingPathComponent("memory.md")
+    }
+
+    static func readUserMemory() -> String? {
+        guard let data = try? Data(contentsOf: userMemoryURL) else { return nil }
+        let s = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return s.isEmpty ? nil : s
+    }
+
     /// Codex-compatible approval policy. Mirrors the harness values
     /// (`never`, `on-request`, `on-failure`, `untrusted`). Persisted so
     /// the user can toggle interactive approvals from Settings; the app
@@ -296,6 +315,7 @@ enum TapgoConfig {
         model = "\(modelName)"
         model_provider = "\(modelProvider)"
         model_context_window = 1000000
+        model_auto_compact_token_limit = \(autoCompactTokenLimit)
         model_catalog_json = "\(modelCatalogPath.path)"
 
         [model_providers.\(modelProvider)]

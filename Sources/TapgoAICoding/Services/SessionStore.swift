@@ -312,6 +312,11 @@ final class SessionStore: ObservableObject {
             project: project
         )
 
+        // Persistent memory (user-level memory.md + project MEMORY.md) is
+        // injected as `baseInstructions`, giving the model cross-conversation
+        // context even in a brand-new thread.
+        let base = Self.baseInstructions(for: project)
+
         // Build the right transport for this thread.
         let newRunner = makeRunner(for: project)
         runner = newRunner
@@ -322,7 +327,8 @@ final class SessionStore: ObservableObject {
                 prompt: effectivePrompt,
                 resumeThreadId: resumeId,
                 cwd: cwd,
-                images: images
+                images: images,
+                baseInstructions: base
             ) { [weak self] event in
                 self?.handle(event: event, threadIdx: idx, turnIdx: turnIdx)
             }
@@ -420,6 +426,27 @@ final class SessionStore: ObservableObject {
         不要在远端 shell 里再 `ssh` 到当前主机,会失败。
         用户消息: \(userPrompt)
         """
+    }
+
+    /// Persistent memory injected as the thread's `baseInstructions`: the
+    /// user-level `memory.md` plus any project `MEMORY.md`. Gives the model
+    /// cross-conversation context even in a brand-new thread.
+    static func baseInstructions(for project: Project?) -> String? {
+        var parts: [String] = []
+        if let userMem = TapgoConfig.readUserMemory() {
+            parts.append(userMem)
+        }
+        if let project {
+            let memURL = project.worktreeRoot.appendingPathComponent("MEMORY.md")
+            if let data = try? Data(contentsOf: memURL),
+               let mem = String(data: data, encoding: .utf8)?
+                   .trimmingCharacters(in: .whitespacesAndNewlines),
+               !mem.isEmpty {
+                parts.append("【项目记忆】\n\(mem)")
+            }
+        }
+        guard !parts.isEmpty else { return nil }
+        return "以下是持久记忆，请在回答时始终参考：\n\n" + parts.joined(separator: "\n\n")
     }
 
     /// Public "stop" from the stop button / menu. Cancels the current turn
