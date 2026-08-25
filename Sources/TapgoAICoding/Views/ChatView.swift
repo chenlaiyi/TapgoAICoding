@@ -134,6 +134,14 @@ struct ChatView: View {
                 .font(.caption)
                 .focused($searchFieldFocused)
                 .onExitCommand { searchActive = false; searchQuery = "" }
+                // ⏎ = 下一处, ⇧⏎ = 上一处 — matching Codex's search bar
+                // and the convention in browsers / Finder.
+                .onSubmit { jumpToMatch(1) }
+                .onChange(of: searchQuery) { _, _ in
+                    // New query → forget which match we were on so the
+                    // counter resets to "N 个匹配" until the user jumps.
+                    jumpToTurnId = nil
+                }
             Text(matchCount)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -175,11 +183,16 @@ struct ChatView: View {
     }
 
     private var matchCount: String {
-        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty { return "\(threadTurnCount) 回合" }
-        let n = store.liveThreads
-            .first(where: { $0.id == store.activeThreadId })?
-            .turns.filter { turnMatches($0, q) }.count ?? 0
+        let n = matchingTurnIds.count
+        if n == 0 { return "0 个匹配" }
+        // Show "X/Y" once we have a current match, otherwise just "Y 个匹配"
+        // so the user knows the total while they decide to jump.
+        if let cur = jumpToTurnId,
+           let idx = matchingTurnIds.firstIndex(of: cur) {
+            return "\(idx + 1)/\(n)"
+        }
         return "\(n) 个匹配"
     }
 
@@ -191,38 +204,26 @@ struct ChatView: View {
         searchActive && !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Matching turn ids in the active thread, in conversation order.
+    /// Delegates to `Turn.matches(query:)` (TapgoCore) so the matching
+    /// rule lives in one tested place.
     private var matchingTurnIds: [String] {
-        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty,
               let thread = store.liveThreads.first(where: { $0.id == store.activeThreadId }) else { return [] }
-        return thread.turns.filter { turnMatches($0, q) }.map(\.id)
+        return thread.turns.filter { $0.matches(query: q) }.map(\.id)
     }
 
+    /// Cycle through matches: "下一处" advances, "上一处" backs up.
+    /// Wraps around so the user can keep tapping. `jumpToTurnId` drives
+    /// the scroll; `matchCount` reads its position out of it.
     private func jumpToMatch(_ delta: Int) {
         let ids = matchingTurnIds
         guard !ids.isEmpty else { return }
-        let current = jumpToTurnId ?? ids[0]
+        let current = jumpToTurnId ?? ids.first!
         let idx = ids.firstIndex(of: current) ?? 0
         let next = (idx + delta + ids.count) % ids.count
         jumpToTurnId = ids[next]
-    }
-
-    private func turnMatches(_ turn: Turn, _ q: String) -> Bool {
-        if turn.userInput.lowercased().contains(q) { return true }
-        return turn.items.contains { item in
-            let text: String
-            switch item {
-            case .userMessage(_, let t): text = t
-            case .assistantMessage(_, let t): text = t
-            case .reasoning(_, let t): text = t
-            case .reasoningSummary(_, let t): text = t
-            case .commandExecution(let ce): text = ce.stdout + " " + ce.command
-            case .toolCall(let tc): text = tc.name + " " + tc.arguments + " " + (tc.result ?? "")
-            case .fileChange(let fc): text = fc.path + " " + fc.diff
-            default: text = ""
-            }
-            return text.lowercased().contains(q)
-        }
     }
 
     /// Window / conversation title — follows the active thread's title so
@@ -298,7 +299,7 @@ struct ChatView: View {
                         // directly with the turns — no duplicate header.
                         Color.clear.frame(height: 1).id("TOP")
                         ForEach(Array(thread.turns.enumerated()), id: \.element.id) { idx, turn in
-                            let isMatch = !searchFilterActive || turnMatches(turn, searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+                            let isMatch = !searchFilterActive || turn.matches(query: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))
                             if TapgoCore.Thread.showDateBanner(at: idx, in: thread.turns) {
                                 dateDivider(for: turn.startedAt)
                             }
@@ -1211,7 +1212,7 @@ struct ComposerView: View {
 
             goalCard
 
-            VStack(spacing: -cardOverlap) {
+            VStack(spacing: store.queue.isEmpty ? 0 : -cardOverlap) {
                 queueStatusBar
                     .zIndex(0)
 
@@ -1635,13 +1636,6 @@ struct ComposerView: View {
 
     private var isRunning: Bool { store.isRunning }
 
-    /// The user input currently being processed, used as the concise task
-    /// label in the status strip. There is one harness turn at a time.
-    private var currentRunningTask: String? {
-        guard let turn = activeThread?.turns.last else { return nil }
-        return turn.userInput.isEmpty ? nil : turn.userInput
-    }
-
     /// Active thread (if any) — the source for the composer metrics bar.
     private var activeThread: TapgoCore.Thread? {
         guard let id = store.activeThreadId else { return nil }
@@ -1714,115 +1708,93 @@ struct ComposerView: View {
     /// awaiting send.
     @ViewBuilder
     private var queueStatusBar: some View {
-        if isRunning || !store.queue.isEmpty {
+        // Only show the task card when there is an actual task list (queued
+        // messages). With an empty queue it would just repeat the running
+        // message — so it stays hidden.
+        if !store.queue.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    Image(systemName: isRunning ? "arrow.triangle.2.circlepath" : "list.bullet")
+                    Image(systemName: "list.bullet")
                         .font(.caption)
-                        .foregroundStyle(isRunning ? DSHTheme.brand : .secondary)
-                    Text("任务 \(store.inProgressTasks) 进行中 · \(store.queue.count) 待处理")
+                        .foregroundStyle(DSHTheme.brand)
+                    Text("任务清单 · \(store.queue.count) 待处理")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundStyle(isRunning ? DSHTheme.brand : .secondary)
+                        .foregroundStyle(DSHTheme.brand)
                     Spacer()
-                    if !store.queue.isEmpty {
-                        Button {
-                            store.interjectAndFlush()
-                        } label: {
-                            Label("发送全部", systemImage: "bolt.fill")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
-                        .tint(DSHTheme.warn)
-                        .keyboardShortcut(.return, modifiers: [.control])
-                        .help("Ctrl+Enter 中断当前并立即发送全部排队消息")
-                        .accessibilityLabel("发送全部排队消息")
+                    Button {
+                        store.interjectAndFlush()
+                    } label: {
+                        Label("发送全部", systemImage: "bolt.fill")
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .tint(DSHTheme.warn)
+                    .keyboardShortcut(.return, modifiers: [.control])
+                    .help("Ctrl+Enter 中断当前并立即发送全部排队消息")
+                    .accessibilityLabel("发送全部排队消息")
                 }
-
-                // Current running task
-                if isRunning, let currentTask = currentRunningTask, !currentTask.isEmpty {
-                    HStack(spacing: 5) {
-                        Circle().fill(.green).frame(width: 6, height: 6)
-                        Text("进行中：")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(currentTask)
-                            .font(.caption)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .foregroundStyle(.primary)
-                    }
-                } else {
-                    Text(isRunning ? "仍在生成中，可继续输入，消息会按顺序排在后面" : "等待下一条消息")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-
-                // 任务清单 (always visible, bounded + scrollable)
-                if !store.queue.isEmpty {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 5) {
-                            ForEach(store.queue) { q in
-                                HStack(spacing: 6) {
-                                    Image(systemName: "text.bubble")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text(q.text.isEmpty ? "(图片附件)" : q.text)
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                        .foregroundStyle(.primary)
-                                    if !q.images.isEmpty {
-                                        Text("🖼 \(q.images.count)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Button {
-                                        editingQueued = q
-                                    } label: {
-                                        Image(systemName: "pencil")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .help("编辑这条排队消息")
-                                    .accessibilityLabel("编辑排队消息")
-                                    Button {
-                                        store.removeQueued(q.id)
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .help("删除这条排队消息")
-                                    .accessibilityLabel("删除排队消息")
-                                    Button {
-                                        store.sendQueuedNow(q.id)
-                                    } label: {
-                                        Image(systemName: "arrow.up")
-                                            .font(.caption)
-                                            .foregroundStyle(DSHTheme.brand)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .help("发送这条（让当前任务/目标调整方向）")
-                                    .accessibilityLabel("发送这条排队消息")
-                                }
-                            }
-                            HStack {
-                                Spacer()
-                                Button("清空排队") { store.clearQueue() }
-                                    .buttonStyle(.borderless)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(store.queue) { q in
+                            HStack(spacing: 6) {
+                                Image(systemName: "text.bubble")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                Text(q.text.isEmpty ? "(图片附件)" : q.text)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                    .foregroundStyle(.primary)
+                                if !q.images.isEmpty {
+                                    Text("🖼 \(q.images.count)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button {
+                                    editingQueued = q
+                                } label: {
+                                    Image(systemName: "pencil")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.borderless)
+                                .help("编辑这条排队消息")
+                                .accessibilityLabel("编辑排队消息")
+                                Button {
+                                    store.removeQueued(q.id)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.borderless)
+                                .help("删除这条排队消息")
+                                .accessibilityLabel("删除排队消息")
+                                Button {
+                                    store.sendQueuedNow(q.id)
+                                } label: {
+                                    Image(systemName: "arrow.up")
+                                        .font(.caption)
+                                        .foregroundStyle(DSHTheme.brand)
+                                }
+                                .buttonStyle(.borderless)
+                                .help("发送这条（让当前任务/目标调整方向）")
+                                .accessibilityLabel("发送这条排队消息")
                             }
                         }
+                        HStack {
+                            Spacer()
+                            Button("清空排队") { store.clearQueue() }
+                                .buttonStyle(.borderless)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .frame(maxHeight: 150)
-                    .padding(6)
-                    .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
                 }
+                .frame(maxHeight: 150)
+                .padding(6)
+                .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
