@@ -1,0 +1,22 @@
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+*.xcodeproj/
+
+# macOS
+.DS_Store
+
+# Built apps
+*.app
+*.dSYM
+
+# Build scripts output
+AppBuilder/dist/
+
+# Local test evidence (screenshots / logs)
+test-evidence/
+
+# Editor
+.vscode/
+.idea/
