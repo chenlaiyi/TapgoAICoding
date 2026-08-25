@@ -1052,6 +1052,9 @@ struct ComposerView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     var contentWidth: CGFloat = 760
+    /// How much of the "任务" status card's bottom is tucked behind the
+    /// composer card (the "peeking tab" overlap).
+    private let cardOverlap: CGFloat = 14
     @AppStorage("tapgo.composerDraft") private var text: String = ""
     @FocusState private var focused: Bool
     @State private var isDropTargeted = false
@@ -1136,12 +1139,15 @@ struct ComposerView: View {
                 }
             }
 
-            queueStatusBar
+            VStack(spacing: -cardOverlap) {
+                queueStatusBar
+                    .zIndex(0)
 
-            // Centered, max-width rounded dock (mirrors the DSH composer
-            // 'composer-card-max-width'). The input and its controls live
-            // inside one raised card.
-            VStack(spacing: 8) {
+                // Centered, max-width rounded dock (mirrors the DSH composer
+                // 'composer-card-max-width'). The input and its controls live
+                // inside one raised card. zIndex(1) so it draws on top,
+                // covering the task card's bottom `cardOverlap` pixels.
+                VStack(spacing: 8) {
             GrowingTextEditor(
                     text: $text,
                     placeholder: composerPlaceholder,
@@ -1431,6 +1437,8 @@ struct ComposerView: View {
             .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
                 acceptDroppedImages(providers)
             }
+            .zIndex(1)
+            }
 
             composerMetricsBar
         }
@@ -1707,7 +1715,7 @@ struct ComposerView: View {
             .padding(.vertical, 8)
             .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
-            .frame(maxWidth: contentWidth)
+            .frame(maxWidth: contentWidth - 28)
             .frame(maxWidth: .infinity, alignment: .center)
         }
     }
