@@ -30,12 +30,12 @@ struct TapgoAICodingApp: App {
         }
     }
 
-    /// Global font size (small / medium / large) applied app-wide.
-    private var globalFontSize: DynamicTypeSize {
+    /// Global UI/text scale (small / medium / large) applied app-wide.
+    private var globalScale: CGFloat {
         switch fontScale {
-        case "small": return .medium
-        case "large": return .xxLarge
-        default: return .xLarge
+        case "small": return 0.85
+        case "large": return 1.2
+        default: return 1.0
         }
     }
 
@@ -46,6 +46,7 @@ struct TapgoAICodingApp: App {
                     ContentView()
                         .environmentObject(store)
                         .environmentObject(workspace)
+                        .scaleEffect(globalScale)
                 } else {
                     AdminLoginView(onComplete: {})
                         .task { await authStore.bootstrap() }
@@ -53,7 +54,6 @@ struct TapgoAICodingApp: App {
             }
             .environmentObject(authStore)
             .preferredColorScheme(resolvedScheme)
-            .dynamicTypeSize(globalFontSize)
             .frame(minWidth: 1100, minHeight: 720)
         }
         .windowResizability(.contentMinSize)

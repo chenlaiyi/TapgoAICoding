@@ -371,18 +371,18 @@ struct SettingsView: View {
             }
             Section("预览") {
                 Text("你好，Tapgo AICoding。今天适合写代码。")
-                    .dynamicTypeSize(previewTypeSize)
+                    .scaleEffect(previewScale)
             }
         }
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var previewTypeSize: DynamicTypeSize {
+    private var previewScale: CGFloat {
         switch fontScale {
-        case "small": return .medium
-        case "large": return .xxLarge
-        default: return .xLarge
+        case "small": return 0.85
+        case "large": return 1.2
+        default: return 1.0
         }
     }
 
