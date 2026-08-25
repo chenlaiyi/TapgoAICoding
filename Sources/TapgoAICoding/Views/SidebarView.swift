@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct SidebarView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
+    @EnvironmentObject var authStore: AdminAuthStore
     @State private var isDropTargeted = false
     @State private var renamingThreadId: String?
     @State private var renameDraft: String = ""
@@ -777,18 +778,45 @@ struct SidebarView: View {
     @ViewBuilder
     private var userBar: some View {
         HStack(spacing: 8) {
-            Image(systemName: "person.crop.circle.fill")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("当前用户")
-            VStack(alignment: .leading, spacing: 0) {
-                Text(NSUserName())
-                    .font(.subheadline)
-                    .lineLimit(1)
-                Text("Tapgo AICoding")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
+            if let user = authStore.currentUser {
+                // Logged-in Tapgo admin (from 扫码登录): show avatar + nickname.
+                UserAvatar(url: user.avatarURL, name: user.displayName, size: 28)
+                    .accessibilityLabel("当前登录用户")
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(user.displayName)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    Text(user.wechatNickname ?? user.email ?? user.roleText)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        authStore.logout()
+                    } label: {
+                        Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    Button {
+                        showSettings()
+                    } label: {
+                        Label("设置", systemImage: "gear")
+                    }
+                }
+            } else {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("当前用户")
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(NSUserName())
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    Text("Tapgo AICoding")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
             }
             Spacer()
             Circle()
@@ -812,6 +840,7 @@ struct SidebarView: View {
     }
 
     private var runnerStatusColor: Color {
+        if store.isRunning { return .blue }
         switch store.runnerState {
         case .running: return .blue
         case .failed: return DSHTheme.error
@@ -819,6 +848,7 @@ struct SidebarView: View {
         }
     }
     private var runnerStatusHelp: String {
+        if store.isRunning { return "执行中" }
         switch store.runnerState {
         case .running: return "执行中"
         case .failed: return "异常"
@@ -942,5 +972,49 @@ struct SidebarView: View {
         let idx = ordered.firstIndex { $0.id == active } ?? 0
         let next = (idx + delta + ordered.count) % ordered.count
         store.selectThread(ordered[next].id)
+    }
+}
+
+/// Circular user avatar with a graceful fallback (initial letter) when the
+/// image is missing, loading, or fails to load.
+struct UserAvatar: View {
+    let url: URL?
+    let name: String
+    let size: CGFloat
+
+    var body: some View {
+        if let url {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: size, height: size)
+                        .clipShape(Circle())
+                default:
+                    fallback
+                }
+            }
+            .frame(width: size, height: size)
+        } else {
+            fallback
+        }
+    }
+
+    private var fallback: some View {
+        ZStack {
+            Circle().fill(DSHTheme.brand.opacity(0.18))
+            Text(initial)
+                .font(.system(size: size * 0.45, weight: .semibold))
+                .foregroundStyle(DSHTheme.brand)
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+    }
+
+    private var initial: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "?" : String(trimmed.prefix(1)).uppercased()
     }
 }

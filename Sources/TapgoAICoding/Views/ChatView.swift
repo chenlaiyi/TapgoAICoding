@@ -839,14 +839,20 @@ struct ChatView: View {
                 // Show the user's question immediately, then ONE compact
                 // activity line that cycles through thinking / commands.
                 ForEach(Array(userMessageItems(turn)), id: \.id) { userItem in
-                    MessageRow(item: userItem, isRunning: false)
+                    MessageRow(item: userItem, isRunning: false,
+                               startedAt: turn.startedAt,
+                               onReply: userReplyClosure(userItem),
+                               onEdit: { store.sendUserMessage($0) })
                 }
                 runningActivityLine(turn: turn)
             } else {
                 ForEach(chatBlocks(turn.items)) { block in
                     switch block {
                     case .item(let item):
-                        MessageRow(item: item, isRunning: false)
+                        MessageRow(item: item, isRunning: false,
+                                   startedAt: turn.startedAt,
+                                   onReply: userReplyClosure(item),
+                                   onEdit: { store.sendUserMessage($0) })
                     case .fileBatch(let files):
                         FileEditBatchView(files: files)
                     }
@@ -970,6 +976,13 @@ struct ChatView: View {
     private func userMessageItems(_ turn: Turn) -> [TurnItem] {
         turn.items.filter { if case .userMessage = $0 { return true }; return false }
     }
+
+    /// Build a "重发" closure for a user-message item, or nil for any other
+    /// item type (so only the user's question gets the reply action).
+    private func userReplyClosure(_ item: TurnItem) -> (() -> Void)? {
+        guard case .userMessage(_, let text) = item else { return nil }
+        return { store.sendUserMessage(text) }
+    }
 }
 
 /// Warns when the active thread's context window is nearly full, nudging
@@ -1087,6 +1100,7 @@ struct ComposerView: View {
     @State private var editorExpanded = false
     @State private var showAttachments = true
     @State private var showSlashMenu = false
+    @State private var queueExpanded = false
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1163,6 +1177,8 @@ struct ComposerView: View {
                     .padding(.vertical, 4)
                 }
             }
+
+            queueStatusBar
 
             // Centered, max-width rounded dock (mirrors the DSH composer
             // 'composer-card-max-width'). The input and its controls live
@@ -1449,17 +1465,17 @@ struct ComposerView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)
-                        .help("中断当前任务")
+                        .help("中断当前任务（排队消息会被保留）")
                         .accessibilityLabel("中断当前任务")
-                    } else {
-                        Button(action: send) {
-                            Image(systemName: "paperplane.fill")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(DSHTheme.brand)
-                        .disabled(canSend == false)
-                        .help("发送 (⌘↩)")
-                        .accessibilityLabel(L10n.sendButton)                    }
+                    }
+                    Button(action: send) {
+                        Image(systemName: "paperplane.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(isRunning ? DSHTheme.warn : DSHTheme.brand)
+                    .disabled(canSend == false)
+                    .help(isRunning ? "发送（排队）(⌘↩)" : "发送 (⌘↩)")
+                    .accessibilityLabel(L10n.sendButton)
                 }
             }
             .padding(10)
@@ -1483,6 +1499,9 @@ struct ComposerView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoSendMessage)) { _ in
             send()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoInterjectAndFlush)) { _ in
+            interjectSend()
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRetryTurn)) { _ in
             retryLastTurn()
@@ -1516,7 +1535,7 @@ struct ComposerView: View {
 
     /// Resend the last turn's user input when it failed / was interrupted.
     private func retryLastTurn() {
-        if case .running = store.runnerState { return }
+        if store.isRunning { return }
         guard let id = store.activeThreadId,
               let t = store.liveThreads.first(where: { $0.id == id }),
               let last = t.turns.last,
@@ -1578,35 +1597,121 @@ struct ComposerView: View {
             ?? PermissionChoice.full
     }
 
-    private var isRunning: Bool {
-        if case .running = store.runnerState { return true }
-        return false
-    }
+    private var isRunning: Bool { store.isRunning }
 
     private var canSend: Bool {
         if store.setupError != nil { return false }
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let hasImage = !store.attachedImages.isEmpty
-        let notRunning: Bool
-        switch store.runnerState {
-        case .running: notRunning = false
-        default: notRunning = true
-        }
-        return (hasText || hasImage) && notRunning && !activeThreadBusy
+        // Sending is always allowed when there is content — while a turn is
+        // running the message is queued instead of dropped.
+        return hasText || hasImage
     }
 
-    /// True when the active thread's most recent turn is still in progress
-    /// (running / awaiting approval), so sending would collide with the
-    /// harness's active writer for that thread.
-    private var activeThreadBusy: Bool {
-        guard let id = store.activeThreadId,
-              let t = store.liveThreads.first(where: { $0.id == id }) else { return false }
-        switch t.turns.last?.status {
-        case .running, .awaitingApproval: return true
-        default: return false
+    /// Status strip above the composer mirroring the DSH "任务 进行中 · 待处理"
+    /// queue affordance. Shown only when a turn is running or messages are
+    /// awaiting send.
+    @ViewBuilder
+    private var queueStatusBar: some View {
+        if isRunning || !store.queue.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: isRunning ? "arrow.triangle.2.circlepath" : "list.bullet")
+                        .font(.caption)
+                        .foregroundStyle(isRunning ? DSHTheme.brand : .secondary)
+                    Text("任务 \(store.inProgressTasks) 进行中 · \(store.queue.count) 待处理")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(isRunning ? DSHTheme.brand : .secondary)
+                    Spacer()
+                    if !store.queue.isEmpty {
+                        Button {
+                            store.interjectAndFlush()
+                        } label: {
+                            Label("插话发送全部", systemImage: "bolt.fill")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .tint(DSHTheme.warn)
+                        .keyboardShortcut(.return, modifiers: [.control])
+                        .help("Ctrl+Enter 中断当前并立即发送全部排队消息")
+                        .accessibilityLabel("插话发送全部排队消息")
+                    }
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) { queueExpanded.toggle() }
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(queueExpanded ? 180 : 0))
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(store.queue.isEmpty)
+                    .help(store.queue.isEmpty ? "暂无排队消息" : (queueExpanded ? "收起排队列表" : "展开排队列表"))
+                }
+
+                if store.queue.isEmpty {
+                    Text(isRunning ? "仍在生成中，可继续输入，消息会按顺序排在后面" : "等待下一条消息")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text("Cmd/Ctrl+Enter 插话发送全部排队消息")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                if queueExpanded && !store.queue.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(store.queue) { q in
+                            HStack(spacing: 6) {
+                                Image(systemName: "text.bubble")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(q.text.isEmpty ? "(图片附件)" : q.text)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                    .foregroundStyle(.primary)
+                                if !q.images.isEmpty {
+                                    Text("🖼 \(q.images.count)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button {
+                                    store.removeQueued(q.id)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .buttonStyle(.borderless)
+                                .help("移除这条排队消息")
+                                .accessibilityLabel("移除排队消息")
+                            }
+                        }
+                        HStack {
+                            Spacer()
+                            Button("清空排队") { store.clearQueue() }
+                                .buttonStyle(.borderless)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(6)
+                    .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
+            .frame(maxWidth: contentWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
+    /// Send the composed message. While a turn is running the message is
+    /// queued instead of dropped.
     private func send() {
         // Slash commands are intercepted before hitting the harness.
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1622,7 +1727,6 @@ struct ComposerView: View {
             showSlashMenu = false
             return
         }
-        guard !activeThreadBusy else { return }
         let t = text
         guard !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || !store.attachedImages.isEmpty else { return }
@@ -1630,6 +1734,24 @@ struct ComposerView: View {
         store.sendUserMessage(t)
         // Keep the composer focused so the user can type the next message
         // immediately, matching Codex's always-ready input.
+        focused = true
+    }
+
+    /// "插话发送全部" (Cmd/Ctrl+Enter): append the current draft to the queue
+    /// (or send it immediately if idle), then drain the whole queue.
+    private func interjectSend() {
+        let hasContent = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !store.attachedImages.isEmpty
+        guard hasContent || !store.queue.isEmpty else {
+            // Nothing to send or interrupt.
+            return
+        }
+        if hasContent {
+            let t = text
+            text = ""
+            store.sendUserMessage(t)
+        }
+        store.interjectAndFlush()
         focused = true
     }
 

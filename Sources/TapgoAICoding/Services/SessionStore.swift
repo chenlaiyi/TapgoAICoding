@@ -2,6 +2,23 @@ import Foundation
 import SwiftUI
 import TapgoCore
 
+/// A user message queued while a turn is already running. Queued messages are
+/// drained automatically (one at a time) once the current turn finishes, and
+/// can be flushed immediately via the "插话" (Cmd/Ctrl+Enter) action.
+struct QueuedMessage: Identifiable, Equatable {
+    let id: String
+    let text: String
+    let images: [URL]
+    let enqueuedAt: Date
+
+    init(text: String, images: [URL] = []) {
+        self.id = "q-" + UUID().uuidString
+        self.text = text
+        self.images = images
+        self.enqueuedAt = Date()
+    }
+}
+
 /// Top-level state container. Owns the `WorkspaceStore` (projects +
 /// remote hosts), `ThreadStore` (persisted threads), and a
 /// `CodexHarnessClient` per active thread. All mutations go through
@@ -30,11 +47,17 @@ final class SessionStore: ObservableObject {
     /// a thread. We don't keep them around for the lifetime of
     /// the app because that would hold an idle SSH connection.
     private var runner: CodexHarnessClient?
+    /// True after an explicit "stop" so the queue drain is suppressed until the
+    /// next turn starts (or the user hits "插话").
+    private var suppressAutoDrain = false
 
     // Live state
     @Published var activeThreadId: String?
     @Published var runnerState: CodexHarnessClient.RunState = .idle
     @Published var attachedImages: [URL] = []
+    /// Messages queued while a turn is running. Drawn automatically after each
+    /// turn completes; flushed immediately by the "插话" action.
+    @Published private(set) var queue: [QueuedMessage] = []
     /// Session-local feedback votes (turn id → 1 up / -1 down / 0 none),
     /// mirroring Codex's message action bar without a remote backend.
     @Published var turnFeedback: [String: Int] = [:]
@@ -220,11 +243,28 @@ final class SessionStore: ObservableObject {
         let hasImages = !attachedImages.isEmpty
         guard !trimmed.isEmpty || hasImages else { return }
         if setupError != nil { return }
+        let imagesToUse = attachedImages
+        attachedImages = []
+        // While a turn is running, queue the message instead of dropping it.
+        // The queue is drained automatically when the current turn wraps up.
+        if isRunning {
+            queue.append(QueuedMessage(text: trimmed, images: imagesToUse))
+            return
+        }
+        sendNow(text: trimmed, images: imagesToUse)
+    }
+
+    /// Start a new turn for `text` immediately (used by the composer when
+    /// idle, and by the queue drain). `images` is the snapshot captured by the
+    /// caller — never the live `attachedImages` store.
+    private func sendNow(text rawText: String, images: [URL]) {
+        let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasImages = !images.isEmpty
+        suppressAutoDrain = false
         if activeThreadId == nil { newThread() }
         guard let threadId = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == threadId })
         else { return }
-        guard !isRunning else { return }
 
         let displayText: String
         if trimmed.isEmpty { displayText = hasImages ? "(图片)" : "" }
@@ -263,8 +303,6 @@ final class SessionStore: ObservableObject {
         }
         let cwd = liveThreads[idx].cwd
         let project = liveThreads[idx].projectId.flatMap { workspace.project(byId: $0) }
-        let imagesToUse = attachedImages
-        attachedImages = []
 
         // For remote threads, inject a stable environment preamble
         // so the model *knows* it's on the remote host and won't
@@ -284,7 +322,7 @@ final class SessionStore: ObservableObject {
                 prompt: effectivePrompt,
                 resumeThreadId: resumeId,
                 cwd: cwd,
-                images: imagesToUse
+                images: images
             ) { [weak self] event in
                 self?.handle(event: event, threadIdx: idx, turnIdx: turnIdx)
             }
@@ -321,6 +359,9 @@ final class SessionStore: ObservableObject {
                     self.threads.save(self.liveThreads[idx])
                 }
             }
+            // Auto-drain the queue now that this turn is no longer running,
+            // unless the user explicitly stopped (suppressAutoDrain).
+            self.finishTurnAndDrain()
         }
     }
 
@@ -381,7 +422,13 @@ final class SessionStore: ObservableObject {
         """
     }
 
-    func cancelActiveTurn() { runner?.cancel() }
+    /// Public "stop" from the stop button / menu. Cancels the current turn
+    /// and suppresses the automatic queue drain — the queue is left for the
+    /// user to decide (清空 or 插话).
+    func cancelActiveTurn() {
+        suppressAutoDrain = true
+        runner?.cancel()
+    }
 
     /// Resolve a pending approval. Forwards the decision to the harness
     /// and updates the in-chat approval item so the user sees the outcome.
@@ -408,9 +455,59 @@ final class SessionStore: ObservableObject {
         }
     }
 
-    private var isRunning: Bool {
-        if case .running = runnerState { return true }
-        return false
+    /// True while the active thread's latest turn is in progress (running or
+    /// awaiting approval). This is the reliable "a turn is running" signal —
+    /// `runnerState` only records the terminal run result (it is never
+    /// `.running` mid-turn, so it cannot gate queueing).
+    var isRunning: Bool {
+        guard let id = activeThreadId,
+              let t = liveThreads.first(where: { $0.id == id }) else { return false }
+        switch t.turns.last?.status {
+        case .running, .awaitingApproval: return true
+        default: return false
+        }
+    }
+
+    /// "In progress" task count for the composer status strip (0 or 1 — the
+    /// app runs a single harness task at a time).
+    var inProgressTasks: Int { isRunning ? 1 : 0 }
+
+    // MARK: - Send queue
+
+    func removeQueued(_ id: String) { queue.removeAll { $0.id == id } }
+
+    func clearQueue() { queue = [] }
+
+    /// Send the next queued message if the harness is idle. Called after each
+    /// turn finishes so queued messages drain automatically (one at a time).
+    func drainQueueIfIdle() {
+        guard !isRunning, !queue.isEmpty else { return }
+        guard setupError == nil else { return }
+        let next = queue.removeFirst()
+        sendNow(text: next.text, images: next.images)
+    }
+
+    /// "插话": interrupt the current turn (if any) and immediately drain the
+    /// queue. Queued messages are sent serially — each new turn re-triggers
+    /// the drain after it finishes.
+    func interjectAndFlush() {
+        guard !queue.isEmpty else { return }
+        suppressAutoDrain = false
+        if isRunning {
+            runner?.cancel()
+            // The completing run task calls `finishTurnAndDrain()` once the
+            // runner resets, which sends the queued messages in order.
+        } else {
+            drainQueueIfIdle()
+        }
+    }
+
+    /// Called when a turn finishes. Drains the queue automatically unless the
+    /// user explicitly stopped it first (`suppressAutoDrain`).
+    private func finishTurnAndDrain() {
+        let shouldDrain = !suppressAutoDrain
+        suppressAutoDrain = false
+        if shouldDrain { drainQueueIfIdle() }
     }
 
     // MARK: - Event application

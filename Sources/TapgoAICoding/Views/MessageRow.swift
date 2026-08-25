@@ -8,11 +8,17 @@ struct MessageRow: View {
     /// reasoning / command blocks as compact single-line views instead of
     /// growing, so repeated output stays minimized.
     var isRunning: Bool = false
+    /// When set, the user message bubble shows a bottom action bar with a
+    /// timestamp (and reply/edit controls).
+    var startedAt: Date? = nil
+    var onReply: (() -> Void)? = nil
+    var onEdit: ((String) -> Void)? = nil
 
     var body: some View {
         switch item {
         case .userMessage(_, let text):
-            MessageBubble(text: text, role: .user)
+            MessageBubble(text: text, role: .user,
+                          startedAt: startedAt, onReply: onReply, onEdit: onEdit)
         case .assistantMessage(_, let text):
             MessageBubble(text: text, role: .assistant)
         case .reasoning(_, let text):
@@ -38,11 +44,23 @@ struct MessageBubble: View {
     @EnvironmentObject var store: SessionStore
     let text: String
     let role: Role
+    var startedAt: Date? = nil
+    var onReply: (() -> Void)? = nil
+    var onEdit: ((String) -> Void)? = nil
+
+    @State private var showEditSheet = false
+    @State private var editedText = ""
 
     private func copy(_ s: String) {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(s, forType: .string)
+    }
+
+    private func timeText(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 
     /// Minimal markdown → plain-text strip: drop code fences, emphasis
@@ -66,35 +84,42 @@ struct MessageBubble: View {
     }
 
     var body: some View {
-        HStack {
-            if role == .user { Spacer(minLength: 32) }
-            if role == .user {
-                Text(text)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        DSHTheme.brand,
-                        in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
-                    )
-                    .textSelection(.enabled)
-                    .contextMenu {
-                        Button {
-                            copy(text)
-                        } label: {
-                            Label("复制消息", systemImage: "doc.on.doc")
+        if role == .user {
+            VStack(alignment: .trailing, spacing: 4) {
+                HStack(alignment: .top) {
+                    Spacer(minLength: 32)
+                    Text(text)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            DSHTheme.brand,
+                            in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                        )
+                        .textSelection(.enabled)
+                        .contextMenu {
+                            Button {
+                                copy(text)
+                            } label: {
+                                Label("复制消息", systemImage: "doc.on.doc")
+                            }
+                            Button {
+                                store.newThread()
+                                store.sendUserMessage(text)
+                            } label: {
+                                Label("以此内容新建会话", systemImage: "plus.message")
+                            }
                         }
-                        Button {
-                            store.newThread()
-                            store.sendUserMessage(text)
-                        } label: {
-                            Label("以此内容新建会话", systemImage: "plus.message")
-                        }
-                    }
-            } else {
-                // Assistant replies render as plain markdown text on the chat
-                // background (like Codex) — no full-width card, so there's no
-                // wasted space on the right. Copy lives in the context menu.
+                }
+                userActionBar
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .sheet(isPresented: $showEditSheet) { editSheet }
+        } else {
+            // Assistant replies render as plain markdown text on the chat
+            // background (like Codex) — no full-width card, so there's no
+            // wasted space on the right. Copy lives in the context menu.
+            HStack {
                 HStack(alignment: .top, spacing: 6) {
                     MarkdownMessageView(text)
                         .textSelection(.enabled)
@@ -112,9 +137,77 @@ struct MessageBubble: View {
                             }
                         }
                 }
+                Spacer(minLength: 1)
             }
-            if role == .assistant { Spacer(minLength: 1) }
         }
+    }
+
+    /// Bottom action bar for the user's question: timestamp + reply + edit +
+    /// copy, mirroring the composer-adjacent quick actions.
+    @ViewBuilder
+    private var userActionBar: some View {
+        HStack(spacing: 12) {
+            if let startedAt {
+                Text(timeText(startedAt))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            if let onReply {
+                Button(action: onReply) {
+                    Image(systemName: "arrow.uturn.backward")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("重发此问题")
+                .accessibilityLabel("重发此问题")
+            }
+            if onEdit != nil {
+                Button {
+                    editedText = text
+                    showEditSheet = true
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("编辑并重发")
+                .accessibilityLabel("编辑并重发")
+            }
+            Button {
+                copy(text)
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("复制")
+            .accessibilityLabel("复制")
+        }
+        .font(.system(size: 13))
+        .padding(.trailing, 2)
+    }
+
+    private var editSheet: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("编辑并重发").font(.headline)
+            TextEditor(text: $editedText)
+                .font(.body)
+                .frame(minHeight: 96, maxHeight: 160)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
+                .padding(6)
+            HStack {
+                Spacer()
+                Button("取消") { showEditSheet = false }
+                Button("重发") {
+                    let t = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { onEdit?(t) }
+                    showEditSheet = false
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 440)
     }
 }
 

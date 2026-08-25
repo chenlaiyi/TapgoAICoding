@@ -29,7 +29,7 @@ enum TapgoConfig {
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
-    static let clientInfoVersion = "0.2.0"
+    static let clientInfoVersion = "0.3.0"
 
     /// Codex-compatible approval policy. Mirrors the harness values
     /// (`never`, `on-request`, `on-failure`, `untrusted`). Persisted so

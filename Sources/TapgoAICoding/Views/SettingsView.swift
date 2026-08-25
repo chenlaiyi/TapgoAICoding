@@ -7,6 +7,7 @@ import TapgoCore
 ///   3. About — version, CODEX_HOME, log dir
 struct SettingsView: View {
     @EnvironmentObject var workspace: WorkspaceStore
+    @EnvironmentObject var authStore: AdminAuthStore
     @Environment(\.dismiss) private var dismiss
     @State private var tab: Tab = .projects
     @State private var addHostSheet = false
@@ -352,7 +353,7 @@ struct SettingsView: View {
     @ViewBuilder
     private var aboutTab: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0")")
+            Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0")")
                 .font(.title3).bold()
                 .textSelection(.enabled)
             Text("固定模型: \(TapgoConfig.modelName)")
@@ -386,6 +387,30 @@ struct SettingsView: View {
             .buttonStyle(.borderless)
             .controlSize(.small)
             Divider()
+            if let user = authStore.currentUser {
+                HStack(alignment: .center, spacing: 10) {
+                    UserAvatar(url: user.avatarURL, name: user.displayName, size: 36)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(user.displayName) (\(user.username))")
+                            .font(.subheadline)
+                            .textSelection(.enabled)
+                        Text(user.wechatNickname ?? user.roleText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                    Spacer()
+                    Button(role: .destructive) {
+                        authStore.logout()
+                    } label: {
+                        Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("清除本机登录状态，下次启动需重新扫码")
+                }
+            }
+            Divider()
             Text("不会读取或修改官方 ~/.codex/ 任何文件。")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -403,7 +428,7 @@ struct SettingsView: View {
     }
 
     private func copyDiagnostics() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0"
         let text = [
             "Tapgo AICoding \(version)",
             "模型: \(TapgoConfig.modelName)",

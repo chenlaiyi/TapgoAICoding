@@ -6,6 +6,7 @@ struct TapgoAICodingApp: App {
     @StateObject private var workspace = WorkspaceStore()
     @StateObject private var threadStore: ThreadStore
     @StateObject private var store: SessionStore
+    @StateObject private var authStore: AdminAuthStore
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
 
     init() {
@@ -16,6 +17,7 @@ struct TapgoAICodingApp: App {
         _store = StateObject(
             wrappedValue: SessionStore(workspace: workspace, threads: threads)
         )
+        _authStore = StateObject(wrappedValue: AdminAuthStore())
     }
 
     /// Resolve the pinned appearance (system / light / dark) from settings.
@@ -29,11 +31,19 @@ struct TapgoAICodingApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(store)
-                .environmentObject(workspace)
-                .preferredColorScheme(resolvedScheme)
-                .frame(minWidth: 1100, minHeight: 720)
+            Group {
+                if authStore.isAuthenticated {
+                    ContentView()
+                        .environmentObject(store)
+                        .environmentObject(workspace)
+                } else {
+                    AdminLoginView(onComplete: {})
+                        .task { await authStore.bootstrap() }
+                }
+            }
+            .environmentObject(authStore)
+            .preferredColorScheme(resolvedScheme)
+            .frame(minWidth: 1100, minHeight: 720)
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1280, height: 860)
@@ -103,7 +113,7 @@ struct TapgoAICodingApp: App {
                 }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 Button("发送消息") {
-                    NotificationCenter.default.post(name: .tapgoSendMessage, object: nil)
+                    NotificationCenter.default.post(name: .tapgoInterjectAndFlush, object: nil)
                 }
                 .keyboardShortcut(KeyEquivalent("\r"), modifiers: [.command])
                 Button("中断当前任务") {
@@ -131,6 +141,7 @@ extension Notification.Name {
     static let tapgoFocusComposer = Notification.Name("tapgo.focusComposer")
     static let tapgoCopyConversation = Notification.Name("tapgo.copyConversation")
     static let tapgoSendMessage = Notification.Name("tapgo.sendMessage")
+    static let tapgoInterjectAndFlush = Notification.Name("tapgo.interjectAndFlush")
     static let tapgoJumpToTurn = Notification.Name("tapgo.jumpToTurn")
     static let tapgoOpenCommandPalette = Notification.Name("tapgo.openCommandPalette")
     static let tapgoRequestOpenNewTask = Notification.Name("tapgo.openNewTask")
