@@ -208,13 +208,16 @@ final class SessionStore: ObservableObject {
         threads.save(liveThreads[idx])
     }
 
-    /// Set / clear the active thread's session goal (`/goal` command). An
-    /// empty string clears it. Persisted with the thread.
+    /// Set / clear the active thread's session goal (`/goal` command, or the
+    /// composer's 目标 mode). An empty string clears it. Persisted with the
+    /// thread; `goalSetAt` drives the live elapsed-time ticker on the card.
     func setActiveThreadGoal(_ goal: String?) {
         guard let id = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = goal?.trimmingCharacters(in: .whitespacesAndNewlines)
-        liveThreads[idx].goal = (trimmed?.isEmpty == false) ? trimmed : nil
+        let hasGoal = trimmed?.isEmpty == false
+        liveThreads[idx].goal = hasGoal ? trimmed : nil
+        liveThreads[idx].goalSetAt = hasGoal ? Date() : nil
         liveThreads[idx].updatedAt = Date()
         threads.save(liveThreads[idx])
     }

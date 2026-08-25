@@ -34,10 +34,13 @@ public struct Thread: Identifiable, Hashable, Codable {
     /// Optional session goal set via the `/goal` command, shown as a banner
     /// at the top of the conversation.
     public var goal: String?
+    /// When the goal was last set — used to show a live elapsed-time ticker
+    /// on the goal card. Nil when no goal is active.
+    public var goalSetAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, title, createdAt, updatedAt
-        case projectId, cwd, harnessThreadId, turns, isPinned, goal
+        case projectId, cwd, harnessThreadId, turns, isPinned, goal, goalSetAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -54,6 +57,7 @@ public struct Thread: Identifiable, Hashable, Codable {
         turns = try c.decodeIfPresent([Turn].self, forKey: .turns) ?? []
         isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         goal = try c.decodeIfPresent(String.self, forKey: .goal)
+        goalSetAt = try c.decodeIfPresent(Date.self, forKey: .goalSetAt)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -68,6 +72,7 @@ public struct Thread: Identifiable, Hashable, Codable {
         try c.encode(turns, forKey: .turns)
         try c.encode(isPinned, forKey: .isPinned)
         try c.encodeIfPresent(goal, forKey: .goal)
+        try c.encodeIfPresent(goalSetAt, forKey: .goalSetAt)
     }
 
     public init(
@@ -80,7 +85,8 @@ public struct Thread: Identifiable, Hashable, Codable {
         harnessThreadId: String? = nil,
         turns: [Turn] = [],
         isPinned: Bool = false,
-        goal: String? = nil
+        goal: String? = nil,
+        goalSetAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -92,6 +98,7 @@ public struct Thread: Identifiable, Hashable, Codable {
         self.turns = turns
         self.isPinned = isPinned
         self.goal = goal
+        self.goalSetAt = goalSetAt
     }
 
     public static func newLocal(

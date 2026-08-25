@@ -279,14 +279,30 @@ struct ChatView: View {
 
     /// Session-goal banner set via `/goal`, shown above the conversation.
     @ViewBuilder
-    private func goalBanner(thread: TapgoCore.Thread) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+    /// Session-goal card shown above the conversation when a goal is set:
+    /// a live "进行中" status, the goal text, an elapsed-time ticker, and a
+    /// "clear" affordance.
+    private func goalCard(thread: TapgoCore.Thread) -> some View {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: "scope")
+                .font(.title3)
                 .foregroundStyle(DSHTheme.brand)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("目标")
-                    .font(.caption)
-                    .foregroundStyle(DSHTheme.brand)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Circle().fill(.green).frame(width: 7, height: 7)
+                    Text("进行中")
+                    Spacer()
+                    TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                        if let setAt = thread.goalSetAt {
+                            Text(goalElapsedText(ctx.date.timeIntervalSince(setAt)))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 Text(thread.goal ?? "")
                     .font(.subheadline)
                     .foregroundStyle(.primary)
@@ -297,7 +313,7 @@ struct ChatView: View {
             Button {
                 store.setActiveThreadGoal(nil)
             } label: {
-                Image(systemName: "xmark.circle.fill")
+                Image(systemName: "trash")
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.borderless)
@@ -305,9 +321,17 @@ struct ChatView: View {
             .accessibilityLabel("清除目标")
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(DSHTheme.surface)
         .overlay(alignment: .bottom) { Divider() }
+    }
+
+    /// Compact elapsed time ("1h20m", "2m05s", "45s") for the goal card.
+    private func goalElapsedText(_ interval: TimeInterval) -> String {
+        let s = Int(interval)
+        if s >= 3600 { return "\(s / 3600)h\(String(format: "%02dm", (s % 3600) / 60))" }
+        if s >= 60 { return "\(s / 60)m\(s % 60)s" }
+        return "\(s)s"
     }
 
     @ViewBuilder
@@ -316,7 +340,7 @@ struct ChatView: View {
             threadHeader(thread: thread)
             Divider()
             if thread.goal != nil {
-                goalBanner(thread: thread)
+                goalCard(thread: thread)
             }
             if searchActive {
                 searchBar
@@ -1063,6 +1087,9 @@ struct ComposerView: View {
     @State private var showAttachments = true
     @State private var showSlashMenu = false
     @State private var queueExpanded = false
+    /// When true the composer is in "goal mode": the placeholder asks for a
+    /// goal and submit sets/updates the thread's goal instead of a message.
+    @State private var isGoalMode = false
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1296,6 +1323,8 @@ struct ComposerView: View {
 
                     environmentChip
 
+                    goalChip
+
                     Spacer()
 
                     Button {
@@ -1478,6 +1507,10 @@ struct ComposerView: View {
         .onChange(of: workspace.state.activeProjectId) { _, _ in
             // A draft typed for one project shouldn't be sent to another.
             text = ""
+        }
+        .onChange(of: store.activeThreadId) { _, _ in
+            // Goal mode belongs to the previous thread — reset on switch.
+            isGoalMode = false
         }
         .onAppear {
             // On launch with a restored thread, put the cursor in the
@@ -1724,6 +1757,17 @@ struct ComposerView: View {
     /// Send the composed message. While a turn is running the message is
     /// queued instead of dropped.
     private func send() {
+        // Goal mode: submit sets/updates the thread's goal, not a message.
+        if isGoalMode {
+            let goalText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !goalText.isEmpty {
+                store.setActiveThreadGoal(goalText)
+                text = ""
+                isGoalMode = false
+            }
+            focused = true
+            return
+        }
         // Slash commands are intercepted before hitting the harness.
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if let goal = slashGoal(trimmed) {
@@ -1896,10 +1940,44 @@ struct ComposerView: View {
 
     /// Composer placeholder, mentioning the active project when set.
     private var composerPlaceholder: String {
+        if isGoalMode { return "描述你想完成的目标" }
         if let p = workspace.state.activeProject {
             return "给 \(p.displayName) 发条任务…"
         }
         return "随心输"
+    }
+
+    /// The active thread's current goal text (drives the 目标 chip highlight).
+    private var activeThreadGoal: String? {
+        guard let id = store.activeThreadId else { return nil }
+        return store.liveThreads.first(where: { $0.id == id })?.goal
+    }
+
+    /// "目标" mode toggle in the composer toolbar. Highlights when a goal is
+    /// set or goal mode is active.
+    private var goalChip: some View {
+        Button {
+            isGoalMode.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "scope").font(.caption)
+                Text(titleForGoalChip)
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background((isGoalMode || activeThreadGoal != nil) ? DSHTheme.brandSoft : DSHTheme.surface, in: Capsule())
+            .foregroundStyle((isGoalMode || activeThreadGoal != nil) ? DSHTheme.brand : .secondary)
+        }
+        .buttonStyle(.plain)
+        .help(isGoalMode ? "退出目标模式" : "设置会话目标（输入后发送）")
+        .accessibilityLabel("目标")
+    }
+
+    private var titleForGoalChip: String {
+        if isGoalMode { return "目标" }
+        if let g = activeThreadGoal, !g.isEmpty { return g }
+        return "设为目标"
     }
 
     private var composerContextPercent: Int? {
