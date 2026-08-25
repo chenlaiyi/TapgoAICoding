@@ -31,23 +31,18 @@ struct AdminLoginView: View {
         ZStack {
             background
 
-            VStack(spacing: 24) {
-                Spacer()
-                appIcon
-                Text("Tapgo AICoding")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                Text("仅限 Tapgo 管理员使用")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-
-                qrCard
-                    .frame(width: 320, height: 380)
-
-                Spacer()
+            VStack(spacing: 0) {
+                Spacer(minLength: 48)
+                brandBlock
+                    .padding(.bottom, 36)
+                loginCard
+                footer
+                    .padding(.top, 28)
+                Spacer(minLength: 48)
             }
-            .padding(40)
+            .padding(.horizontal, 40)
         }
-        .frame(minWidth: 560, minHeight: 640)
+        .frame(minWidth: 640, minHeight: 680)
         .onAppear {
             isLogoFloating = true
             start()
@@ -58,46 +53,83 @@ struct AdminLoginView: View {
     // MARK: - Background
 
     private var background: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.97, green: 0.98, blue: 0.99),
-                Color(red: 0.90, green: 0.93, blue: 0.96),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.96, green: 0.97, blue: 0.99),
+                    Color(red: 0.90, green: 0.93, blue: 0.97),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(DSHTheme.brand.opacity(0.10))
+                .frame(width: 430, height: 430)
+                .blur(radius: 70)
+                .offset(x: -190, y: -230)
+
+            Circle()
+                .fill(Color(red: 0.32, green: 0.65, blue: 0.95).opacity(0.12))
+                .frame(width: 380, height: 380)
+                .blur(radius: 70)
+                .offset(x: 210, y: 240)
+        }
         .ignoresSafeArea()
     }
 
-    private var appIcon: some View {
-        Image(systemName: "applescript")
-            .font(.system(size: 64))
-            .foregroundStyle(.blue)
-            .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 4)
-            .offset(y: isLogoFloating ? -8 : 0)
-            .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: isLogoFloating)
+    // MARK: - Brand block
+
+    private var brandBlock: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [DSHTheme.brand, Color(red: 0.34, green: 0.66, blue: 0.96)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 84, height: 84)
+                    .shadow(color: DSHTheme.brand.opacity(0.35), radius: 18, x: 0, y: 10)
+                Image(systemName: "applescript")
+                    .font(.system(size: 42, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .offset(y: isLogoFloating ? -6 : 0)
+            .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: isLogoFloating)
             .accessibilityHidden(true)
+
+            Text("Tapgo AICoding")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+            Text("扫码登录 · 仅限 Tapgo 管理员")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+        }
     }
 
-    // MARK: - QR card
+    // MARK: - Login card
 
     @ViewBuilder
-    private var qrCard: some View {
-        VStack(spacing: 14) {
+    private var loginCard: some View {
+        VStack(spacing: 16) {
             switch phase {
             case .loading:
-                VStack(spacing: 14) {
-                    ProgressView().controlSize(.regular)
+                VStack(spacing: 16) {
+                    ProgressView().controlSize(.large)
                     Text("正在获取微信登录二维码…")
                         .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             case .failed(let message):
-                VStack(spacing: 12) {
+                VStack(spacing: 14) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.red)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(.yellow)
                     Text(message)
                         .font(.system(size: 14))
                         .multilineTextAlignment(.center)
@@ -105,18 +137,17 @@ struct AdminLoginView: View {
                     Button("重新获取二维码") { start() }
                         .buttonStyle(.borderedProminent)
                 }
-                .padding(20)
+                .frame(maxHeight: .infinity)
 
             case .waiting:
-                VStack(spacing: 12) {
-                    ZStack(alignment: .center) {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(.white)
-
+                VStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(DSHTheme.border, lineWidth: 1))
                         if !isQRReady {
                             ProgressView().controlSize(.regular)
                         }
-
                         if let wechatLoginURL {
                             WechatLoginWebView(
                                 url: wechatLoginURL,
@@ -129,43 +160,53 @@ struct AdminLoginView: View {
                                     withAnimation { phase = .failed(message) }
                                 }
                             )
-                            .frame(width: 228, height: 228)
+                            .frame(width: 224, height: 224)
                             .opacity(isQRReady ? 1 : 0)
                             .accessibilityLabel("微信登录二维码")
                         }
                     }
-                    .frame(width: 228, height: 228)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black.opacity(0.08)))
-                    .padding(.top, 4)
+                    .frame(width: 224, height: 224)
 
-                    Text("使用微信扫描二维码，确认后自动登录")
+                    Text("使用微信扫一扫，确认后自动登录")
                         .font(.system(size: 13))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
+                        .foregroundStyle(.secondary)
 
                     HStack(spacing: 6) {
                         Circle().fill(.green).frame(width: 6, height: 6)
                         Text("等待扫码 · \(formattedRemaining)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button { start() } label: {
+                            Label("刷新", systemImage: "arrow.clockwise")
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
+                        .help("刷新二维码")
+                        .accessibilityLabel("刷新二维码")
                     }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                    Button {
-                        start()
-                    } label: {
-                        Label("刷新二维码", systemImage: "arrow.clockwise")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .padding(.horizontal, 4)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(16)
-        .background(Color.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.5)))
-        .shadow(color: .black.opacity(0.10), radius: 20, x: 0, y: 20)
+        .padding(24)
+        .background(Color.white.opacity(0.96), in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.6)))
+        .shadow(color: .black.opacity(0.12), radius: 28, x: 0, y: 16)
+    }
+
+    private var footer: some View {
+        VStack(spacing: 4) {
+            Text("Tapgo 管理系统内部工具")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.0") · 微信扫码登录")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
     }
 
     private var formattedRemaining: String {

@@ -23,6 +23,7 @@ struct SettingsView: View {
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
 
     enum Tab: String, CaseIterable, Identifiable {
+        case account = "账户"
         case projects = "项目"
         case remote = "远程主机"
         case runtime = "运行"
@@ -48,6 +49,7 @@ struct SettingsView: View {
                 Divider()
                 Group {
                     switch tab {
+                    case .account:  accountTab
                     case .projects: projectsTab
                     case .remote:   remoteTab
                     case .runtime:  runtimeTab
@@ -348,6 +350,54 @@ struct SettingsView: View {
         .padding(.top, 20)
     }
 
+    // MARK: - Account tab
+
+    @ViewBuilder
+    private var accountTab: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let user = authStore.currentUser {
+                HStack(spacing: 14) {
+                    UserAvatar(url: user.avatarURL, name: user.displayName, size: 56)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(user.displayName)
+                            .font(.title3).bold()
+                            .textSelection(.enabled)
+                        Text("@\(user.username)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                        Text(user.wechatNickname ?? user.roleText)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                Text("登录身份: \(user.roleText)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("未登录")
+                    .foregroundStyle(.secondary)
+            }
+            Divider()
+            Button(role: .destructive) {
+                authStore.logout()
+            } label: {
+                Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(.red)
+            .help("清除本机登录状态，下次启动需重新扫码")
+            Text("退出后需重新微信扫码才能进入。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
     // MARK: - About tab
 
     @ViewBuilder
@@ -386,30 +436,6 @@ struct SettingsView: View {
             }
             .buttonStyle(.borderless)
             .controlSize(.small)
-            Divider()
-            if let user = authStore.currentUser {
-                HStack(alignment: .center, spacing: 10) {
-                    UserAvatar(url: user.avatarURL, name: user.displayName, size: 36)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(user.displayName) (\(user.username))")
-                            .font(.subheadline)
-                            .textSelection(.enabled)
-                        Text(user.wechatNickname ?? user.roleText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
-                    Spacer()
-                    Button(role: .destructive) {
-                        authStore.logout()
-                    } label: {
-                        Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("清除本机登录状态，下次启动需重新扫码")
-                }
-            }
             Divider()
             Text("不会读取或修改官方 ~/.codex/ 任何文件。")
                 .font(.caption)
