@@ -21,12 +21,14 @@ struct SettingsView: View {
     @AppStorage("tapgo.baseURL") private var baseURL = ""
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
+    @AppStorage("tapgo.fontScale") private var fontScale = "medium"
 
     enum Tab: String, CaseIterable, Identifiable {
         case account = "账户"
         case projects = "项目"
         case remote = "远程主机"
         case runtime = "运行"
+        case appearance = "外观"
         case about = "关于"
         var id: String { rawValue }
     }
@@ -53,6 +55,7 @@ struct SettingsView: View {
                     case .projects: projectsTab
                     case .remote:   remoteTab
                     case .runtime:  runtimeTab
+                    case .appearance: appearanceTab
                     case .about:    aboutTab
                     }
                 }
@@ -348,6 +351,39 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(.top, 20)
+    }
+
+    // MARK: - Appearance tab
+
+    @ViewBuilder
+    private var appearanceTab: some View {
+        Form {
+            Section("字体大小") {
+                Picker("字体大小", selection: $fontScale) {
+                    Text("小").tag("small")
+                    Text("中").tag("medium")
+                    Text("大").tag("large")
+                }
+                .pickerStyle(.segmented)
+                Text("全局生效：聊天、会话列表、设置、提示等所有文字。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("预览") {
+                Text("你好，Tapgo AICoding。今天适合写代码。")
+                    .dynamicTypeSize(previewTypeSize)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var previewTypeSize: DynamicTypeSize {
+        switch fontScale {
+        case "small": return .medium
+        case "large": return .xxLarge
+        default: return .xLarge
+        }
     }
 
     // MARK: - Account tab
