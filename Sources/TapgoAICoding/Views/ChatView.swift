@@ -391,9 +391,7 @@ struct ChatView: View {
                 }
                 // When switching threads, land at the latest message.
                 .onChange(of: thread.id) { _, _ in
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo("BOTTOM", anchor: .bottom)
-                    }
+                    scrollChatToBottom(proxy)
                     showNewMessage = false
                 }
                 // Jump to a search match.
@@ -405,6 +403,22 @@ struct ChatView: View {
                         jumpToTurnId = nil
                     }
                 }
+                // On first render (app launch / opening a conversation), land
+                // at the latest message so the input box sits right below it.
+                .onAppear {
+                    scrollChatToBottom(proxy)
+                }
+            }
+        }
+    }
+
+    /// Land the chat at the latest message. The "BOTTOM" marker is a trailing
+    /// LazyVStack element that may not be laid out yet when a thread opens, so
+    /// we delay briefly before scrolling.
+    private func scrollChatToBottom(_ proxy: ScrollViewProxy) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo("BOTTOM", anchor: .bottom)
             }
         }
     }
@@ -1027,13 +1041,15 @@ struct ComposerView: View {
     @State private var editorExpanded = false
     @State private var showAttachments = true
     @State private var showSlashMenu = false
-    @State private var queueExpanded = false
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
     @State private var isGoalMode = false
     /// Goal-card "edit" sheet state.
     @State private var editingGoal = false
     @State private var goalDraft = ""
+    /// Queued-message edit sheet state.
+    @State private var editingQueued: QueuedMessage?
+    @State private var queuedDraft = ""
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1464,6 +1480,9 @@ struct ComposerView: View {
             if store.activeThreadId != nil { focused = true }
         }
         .sheet(isPresented: $editingGoal) { goalEditor }
+        .sheet(item: $editingQueued) { item in
+            queuedMessageEditor(item)
+        }
     }
 
     /// Goal-card "edit" sheet — edit the goal text in place.
@@ -1485,6 +1504,31 @@ struct ComposerView: View {
                     let t = goalDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !t.isEmpty { store.setActiveThreadGoal(t) }
                     editingGoal = false
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+
+    private func queuedMessageEditor(_ item: QueuedMessage) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("编辑排队消息").font(.headline)
+            TextEditor(text: $queuedDraft)
+                .font(.body)
+                .frame(minHeight: 100, maxHeight: 180)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
+                .padding(6)
+            Text("图片附件会保留。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            HStack {
+                Spacer()
+                Button("取消") { editingQueued = nil }
+                Button("保存") {
+                    store.updateQueuedMessage(item.id, text: queuedDraft)
+                    editingQueued = nil
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -1558,6 +1602,13 @@ struct ComposerView: View {
     }
 
     private var isRunning: Bool { store.isRunning }
+
+    /// The user input currently being processed, used as the concise task
+    /// label in the status strip. There is one harness turn at a time.
+    private var currentRunningTask: String? {
+        guard let turn = activeThread?.turns.last else { return nil }
+        return turn.userInput.isEmpty ? nil : turn.userInput
+    }
 
     /// Active thread (if any) — the source for the composer metrics bar.
     private var activeThread: TapgoCore.Thread? {
@@ -1655,76 +1706,89 @@ struct ComposerView: View {
                         .help("Ctrl+Enter 中断当前并立即发送全部排队消息")
                         .accessibilityLabel("发送全部排队消息")
                     }
-                    Button {
-                        withAnimation(.easeOut(duration: 0.15)) { queueExpanded.toggle() }
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .rotationEffect(.degrees(queueExpanded ? 180 : 0))
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(store.queue.isEmpty)
-                    .help(store.queue.isEmpty ? "暂无排队消息" : (queueExpanded ? "收起排队列表" : "展开排队列表"))
                 }
 
-                if store.queue.isEmpty {
+                // Current running task
+                if isRunning, let currentTask = currentRunningTask, !currentTask.isEmpty {
+                    HStack(spacing: 5) {
+                        Circle().fill(.green).frame(width: 6, height: 6)
+                        Text("进行中：")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(currentTask)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .foregroundStyle(.primary)
+                    }
+                } else {
                     Text(isRunning ? "仍在生成中，可继续输入，消息会按顺序排在后面" : "等待下一条消息")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                } else {
-                    Text("Cmd/Ctrl+Enter 插话发送全部排队消息")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
                 }
 
-                if queueExpanded && !store.queue.isEmpty {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(store.queue) { q in
-                            HStack(spacing: 6) {
-                                Image(systemName: "text.bubble")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(q.text.isEmpty ? "(图片附件)" : q.text)
-                                    .font(.caption)
-                                    .lineLimit(1)
-                                    .foregroundStyle(.primary)
-                                if !q.images.isEmpty {
-                                    Text("🖼 \(q.images.count)")
+                // 任务清单 (always visible, bounded + scrollable)
+                if !store.queue.isEmpty {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(store.queue) { q in
+                                HStack(spacing: 6) {
+                                    Image(systemName: "text.bubble")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                    Text(q.text.isEmpty ? "(图片附件)" : q.text)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                        .foregroundStyle(.primary)
+                                    if !q.images.isEmpty {
+                                        Text("🖼 \(q.images.count)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Button {
+                                        editingQueued = q
+                                        queuedDraft = q.text
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help("编辑这条排队消息")
+                                    .accessibilityLabel("编辑排队消息")
+                                    Button {
+                                        store.removeQueued(q.id)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help("删除这条排队消息")
+                                    .accessibilityLabel("删除排队消息")
+                                    Button {
+                                        store.sendQueuedNow(q.id)
+                                    } label: {
+                                        Image(systemName: "arrow.up")
+                                            .font(.caption)
+                                            .foregroundStyle(DSHTheme.brand)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help("发送这条（让当前任务/目标调整方向）")
+                                    .accessibilityLabel("发送这条排队消息")
                                 }
+                            }
+                            HStack {
                                 Spacer()
-                                Button {
-                                    store.sendQueuedNow(q.id)
-                                } label: {
-                                    Image(systemName: "paperplane.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(DSHTheme.brand)
-                                }
-                                .buttonStyle(.borderless)
-                                .help("发送这条（让当前任务/目标调整方向）")
-                                .accessibilityLabel("发送这条排队消息")
-                                Button {
-                                    store.removeQueued(q.id)
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .buttonStyle(.borderless)
-                                .help("移除这条排队消息")
-                                .accessibilityLabel("移除排队消息")
+                                Button("清空排队") { store.clearQueue() }
+                                    .buttonStyle(.borderless)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
-                        HStack {
-                            Spacer()
-                            Button("清空排队") { store.clearQueue() }
-                                .buttonStyle(.borderless)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
                     }
+                    .frame(maxHeight: 150)
                     .padding(6)
                     .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
                 }

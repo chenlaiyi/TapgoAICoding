@@ -17,6 +17,13 @@ struct QueuedMessage: Identifiable, Equatable {
         self.images = images
         self.enqueuedAt = Date()
     }
+
+    init(id: String, text: String, images: [URL], enqueuedAt: Date) {
+        self.id = id
+        self.text = text
+        self.images = images
+        self.enqueuedAt = enqueuedAt
+    }
 }
 
 /// Top-level state container. Owns the `WorkspaceStore` (projects +
@@ -568,6 +575,18 @@ final class SessionStore: ObservableObject {
     func removeQueued(_ id: String) { queue.removeAll { $0.id == id } }
 
     func clearQueue() { queue = [] }
+
+    /// Replace a queued message's text (keeps its images).
+    func updateQueuedMessage(_ id: String, text: String) {
+        guard let idx = queue.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let old = queue[idx]
+        let new = QueuedMessage(id: old.id, text: trimmed, images: old.images, enqueuedAt: old.enqueuedAt)
+        var all = queue
+        all[idx] = new
+        queue = all
+    }
 
     /// Send the next queued message if the harness is idle. Called after each
     /// turn finishes so queued messages drain automatically (one at a time).
