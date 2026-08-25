@@ -1981,13 +1981,14 @@ struct ComposerView: View {
     }
 
     /// Clicking the 目标 chip: if the user has typed a goal, commit it
-    /// directly (one step). Otherwise toggle goal mode (placeholder switches
-    /// to "描述你想完成的目标" so they can type a goal and send).
+    /// directly (one step) — the goal card appears at the top and the chip
+    /// highlights. We deliberately leave the text in the composer so the user
+    /// can also press 发送 to have the model act on it. If nothing is typed,
+    /// toggle goal mode instead.
     private func toggleGoalMode() {
         let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if !typed.isEmpty {
             store.setActiveThreadGoal(typed)
-            text = ""
             isGoalMode = false
         } else {
             isGoalMode.toggle()

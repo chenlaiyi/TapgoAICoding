@@ -211,15 +211,21 @@ final class SessionStore: ObservableObject {
     /// Set / clear the active thread's session goal (`/goal` command, or the
     /// composer's 目标 mode). An empty string clears it. Persisted with the
     /// thread; `goalSetAt` drives the live elapsed-time ticker on the card.
+    /// We replace the whole `liveThreads` array so the `@Published` change
+    /// reliably refreshes the goal card / chip.
     func setActiveThreadGoal(_ goal: String?) {
         guard let id = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = goal?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasGoal = trimmed?.isEmpty == false
-        liveThreads[idx].goal = hasGoal ? trimmed : nil
-        liveThreads[idx].goalSetAt = hasGoal ? Date() : nil
-        liveThreads[idx].updatedAt = Date()
-        threads.save(liveThreads[idx])
+        var updated = liveThreads[idx]
+        updated.goal = hasGoal ? trimmed : nil
+        updated.goalSetAt = hasGoal ? Date() : nil
+        updated.updatedAt = Date()
+        var all = liveThreads
+        all[idx] = updated
+        liveThreads = all
+        threads.save(updated)
     }
 
     func togglePinned(_ id: String) {
