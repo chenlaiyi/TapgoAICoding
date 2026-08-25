@@ -429,20 +429,28 @@ final class SessionStore: ObservableObject {
     }
 
     /// Persistent memory injected as the thread's `baseInstructions`: the
-    /// user-level `memory.md` plus any project `MEMORY.md`. Gives the model
-    /// cross-conversation context even in a brand-new thread.
+    /// user-level `memory.md`, the project's source-folder list (for
+    /// multi-folder projects), and any `MEMORY.md` in each source folder.
+    /// Gives the model cross-conversation context even in a brand-new thread.
     static func baseInstructions(for project: Project?) -> String? {
         var parts: [String] = []
         if let userMem = TapgoConfig.readUserMemory() {
             parts.append(userMem)
         }
         if let project {
-            let memURL = project.worktreeRoot.appendingPathComponent("MEMORY.md")
-            if let data = try? Data(contentsOf: memURL),
-               let mem = String(data: data, encoding: .utf8)?
-                   .trimmingCharacters(in: .whitespacesAndNewlines),
-               !mem.isEmpty {
-                parts.append("【项目记忆】\n\(mem)")
+            let folders = project.allFolders
+            if folders.count > 1 {
+                let list = folders.map { $0.path }.joined(separator: "\n")
+                parts.append("【项目源文件夹】本任务涉及多个目录，请在需要时读取/修改它们：\n\(list)")
+            }
+            for f in folders {
+                let memURL = f.appendingPathComponent("MEMORY.md")
+                if let data = try? Data(contentsOf: memURL),
+                   let mem = String(data: data, encoding: .utf8)?
+                       .trimmingCharacters(in: .whitespacesAndNewlines),
+                   !mem.isEmpty {
+                    parts.append("【项目记忆·\(f.lastPathComponent)】\n\(mem)")
+                }
             }
         }
         guard !parts.isEmpty else { return nil }

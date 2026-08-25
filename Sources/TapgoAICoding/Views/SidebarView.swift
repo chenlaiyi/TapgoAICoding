@@ -9,10 +9,9 @@ struct SidebarView: View {
     @State private var isDropTargeted = false
     @State private var renamingThreadId: String?
     @State private var renameDraft: String = ""
-    @State private var renamingProjectId: String?
-    @State private var renameProjectDraft: String = ""
     @State private var confirmingDelete: TapgoCore.Thread?
     @State private var confirmingProjectRemove: String? = nil
+    @State private var editingProject: Project?
     @State private var searchQuery: String = ""
     @FocusState private var searchFocused: Bool
     @State private var searchScope = false
@@ -57,21 +56,6 @@ struct SidebarView: View {
         } message: {
             Text("为这个会话起一个新标题。")
         }
-        .alert("重命名项目", isPresented: Binding(
-            get: { renamingProjectId != nil },
-            set: { if !$0 { renamingProjectId = nil } }
-        )) {
-            TextField("项目名", text: $renameProjectDraft)
-            Button("确定") {
-                if let id = renamingProjectId {
-                    workspace.renameProject(id, to: renameProjectDraft)
-                }
-                renamingProjectId = nil
-            }
-            Button("取消", role: .cancel) { renamingProjectId = nil }
-        } message: {
-            Text("为这个项目起一个新名字。")
-        }
         .confirmationDialog("删除会话?",
                             isPresented: Binding(
                                 get: { confirmingDelete != nil },
@@ -99,6 +83,10 @@ struct SidebarView: View {
             Button("取消", role: .cancel) { confirmingProjectRemove = nil }
         } message: {
             Text("将从列表中移除该项目。其下的会话会保留为未分类历史，不会删除磁盘文件。")
+        }
+        .sheet(item: $editingProject) { project in
+            EditProjectSheet(project: project)
+                .environmentObject(workspace)
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusSearch)) { _ in
             searchFocused = true
@@ -285,96 +273,16 @@ struct SidebarView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 if groupHasRunningTask(group) {
-                    Circle()
-                        .fill(DSHTheme.brand)
-                        .frame(width: 7, height: 7)
-                        .help("该项目有任务正在执行")
-                        .accessibilityLabel("该项目有任务正在执行")
+                    runningDot
                 }
                 if workspace.state.activeProjectId == p.id {
-                    Text("当前")
-                        .font(.caption2)
-                        .foregroundStyle(DSHTheme.brand)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(DSHTheme.brand.opacity(0.12), in: Capsule())
+                    activeBadge
                 }
                 Spacer()
-                HStack(spacing: 3) {
-                    Image(systemName: "number")
-                        .font(.caption2)
-                    Text("\(group.threads.count) 个任务")
-                }
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .help("该项目下的会话/任务数")
-                .accessibilityLabel("\(group.threads.count) 个任务")
-
-                Button {
-                    renamingProjectId = p.id
-                    renameProjectDraft = p.displayName
-                } label: {
-                    Image(systemName: "pencil")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.borderless)
-                .help("编辑项目")
-                .accessibilityLabel("编辑项目")
-
-                Menu {
-                    Button {
-                        store.setActiveProject(p.id)
-                    } label: {
-                        Label("设为当前项目", systemImage: "checkmark.circle")
-                    }
-                    Button {
-                        workspace.togglePinProject(p.id)
-                    } label: {
-                        Label(workspace.isProjectPinned(p.id) ? "取消置顶项目" : "置顶项目", systemImage: "pin")
-                    }
-                    Divider()
-                    Button {
-                        renamingProjectId = p.id
-                        renameProjectDraft = p.displayName
-                    } label: {
-                        Label("编辑项目", systemImage: "pencil")
-                    }
-                    if !p.isRemote {
-                        Button {
-                            NSWorkspace.shared.open(p.worktreeRoot)
-                        } label: {
-                            Label("在访达中显示", systemImage: "folder")
-                        }
-                    }
-                    Button {
-                        copyToPasteboard(p.displayPath)
-                    } label: {
-                        Label("复制路径", systemImage: "doc.on.doc")
-                    }
-                    Divider()
-                    Button(role: .destructive) {
-                        confirmingProjectRemove = p.id
-                    } label: {
-                        Label("移除项目…", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .menuStyle(.borderlessButton)
-                .help("项目操作")
-                .accessibilityLabel("项目操作")
-
-                Button {
-                    toggleGroup(group.id)
-                } label: {
-                    Image(systemName: collapsedGroups.contains(group.id) ? "chevron.right" : "chevron.down")
-                        .font(.caption)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(collapsedGroups.contains(group.id) ? "展开项目" : "收起项目")
+                projectCountBadge(group.threads.count)
+                projectEditButton(p)
+                projectMoreMenu(p)
+                projectCollapseButton(group.id)
             }
             .contentShape(Rectangle())
             .background(hoveredProjectId == p.id ? DSHTheme.interactiveHover : Color.clear,
@@ -389,8 +297,7 @@ struct SidebarView: View {
             }
             .contextMenu {
                 Button {
-                    renamingProjectId = p.id
-                    renameProjectDraft = p.displayName
+                    editingProject = p
                 } label: {
                     Label("重命名项目", systemImage: "pencil")
                 }
@@ -453,6 +360,107 @@ struct SidebarView: View {
             default: return false
             }
         }
+    }
+
+    // MARK: - Project header sub-views (kept small so the type-checker can cope)
+
+    private var runningDot: some View {
+        Circle()
+            .fill(DSHTheme.brand)
+            .frame(width: 7, height: 7)
+            .help("该项目有任务正在执行")
+            .accessibilityLabel("该项目有任务正在执行")
+    }
+
+    private var activeBadge: some View {
+        Text("当前")
+            .font(.caption2)
+            .foregroundStyle(DSHTheme.brand)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(DSHTheme.brand.opacity(0.12), in: Capsule())
+    }
+
+    private func projectCountBadge(_ count: Int) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "number")
+                .font(.caption2)
+            Text("\(count) 个任务")
+        }
+        .font(.caption)
+        .foregroundStyle(.tertiary)
+        .help("该项目下的会话/任务数")
+        .accessibilityLabel("\(count) 个任务")
+    }
+
+    private func projectEditButton(_ p: Project) -> some View {
+        Button {
+            editingProject = p
+        } label: {
+            Image(systemName: "pencil")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.borderless)
+        .help("编辑项目")
+        .accessibilityLabel("编辑项目")
+    }
+
+    private func projectMoreMenu(_ p: Project) -> some View {
+        Menu {
+            Button {
+                store.setActiveProject(p.id)
+            } label: {
+                Label("设为当前项目", systemImage: "checkmark.circle")
+            }
+            Button {
+                workspace.togglePinProject(p.id)
+            } label: {
+                Label(workspace.isProjectPinned(p.id) ? "取消置顶项目" : "置顶项目", systemImage: "pin")
+            }
+            Divider()
+            Button {
+                editingProject = p
+            } label: {
+                Label("编辑项目", systemImage: "pencil")
+            }
+            if !p.isRemote {
+                Button {
+                    NSWorkspace.shared.open(p.worktreeRoot)
+                } label: {
+                    Label("在访达中显示", systemImage: "folder")
+                }
+            }
+            Button {
+                copyToPasteboard(p.displayPath)
+            } label: {
+                Label("复制路径", systemImage: "doc.on.doc")
+            }
+            Divider()
+            Button(role: .destructive) {
+                confirmingProjectRemove = p.id
+            } label: {
+                Label("移除项目…", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .help("项目操作")
+        .accessibilityLabel("项目操作")
+    }
+
+    private func projectCollapseButton(_ id: String) -> some View {
+        Button {
+            toggleGroup(id)
+        } label: {
+            Image(systemName: collapsedGroups.contains(id) ? "chevron.right" : "chevron.down")
+                .font(.caption)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(collapsedGroups.contains(id) ? "展开项目" : "收起项目")
     }
 
     /// Pinned threads first, then most-recent.

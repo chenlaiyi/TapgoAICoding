@@ -22,6 +22,11 @@ public struct Project: Identifiable, Codable, Hashable {
     /// is the user-picked path; for remote projects it is the local
     /// mirror dir.
     public var worktreeRoot: URL
+    /// Extra source folders that belong to this project (the "primary"
+    /// `worktreeRoot` is always included). Lets one project span several
+    /// directories so the agent can develop across them. Backward-compatible:
+    /// older persisted projects decode with an empty list.
+    public var sourceFolders: [URL]
     /// security-scoped bookmark for the picked directory. Optional —
     /// only present when the user used NSOpenPanel.
     public var bookmark: Data?
@@ -36,6 +41,7 @@ public struct Project: Identifiable, Codable, Hashable {
         addedAt: Date,
         lastUsedAt: Date,
         worktreeRoot: URL,
+        sourceFolders: [URL] = [],
         bookmark: Data? = nil,
         remoteHostId: String? = nil,
         remotePath: String? = nil
@@ -46,14 +52,58 @@ public struct Project: Identifiable, Codable, Hashable {
         self.addedAt = addedAt
         self.lastUsedAt = lastUsedAt
         self.worktreeRoot = worktreeRoot
+        self.sourceFolders = sourceFolders
         self.bookmark = bookmark
         self.remoteHostId = remoteHostId
         self.remotePath = remotePath
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, displayName, kind, addedAt, lastUsedAt, worktreeRoot
+        case sourceFolders, bookmark, remoteHostId, remotePath
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        displayName = try c.decode(String.self, forKey: .displayName)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        addedAt = try c.decode(Date.self, forKey: .addedAt)
+        lastUsedAt = try c.decode(Date.self, forKey: .lastUsedAt)
+        worktreeRoot = try c.decode(URL.self, forKey: .worktreeRoot)
+        sourceFolders = try c.decodeIfPresent([URL].self, forKey: .sourceFolders) ?? []
+        bookmark = try c.decodeIfPresent(Data.self, forKey: .bookmark)
+        remoteHostId = try c.decodeIfPresent(String.self, forKey: .remoteHostId)
+        remotePath = try c.decodeIfPresent(String.self, forKey: .remotePath)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(displayName, forKey: .displayName)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(addedAt, forKey: .addedAt)
+        try c.encode(lastUsedAt, forKey: .lastUsedAt)
+        try c.encode(worktreeRoot, forKey: .worktreeRoot)
+        try c.encode(sourceFolders, forKey: .sourceFolders)
+        try c.encodeIfPresent(bookmark, forKey: .bookmark)
+        try c.encodeIfPresent(remoteHostId, forKey: .remoteHostId)
+        try c.encodeIfPresent(remotePath, forKey: .remotePath)
+    }
+
     public enum Kind: String, Codable, Hashable {
         case local
         case remote
+    }
+
+    /// The primary + any extra source folders, standardized + deduped.
+    public var allFolders: [URL] {
+        var out: [URL] = []
+        for f in [worktreeRoot] + sourceFolders {
+            let s = f.standardizedFileURL
+            if !out.contains(s) { out.append(s) }
+        }
+        return out
     }
 
     /// Display path shown in the UI. For remote projects we *never*

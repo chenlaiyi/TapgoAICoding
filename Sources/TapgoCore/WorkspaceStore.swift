@@ -205,6 +205,18 @@ public final class WorkspaceStore: ObservableObject {
         save()
     }
 
+    /// Replace a project's editable fields in place (name, primary folder,
+    /// extra source folders) and persist. Preserves `id` / timestamps.
+    public func updateProject(_ updated: Project) {
+        guard let idx = state.projects.firstIndex(where: { $0.id == updated.id }) else { return }
+        state.projects[idx].displayName = updated.displayName
+        state.projects[idx].worktreeRoot = updated.worktreeRoot
+        state.projects[idx].sourceFolders = updated.sourceFolders
+        state.projects[idx].bookmark = updated.bookmark
+        updateProjectLastUsed(updated.id)
+        save()
+    }
+
     public func togglePinProject(_ id: String) {
         if pinnedProjectIds.contains(id) {
             pinnedProjectIds.remove(id)
