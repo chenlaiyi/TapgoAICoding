@@ -392,6 +392,13 @@ struct SidebarView: View {
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+                if groupHasRunningTask(group) {
+                    Circle()
+                        .fill(DSHTheme.brand)
+                        .frame(width: 7, height: 7)
+                        .help("该项目有任务正在执行")
+                        .accessibilityLabel("该项目有任务正在执行")
+                }
                 if workspace.state.activeProjectId == p.id {
                     Text("当前")
                         .font(.caption2)
@@ -401,19 +408,73 @@ struct SidebarView: View {
                         .background(DSHTheme.brand.opacity(0.12), in: Capsule())
                 }
                 Spacer()
-                Text("\(group.threads.count)")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 3) {
+                    Image(systemName: "number")
+                        .font(.caption2)
+                    Text("\(group.threads.count) 个任务")
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .help("该项目下的会话/任务数")
+                .accessibilityLabel("\(group.threads.count) 个任务")
+
                 Button {
-                    workspace.togglePinProject(p.id)
+                    renamingProjectId = p.id
+                    renameProjectDraft = p.displayName
                 } label: {
-                    Image(systemName: workspace.isProjectPinned(p.id) ? "pin.fill" : "pin")
+                    Image(systemName: "pencil")
                         .font(.caption)
-                        .foregroundStyle(workspace.isProjectPinned(p.id) ? DSHTheme.brand : .secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
-                .help(workspace.isProjectPinned(p.id) ? "取消置顶项目" : "置顶项目")
-                .accessibilityLabel(workspace.isProjectPinned(p.id) ? "取消置顶项目" : "置顶项目")
+                .help("编辑项目")
+                .accessibilityLabel("编辑项目")
+
+                Menu {
+                    Button {
+                        store.setActiveProject(p.id)
+                    } label: {
+                        Label("设为当前项目", systemImage: "checkmark.circle")
+                    }
+                    Button {
+                        workspace.togglePinProject(p.id)
+                    } label: {
+                        Label(workspace.isProjectPinned(p.id) ? "取消置顶项目" : "置顶项目", systemImage: "pin")
+                    }
+                    Divider()
+                    Button {
+                        renamingProjectId = p.id
+                        renameProjectDraft = p.displayName
+                    } label: {
+                        Label("编辑项目", systemImage: "pencil")
+                    }
+                    if !p.isRemote {
+                        Button {
+                            NSWorkspace.shared.open(p.worktreeRoot)
+                        } label: {
+                            Label("在访达中显示", systemImage: "folder")
+                        }
+                    }
+                    Button {
+                        copyToPasteboard(p.displayPath)
+                    } label: {
+                        Label("复制路径", systemImage: "doc.on.doc")
+                    }
+                    Divider()
+                    Button(role: .destructive) {
+                        confirmingProjectRemove = p.id
+                    } label: {
+                        Label("移除项目…", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .help("项目操作")
+                .accessibilityLabel("项目操作")
+
                 Button {
                     toggleGroup(group.id)
                 } label: {
@@ -462,8 +523,7 @@ struct SidebarView: View {
                 .foregroundStyle(.red)
             }
             .help(p.isRemote ? "远程项目 · 点击切换" : "点击切换项目")
-            .accessibilityLabel("项目 \(p.displayName), \(group.threads.count) 个会话")
-        } else {
+            .accessibilityLabel("项目 \(p.displayName), \(group.threads.count) 个会话")        } else {
             HStack(spacing: 4) {
                 Image(systemName: "tray")
                 Text(L10n.legacyGroupTitle)
@@ -504,6 +564,17 @@ struct SidebarView: View {
         case 1: return "folder.fill"
         case 2: return "globe"
         default: return "square.3.layers.3d"
+        }
+    }
+
+    /// True when any thread in the group has a turn running or awaiting
+    /// approval — drives the blue "running" dot on the project header.
+    private func groupHasRunningTask(_ group: ThreadGroup) -> Bool {
+        group.threads.contains { t in
+            switch t.turns.last?.status {
+            case .running, .awaitingApproval: return true
+            default: return false
+            }
         }
     }
 
