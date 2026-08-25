@@ -42,3 +42,15 @@
 evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is set, so SSH-dependent tests (which need a real remote host at the RFC 5737 203.0.113.10 address) are skipped by default. README updated to reflect the actual 332-test count instead of the outdated 110. The evolve.sh sanity check was demoted to a warning, version bumps now source from the latest git tag, and a couple of unset-variable bugs under set -u were fixed.
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.3.3 — fix: login gate tolerates transient network blips during QR fetch + status poll
+**Date**: 2026-08-26
+**Commit**: _(see )_
+**Tag**: v0.3.3
+**Test status**: — 332 passed, 0 failed —
+**Changed**:
+- fix: login gate tolerates transient network blips during QR fetch + status poll
+扫码登录页加载阶段增加一次 URLError 自动重试（避免 DNS/TLS 短暂抖动直接让用户看到失败页），并将轮询阶段的连续网络失败容差从 3 次（6s）放宽到 6 次（12s），对齐国内 → 海外服务器的真实网络抖动窗口。源码改动集中于 AdminLoginView.start() 与 AdminLoginView.poll()，未改 client 协议或持久化逻辑。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

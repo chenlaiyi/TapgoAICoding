@@ -227,17 +227,38 @@ struct AdminLoginView: View {
         secondsRemaining = 300
 
         task = Task { @MainActor in
-            do {
-                let config = try await authStore.client.fetchWechatLoginURL()
-                guard !Task.isCancelled else { return }
-                wechatLoginURL = config.url
-                withAnimation(.easeInOut(duration: 0.2)) { phase = .waiting }
-                try await poll(state: config.state)
-            } catch is CancellationError {
-                return
-            } catch {
-                withAnimation { phase = .failed(error.localizedDescription) }
+            // 最多重试 2 次（首次 + 1 次自动重试），只对瞬时网络错误生效；
+            // 业务错误（401/配置不全等）直接交给失败页让用户手动处理。
+            var attempt = 0
+            let maxAttempts = 2
+            var lastError: Error?
+
+            while attempt < maxAttempts {
+                attempt += 1
+                do {
+                    let config = try await authStore.client.fetchWechatLoginURL()
+                    guard !Task.isCancelled else { return }
+                    wechatLoginURL = config.url
+                    withAnimation(.easeInOut(duration: 0.2)) { phase = .waiting }
+                    try await poll(state: config.state)
+                    return
+                } catch is CancellationError {
+                    return
+                } catch let error as URLError where error.code != .cancelled {
+                    lastError = error
+                    if attempt < maxAttempts {
+                        // 短暂等待再重试，给后端 / DNS 一个恢复窗口。
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        continue
+                    }
+                } catch {
+                    lastError = error
+                    break
+                }
             }
+
+            let message = lastError?.localizedDescription ?? "获取微信登录配置失败"
+            withAnimation { phase = .failed(message) }
         }
     }
 
@@ -246,6 +267,9 @@ struct AdminLoginView: View {
         let deadline = Date().addingTimeInterval(300)
         var tick = 0
         var consecutiveNetworkFailures = 0
+        // 国内 → 海外服务器的链路偶尔抖一下（DNS / TLS / 跨运营商），
+        // 2s × 6 = 12s 容错窗口再放弃，避免一次抖动就让用户看到失败页。
+        let maxConsecutiveNetworkFailures = 6
 
         while Date() < deadline {
             try Task.checkCancellation()
@@ -262,7 +286,7 @@ struct AdminLoginView: View {
                 consecutiveNetworkFailures = 0
             } catch let error as URLError where error.code != .cancelled {
                 consecutiveNetworkFailures += 1
-                if consecutiveNetworkFailures < 3 { continue }
+                if consecutiveNetworkFailures < maxConsecutiveNetworkFailures { continue }
                 throw error
             }
 
