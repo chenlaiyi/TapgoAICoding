@@ -1053,8 +1053,9 @@ struct ComposerView: View {
     @EnvironmentObject var workspace: WorkspaceStore
     var contentWidth: CGFloat = 760
     /// How much of the "任务" status card's bottom is tucked behind the
-    /// composer card (the "peeking tab" overlap).
-    private let cardOverlap: CGFloat = 14
+    /// composer card (the "peeking tab" overlap). Keep small so the task
+    /// text stays readable (≈1/10 of the card height).
+    private let cardOverlap: CGFloat = 6
     @AppStorage("tapgo.composerDraft") private var text: String = ""
     @FocusState private var focused: Bool
     @State private var isDropTargeted = false

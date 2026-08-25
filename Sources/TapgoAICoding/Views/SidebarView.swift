@@ -15,6 +15,7 @@ struct SidebarView: View {
     @State private var searchQuery: String = ""
     @FocusState private var searchFocused: Bool
     @State private var searchScope = false
+    @State private var showEvolutionLog = false
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
@@ -88,6 +89,9 @@ struct SidebarView: View {
             EditProjectSheet(project: project)
                 .environmentObject(workspace)
         }
+        .sheet(isPresented: $showEvolutionLog) {
+            EvolutionLogView()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusSearch)) { _ in
             searchFocused = true
         }
@@ -104,6 +108,11 @@ struct SidebarView: View {
     @ViewBuilder
     private var topBar: some View {
         VStack(alignment: .leading, spacing: 2) {
+            menuItem("自进化", "sparkles") {
+                showEvolutionLog = true
+            }
+            .help("查看 Tapgo AICoding 的自进化日志与使用指南")
+            .accessibilityLabel("自进化日志")
             menuItem("新对话", "plus.message") {
                 store.newThread()
             }
