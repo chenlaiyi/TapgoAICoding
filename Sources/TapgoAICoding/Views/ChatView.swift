@@ -1031,6 +1031,9 @@ struct ComposerView: View {
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
     @State private var isGoalMode = false
+    /// Goal-card "edit" sheet state.
+    @State private var editingGoal = false
+    @State private var goalDraft = ""
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1460,6 +1463,34 @@ struct ComposerView: View {
             // composer so the user can start typing immediately.
             if store.activeThreadId != nil { focused = true }
         }
+        .sheet(isPresented: $editingGoal) { goalEditor }
+    }
+
+    /// Goal-card "edit" sheet — edit the goal text in place.
+    private var goalEditor: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("编辑目标").font(.headline)
+            TextEditor(text: $goalDraft)
+                .font(.body)
+                .frame(minHeight: 80, maxHeight: 140)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
+                .padding(6)
+            Text("保存后会暂停计时；需要时点 ▶ 开始重新执行。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            HStack {
+                Spacer()
+                Button("取消") { editingGoal = false }
+                Button("保存") {
+                    let t = goalDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { store.setActiveThreadGoal(t) }
+                    editingGoal = false
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
     }
 
     /// Resend the last turn's user input when it failed / was interrupted.
@@ -1990,6 +2021,16 @@ struct ComposerView: View {
                     .help("开始执行目标（会把目标作为消息发出）")
                     .accessibilityLabel("开始执行目标")
                 }
+                Button {
+                    goalDraft = goal
+                    editingGoal = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("编辑目标")
+                .accessibilityLabel("编辑目标")
                 Button {
                     store.setActiveThreadGoal(nil)
                 } label: {
