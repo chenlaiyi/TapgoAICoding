@@ -1946,14 +1946,15 @@ struct ComposerView: View {
     @ViewBuilder
     private var goalCard: some View {
         if let thread = activeThread, let goal = thread.goal, !goal.isEmpty {
+            let goalRunning = thread.goalStatus == "running"
             HStack(alignment: .center, spacing: 10) {
                 Image(systemName: "scope")
                     .foregroundStyle(DSHTheme.brand)
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(isRunning ? .green : DSHTheme.brand.opacity(0.6))
+                        .fill(goalRunning ? .green : DSHTheme.brand.opacity(0.6))
                         .frame(width: 7, height: 7)
-                    Text(isRunning ? "进行中" : "已设目标")
+                    Text(goalRunning ? "进行中" : "已暂停")
                         .font(.caption)
                 }
                 .foregroundStyle(.secondary)
@@ -1963,12 +1964,31 @@ struct ComposerView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer()
-                TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    if let setAt = thread.goalSetAt {
-                        Text(goalElapsedText(ctx.date.timeIntervalSince(setAt)))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(goalElapsedText(store.goalElapsedSeconds(thread)))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                if goalRunning {
+                    Button {
+                        store.pauseGoal()
+                    } label: {
+                        Image(systemName: "pause.fill")
+                            .foregroundStyle(.secondary)
                     }
+                    .buttonStyle(.borderless)
+                    .help("暂停目标")
+                    .accessibilityLabel("暂停目标")
+                } else {
+                    Button {
+                        store.startGoal()
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("开始执行目标（会把目标作为消息发出）")
+                    .accessibilityLabel("开始执行目标")
                 }
                 Button {
                     store.setActiveThreadGoal(nil)

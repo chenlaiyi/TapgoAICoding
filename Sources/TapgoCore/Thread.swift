@@ -37,10 +37,18 @@ public struct Thread: Identifiable, Hashable, Codable {
     /// When the goal was last set — used to show a live elapsed-time ticker
     /// on the goal card. Nil when no goal is active.
     public var goalSetAt: Date?
+    /// Goal execution state: "running" | "paused" | nil. Drives the
+    /// 开始/暂停 buttons on the goal card.
+    public var goalStatus: String?
+    /// Accumulated goal working time (seconds), excluding paused spans.
+    public var goalWorkedSeconds: Double
+    /// When the goal last resumed running — used to compute live elapsed time.
+    public var goalResumedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, title, createdAt, updatedAt
         case projectId, cwd, harnessThreadId, turns, isPinned, goal, goalSetAt
+        case goalStatus, goalWorkedSeconds, goalResumedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -58,6 +66,9 @@ public struct Thread: Identifiable, Hashable, Codable {
         isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         goal = try c.decodeIfPresent(String.self, forKey: .goal)
         goalSetAt = try c.decodeIfPresent(Date.self, forKey: .goalSetAt)
+        goalStatus = try c.decodeIfPresent(String.self, forKey: .goalStatus)
+        goalWorkedSeconds = try c.decodeIfPresent(Double.self, forKey: .goalWorkedSeconds) ?? 0
+        goalResumedAt = try c.decodeIfPresent(Date.self, forKey: .goalResumedAt)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -73,6 +84,9 @@ public struct Thread: Identifiable, Hashable, Codable {
         try c.encode(isPinned, forKey: .isPinned)
         try c.encodeIfPresent(goal, forKey: .goal)
         try c.encodeIfPresent(goalSetAt, forKey: .goalSetAt)
+        try c.encodeIfPresent(goalStatus, forKey: .goalStatus)
+        try c.encode(goalWorkedSeconds, forKey: .goalWorkedSeconds)
+        try c.encodeIfPresent(goalResumedAt, forKey: .goalResumedAt)
     }
 
     public init(
@@ -86,7 +100,10 @@ public struct Thread: Identifiable, Hashable, Codable {
         turns: [Turn] = [],
         isPinned: Bool = false,
         goal: String? = nil,
-        goalSetAt: Date? = nil
+        goalSetAt: Date? = nil,
+        goalStatus: String? = nil,
+        goalWorkedSeconds: Double = 0,
+        goalResumedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -99,6 +116,9 @@ public struct Thread: Identifiable, Hashable, Codable {
         self.isPinned = isPinned
         self.goal = goal
         self.goalSetAt = goalSetAt
+        self.goalStatus = goalStatus
+        self.goalWorkedSeconds = goalWorkedSeconds
+        self.goalResumedAt = goalResumedAt
     }
 
     public static func newLocal(

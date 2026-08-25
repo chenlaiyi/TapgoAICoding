@@ -210,9 +210,9 @@ final class SessionStore: ObservableObject {
 
     /// Set / clear the active thread's session goal (`/goal` command, or the
     /// composer's 目标 mode). An empty string clears it. Persisted with the
-    /// thread; `goalSetAt` drives the live elapsed-time ticker on the card.
-    /// We replace the whole `liveThreads` array so the `@Published` change
-    /// reliably refreshes the goal card / chip.
+    /// thread; `goalSetAt` + goal status drive the goal card's start/pause
+    /// controls and live elapsed-time ticker. We replace the whole
+    /// `liveThreads` array so the `@Published` change reliably refreshes.
     func setActiveThreadGoal(_ goal: String?) {
         guard let id = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
@@ -221,7 +221,54 @@ final class SessionStore: ObservableObject {
         var updated = liveThreads[idx]
         updated.goal = hasGoal ? trimmed : nil
         updated.goalSetAt = hasGoal ? Date() : nil
+        updated.goalStatus = hasGoal ? "paused" : nil
+        updated.goalWorkedSeconds = 0
+        updated.goalResumedAt = nil
         updated.updatedAt = Date()
+        replaceThread(updated)
+    }
+
+    /// 开始: mark the goal running and kick off a turn with the goal text so
+    /// the agent actually works on it (output appears in the conversation).
+    func startGoal() {
+        guard let id = activeThreadId,
+              let idx = liveThreads.firstIndex(where: { $0.id == id }),
+              let goal = liveThreads[idx].goal, !goal.isEmpty else { return }
+        var updated = liveThreads[idx]
+        updated.goalStatus = "running"
+        updated.goalResumedAt = Date()
+        updated.updatedAt = Date()
+        replaceThread(updated)
+        sendUserMessage(goal)
+    }
+
+    /// 暂停: accumulate the running span into worked seconds, mark paused,
+    /// and interrupt the in-flight turn.
+    func pauseGoal() {
+        guard let id = activeThreadId,
+              let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
+        var updated = liveThreads[idx]
+        if updated.goalStatus == "running", let resumedAt = updated.goalResumedAt {
+            updated.goalWorkedSeconds += Date().timeIntervalSince(resumedAt)
+        }
+        updated.goalStatus = "paused"
+        updated.goalResumedAt = nil
+        updated.updatedAt = Date()
+        replaceThread(updated)
+        if isRunning { cancelActiveTurn() }
+    }
+
+    /// Live elapsed goal time: worked seconds + any current running span.
+    func goalElapsedSeconds(_ thread: TapgoCore.Thread) -> TimeInterval {
+        var s = thread.goalWorkedSeconds
+        if thread.goalStatus == "running", let r = thread.goalResumedAt {
+            s += Date().timeIntervalSince(r)
+        }
+        return s
+    }
+
+    private func replaceThread(_ updated: TapgoCore.Thread) {
+        guard let idx = liveThreads.firstIndex(where: { $0.id == updated.id }) else { return }
         var all = liveThreads
         all[idx] = updated
         liveThreads = all
