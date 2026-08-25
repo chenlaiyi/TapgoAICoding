@@ -123,7 +123,6 @@ struct SidebarView: View {
             }
             .help("新对话 (⌘N)")
             .accessibilityLabel("新对话, 快捷键 ⌘N")
-            pluginMenuItem
         }
         .padding(.horizontal, 12)
         .padding(.top, 8)
@@ -146,40 +145,6 @@ struct SidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    /// "@ 插件" — a menu of the agent's skills; choosing one inserts it
-    /// into the composer.
-    private var pluginMenuItem: some View {
-        Menu {
-            if AgentCapabilities.skills.isEmpty {
-                Text("无可用插件")
-            } else {
-                ForEach(AgentCapabilities.skills) { item in
-                    Button {
-                        NotificationCenter.default.post(name: .tapgoInsertSkill, object: item.name)
-                    } label: {
-                        Label(item.name, systemImage: item.icon)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "square.grid.2x2")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                Text("@ 插件")
-                    .font(.subheadline)
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .help("插件 / 技能，选择可插入到输入框")
-        .accessibilityLabel("插件")
     }
 
     // MARK: - Project header
