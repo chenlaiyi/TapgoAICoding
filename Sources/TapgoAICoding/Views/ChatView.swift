@@ -1957,7 +1957,7 @@ struct ComposerView: View {
     /// set or goal mode is active.
     private var goalChip: some View {
         Button {
-            isGoalMode.toggle()
+            toggleGoalMode()
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "scope").font(.caption)
@@ -1970,7 +1970,7 @@ struct ComposerView: View {
             .foregroundStyle((isGoalMode || activeThreadGoal != nil) ? DSHTheme.brand : .secondary)
         }
         .buttonStyle(.plain)
-        .help(isGoalMode ? "退出目标模式" : "设置会话目标（输入后发送）")
+        .help(isGoalMode ? "退出目标模式" : "设置会话目标")
         .accessibilityLabel("目标")
     }
 
@@ -1978,6 +1978,20 @@ struct ComposerView: View {
         if isGoalMode { return "目标" }
         if let g = activeThreadGoal, !g.isEmpty { return g }
         return "设为目标"
+    }
+
+    /// Clicking the 目标 chip: if the user has typed a goal, commit it
+    /// directly (one step). Otherwise toggle goal mode (placeholder switches
+    /// to "描述你想完成的目标" so they can type a goal and send).
+    private func toggleGoalMode() {
+        let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !typed.isEmpty {
+            store.setActiveThreadGoal(typed)
+            text = ""
+            isGoalMode = false
+        } else {
+            isGoalMode.toggle()
+        }
     }
 
     private var composerContextPercent: Int? {
