@@ -320,7 +320,6 @@ struct ChatView: View {
                     })
                 }
                 .coordinateSpace(name: "chat")
-                .dynamicTypeSize(chatDynamicType)
                 .onReceive(NotificationCenter.default.publisher(for: .tapgoJumpToTurn)) { note in
                     if let id = note.object as? String {
                         withAnimation(.easeOut(duration: 0.25)) {
@@ -731,14 +730,6 @@ struct ChatView: View {
         case "small": return "小"
         case "large": return "大"
         default: return "中"
-        }
-    }
-
-    private var chatDynamicType: DynamicTypeSize {
-        switch fontScale {
-        case "small": return .medium
-        case "large": return .xxLarge
-        default: return .xLarge
         }
     }
 
