@@ -262,3 +262,67 @@ To switch regions temporarily, pass `TAPGO_BASE_URL=…` to
   Open → Open. (We ad-hoc codesign for local use; a stricter
   Gatekeeper policy may still want the explicit click-through once.)
 - **Build fails on macOS < 14** → `Package.swift` requires Sonoma.
+
+---
+
+## Self-evolution loop
+
+Once a feature ships, the agent (this Codex instance, talking to itself
+through `codex app-server`) can keep iterating on the codebase without
+manual file editing. Every iteration goes through a single gated
+pipeline:
+
+```bash
+./scripts/evolve.sh patch \
+  "fix: sidebar crash on empty workspace" \
+  "Root cause: SidebarView assumed ≥1 project; guard with empty state."
+```
+
+That one command:
+
+1. Bumps `AppBuilder/Info.plist` (`CFBundleShortVersionString` + `CFBundleVersion`)
+2. Runs `swift build -c release` — aborts on failure
+3. Runs `swift run TapgoTests` — aborts on any red test
+4. Appends a section to `EVOLUTION.md`
+5. Commits + creates an annotated git tag `vX.Y.Z`
+6. `git push origin main --tags`
+7. Rebuilds `Tapgo AICoding.app` from the new binary
+8. Writes `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`
+9. Prints a summary block + the rollback command
+
+If steps 2 or 3 fail, Info.plist is reverted and nothing is committed.
+
+### Restart-and-resume across iterations
+
+```bash
+./scripts/restart-and-resume.sh
+```
+
+This gracefully kills the current `Tapgo AICoding.app` process, relaunches
+the freshly-built bundle, and prints the path to the state file the
+new session should read to recover context.
+
+Because the underlying `codex app-server` persists threads (via
+`thread/resume`), and the state file persists the **next-action list**
++ last commit SHA + version, an iteration that gets cut off mid-task
+can be picked up in a new conversation turn after a restart.
+
+### Hard rollback at any time
+
+```bash
+git checkout v0.3.7
+./scripts/build-app.sh
+./scripts/restart-and-resume.sh
+```
+
+Every shipped iteration is a git tag pushed to `origin/main`, so
+GitHub itself is the backup. To go back two versions: pick the
+older tag, check it out, rebuild, restart.
+
+### What the agent must NEVER do
+
+- Edit `~/.codex/` — Tapgo AICoding uses only the isolated
+  `~/Library/Application Support/Tapgo AICoding/codex/`.
+- Bump a **major** version without explicit user approval.
+- Commit a tag whose tests are not green.
+- Push while `git status` is dirty in untracked files.
