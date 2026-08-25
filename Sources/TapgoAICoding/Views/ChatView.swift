@@ -1646,14 +1646,14 @@ struct ComposerView: View {
                         Button {
                             store.interjectAndFlush()
                         } label: {
-                            Label("插话发送全部", systemImage: "bolt.fill")
+                            Label("发送全部", systemImage: "bolt.fill")
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.mini)
                         .tint(DSHTheme.warn)
                         .keyboardShortcut(.return, modifiers: [.control])
                         .help("Ctrl+Enter 中断当前并立即发送全部排队消息")
-                        .accessibilityLabel("插话发送全部排队消息")
+                        .accessibilityLabel("发送全部排队消息")
                     }
                     Button {
                         withAnimation(.easeOut(duration: 0.15)) { queueExpanded.toggle() }
@@ -1695,6 +1695,16 @@ struct ComposerView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
+                                Button {
+                                    store.sendQueuedNow(q.id)
+                                } label: {
+                                    Image(systemName: "paperplane.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(DSHTheme.brand)
+                                }
+                                .buttonStyle(.borderless)
+                                .help("发送这条（让当前任务/目标调整方向）")
+                                .accessibilityLabel("发送这条排队消息")
                                 Button {
                                     store.removeQueued(q.id)
                                 } label: {

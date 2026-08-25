@@ -593,6 +593,22 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    /// Send ONE queued message now, to nudge the running task/goal in a new
+    /// direction: it is pulled to the front of the queue, the current turn is
+    /// interrupted (if any), and it is sent immediately.
+    func sendQueuedNow(_ id: String) {
+        guard let idx = queue.firstIndex(where: { $0.id == id }) else { return }
+        let item = queue.remove(at: idx)
+        queue.insert(item, at: 0)
+        suppressAutoDrain = false
+        if isRunning {
+            runner?.cancel()
+            // run() → finishTurnAndDrain → drains the front (this message).
+        } else {
+            drainQueueIfIdle()
+        }
+    }
+
     /// Called when a turn finishes. Drains the queue automatically unless the
     /// user explicitly stopped it first (`suppressAutoDrain`).
     private func finishTurnAndDrain() {
