@@ -18,6 +18,7 @@ struct NewTaskView: View {
     @State private var error: String?
     @State private var showRemoteSheet = false
     @State private var hoveredProjectId: String? = nil
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,7 +68,7 @@ struct NewTaskView: View {
     @ViewBuilder
     private var header: some View {
         HStack {
-            Text(L10n.newTaskTitle).font(.title3).bold()
+            Text(L10n.newTaskTitle).font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
             Spacer()
             Button {
                 dismiss()
@@ -83,7 +84,7 @@ struct NewTaskView: View {
     @ViewBuilder
     private var primaryActions: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.newTaskChooseProject).font(.headline)
+            Text(L10n.newTaskChooseProject).font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             HStack(spacing: 12) {
                 actionCard(
                     title: L10n.localFolder,
@@ -110,7 +111,7 @@ struct NewTaskView: View {
                 }
             }
             Text(L10n.quickNoProjectHint)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .contain)
@@ -120,15 +121,15 @@ struct NewTaskView: View {
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(L10n.recentProjects).font(.headline)
+                Text(L10n.recentProjects).font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                 Spacer()
                 Text("\(workspace.recentProjects.count)")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             if workspace.recentProjects.isEmpty {
                 Text(L10n.noRecentProjects)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 4) {
@@ -155,14 +156,14 @@ struct NewTaskView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(p.displayName).lineLimit(1)
                     Text(p.displayPath)
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
                 Spacer()
                 Text(RelativeDateTimeFormatter().localizedString(for: p.lastUsedAt, relativeTo: Date()))
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
@@ -185,10 +186,10 @@ struct NewTaskView: View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: system)
-                    .font(.title2)
+                    .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(color)
                 Text(title)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
             }
             .frame(maxWidth: .infinity, minHeight: 80)
             .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))

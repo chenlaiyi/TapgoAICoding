@@ -13,6 +13,7 @@ struct EditProjectSheet: View {
     @State private var name: String
     @State private var folders: [URL]
     @State private var errorMessage: String?
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(project: Project) {
         self.project = project
@@ -23,7 +24,7 @@ struct EditProjectSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("编辑项目").font(.title3).bold()
+                Text("编辑项目").font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 Spacer()
                 Button { dismiss() } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.borderless).accessibilityLabel("关闭")
@@ -68,7 +69,7 @@ struct EditProjectSheet: View {
 
     private var nameField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("项目名").font(.caption).foregroundStyle(.secondary)
+            Text("项目名").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 Image(systemName: "folder")
                     .foregroundStyle(.secondary)
@@ -87,9 +88,9 @@ struct EditProjectSheet: View {
 
     private var sourceFoldersField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("源文件夹").font(.caption).foregroundStyle(.secondary)
+            Text("源文件夹").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
             Text("第一个列为主文件夹，其余作为附加源目录，agent 可跨这些目录开发。")
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .lineLimit(2)
             VStack(spacing: 6) {
@@ -102,7 +103,7 @@ struct EditProjectSheet: View {
                     addFolder()
                 } label: {
                     Label("添加文件夹", systemImage: "folder.badge.plus")
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
@@ -113,7 +114,7 @@ struct EditProjectSheet: View {
             }
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.red)
             }
         }
@@ -125,9 +126,9 @@ struct EditProjectSheet: View {
                 .foregroundStyle(isPrimary ? DSHTheme.brand : .secondary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(isPrimary ? "\(f.lastPathComponent)（主）" : f.lastPathComponent)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 Text(f.path)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)

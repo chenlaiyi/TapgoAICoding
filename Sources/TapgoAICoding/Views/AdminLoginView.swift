@@ -1,4 +1,5 @@
 import SwiftUI
+import TapgoCore
 import AppKit
 import WebKit
 
@@ -26,6 +27,7 @@ struct AdminLoginView: View {
     @State private var secondsRemaining = 300
     @State private var task: Task<Void, Never>?
     @State private var isLogoFloating = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         ZStack {
@@ -201,10 +203,10 @@ struct AdminLoginView: View {
     private var footer: some View {
         VStack(spacing: 4) {
             Text("Tapgo 管理系统内部工具")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3") · 微信扫码登录")
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
         }
     }

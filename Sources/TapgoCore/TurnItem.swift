@@ -116,3 +116,39 @@ public enum TurnItem: Identifiable, Hashable, Codable {
 
     public var sortKey: String { id }
 }
+
+public extension TurnItem {
+    /// Flattened text used by the in-conversation search. Includes
+    /// everything a user might reasonably want to match against when
+    /// looking back through a thread: messages, reasoning, command
+    /// input + output, tool call name + args + result, file path +
+    /// diff, and approval reason. Empty for unknown shapes.
+    var searchableText: String {
+        switch self {
+        case .userMessage(_, let t): return t
+        case .assistantMessage(_, let t): return t
+        case .reasoning(_, let t): return t
+        case .reasoningSummary(_, let t): return t
+        case .error(_, let message): return message
+        case .toolCall(let tc):
+            var s = tc.name + " " + tc.arguments
+            if let r = tc.result, !r.isEmpty { s += " " + r }
+            return s
+        case .commandExecution(let ce):
+            var s = ce.command
+            if !ce.stdout.isEmpty { s += "\n" + ce.stdout }
+            if !ce.stderr.isEmpty { s += "\n" + ce.stderr }
+            return s
+        case .fileChange(let fc):
+            return fc.path + "\n" + fc.diff
+        case .approval(let ar):
+            var s = ar.reason
+            switch ar.payload {
+            case .command(let ce): s += " " + ce.command
+            case .fileChange(let fc): s += " " + fc.path
+            case .toolCall(let tc): s += " " + tc.name + " " + tc.arguments
+            }
+            return s
+        }
+    }
+}

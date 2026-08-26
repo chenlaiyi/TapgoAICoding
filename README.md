@@ -149,12 +149,14 @@ app in Finder → Open → Open. After that, double-click works normally.
 | Thread persistence + resume | `ThreadStore` persists `turns` + `harnessThreadId`; `sendUserMessage` resumes via `thread/resume` |
 | Token usage per turn | `Turn.usage` (`TokenUsage`, parsed from `turn/completed`); caption in `ChatView` |
 | Context meter + composer quick-switch | header color-coded `context N%` progress bar (`TokenUsage.contextLevel`); `ComposerView` sandbox + approval-policy menus (persisted) |
+| In-chat search (⌘⇧F) | `Turn.matches(query:)` + `TurnItem.searchableText` (TapgoCore); `ChatView` search bar shows "X/Y" position, ⏎ jumps to next match, ⇧⏎ to previous; matches user input + assistant text + reasoning + command stdout/stderr + tool args/result + file path/diff + approval reason |
+| Global font scale (设置 → 外观) | `AppFontScale` enum (small 0.85× / medium 1.00× / large 1.20×) + `AppFont.scaled(_:multiplier:)` central token in `TapgoCore`; SettingsView segmented picker + live preview; ChatView ⋮ 菜单提供同一切换; 通过 `@Environment(\.tapgoFontScale)` 注入到所有视图,改字号不破坏布局 (避开 `dynamicTypeSize` 在 macOS 上的不一致和 `scaleEffect` 撕裂布局) |
 
 ## Tests
 
 ```bash
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
-#   332/332 — must stay green (skipping SSH-integration; they need a
+#   379/379 — must stay green (skipping SSH-integration; they need a
 #   real remote codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3)
 
 # To run the FULL suite including SSH-integration (will fail without

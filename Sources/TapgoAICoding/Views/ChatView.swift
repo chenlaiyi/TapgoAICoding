@@ -70,6 +70,7 @@ struct ChatView: View {
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
     @FocusState private var searchFieldFocused: Bool
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(spacing: 0) {
@@ -128,10 +129,10 @@ struct ChatView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             TextField("在对话中查找…", text: $searchQuery)
                 .textFieldStyle(.plain)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .focused($searchFieldFocused)
                 .onExitCommand { searchActive = false; searchQuery = "" }
                 // ⏎ = 下一处, ⇧⏎ = 上一处 — matching Codex's search bar
@@ -143,7 +144,7 @@ struct ChatView: View {
                     jumpToTurnId = nil
                 }
             Text(matchCount)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Button {
                 jumpToMatch(-1)
@@ -266,12 +267,12 @@ struct ChatView: View {
         VStack(spacing: 20) {
             Spacer()
             Text("我们该处理什么工作？")
-                .font(.largeTitle.bold())
+                .font(AppFont.scaled(.largeTitle, multiplier: appFontScale.multiplier).bold())
                 .foregroundStyle(.primary)
             ComposerView(contentWidth: 720)
                 .padding(.horizontal, 16)
             Text("从左侧选择会话继续，或直接输入开始新任务。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Spacer()
         }
@@ -320,7 +321,6 @@ struct ChatView: View {
                     })
                 }
                 .coordinateSpace(name: "chat")
-                .dynamicTypeSize(chatDynamicType)
                 .onReceive(NotificationCenter.default.publisher(for: .tapgoJumpToTurn)) { note in
                     if let id = note.object as? String {
                         withAnimation(.easeOut(duration: 0.25)) {
@@ -347,7 +347,7 @@ struct ChatView: View {
                                 }
                             } label: {
                                 Label("回到顶部", systemImage: "arrow.up")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -361,7 +361,7 @@ struct ChatView: View {
                                 showNewMessage = false
                             } label: {
                                 Label("回到最新", systemImage: "arrow.down")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -434,10 +434,10 @@ struct ChatView: View {
                 if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }) {
                     HStack(spacing: 4) {
                         Image(systemName: project.isRemote ? "globe" : "folder.fill")
-                            .font(.caption)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             .foregroundStyle(project.isRemote ? .blue : .accentColor)
                         Text(project.displayName)
-                            .font(.subheadline).bold()
+                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier)).bold()
                     }
                 }
             }
@@ -446,12 +446,12 @@ struct ChatView: View {
                 HStack(spacing: 4) {
                     if thread.usageTotal > 0 {
                         Text(TokenUsage.summary(of: thread.usageTotal))
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                     if let d = thread.durationTotalText {
                         Text(d)
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -462,7 +462,7 @@ struct ChatView: View {
                 renameDraft = thread.title
             } label: {
                 Image(systemName: "pencil")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             }
             .buttonStyle(.borderless)
             .help("重命名会话")
@@ -471,7 +471,7 @@ struct ChatView: View {
                 Button {
                     openInTerminal(proj.worktreeRoot.path)
                 } label: {
-                    Image(systemName: "terminal").font(.caption)
+                    Image(systemName: "terminal").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("在终端中打开项目")
@@ -479,7 +479,7 @@ struct ChatView: View {
                 Button {
                     NSWorkspace.shared.open(proj.worktreeRoot)
                 } label: {
-                    Image(systemName: "folder").font(.caption)
+                    Image(systemName: "folder").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("在访达中显示项目")
@@ -501,12 +501,12 @@ struct ChatView: View {
                     }
                 }
                 Menu {
-                    ForEach(["small", "medium", "large"], id: \.self) { s in
-                        Button { fontScale = s } label: {
-                            if s == fontScale {
-                                Label(fontLabel(s), systemImage: "checkmark")
+                    ForEach(AppFontScale.allCases) { s in
+                        Button { fontScale = s.rawValue } label: {
+                            if s.rawValue == fontScale {
+                                Label(s.displayName, systemImage: "checkmark")
                             } else {
-                                Text(fontLabel(s))
+                                Text(s.displayName)
                             }
                         }
                     }
@@ -543,7 +543,7 @@ struct ChatView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             }
             .menuStyle(.borderlessButton)
             .help("更多操作")
@@ -667,8 +667,8 @@ struct ChatView: View {
             }
         }()
         HStack(spacing: 4) {
-            Image(systemName: icon).font(.caption2)
-            Text(label).font(.caption2)
+            Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            Text(label).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
         }
         .foregroundStyle(color)
         .padding(.horizontal, 8)
@@ -710,7 +710,7 @@ struct ChatView: View {
         HStack(spacing: 8) {
             Rectangle().fill(DSHTheme.border).frame(height: 1)
             Text(dateLabel(date))
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Rectangle().fill(DSHTheme.border).frame(height: 1)
         }
@@ -724,22 +724,6 @@ struct ChatView: View {
         let f = DateFormatter()
         f.dateFormat = "yyyy年M月d日"
         return f.string(from: date)
-    }
-
-    private var chatDynamicType: DynamicTypeSize {
-        switch fontScale {
-        case "small": return .medium
-        case "large": return .xxLarge
-        default: return .xLarge
-        }
-    }
-
-    private func fontLabel(_ s: String) -> String {
-        switch s {
-        case "small": return "小"
-        case "large": return "大"
-        default: return "中"
-        }
     }
 
     /// Live activity label for the in-flight indicator, mirroring Codex:
@@ -801,10 +785,10 @@ struct ChatView: View {
                     if let usage = turn.usage {
                         HStack(spacing: 5) {
                             Image(systemName: "number")
-                                .font(.caption2)
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.tertiary)
                             Text(turnTime(turn.startedAt) + " · " + usage.summary + (turn.durationText.map { " · \($0)" } ?? ""))
-                                .font(.caption2)
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.secondary)
                         }
                         CopyIconButton(text: TurnMarkdown.render(turn), help: "复制本回合")
@@ -815,7 +799,7 @@ struct ChatView: View {
                             store.setTurnFeedback(turn.id, 1)
                         } label: {
                             Image(systemName: store.turnFeedback[turn.id] == 1 ? "hand.thumbsup.fill" : "hand.thumbsup")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(store.turnFeedback[turn.id] == 1 ? DSHTheme.brand : .secondary)
                         }
                         .buttonStyle(.borderless)
@@ -825,7 +809,7 @@ struct ChatView: View {
                             store.setTurnFeedback(turn.id, -1)
                         } label: {
                             Image(systemName: store.turnFeedback[turn.id] == -1 ? "hand.thumbsdown.fill" : "hand.thumbsdown")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(store.turnFeedback[turn.id] == -1 ? DSHTheme.error : .secondary)
                         }
                         .buttonStyle(.borderless)
@@ -837,7 +821,7 @@ struct ChatView: View {
                                 store.sendUserMessage(turn.userInput)
                             } label: {
                                 Label("以此输入开新任务", systemImage: "plus.message")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             }
                             .buttonStyle(.borderless)
                             .foregroundStyle(.secondary)
@@ -850,7 +834,7 @@ struct ChatView: View {
                             store.sendUserMessage(turn.userInput)
                         } label: {
                             Label("重试", systemImage: "arrow.clockwise")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         }
                         .buttonStyle(.borderless)
                         .foregroundStyle(DSHTheme.brand)
@@ -872,7 +856,7 @@ struct ChatView: View {
             Image(systemName: "bolt.horizontal.circle")
                 .foregroundStyle(DSHTheme.brand)
             Text(runningActivityLabel(turn))
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -883,7 +867,7 @@ struct ChatView: View {
                 store.cancelActiveTurn()
             } label: {
                 Label("停止", systemImage: "stop.fill")
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.red)
@@ -936,6 +920,7 @@ private struct GoalEditorSheet: View {
     @EnvironmentObject var store: SessionStore
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(initial: String) {
         _text = State(initialValue: initial)
@@ -943,14 +928,14 @@ private struct GoalEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("编辑目标").font(.headline)
+            Text("编辑目标").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             TextEditor(text: $text)
-                .font(.body)
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .frame(minHeight: 80, maxHeight: 140)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
                 .padding(6)
             Text("保存后会暂停计时；需要时点 ▶ 开始重新执行。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             HStack {
                 Spacer()
@@ -975,6 +960,7 @@ private struct QueuedMessageEditor: View {
     @Environment(\.dismiss) private var dismiss
     let item: QueuedMessage
     @State private var text: String
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(item: QueuedMessage) {
         self.item = item
@@ -983,14 +969,14 @@ private struct QueuedMessageEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("编辑排队消息").font(.headline)
+            Text("编辑排队消息").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             TextEditor(text: $text)
-                .font(.body)
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .frame(minHeight: 100, maxHeight: 180)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
                 .padding(6)
             Text("图片附件会保留。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             HStack {
                 Spacer()
@@ -1010,6 +996,8 @@ private struct QueuedMessageEditor: View {
 /// Compact context meter shown in the composer metrics bar: a "context N%"
 /// label plus a small progress bar, colour-coded green → yellow → red.
 private struct ContextMeter: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let percent: Int
 
     private var color: Color {
@@ -1023,7 +1011,7 @@ private struct ContextMeter: View {
     var body: some View {
         HStack(spacing: 6) {
             Text("context \(percent)%")
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             GeometryReader { g in
                 ZStack(alignment: .leading) {
@@ -1042,10 +1030,12 @@ private struct ContextMeter: View {
 
 /// Animated "typing" dots shown while a turn is streaming. Replaces the
 /// plain spinner so the chat reads like Codex while the model generates.
-private struct StreamingIndicator: View {    var label: String = "生成中"
+private struct StreamingIndicator: View {
+    var label: String = "生成中"
     var startedAt: Date = Date()
     @State private var blinking = false
     @State private var now = Date()
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var elapsedText: String {
@@ -1056,14 +1046,14 @@ private struct StreamingIndicator: View {    var label: String = "生成中"
     var body: some View {
         HStack(spacing: 5) {
             Text(label)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Text(elapsedText)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
             Text("▍")
-                .font(.system(.body, design: .monospaced))
+                .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .opacity(blinking ? 1 : 0.2)
         }
@@ -1081,6 +1071,8 @@ private struct StreamingIndicator: View {    var label: String = "生成中"
 }
 
 private struct RemoteBanner: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let project: Project
     let host: RemoteHost?
 
@@ -1089,9 +1081,9 @@ private struct RemoteBanner: View {
             Image(systemName: "globe.americas.fill").foregroundStyle(.blue)
             VStack(alignment: .leading, spacing: 0) {
                 Text(L10n.remoteBanner)
-                    .font(.subheadline).bold()
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier)).bold()
                 Text(L10n.remoteBannerHint)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -1136,6 +1128,7 @@ struct ComposerView: View {
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(spacing: 8) {
@@ -1148,7 +1141,7 @@ struct ComposerView: View {
                                     thumbnail(for: url)
                                     Button { store.removeImage(url) } label: {
                                         Image(systemName: "xmark.circle.fill")
-                                            .font(.caption)
+                                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                             .foregroundStyle(.white, .black.opacity(0.6))
                                     }
                                     .buttonStyle(.borderless)
@@ -1174,7 +1167,7 @@ struct ComposerView: View {
                                 store.clearImages()
                             } label: {
                                 Label("清空", systemImage: "trash")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             }
                             .buttonStyle(.borderless)
                             .foregroundStyle(.secondary)
@@ -1186,13 +1179,13 @@ struct ComposerView: View {
                 } else {
                     HStack(spacing: 6) {
                         Text("已添加 \(store.attachedImages.count) 张图片")
-                            .font(.caption)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.secondary)
                         Button {
                             showAttachments = true
                         } label: {
                             Label("展开", systemImage: "chevron.down")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         }
                         .buttonStyle(.borderless)
                         Spacer()
@@ -1200,7 +1193,7 @@ struct ComposerView: View {
                             store.clearImages()
                         } label: {
                             Label("清空", systemImage: "trash")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.borderless)
@@ -1321,17 +1314,17 @@ struct ComposerView: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: p.isRemote ? "globe" : "folder")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(p.isRemote ? .blue : .secondary)
-                                Text(p.displayName).font(.caption).lineLimit(1)
+                                Text(p.displayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).lineLimit(1)
                                 if !p.isRemote {
                                     Text(p.displayPath)
-                                        .font(.caption2)
+                                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                                         .foregroundStyle(.tertiary)
                                         .lineLimit(1)
                                         .truncationMode(.middle)
                                 }
-                                Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.tertiary)
+                                Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(DSHTheme.surface, in: Capsule())
@@ -1356,9 +1349,9 @@ struct ComposerView: View {
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Image(systemName: "folder").font(.caption).foregroundStyle(.secondary)
-                                Text("选择项目").font(.caption)
-                                Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.tertiary)
+                                Image(systemName: "folder").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
+                                Text("选择项目").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(DSHTheme.surface, in: Capsule())
@@ -1376,7 +1369,7 @@ struct ComposerView: View {
                         editorExpanded.toggle()
                     } label: {
                         Image(systemName: editorExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                            .font(.caption)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.borderless)
@@ -1389,7 +1382,7 @@ struct ComposerView: View {
                             store.clearImages()
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.tertiary)
                         }
                         .buttonStyle(.borderless)
@@ -1461,17 +1454,17 @@ struct ComposerView: View {
                         }
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "cpu").font(.caption)
-                            Text(store.modelName).font(.caption)
+                            Image(systemName: "cpu").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            Text(store.modelName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             if isRunning {
                                 ProgressView().controlSize(.mini)
                             }
                             if !effortLabel.isEmpty {
                                 Text("· \(effortLabel)")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                             }
-                            Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.tertiary)
+                            Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                         }
                         .foregroundStyle(DSHTheme.brand)
                         .padding(.horizontal, 8).padding(.vertical, 3)
@@ -1484,7 +1477,7 @@ struct ComposerView: View {
                     if isRunning {
                         Button(action: { store.cancelActiveTurn() }) {
                             Label("停止", systemImage: "stop.fill")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)
@@ -1605,7 +1598,7 @@ struct ComposerView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(c.title)
                             Text(c.detail)
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -1618,10 +1611,10 @@ struct ComposerView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: currentPermission.icon).font(.caption)
-                Text(currentPermission.title).font(.caption)
+                Image(systemName: currentPermission.icon).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Text(currentPermission.title).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Image(systemName: "chevron.down")
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 8).padding(.vertical, 3)
@@ -1684,7 +1677,7 @@ struct ComposerView: View {
                     ContextMeter(percent: pct)
                 }
             }
-            .font(.caption2)
+            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
             .frame(maxWidth: contentWidth)
@@ -1718,10 +1711,10 @@ struct ComposerView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "list.bullet")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(DSHTheme.brand)
                     Text("任务清单 · \(store.queue.count) 待处理")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .fontWeight(.medium)
                         .foregroundStyle(DSHTheme.brand)
                     Spacer()
@@ -1742,15 +1735,15 @@ struct ComposerView: View {
                         ForEach(store.queue) { q in
                             HStack(spacing: 6) {
                                 Image(systemName: "text.bubble")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                                 Text(q.text.isEmpty ? "(图片附件)" : q.text)
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .lineLimit(1)
                                     .foregroundStyle(.primary)
                                 if !q.images.isEmpty {
                                     Text("🖼 \(q.images.count)")
-                                        .font(.caption)
+                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
@@ -1758,7 +1751,7 @@ struct ComposerView: View {
                                     editingQueued = q
                                 } label: {
                                     Image(systemName: "pencil")
-                                        .font(.caption)
+                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.borderless)
@@ -1768,7 +1761,7 @@ struct ComposerView: View {
                                     store.removeQueued(q.id)
                                 } label: {
                                     Image(systemName: "trash")
-                                        .font(.caption)
+                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                         .foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.borderless)
@@ -1778,7 +1771,7 @@ struct ComposerView: View {
                                     store.sendQueuedNow(q.id)
                                 } label: {
                                     Image(systemName: "arrow.up")
-                                        .font(.caption)
+                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                         .foregroundStyle(DSHTheme.brand)
                                 }
                                 .buttonStyle(.borderless)
@@ -1790,7 +1783,7 @@ struct ComposerView: View {
                             Spacer()
                             Button("清空排队") { store.clearQueue() }
                                 .buttonStyle(.borderless)
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -1875,7 +1868,7 @@ struct ComposerView: View {
     private var slashMenu: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("命令")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
@@ -1890,7 +1883,7 @@ struct ComposerView: View {
                 showSlashMenu = false
             }
             Text("输入 /goal 后加目标文字，回车设置。")
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 8)
@@ -1903,11 +1896,11 @@ struct ComposerView: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Text(cmd)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .monospaced()
                     .foregroundStyle(DSHTheme.brand)
                 Text(desc)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Spacer()
             }
@@ -2064,9 +2057,9 @@ struct ComposerView: View {
             toggleGoalMode()
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "scope").font(.caption)
+                Image(systemName: "scope").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Text(titleForGoalChip)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .lineLimit(1)
             }
             .padding(.horizontal, 8).padding(.vertical, 3)
@@ -2116,18 +2109,18 @@ struct ComposerView: View {
                         .fill(goalRunning ? .green : DSHTheme.brand.opacity(0.6))
                         .frame(width: 7, height: 7)
                     Text(goalRunning ? "进行中" : "已暂停")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .foregroundStyle(.secondary)
                 Text(goal)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer()
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     Text(goalElapsedText(store.goalElapsedSeconds(thread)))
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
                 if goalRunning {
@@ -2256,7 +2249,7 @@ struct ComposerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 Image(systemName: "photo")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .frame(width: 36, height: 36)
                     .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
@@ -2285,6 +2278,7 @@ private struct GrowingTextEditor: View {
     var onSubmit: () -> Void
 
     @State private var contentHeight: CGFloat = 36
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     private var editorHeight: CGFloat {
         max(min(contentHeight, maxHeight), minHeight)
@@ -2292,7 +2286,7 @@ private struct GrowingTextEditor: View {
 
     var body: some View {
         TextEditor(text: $text)
-            .font(.body)
+            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
             .scrollContentBackground(.hidden)
             .background(Color.clear)
             .focused($focused)
@@ -2302,7 +2296,7 @@ private struct GrowingTextEditor: View {
                 // Invisible replica that measures the natural height at the
                 // current editor width; height never contributes to layout.
                 Text(text.isEmpty ? " " : text)
-                    .font(.body)
+                    .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 5)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -2317,7 +2311,7 @@ private struct GrowingTextEditor: View {
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
                     Text(placeholder)
-                        .font(.body)
+                        .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                         .foregroundStyle(DSHTheme.labelDim)
                         .padding(.top, 5)
                         .padding(.leading, 6)

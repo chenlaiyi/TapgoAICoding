@@ -34,6 +34,7 @@ struct RemoteDirectoryBrowser: View {
     /// recents).
     @State private var recent: [String] = []
     @State private var didLoadOnce: Bool = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     private let lister = RemoteDirectoryLister()
     private let sshPath = RemoteCodexHomeSync.findSSH()
@@ -75,9 +76,9 @@ struct RemoteDirectoryBrowser: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("添加远程项目").font(.title3).bold()
+                Text("添加远程项目").font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 Text("选择主机,然后逐级浏览远程目录。")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -100,14 +101,14 @@ struct RemoteDirectoryBrowser: View {
                 HStack {
                     ProgressView().controlSize(.small)
                     Text("正在读取 \(currentPath) …")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else if let err = error {
                 Label(err, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             }
             directoryList
         }
@@ -136,10 +137,10 @@ struct RemoteDirectoryBrowser: View {
         HStack(spacing: 6) {
             Image(systemName: "folder")
                 .foregroundStyle(.secondary)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             TextField("远程路径", text: $draftPath, onCommit: commitDraft)
                 .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
+                .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                 .onSubmit(commitDraft)
         }
     }
@@ -184,18 +185,18 @@ struct RemoteDirectoryBrowser: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("子目录")
-                    .font(.caption).bold()
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).bold()
                     .foregroundStyle(.secondary)
                 Spacer()
                 if !entries.isEmpty {
                     Text("\(entries.count) 个")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
             }
             if entries.isEmpty && !isLoading && error == nil {
                 Text("(空目录)")
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
@@ -213,7 +214,7 @@ struct RemoteDirectoryBrowser: View {
             if !recent.isEmpty {
                 Divider().padding(.vertical, 2)
                 Text("最近确认")
-                    .font(.caption).bold()
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).bold()
                     .foregroundStyle(.secondary)
                 ForEach(recent, id: \.self) { p in
                     Button {
@@ -222,10 +223,10 @@ struct RemoteDirectoryBrowser: View {
                     } label: {
                         HStack {
                             Image(systemName: "clock.arrow.circlepath")
-                                .font(.caption2)
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.tertiary)
                             Text(p)
-                                .font(.system(.caption, design: .monospaced))
+                                .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
@@ -260,10 +261,10 @@ struct RemoteDirectoryBrowser: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "folder.fill")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.blue)
                 Text(e.id)
-                    .font(.system(.body, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -280,7 +281,7 @@ struct RemoteDirectoryBrowser: View {
     private var footer: some View {
         HStack {
             Text(currentPath)
-                .font(.system(.caption, design: .monospaced))
+                .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)

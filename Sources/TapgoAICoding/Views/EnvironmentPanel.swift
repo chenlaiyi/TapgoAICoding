@@ -16,6 +16,7 @@ struct EnvironmentPanel: View {
     @State private var branch: String? = nil
     @State private var changes: Int? = nil
     @State private var remoteURL: String? = nil
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
@@ -109,7 +110,7 @@ struct EnvironmentPanel: View {
         } label: {
             HStack(spacing: 6) {
                 Text("环境信息")
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .bold()
                 Spacer()
                 Button {
@@ -118,7 +119,7 @@ struct EnvironmentPanel: View {
                     Task { await loadBranch() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("刷新环境信息")
@@ -127,7 +128,7 @@ struct EnvironmentPanel: View {
                     copyText(summaryText)
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("复制环境信息")
@@ -166,15 +167,15 @@ struct EnvironmentPanel: View {
         let n = changes ?? 0
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: "arrow.up.arrow.down")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text("变更")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Text(n > 0 ? "+\(n)" : "干净")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(n > 0 ? DSHTheme.success : .secondary)
                 .lineLimit(1)
         }
@@ -197,15 +198,15 @@ struct EnvironmentPanel: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Image(systemName: "gauge.medium")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .frame(width: 16)
                 Text("上下文")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
                 Text("\(percent)%")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.primary)
             }
             GeometryReader { g in
@@ -273,15 +274,15 @@ struct EnvironmentPanel: View {
     private func row(icon: String, label: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(label)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Text(value)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -294,15 +295,15 @@ struct EnvironmentPanel: View {
     private func pathRow(icon: String, label: String, path: String, clickable: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(label)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Text(path)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -356,22 +357,22 @@ struct EnvironmentPanel: View {
     private func buttonRow(icon: String, label: String, value: String, action: @escaping () -> Void) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(label)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Button(action: action) {
                 HStack(spacing: 3) {
                     Text(value)
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Image(systemName: "chevron.down")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -382,11 +383,11 @@ struct EnvironmentPanel: View {
     private func menuRow(icon: String, label: String, value: String, @ViewBuilder menu: @escaping () -> some View) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(label)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Menu {
@@ -394,12 +395,12 @@ struct EnvironmentPanel: View {
             } label: {
                 HStack(spacing: 3) {
                     Text(value)
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Image(systemName: "chevron.down")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
             }

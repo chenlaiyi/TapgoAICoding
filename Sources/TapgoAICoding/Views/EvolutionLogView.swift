@@ -17,6 +17,7 @@ struct EvolutionLogView: View {
     @State private var liveState: EvolutionState? = nil
     @State private var loadError: String? = nil
     @State private var hasLoaded = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     /// 历史日志条目。最新在最上。
     private let history: [EvolutionEntry] = EvolutionLogView.makeHistory()
@@ -59,9 +60,9 @@ struct EvolutionLogView: View {
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text("自进化日志")
-                    .font(.headline)
+                    .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                 Text("Tapgo AICoding · Self-Evolution Log")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             Spacer()
@@ -69,7 +70,7 @@ struct EvolutionLogView: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
+                    .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
@@ -90,11 +91,11 @@ struct EvolutionLogView: View {
                 Text("·")
                     .foregroundStyle(.tertiary)
                 Text(currentDate())
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("本次进化")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(DSHTheme.brandSoft, in: Capsule())
@@ -102,16 +103,16 @@ struct EvolutionLogView: View {
             }
 
             Text(liveState?.evolutionNote ?? latestHistoryEntry.summary)
-                .font(.body)
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let sha = liveState?.commitSha ?? latestHistoryEntry.commit {
                 HStack(spacing: 6) {
                     Image(systemName: "number")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     Text(shortCommit(sha))
-                        .font(.system(.caption, design: .monospaced))
+                        .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                 }
                 .foregroundStyle(.tertiary)
             }
@@ -119,9 +120,9 @@ struct EvolutionLogView: View {
             if let err = loadError {
                 HStack(spacing: 6) {
                     Image(systemName: "info.circle")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     Text("实时状态: \(err)")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .foregroundStyle(.tertiary)
             }
@@ -140,28 +141,28 @@ struct EvolutionLogView: View {
     private var philosophyCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("什么是自进化？", systemImage: "arrow.triangle.2.circlepath")
-                .font(.subheadline.weight(.semibold))
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
                 .foregroundStyle(DSHTheme.label)
 
             Text("每次发布我都会让 AI 跑一遍 `evolve.sh`：自动改代码 → 跑 332 个测试 → 打 tag → 推 git。"
                  + "这一页就是这条流水线的对外广播。")
-                .font(.callout)
+                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundStyle(DSHTheme.success)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Text("测试全绿才发布")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Spacer().frame(width: 12)
                 Image(systemName: "tag.fill")
                     .foregroundStyle(DSHTheme.brand)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Text("每个版本都打 git tag，可一键回滚")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             }
         }
@@ -180,10 +181,10 @@ struct EvolutionLogView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Label("历史版本", systemImage: "clock.arrow.circlepath")
-                    .font(.subheadline.weight(.semibold))
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
                 Spacer()
                 Text("\(history.count) 次进化")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
 
@@ -198,11 +199,11 @@ struct EvolutionLogView: View {
     private var playbookSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("怎么用我更好", systemImage: "lightbulb.fill")
-                .font(.subheadline.weight(.semibold))
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
                 .foregroundStyle(DSHTheme.warn)
 
             Text("下面这些是我**亲测能让你事半功倍**的用法。按场景挑你常用的看就行。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 8) {
@@ -222,12 +223,12 @@ struct EvolutionLogView: View {
                 Image(systemName: "heart.text.square.fill")
                     .foregroundStyle(DSHTheme.brand)
                 Text("每一行代码背后都有一份测试、一个 tag、一段反思。")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             if let actions = liveState?.nextActions, !actions.isEmpty {
                 Text("下一步：\(actions.prefix(2).joined(separator: " / "))")
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -417,6 +418,8 @@ struct EvolutionLogView: View {
 // MARK: - Subviews
 
 private struct EvolutionEntryRow: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let entry: EvolutionEntry
     let isLatest: Bool
 
@@ -430,16 +433,16 @@ private struct EvolutionEntryRow: View {
                     Text("·")
                         .foregroundStyle(.tertiary)
                     Text(String(commit.prefix(7)))
-                        .font(.system(.caption, design: .monospaced))
+                        .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
                 Spacer()
                 Text(entry.date)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             Text(entry.summary)
-                .font(.subheadline)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
             if !entry.changes.isEmpty {
@@ -449,14 +452,14 @@ private struct EvolutionEntryRow: View {
                             Text("·")
                                 .foregroundStyle(.tertiary)
                             Text(line)
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     if entry.changes.count > 3 {
                         Text("…还有 \(entry.changes.count - 3) 条")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -464,13 +467,13 @@ private struct EvolutionEntryRow: View {
             if !entry.why.isEmpty {
                 HStack(alignment: .top, spacing: 6) {
                     Text("Why")
-                        .font(.caption2.weight(.semibold))
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(DSHTheme.brandSoft, in: Capsule())
                         .foregroundStyle(DSHTheme.brand)
                     Text(entry.why)
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -478,13 +481,13 @@ private struct EvolutionEntryRow: View {
             if !entry.next.isEmpty {
                 HStack(alignment: .top, spacing: 6) {
                     Text("Next")
-                        .font(.caption2.weight(.semibold))
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(Color.gray.opacity(0.15), in: Capsule())
                         .foregroundStyle(.secondary)
                     Text(entry.next)
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -502,6 +505,8 @@ private struct EvolutionEntryRow: View {
 }
 
 private struct PlaybookRow: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let section: PlaybookSection
 
     var body: some View {
@@ -512,22 +517,22 @@ private struct PlaybookRow: View {
                         .fill(section.color.opacity(0.15))
                         .frame(width: 24, height: 24)
                     Image(systemName: section.icon)
-                        .font(.caption.weight(.semibold))
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
                         .foregroundStyle(section.color)
                 }
                 Text(section.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
                     .foregroundStyle(.primary)
             }
             VStack(alignment: .leading, spacing: 5) {
                 ForEach(Array(section.tips.enumerated()), id: \.offset) { idx, tip in
                     HStack(alignment: .top, spacing: 8) {
                         Text("\(idx + 1).")
-                            .font(.caption.monospacedDigit())
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).monospacedDigit())
                             .foregroundStyle(.tertiary)
                             .frame(width: 16, alignment: .trailing)
                         Text(tip)
-                            .font(.caption)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }

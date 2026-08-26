@@ -19,6 +19,7 @@ struct SidebarView: View {
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let showNewTask: () -> Void
     let showSettings: () -> Void
@@ -128,11 +129,11 @@ struct SidebarView: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .frame(width: 18)
                 Text(title)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 Spacer()
             }
             .padding(.horizontal, 8)
@@ -149,10 +150,10 @@ struct SidebarView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             TextField("搜索会话", text: $searchQuery)
                 .textFieldStyle(.plain)
-                .font(.subheadline)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .focused($searchFocused)
                 .onExitCommand {
                     if !searchQuery.isEmpty { searchQuery = "" }
@@ -171,7 +172,7 @@ struct SidebarView: View {
                 searchScope.toggle()
             } label: {
                 Image(systemName: searchScope ? "scope" : "circle")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(searchScope ? DSHTheme.brand : Color.secondary)
             }
             .buttonStyle(.borderless)
@@ -270,15 +271,15 @@ struct SidebarView: View {
         if let p = group.project {
             HStack(spacing: 6) {
                 Image(systemName: p.isRemote ? "globe" : "folder.fill")
-                    .font(.title3)
+                    .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
                     .foregroundStyle(p.isRemote ? .blue : DSHTheme.brand)
                 if workspace.isProjectPinned(p.id) {
                     Image(systemName: "pin.fill")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(DSHTheme.brand)
                 }
                 Text(p.displayName)
-                    .font(.headline)
+                    .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 if groupHasRunningTask(group) {
@@ -335,16 +336,16 @@ struct SidebarView: View {
             HStack(spacing: 4) {
                 Image(systemName: "tray")
                 Text(L10n.legacyGroupTitle)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 Spacer()
                 Text("\(group.threads.count)")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
                 Button {
                     toggleGroup(group.id)
                 } label: {
                     Image(systemName: collapsedGroups.contains(group.id) ? "chevron.right" : "chevron.down")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
             }
@@ -383,7 +384,7 @@ struct SidebarView: View {
 
     private var activeBadge: some View {
         Text("当前")
-            .font(.caption2)
+            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             .foregroundStyle(DSHTheme.brand)
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
@@ -393,10 +394,10 @@ struct SidebarView: View {
     private func projectCountBadge(_ count: Int) -> some View {
         HStack(spacing: 3) {
             Image(systemName: "number")
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             Text("\(count) 个任务")
         }
-        .font(.caption)
+        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
         .foregroundStyle(.tertiary)
         .help("该项目下的会话/任务数")
         .accessibilityLabel("\(count) 个任务")
@@ -407,7 +408,7 @@ struct SidebarView: View {
             editingProject = p
         } label: {
             Image(systemName: "pencil")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.borderless)
@@ -453,7 +454,7 @@ struct SidebarView: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
         }
         .menuStyle(.borderlessButton)
@@ -466,7 +467,7 @@ struct SidebarView: View {
             toggleGroup(id)
         } label: {
             Image(systemName: collapsedGroups.contains(id) ? "chevron.right" : "chevron.down")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(collapsedGroups.contains(id) ? "展开项目" : "收起项目")
@@ -491,7 +492,7 @@ struct SidebarView: View {
                             .foregroundStyle(DSHTheme.brand)
                     }
                     Text(t.title)
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -503,17 +504,17 @@ struct SidebarView: View {
                     }
                     Text(sidebarSubtitle(for: t))
                         .lineLimit(1)
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 4)
                     if let pct = contextPercent(for: t) {
                         Text(pct >= 90 ? "\(pct)% 已满" : "\(pct)%")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(contextColor(t))
                             .help("上下文已用 \(pct)%")
                     }
                     Text(relativeTime(t.updatedAt))
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -675,19 +676,19 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 6) {
             if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(L10n.noThreadsYet)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Button(L10n.startANewThread) { showNewTask() }
                     .buttonStyle(DSHPrimaryButtonStyle())
             } else {
                 Text("无匹配的会话")
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Button {
                     searchQuery = ""
                 } label: {
                     Label("清空搜索", systemImage: "xmark.circle")
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
@@ -707,10 +708,10 @@ struct SidebarView: View {
                     .accessibilityLabel("当前登录用户")
                 VStack(alignment: .leading, spacing: 0) {
                     Text(user.displayName)
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .lineLimit(1)
                     Text(user.wechatNickname ?? user.email ?? user.roleText)
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
@@ -728,15 +729,15 @@ struct SidebarView: View {
                 }
             } else {
                 Image(systemName: "person.crop.circle.fill")
-                    .font(.title3)
+                    .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .accessibilityLabel("当前用户")
                 VStack(alignment: .leading, spacing: 0) {
                     Text(NSUserName())
-                        .font(.subheadline)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .lineLimit(1)
                     Text("Tapgo AICoding")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
@@ -751,7 +752,7 @@ struct SidebarView: View {
                 showSettings()
             } label: {
                 Image(systemName: "gear")
-                    .font(.title3)
+                    .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
             }
             .buttonStyle(.borderless)
             .help(L10n.tooltipSettings)

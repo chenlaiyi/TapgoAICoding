@@ -8,6 +8,7 @@ struct TapgoAICodingApp: App {
     @StateObject private var store: SessionStore
     @StateObject private var authStore: AdminAuthStore
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
+    @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
 
     init() {
         let workspace = WorkspaceStore()
@@ -21,6 +22,10 @@ struct TapgoAICodingApp: App {
     }
 
     /// Resolve the pinned appearance (system / light / dark) from settings.
+    private var resolvedFontScale: AppFontScale {
+        AppFontScale(rawValue: fontScaleRaw) ?? .medium
+    }
+
     private var resolvedScheme: ColorScheme? {
         switch appearance {
         case "light": return .light
@@ -43,6 +48,7 @@ struct TapgoAICodingApp: App {
             }
             .environmentObject(authStore)
             .preferredColorScheme(resolvedScheme)
+            .appFontScale(resolvedFontScale)
             .frame(minWidth: 1100, minHeight: 720)
         }
         .windowResizability(.contentMinSize)

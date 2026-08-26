@@ -54,3 +54,15 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 扫码登录页加载阶段增加一次 URLError 自动重试（避免 DNS/TLS 短暂抖动直接让用户看到失败页），并将轮询阶段的连续网络失败容差从 3 次（6s）放宽到 6 次（12s），对齐国内 → 海外服务器的真实网络抖动窗口。源码改动集中于 AdminLoginView.start() 与 AdminLoginView.poll()，未改 client 协议或持久化逻辑。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.3.4 — feat: 设置→外观 tab 全局字号(小/中/大),AppFont central font tokens
+**Date**: 2026-08-26
+**Commit**: _(see )_
+**Tag**: v0.3.4
+**Test status**: — 379 passed, 0 failed —
+**Changed**:
+- feat: 设置→外观 tab 全局字号(小/中/大),AppFont central font tokens
+新增 Sources/TapgoCore/AppFont.swift:AppFontScale 枚举(small 0.85×/medium 1.00×/large 1.20×) + EnvironmentKey + AppFont.scaled(_:multiplier:)/monoScaled(size:multiplier:) 统一字号 token,所有视图 .font(.caption/.body/.title3 等) 统一改为 AppFont.scaled(...),SettingsView 新增'外观' tab(分段 picker + 实时预览),ChatView ⋮ 菜单字号切换继续走同一 UserDefaults key(tapgo.fontScale)→App 根级通过 @Environment(\.tapgoFontScale) 注入;彻底避开 dynamicTypeSize(macOS 失效)和 scaleEffect(撕裂布局)。22 个 AppFontScale 单测,总测试 357→379。修一个老 bug:ChatView StreamingIndicator struct 缺'{'导致 Swift 解析异常。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

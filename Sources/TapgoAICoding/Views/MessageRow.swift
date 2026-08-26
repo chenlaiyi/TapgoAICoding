@@ -50,6 +50,7 @@ struct MessageBubble: View {
 
     @State private var showEditSheet = false
     @State private var editedText = ""
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     private func copy(_ s: String) {
         let pb = NSPasteboard.general
@@ -149,7 +150,7 @@ struct MessageBubble: View {
         HStack(spacing: 12) {
             if let startedAt {
                 Text(timeText(startedAt))
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             if let onReply {
@@ -189,9 +190,9 @@ struct MessageBubble: View {
 
     private var editSheet: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("编辑并重发").font(.headline)
+            Text("编辑并重发").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             TextEditor(text: $editedText)
-                .font(.body)
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .frame(minHeight: 96, maxHeight: 160)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
                 .padding(6)
@@ -212,6 +213,8 @@ struct MessageBubble: View {
 }
 
 struct ReasoningDisclosure: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let text: String
     var label: String = L10n.reasoning
     var icon: String = "brain"
@@ -222,19 +225,19 @@ struct ReasoningDisclosure: View {
         // "Think · <…>" summary line.
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Text("Think")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             Text("·")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             if isRunning {
                 ProgressView().controlSize(.mini)
             }
             Text(text.isEmpty ? (isRunning ? "思考中…" : "思考") : text)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -250,6 +253,7 @@ struct ToolCallRow: View {
     let toolCall: ToolCall
     var isRunning: Bool = false
     @State private var isExpanded = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -258,13 +262,13 @@ struct ToolCallRow: View {
                 Image(systemName: toolIcon)
                     .foregroundStyle(toolIconColor)
                 Text(toolCall.name)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Text("·")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
                 Text(toolCall.arguments)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -277,7 +281,7 @@ struct ToolCallRow: View {
                     isExpanded.toggle()
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel(isExpanded ? "折叠结果" : "展开结果")
@@ -289,12 +293,12 @@ struct ToolCallRow: View {
 
             if isExpanded {
                 Text(toolCall.arguments)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .lineLimit(4)
                 if let r = toolCall.result, !r.isEmpty {
                     Text(r)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .lineLimit(6)
                         .textSelection(.enabled)
@@ -325,6 +329,8 @@ struct ToolCallRow: View {
 }
 
 struct StatusBadge: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let status: String
     var body: some View {
         let (label, icon, color): (String, String, Color) = {
@@ -338,8 +344,8 @@ struct StatusBadge: View {
             }
         }()
         return HStack(spacing: 3) {
-            Image(systemName: icon).font(.caption2)
-            Text(label).font(.caption2)
+            Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            Text(label).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
         }
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

@@ -11,6 +11,7 @@ import TapgoCore
 /// from the trajectory), it renders a status badge instead.
 struct ApprovalRow: View {
     @EnvironmentObject var store: SessionStore
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     let request: ApprovalRequest
 
     var body: some View {
@@ -18,26 +19,26 @@ struct ApprovalRow: View {
             HStack {
                 Image(systemName: "checkmark.shield")
                 Text(approvalTitle)
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .bold()
                 Spacer()
                 statusPill
             }
             Text(request.reason)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             switch request.payload {
             case .command(let ce):
                 Text(L10n.commandDisplay(ce.command))
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .padding(6)
                     .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 4))
             case .fileChange(let fc):
                 Text(L10n.fileChangeDisplay(fc.kind.rawValue, fc.path))
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
             case .toolCall(let tc):
                 Text("\(tc.name)(\(tc.arguments))")
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .lineLimit(2)
             }
             if isPending {
@@ -76,7 +77,7 @@ struct ApprovalRow: View {
     private var statusPill: some View {
         if isPending {
             Text(L10n.approvalPending)
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(.orange.opacity(0.18), in: Capsule())
@@ -84,7 +85,7 @@ struct ApprovalRow: View {
         } else {
             let (label, color) = decisionBadge
             Text(label)
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(color.opacity(0.18), in: Capsule())

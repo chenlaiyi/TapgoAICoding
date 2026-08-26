@@ -9,6 +9,7 @@ struct FileEditBatchView: View {
     @EnvironmentObject var workspace: WorkspaceStore
     @State private var expanded = true
     @State private var showAll = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     private static let foldThreshold = 30
 
     var body: some View {
@@ -17,12 +18,12 @@ struct FileEditBatchView: View {
                 Image(systemName: "doc.on.doc.fill")
                     .foregroundStyle(.indigo)
                 Text("已编辑 \(files.count) 个文件")
-                    .font(.subheadline)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .bold()
                 Spacer()
                 HStack(spacing: 3) {
                     Text(badgeLabel)
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(badgeColor)
                 }
                 .padding(.horizontal, 6)
@@ -32,7 +33,7 @@ struct FileEditBatchView: View {
                     copy(pathsText)
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("复制文件路径列表")
@@ -53,13 +54,13 @@ struct FileEditBatchView: View {
                             .foregroundStyle(color(for: f.kind))
                             .frame(width: 14)
                         Text(f.path)
-                            .font(.system(.caption, design: .monospaced))
+                            .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .textSelection(.enabled)
                         Spacer()
                         Text(kindLabel(f.kind))
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.secondary)
                     }
                     .contentShape(Rectangle())
@@ -97,7 +98,7 @@ struct FileEditBatchView: View {
                         showAll = true
                     } label: {
                         Text("再显示 \(files.count - Self.foldThreshold) 个文件")
-                            .font(.caption)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
@@ -195,6 +196,7 @@ struct FileChangeView: View {
     // the change at a glance; long diffs default collapsed so the
     // chat doesn't get buried under a giant patch.
     @State private var isExpanded: Bool
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(change: FileChange) {
         self.change = change
@@ -207,7 +209,7 @@ struct FileChangeView: View {
                 Image(systemName: icon)
                     .foregroundStyle(iconColor)
                 Text(change.path)
-                    .font(.system(.body, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                     .bold()
                     .lineLimit(1)
                 Spacer()
@@ -299,8 +301,8 @@ struct FileChangeView: View {
             }
         }()
         return HStack(spacing: 3) {
-            Image(systemName: icon).font(.caption2)
-            Text(label).font(.caption2)
+            Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            Text(label).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
@@ -313,13 +315,15 @@ struct FileChangeView: View {
 /// Very small unified-diff colorizer. Not a full parser — just lines starting
 /// with `+` and `-` get tinted.
 struct DiffText: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let diff: String
     var body: some View {
         let lines = diff.components(separatedBy: "\n")
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line.isEmpty ? " " : line)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .foregroundStyle(color(for: line))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)

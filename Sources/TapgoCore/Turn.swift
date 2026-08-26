@@ -85,3 +85,15 @@ public struct Turn: Identifiable, Hashable, Codable {
         return DurationFormatter.string(seconds: d)
     }
 }
+
+public extension Turn {
+    /// Case-insensitive substring match across the user's input and every
+    /// item's `searchableText`. The trimmed-empty query never matches (so
+    /// search UI can safely call this with the live TextField value).
+    func matches(query: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return false }
+        if userInput.lowercased().contains(q) { return true }
+        return items.contains { $0.searchableText.lowercased().contains(q) }
+    }
+}

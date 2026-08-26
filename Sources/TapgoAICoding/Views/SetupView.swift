@@ -1,7 +1,10 @@
 import SwiftUI
+import TapgoCore
 import AppKit
 
 struct SetupView: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let error: SetupError
     let onRetry: () -> Void
 
@@ -12,7 +15,7 @@ struct SetupView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(.yellow)
             Text(L10n.setupHeadline)
-                .font(.title2)
+                .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier))
                 .bold()
             Text(L10n.setupBody)
                 .multilineTextAlignment(.center)
@@ -20,17 +23,17 @@ struct SetupView: View {
                 .frame(maxWidth: 520)
             if let detail = (error.errorDescription) {
                 Text(detail)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 520)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(L10n.setupConsole)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 Text("cd ~/TapgoAICoding && ./scripts/init-tapgo.sh --from-file <key_file>")
-                    .font(.system(.body, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                     .textSelection(.enabled)
             }
             .padding(12)

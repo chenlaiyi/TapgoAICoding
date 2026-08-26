@@ -75,6 +75,7 @@ let allSections: [String] = [
     "MarkdownLite: images",
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
+    "AppFontScale: enum shape",
     "TrajectoryFilter: item matching",
     "TurnMarkdown: render",
     "DurationFormatter: string + turn duration",
@@ -83,6 +84,7 @@ let allSections: [String] = [
     "Thread: usage & duration summary",
     "RemoteDirectoryLister: argv shape (pure)",
     "RemoteDirectoryLister: live on remotehost",
+    "Turn: in-conversation search",
 ]
 
 /// Run a section only if it's in scope. This is what makes
@@ -252,6 +254,9 @@ struct TapgoTestMain {
         await runIfInScope(runner, "MarkdownLite: strikethrough") {
             runMarkdownLiteStrikethrough(runner)
         }
+        await runIfInScope(runner, "AppFontScale: enum shape") {
+            runAppFontScaleTests(runner)
+        }
         await runIfInScope(runner, "TrajectoryFilter: item matching") {
             runTrajectoryFilter(runner)
         }
@@ -275,6 +280,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "RemoteDirectoryLister: live on remotehost") {
             await runRemoteDirListerLive(runner)
+        }
+        await runIfInScope(runner, "Turn: in-conversation search") {
+            runTurnSearch(runner)
         }
         await runIfInScope(runner, "RemoteCodexHomeSync: rendered config has no secret material") {
             runRemoteCodexHomeSyncConfigNoSecret(runner)

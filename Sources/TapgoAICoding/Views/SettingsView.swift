@@ -21,12 +21,15 @@ struct SettingsView: View {
     @AppStorage("tapgo.baseURL") private var baseURL = ""
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
+    @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     enum Tab: String, CaseIterable, Identifiable {
         case account = "账户"
         case projects = "项目"
         case remote = "远程主机"
         case runtime = "运行"
+        case appearance = "外观"
         case about = "关于"
         var id: String { rawValue }
     }
@@ -34,7 +37,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("设置").font(.title3).bold()
+                Text("设置").font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 Spacer()
                 Button { dismiss() } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.borderless).accessibilityLabel("关闭")
@@ -49,11 +52,12 @@ struct SettingsView: View {
                 Divider()
                 Group {
                     switch tab {
-                    case .account:  accountTab
-                    case .projects: projectsTab
-                    case .remote:   remoteTab
-                    case .runtime:  runtimeTab
-                    case .about:    aboutTab
+                    case .account:    accountTab
+                    case .projects:   projectsTab
+                    case .remote:     remoteTab
+                    case .runtime:    runtimeTab
+                    case .appearance: appearanceTab
+                    case .about:      aboutTab
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -73,7 +77,7 @@ struct SettingsView: View {
     private var projectsTab: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("项目 (\(workspace.state.projects.count))").font(.headline)
+                Text("项目 (\(workspace.state.projects.count))").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                 Spacer()
                 Button {
                     pickAndAddLocal()
@@ -89,7 +93,7 @@ struct SettingsView: View {
                 VStack(spacing: 8) {
                     Text("还没有项目").foregroundStyle(.secondary)
                     Text("点击右上角 “添加本地目录” 或新建任务时选目录。")
-                        .font(.caption).foregroundStyle(.tertiary)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -109,9 +113,9 @@ struct SettingsView: View {
                 .foregroundStyle(p.isRemote ? .blue : .accentColor)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.displayName).font(.subheadline)
+                Text(p.displayName).font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 Text(p.displayPath)
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -173,7 +177,7 @@ struct SettingsView: View {
     private var remoteTab: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("远程主机 (\(workspace.state.remoteHosts.count))").font(.headline)
+                Text("远程主机 (\(workspace.state.remoteHosts.count))").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                 Spacer()
                 Button { addHostSheet = true } label: {
                     Label(L10n.addRemoteHost, systemImage: "plus")
@@ -185,7 +189,7 @@ struct SettingsView: View {
                 VStack(spacing: 8) {
                     Text("还没有远程主机").foregroundStyle(.secondary)
                     Text("添加 SSH 主机后,可以在新建任务时选择它作为远程项目。")
-                        .font(.caption).foregroundStyle(.tertiary)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
                 }
                 .padding()
@@ -205,7 +209,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "globe.americas.fill").foregroundStyle(.blue)
-                Text(h.alias).font(.subheadline).bold()
+                Text(h.alias).font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier)).bold()
                 Spacer()
                 if testingHostId == h.id {
                     ProgressView().controlSize(.mini)
@@ -226,19 +230,19 @@ struct SettingsView: View {
             }
             HStack(spacing: 4) {
                 Text("\(h.user)@\(h.host):\(h.port)")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                 if h.lastTestedAt != nil {
                     Image(systemName: (h.lastTestedOK ?? false) ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .foregroundStyle((h.lastTestedOK ?? false) ? .green : .red)
                     Text(h.lastTestedOK ?? false ? "已通过" : "失败")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                 }
             }
             if let out = h.lastTestOutput, !(h.lastTestedOK ?? false) {
                 Text(out)
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
                     .padding(6)
@@ -299,7 +303,7 @@ struct SettingsView: View {
     @ViewBuilder
     private var runtimeTab: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("运行行为").font(.headline)
+            Text("运行行为").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             Form {
                 Picker(L10n.approvalPolicyTitle, selection: $approvalPolicyRaw) {
                     ForEach(TapgoConfig.ApprovalPolicy.allCases) { p in
@@ -318,11 +322,6 @@ struct SettingsView: View {
                     Text("中 (medium)").tag("medium")
                     Text("高 (high)").tag("high")
                 }
-                Picker(L10n.appearanceTitle, selection: $appearanceRaw) {
-                    Text("跟随系统").tag("system")
-                    Text("浅色").tag("light")
-                    Text("深色").tag("dark")
-                }
                 TextField("Endpoint (Base URL)", text: $baseURL)
                     .textFieldStyle(.roundedBorder)
                     .disableAutocorrection(true)
@@ -338,16 +337,62 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             Text(L10n.approvalPolicyHint)
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)
             Text("留空则使用默认端点：\(TapgoConfig.defaultRegion.baseURL)")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 20)
             Spacer()
         }
         .padding(.top, 20)
+    }
+
+    // MARK: - Appearance tab
+
+    @ViewBuilder
+    private var appearanceTab: some View {
+        let scale = AppFontScale(rawValue: fontScaleRaw) ?? .medium
+        VStack(alignment: .leading, spacing: 14) {
+            Text("外观").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+            Form {
+                Section("字体大小") {
+                    Picker("字体大小", selection: $fontScaleRaw) {
+                        ForEach(AppFontScale.allCases) { s in
+                            Text(s.displayName).tag(s.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text("全局生效：聊天、侧栏、设置、提示等所有文本。会话内菜单（⋮ → 字体大小）也是同一选项。")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                }
+                Section("预览") {
+                    previewRow(scale: scale)
+                }
+            }
+            .formStyle(.grouped)
+            Spacer()
+        }
+        .padding(.top, 20)
+    }
+
+    /// Tiny live-preview that uses the same `AppFont` helper the rest of
+    /// the app uses, so what the user sees here is exactly what they'll
+    /// see in the chat / sidebar.
+    @ViewBuilder
+    private func previewRow(scale: AppFontScale) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Tapgo AICoding")
+                .font(AppFont.scaled(.title3, multiplier: scale.multiplier))
+            Text("给 MiniMax-M3 发条任务…")
+                .font(AppFont.scaled(.body, multiplier: scale.multiplier))
+                .foregroundStyle(.secondary)
+            Text("已批准 · 思考摘要 · 3 个回合")
+                .font(AppFont.scaled(.caption, multiplier: scale.multiplier))
+                .foregroundStyle(.tertiary)
+        }
     }
 
     // MARK: - Account tab
@@ -360,19 +405,19 @@ struct SettingsView: View {
                     UserAvatar(url: user.avatarURL, name: user.displayName, size: 56)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(user.displayName)
-                            .font(.title3).bold()
+                            .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                             .textSelection(.enabled)
                         Text("@\(user.username)")
-                            .font(.subheadline)
+                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.secondary)
                             .textSelection(.enabled)
                         Text(user.wechatNickname ?? user.roleText)
-                            .font(.caption)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                 }
                 Text("登录身份: \(user.roleText)")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             } else {
                 Text("未登录")
@@ -390,7 +435,7 @@ struct SettingsView: View {
             .tint(.red)
             .help("清除本机登录状态，下次启动需重新扫码")
             Text("退出后需重新微信扫码才能进入。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Spacer()
         }
@@ -404,19 +449,19 @@ struct SettingsView: View {
     private var aboutTab: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3")")
-                .font(.title3).bold()
+                .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 .textSelection(.enabled)
             Text("固定模型: \(TapgoConfig.modelName)")
-                .font(.subheadline)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .textSelection(.enabled)
             Text("独立 Codex home: \(TapgoConfig.codexHome.path)")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
                 .textSelection(.enabled)
             Text("日志: \(TapgoConfig.logFileURL.path)")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
                 .textSelection(.enabled)
             Text("Endpoint: \(TapgoConfig.defaultRegion.baseURL)")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 Button {
                     revealInFinder(TapgoConfig.logFileURL, fallbackDir: TapgoConfig.logFileURL.deletingLastPathComponent())
@@ -438,7 +483,7 @@ struct SettingsView: View {
             .controlSize(.small)
             Divider()
             Text("不会读取或修改官方 ~/.codex/ 任何文件。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Spacer()
         }
@@ -479,11 +524,12 @@ private struct AddRemoteHostSheet: View {
     @State private var port: Int = 22
     @State private var identity: String = "default"
     @State private var error: String?
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("添加远程主机").font(.title3).bold()
+                Text("添加远程主机").font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 Spacer()
                 Button { dismiss() } label: { Image(systemName: "xmark.circle.fill") }
                     .buttonStyle(.borderless)
@@ -496,7 +542,7 @@ private struct AddRemoteHostSheet: View {
                 TextField(L10n.hostPort, value: $port, format: .number)
                 TextField(L10n.hostIdentity, text: $identity)
                 if let err = error {
-                    Text(err).font(.caption).foregroundStyle(.red)
+                    Text(err).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.red)
                 }
             }
             .formStyle(.grouped)

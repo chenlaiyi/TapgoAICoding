@@ -6,6 +6,8 @@ import TapgoCore
 /// and bold are styled inline, and bullet/numbered lists render with
 /// proper markers. Plain text falls through unchanged.
 struct MarkdownMessageView: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let text: String
 
     init(_ text: String) { self.text = text }
@@ -135,6 +137,7 @@ struct MarkdownMessageView: View {
     }
 
     private struct ListView: View {
+        @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
         let items: [[MarkdownSegment]]
         let ordered: Bool
 
@@ -143,7 +146,7 @@ struct MarkdownMessageView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(ordered ? "\(idx + 1)." : "•")
-                            .font(.system(.body, design: .monospaced))
+                            .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.secondary)
                         Text(MarkdownMessageView.inlineAttributed(item))
                             .textSelection(.enabled)
@@ -159,19 +162,20 @@ private struct CodeBlockView: View {
     let code: String
     let lang: String?
     @State private var copied = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 if let lang, !lang.isEmpty {
                     Text(lang)
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
                 Spacer()
                 Text("\(code.count) 字符")
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
                     .textSelection(.enabled)
                 Button {
@@ -180,7 +184,7 @@ private struct CodeBlockView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
                 } label: {
                     Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(copied ? .green : .secondary)
                 }
                 .buttonStyle(.borderless)
@@ -194,7 +198,7 @@ private struct CodeBlockView: View {
             // code keeps its real column layout (like the harness block).
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
@@ -241,12 +245,14 @@ private struct HeadingView: View {
 /// style info callout card (quote icon + bordered surface) rather than a
 /// bare italic blockquote.
 private struct QuoteView: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let attr: AttributedString
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "quote.opening")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             Text(attr)
                 .textSelection(.enabled)
@@ -263,6 +269,8 @@ private struct QuoteView: View {
 /// Lightweight pipe-table renderer (`| a | b |` with a `|---|` header
 /// separator). Cells are plain text; column count follows the header.
 private struct TableView: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let headers: [String]
     let rows: [[String]]
 
@@ -273,7 +281,7 @@ private struct TableView: View {
                 GridRow {
                     ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
                         Text(h)
-                            .font(.subheadline)
+                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .bold()
                     }
                 }
@@ -286,7 +294,7 @@ private struct TableView: View {
                     GridRow {
                         ForEach(Array(headers.enumerated()), id: \.offset) { i, _ in
                             Text(i < row.count ? row[i] : "")
-                                .font(.caption)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                 .textSelection(.enabled)
                         }
                     }
@@ -326,6 +334,8 @@ private struct TableView: View {
 
 /// Checklist for `- [ ]` / `- [x]` task lines.
 private struct TaskListView: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let items: [TaskItem]
 
     var body: some View {
@@ -333,7 +343,7 @@ private struct TaskListView: View {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: item.checked ? "checkmark.square.fill" : "square")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(item.checked ? .green : .secondary)
                     Text(MarkdownMessageView.inlineAttributed(item.content))
                         .textSelection(.enabled)
@@ -349,12 +359,13 @@ private struct ImageView: View {
     let alt: String
     let url: String
     @State private var failed = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         Group {
             if failed {
                 Text(alt.isEmpty ? "图片加载失败" : alt)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             } else {
                 AsyncImage(url: URL(string: url)) { phase in

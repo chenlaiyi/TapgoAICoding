@@ -11,6 +11,7 @@ struct CommandExecutionView: View {
     let isRunning: Bool
     @EnvironmentObject var store: SessionStore
     @State private var isExpanded = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(execution: CommandExecution, isRunning: Bool = false) {
         self.execution = execution
@@ -24,7 +25,7 @@ struct CommandExecutionView: View {
             HStack(spacing: 6) {
                 Image(systemName: "terminal").foregroundStyle(.blue)
                 Text(execution.command.isEmpty ? "运行中…" : execution.command)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
@@ -33,7 +34,7 @@ struct CommandExecutionView: View {
                     store.cancelActiveTurn()
                 } label: {
                     Label("停止", systemImage: "stop.fill")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.red)
@@ -52,18 +53,18 @@ struct CommandExecutionView: View {
                     Image(systemName: "terminal")
                         .foregroundStyle(.blue)
                     Text("Bash")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.blue)
                     Text("·")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                     Text(execution.command)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if let via = execution.viaSSH {
                         Text("\(L10n.viaSSHPrefix) \(via)")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(.blue.opacity(0.18), in: Capsule())
@@ -72,13 +73,13 @@ struct CommandExecutionView: View {
                     Spacer(minLength: 0)
                     if !output.isEmpty {
                         Text("\(outputLineCount) 行")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                     if execution.status == .failed, let code = execution.exitCode,
                        code != 0 {
                         Text(L10n.exitCode(code))
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.red)
                     }
                     statusBadge
@@ -86,7 +87,7 @@ struct CommandExecutionView: View {
                         isExpanded.toggle()
                     } label: {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel(isExpanded ? "折叠输出" : "展开输出")
@@ -120,7 +121,7 @@ struct CommandExecutionView: View {
                     if !execution.stdout.isEmpty {
                         ScrollView {
                             Text(execution.stdout)
-                                .font(.system(.caption, design: .monospaced))
+                                .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
                         }
@@ -131,7 +132,7 @@ struct CommandExecutionView: View {
                     if !execution.stderr.isEmpty {
                         ScrollView {
                             Text(execution.stderr)
-                                .font(.system(.caption, design: .monospaced))
+                                .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
                         }
@@ -176,8 +177,8 @@ struct CommandExecutionView: View {
             }
         }()
         return HStack(spacing: 3) {
-            Image(systemName: icon).font(.caption2)
-            Text(label).font(.caption2)
+            Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            Text(label).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
@@ -193,6 +194,7 @@ struct CopyIconButton: View {
     let text: String
     var help: String = "复制"
     @State private var copied = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         Button {
@@ -203,7 +205,7 @@ struct CopyIconButton: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.borderless)

@@ -10,6 +10,7 @@ struct ContentView: View {
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
     @State private var showShortcuts = false
     @State private var showCommandPalette = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         Group {
@@ -189,10 +190,11 @@ struct ContentView: View {
 /// Small "keyboard shortcuts" help sheet.
 private struct ShortcutsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("快捷键").font(.title2).bold()
+            Text("快捷键").font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier)).bold()
             Divider()
             shortcutRow("新建任务", "⌘N")
             shortcutRow("新任务 (选目录)", "⌘⇧N")
@@ -214,7 +216,7 @@ private struct ShortcutsView: View {
             shortcutRow("命令面板", "⌘⇧P")
             shortcutRow("切换到轨迹栏/收起", "⌘⇧T")
             Text("这些快捷键在应用菜单中同样可用。")
-                .font(.caption)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .padding(.top, 6)
             Spacer()
@@ -230,7 +232,7 @@ private struct ShortcutsView: View {
             Text(label)
             Spacer()
             Text(key)
-                .font(.system(.body, design: .monospaced))
+                .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
@@ -248,6 +250,7 @@ private struct CommandPaletteView: View {
     @State private var query = ""
     @State private var hoveredId: String? = nil
     @State private var selectedIndex = 0
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let onNewTask: () -> Void
     let onSettings: () -> Void
@@ -284,7 +287,7 @@ private struct CommandPaletteView: View {
                             if idx == firstThreadIndex {
                                 Divider().padding(.vertical, 4)
                                 Text("会话")
-                                    .font(.caption)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                             }
@@ -304,11 +307,11 @@ private struct CommandPaletteView: View {
                                     }
                                     Spacer()
                                     if let k = e.key {
-                                        Text(k).font(.caption).foregroundStyle(.tertiary)
+                                        Text(k).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                                     } else if let c = e.context {
-                                        Text("\(c)%").font(.caption).foregroundStyle(.tertiary)
+                                        Text("\(c)%").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                                     } else if let p = e.project {
-                                        Text(p).font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                                        Text(p).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary).lineLimit(1)
                                     }
                                 }
                                 .padding(.horizontal, 8)

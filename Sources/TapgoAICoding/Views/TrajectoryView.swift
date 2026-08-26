@@ -12,6 +12,7 @@ struct TrajectoryView: View {
     @AppStorage("tapgo.trajectoryFilter") private var filter: TrajectoryFilter = .all
     @State private var query = ""
     @AppStorage("tapgo.trajectoryShowTimeline") private var showTimeline = true
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(thread: TapgoCore.Thread) {
         self.thread = thread
@@ -22,13 +23,13 @@ struct TrajectoryView: View {
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
-                Text(L10n.trajectory).font(.headline)
+                Text(L10n.trajectory).font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                 Spacer()
                 Button {
                     showTimeline.toggle()
                 } label: {
                     Image(systemName: showTimeline ? "list.bullet" : "list.bullet.rectangle")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
@@ -61,7 +62,7 @@ struct TrajectoryView: View {
                 .help("复制标题")
                 .accessibilityLabel("复制标题")
                 Text(L10n.turnCount(thread.turns.count))
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
@@ -73,18 +74,18 @@ struct TrajectoryView: View {
                             TokenUsage.summary(of: thread.usageTotal),
                             systemImage: "number"
                         )
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                     }
                     if let d = thread.durationTotalText {
                         Label(d, systemImage: "clock")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(.tertiary)
                     }
                     if let usage = thread.turns.last(where: { $0.usage != nil })?.usage,
                        let pct = usage.contextPercent {
                         Label("上下文 \(pct)%", systemImage: "gauge.medium")
-                            .font(.caption2)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                             .foregroundStyle(contextColor(usage.contextLevel))
                             .help("上下文已用 \(pct)% — 建议接近上限时新建会话")
                     }
@@ -105,10 +106,10 @@ struct TrajectoryView: View {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 TextField("在轨迹中查找…", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .onExitCommand {
                         if !query.isEmpty { query = "" }
                     }
@@ -202,27 +203,27 @@ struct TrajectoryView: View {
                 .lineLimit(1)
             Spacer()
             Text(timeString(turn.startedAt))
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             if let usage = turn.usage, usage.total > 0 {
                 Text(TokenUsage.summary(of: usage.total))
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             if let d = turn.durationText {
                 Text(d)
-                    .font(.caption2)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
             Text(turnStatusLabel(turn.status))
-                .font(.caption2)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
             if turn.status == .running {
                 Button {
                     store.cancelActiveTurn()
                 } label: {
                     Image(systemName: "stop.fill")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.red)
                 }
                 .buttonStyle(.borderless)
@@ -234,7 +235,7 @@ struct TrajectoryView: View {
                     store.sendUserMessage(turn.userInput)
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("重试本回合")
@@ -246,7 +247,7 @@ struct TrajectoryView: View {
                     store.sendUserMessage(turn.userInput)
                 } label: {
                     Image(systemName: "repeat")
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 }
                 .buttonStyle(.borderless)
                 .help("在新会话中重新生成")
@@ -256,7 +257,7 @@ struct TrajectoryView: View {
                 NotificationCenter.default.post(name: .tapgoJumpToTurn, object: turn.id)
             } label: {
                 Image(systemName: "arrow.right.circle")
-                    .font(.caption)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
@@ -299,6 +300,8 @@ struct TrajectoryView: View {
 }
 
 struct TrajectoryItemRow: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
     let item: TurnItem
 
     var body: some View {
@@ -307,15 +310,15 @@ struct TrajectoryItemRow: View {
                 .foregroundStyle(color)
                 .frame(width: 16)
             VStack(alignment: .leading) {
-                Text(label).font(.subheadline)
+                Text(label).font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 if let via = viaSSH {
                     Text("\(L10n.viaSSHPrefix) \(via)")
-                        .font(.caption2)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.blue)
                 }
                 if let detail = detailText {
                     Text(detail)
-                        .font(.caption)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
