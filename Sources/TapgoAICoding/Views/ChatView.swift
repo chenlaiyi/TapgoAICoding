@@ -1121,6 +1121,8 @@ struct ComposerView: View {
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
     @State private var isGoalMode = false
+    /// NSEvent monitor that intercepts ⌘V to attach clipboard images/files.
+    @State private var pasteMonitor: Any?
     /// Goal-card "edit" sheet state (the item carries the initial goal text).
     @State private var editingGoalItem: GoalEditItem?
     /// Queued-message edit sheet state.
@@ -1557,6 +1559,10 @@ struct ComposerView: View {
             // On launch with a restored thread, put the cursor in the
             // composer so the user can start typing immediately.
             if store.activeThreadId != nil { focused = true }
+            setUpPasteMonitor()
+        }
+        .onDisappear {
+            if let m = pasteMonitor { NSEvent.removeMonitor(m); pasteMonitor = nil }
         }
         .sheet(item: $editingGoalItem) { item in
             GoalEditorSheet(initial: item.text)
@@ -1978,6 +1984,30 @@ struct ComposerView: View {
     }
 
     /// Write pasted image bytes to a temp file so it can be attached.
+    /// Intercept ⌘V at the window: if the pasteboard holds an image or file,
+    /// attach it instead of letting the focused TextEditor paste text only.
+    private func setUpPasteMonitor() {
+        guard pasteMonitor == nil else { return }
+        pasteMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.contains(.command),
+                  event.charactersIgnoringModifiers == "v" else { return event }
+            let pb = NSPasteboard.general
+            if pb.canReadItem(withDataConformingToTypes: [UTType.image.identifier, UTType.fileURL.identifier]) {
+                handlePasteboard(pb)
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func handlePasteboard(_ pb: NSPasteboard) {
+        if let url = pb.readObjects(forClasses: [NSURL.self], options: nil)?.first as? URL {
+            DispatchQueue.main.async { store.addImages([url]) }
+        } else if let data = pb.data(forType: .png) {
+            decodeAndAttachImage(data)
+        }
+    }
+
     private static func writePastedImage(_ data: Data, ext: String) -> URL? {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("tapgo-paste", isDirectory: true)
