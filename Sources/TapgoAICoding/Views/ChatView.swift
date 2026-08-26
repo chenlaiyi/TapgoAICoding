@@ -1178,6 +1178,8 @@ struct ComposerView: View {
                         }.padding(.horizontal, 4)
                     }
                     .frame(height: 46)
+                    .frame(maxWidth: contentWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     HStack(spacing: 6) {
                         Text("已添加 \(store.attachedImages.count) 张图片")
@@ -1202,6 +1204,8 @@ struct ComposerView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
+                    .frame(maxWidth: contentWidth)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
 
