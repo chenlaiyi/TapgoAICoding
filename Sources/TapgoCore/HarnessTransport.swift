@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// A byte-stream transport to a `codex app-server`.
 ///
@@ -45,6 +46,18 @@ public protocol HarnessTransport: AnyObject {
     /// Write a single newline-delimited JSON frame to the
     /// transport's stdin. Throws if the process is gone.
     func send(frame: JSONValue) throws
+}
+
+public extension HarnessTransport {
+    /// Terminate and asynchronously wait for the OS process to be gone. Both
+    /// concrete transports escalate a stuck SIGTERM to SIGKILL after 2 seconds,
+    /// so this cannot leave two app-server processes overlapping indefinitely.
+    func stopAndWait() async {
+        stop()
+        while isRunning {
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+    }
 }
 
 // MARK: - Local transport
@@ -137,9 +150,18 @@ public final class LocalHarnessTransport: HarnessTransport {
     }
 
     public func stop() {
-        process?.terminate()
-        process = nil
         stdin = nil
+        guard let proc = process, proc.isRunning else {
+            process = nil
+            return
+        }
+        proc.terminate()
+        let pid = proc.processIdentifier
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard self?.process === proc, proc.isRunning else { return }
+            Darwin.kill(pid, SIGKILL)
+        }
     }
 
     public func send(frame: JSONValue) throws {
@@ -411,9 +433,18 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
     }
 
     public func stop() {
-        process?.terminate()
-        process = nil
         stdin = nil
+        guard let proc = process, proc.isRunning else {
+            process = nil
+            return
+        }
+        proc.terminate()
+        let pid = proc.processIdentifier
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard self?.process === proc, proc.isRunning else { return }
+            Darwin.kill(pid, SIGKILL)
+        }
     }
 
     public func send(frame: JSONValue) throws {

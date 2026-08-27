@@ -2,7 +2,7 @@
 # Initialize Tapgo AICoding's isolated Codex home.
 #
 # What this does:
-#   1. Ensures the Codex CLI is installed (Homebrew cask, ≥ 0.149.0).
+#   1. Ensures the Codex CLI is installed (Homebrew cask, ≥ 0.149.1).
 #   2. Sources the MiniMax-M3 bearer token from a single, explicit
 #      source. We deliberately do NOT auto-migrate from old
 #      ~/.codex/ backup files: those keys may be expired/revoked
@@ -32,7 +32,48 @@ CODEX_HOME="${HOME}/Library/Application Support/${APP_NAME}/codex"
 CONFIG_FILE="${CODEX_HOME}/config.toml"
 AUTH_FILE="${CODEX_HOME}/auth.json"
 CATALOG_FILE="${CODEX_HOME}/model-catalogs/tapgo-catalog.json"
-HARNESS_BIN="${HARNESS_BIN:-$(command -v codex 2>/dev/null || echo /opt/homebrew/bin/codex)}"
+MIN_HARNESS_VERSION="0.149.1"
+HARNESS_BIN_OVERRIDE="${HARNESS_BIN:-}"
+
+resolve_harness_bin() {
+  if [[ -n "${HARNESS_BIN_OVERRIDE}" ]]; then
+    printf '%s\n' "${HARNESS_BIN_OVERRIDE}"
+    return
+  fi
+
+  local path_codex=""
+  path_codex="$(command -v codex 2>/dev/null || true)"
+
+  local candidate
+  for candidate in \
+    /opt/homebrew/bin/codex \
+    /usr/local/bin/codex \
+    "${HOME}/.local/bin/codex" \
+    "${path_codex}"; do
+    if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return
+    fi
+  done
+
+  return 1
+}
+
+version_at_least() {
+  local actual="$1"
+  local minimum="$2"
+  local actual_major actual_minor actual_patch
+  local minimum_major minimum_minor minimum_patch
+
+  IFS=. read -r actual_major actual_minor actual_patch <<<"${actual}"
+  IFS=. read -r minimum_major minimum_minor minimum_patch <<<"${minimum}"
+
+  (( actual_major > minimum_major )) && return 0
+  (( actual_major < minimum_major )) && return 1
+  (( actual_minor > minimum_minor )) && return 0
+  (( actual_minor < minimum_minor )) && return 1
+  (( actual_patch >= minimum_patch ))
+}
 
 FROM_FILE=""
 while [[ $# -gt 0 ]]; do
@@ -51,6 +92,8 @@ Sources the MiniMax-M3 bearer key in this order (first hit wins):
 
 If none of those work, the script exits with a clear error and points
 the user at the right env var.
+
+Set HARNESS_BIN=/absolute/path/to/codex to use an explicit Codex CLI.
 USAGE
       exit 0
       ;;
@@ -64,11 +107,27 @@ echo "    ${CODEX_HOME}"
 # 1. Check for the codex harness.
 echo
 echo "==> Checking for Codex CLI"
-if [[ ! -x "${HARNESS_BIN}" ]]; then
-  echo "  ERROR: codex not found at ${HARNESS_BIN}. Install with: brew install --cask codex" >&2
+if ! HARNESS_BIN="$(resolve_harness_bin)"; then
+  echo "  ERROR: codex not found. Install with: brew install --cask codex" >&2
   exit 1
 fi
-echo "  Found: $(${HARNESS_BIN} --version 2>/dev/null || echo unknown)"
+if [[ ! -x "${HARNESS_BIN}" ]]; then
+  echo "  ERROR: codex is not executable at ${HARNESS_BIN}" >&2
+  exit 1
+fi
+
+HARNESS_VERSION_OUTPUT="$("${HARNESS_BIN}" --version 2>/dev/null || true)"
+if [[ ! "${HARNESS_VERSION_OUTPUT}" =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+  echo "  ERROR: unable to determine Codex CLI version from: ${HARNESS_VERSION_OUTPUT:-<empty>}" >&2
+  exit 1
+fi
+HARNESS_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+if ! version_at_least "${HARNESS_VERSION}" "${MIN_HARNESS_VERSION}"; then
+  echo "  ERROR: Codex CLI ${HARNESS_VERSION} is too old; Tapgo AICoding requires >= ${MIN_HARNESS_VERSION}." >&2
+  echo "         Upgrade with: brew upgrade --cask codex" >&2
+  exit 1
+fi
+echo "  Found: ${HARNESS_VERSION_OUTPUT} (${HARNESS_BIN})"
 
 mkdir -p "${CODEX_HOME}/model-catalogs"
 

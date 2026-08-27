@@ -205,7 +205,7 @@ struct AdminLoginView: View {
             Text("Tapgo 管理系统内部工具")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
-            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3") · 微信扫码登录")
+            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0") · 微信扫码登录")
                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
         }

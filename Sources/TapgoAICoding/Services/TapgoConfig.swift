@@ -1,4 +1,5 @@
 import Foundation
+import TapgoCore
 
 /// All paths and on-disk templates for Tapgo AICoding's isolated Codex home.
 /// We never read or write anything under `~/.codex/`; everything lives under
@@ -29,12 +30,14 @@ enum TapgoConfig {
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
-    static let clientInfoVersion = "0.3.3"
+    static let clientInfoVersion = "0.4.0"
 
     /// Token threshold at which the codex harness auto-compacts the transcript
     /// into a summary (replaces the user having to manually start a new
     /// session). Sits below `model_context_window` so compaction happens
     /// before the model hits the wall.
+    // MiniMax-M3 currently exposes a 1M context window. Compact at 80%,
+    // matching the pressure-based strategy used by current agent harnesses.
     static let autoCompactTokenLimit = 800_000
 
     /// User-level persistent memory file, injected as `baseInstructions` into
@@ -50,30 +53,76 @@ enum TapgoConfig {
         return s.isEmpty ? nil : s
     }
 
-    /// Codex-compatible approval policy. Mirrors the harness values
-    /// (`never`, `on-request`, `on-failure`, `untrusted`). Persisted so
+    /// Cross-conversation memory switch (like Codex's memory). When ON, the
+    /// app extracts durable facts from each completed turn into `memory.md`
+    /// and injects it as `baseInstructions` into every new thread so the model
+    /// "remembers" across conversations. Defaults to ON.
+    static let memoryEnabledKey = "tapgo.memoryEnabled"
+    static var memoryEnabled: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: memoryEnabledKey) == nil { return true }
+            return UserDefaults.standard.bool(forKey: memoryEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: memoryEnabledKey) }
+    }
+
+    /// Append a memorized bullet to the user-level `memory.md`. Creates the
+    /// file (and directory) on first use; keeps existing content.
+    static func appendMemory(_ note: String) {
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let existing = (try? String(contentsOf: userMemoryURL, encoding: .utf8)) ?? ""
+        let head = "# 跨会话记忆\n\n"
+        var known = Set(existing.split(whereSeparator: \.isNewline).map {
+            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+        })
+        let candidates = trimmed.split(whereSeparator: \.isNewline)
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.hasPrefix("- ") }
+        var additions: [String] = []
+        for candidate in candidates where additions.count < 3 {
+            if known.insert(candidate).inserted { additions.append(candidate) }
+        }
+        guard !additions.isEmpty else { return }
+        let current = existing.trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefix = current.isEmpty ? head.trimmingCharacters(in: .newlines) : current
+        var body = prefix
+        // Keep the generated memory bounded without deleting or rewriting any
+        // user-authored content that is already present.
+        let maxBytes = 128_000
+        for addition in additions {
+            let next = body + "\n" + addition
+            guard next.utf8.count <= maxBytes else { break }
+            body = next
+        }
+        guard body != prefix else { return }
+        body += "\n"
+        try? FileManager.default.createDirectory(
+            at: userMemoryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? body.write(to: userMemoryURL, atomically: true, encoding: .utf8)
+    }
+
+    /// Codex-compatible approval policy. Mirrors the current app-server
+    /// values (`never`, `on-request`, `untrusted`). Persisted so
     /// the user can toggle interactive approvals from Settings; the app
     /// ships defaulting to `never` to keep the auto-approve behavior.
     enum ApprovalPolicy: String, CaseIterable, Identifiable {
         case never
         case onRequest = "on-request"
-        case onFailure = "on-failure"
         case untrusted
         var id: String { rawValue }
         var displayName: String {
             switch self {
             case .never:      return "永不询问 (自动批准)"
             case .onRequest:  return "询问 (每次请求)"
-            case .onFailure:  return "失败时询问"
-            case .untrusted:  return "仅信任"
+            case .untrusted:  return "仅不受信任操作询问"
             }
         }
         var shortName: String {
             switch self {
             case .never:      return "永不"
             case .onRequest:  return "询问"
-            case .onFailure:  return "失败问"
-            case .untrusted:  return "信任"
+            case .untrusted:  return "风险问"
             }
         }
     }
@@ -112,8 +161,24 @@ enum TapgoConfig {
     static let sandboxKey = Keys.sandbox
 
     static var approvalPolicy: ApprovalPolicy {
-        get { ApprovalPolicy(rawValue: UserDefaults.standard.string(forKey: Keys.approvalPolicy) ?? "") ?? .never }
+        get {
+            let raw = UserDefaults.standard.string(forKey: Keys.approvalPolicy) ?? ""
+            // Codex 0.149+ removed `on-failure`; migrate the legacy intent to
+            // the closest current policy instead of silently auto-approving.
+            if raw == "on-failure" { return .untrusted }
+            return ApprovalPolicy(rawValue: raw) ?? .never
+        }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: Keys.approvalPolicy) }
+    }
+
+    static func migratePersistedSettings() {
+        if UserDefaults.standard.string(forKey: Keys.approvalPolicy) == "on-failure" {
+            UserDefaults.standard.set(ApprovalPolicy.untrusted.rawValue, forKey: Keys.approvalPolicy)
+        }
+        let effort = UserDefaults.standard.string(forKey: reasoningEffortKey) ?? ""
+        if effort != "" && effort != "none" && effort != "high" {
+            UserDefaults.standard.removeObject(forKey: reasoningEffortKey)
+        }
     }
 
     static var sandboxMode: SandboxMode {
@@ -154,17 +219,18 @@ enum TapgoConfig {
         }
     }
 
-    /// Optional reasoning-effort string sent as `effort` to `thread/start`.
+    /// Optional reasoning-effort string sent as `effort` to `turn/start`.
     /// Empty/nil = don't send (keep the model's server default). Options
     /// mirror the catalog's `supported_reasoning_levels` (`none`, `high`).
     static var reasoningEffort: String? {
         get {
             let v = UserDefaults.standard.string(forKey: reasoningEffortKey) ?? ""
-            return v.isEmpty ? nil : v
+            return v == "none" || v == "high" ? v : nil
         }
         set {
             let v = newValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            UserDefaults.standard.set(v.isEmpty ? nil : v, forKey: reasoningEffortKey)
+            let supported = v == "none" || v == "high" ? v : ""
+            UserDefaults.standard.set(supported.isEmpty ? nil : supported, forKey: reasoningEffortKey)
         }
     }
 
@@ -233,6 +299,14 @@ enum TapgoConfig {
         let config = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
         if !config.contains("MiniMax-M3") || !config.contains("[model_providers.minimax]") {
             throw SetupError.missingConfig(configPath.path)
+        }
+
+        let harnessPath = RemoteCodexHomeSync.findHarness()
+        guard !harnessPath.isEmpty else {
+            throw SetupError.harnessNotFound
+        }
+        guard RemoteCodexHomeSync.supportedHarnessVersion(at: harnessPath) != nil else {
+            throw SetupError.harnessVersionUnsupported(harnessPath)
         }
 
         // Catalog must list MiniMax-M3 as the only model.
@@ -416,6 +490,7 @@ enum SetupError: LocalizedError {
     case missingAuth(String)
     case missingConfig(String)
     case harnessNotFound
+    case harnessVersionUnsupported(String)
 
     var errorDescription: String? {
         switch self {
@@ -424,7 +499,9 @@ enum SetupError: LocalizedError {
         case .missingConfig(let path):
             return "缺少独立 config.toml: \(path)。请先运行 scripts/init-tapgo.sh。"
         case .harnessNotFound:
-            return "找不到 `codex` CLI。请先通过 Homebrew 安装: brew install --cask codex(0.149.0 或更高)。"
+            return "找不到 `codex` CLI。请先通过 Homebrew 安装: brew install --cask codex（需要 0.149.1 或更高）。"
+        case .harnessVersionUnsupported(let path):
+            return "Codex CLI 版本过旧或无法识别：\(path)。请升级到 \(RemoteCodexHomeSync.minimumHarnessVersion) 或更高。"
         }
     }
 }

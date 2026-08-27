@@ -39,6 +39,35 @@ func runThreadStoreSaveLoad(_ t: TestRunner) {
     t.expectEqual(store2.threads.first?.projectId, "p1", "reload: projectId round-trips")
     t.expectEqual(store2.threads.first?.cwd, "/Users/alice/CPA", "reload: cwd round-trips")
     t.expectEqual(store2.threads.first?.harnessThreadId, "01abc", "reload: harnessThreadId round-trips")
+
+    var resumeCandidate = th
+    resumeCandidate.turns = [Turn(
+        id: "done", userInput: "hello", status: .completed,
+        startedAt: Date(), completedAt: Date()
+    )]
+    t.expectEqual(
+        resumeCandidate.resumableHarnessThreadId,
+        "01abc",
+        "resume policy: completed turn reuses harness thread"
+    )
+    resumeCandidate.turns[0].status = .failed
+    t.expectEqual(
+        resumeCandidate.resumableHarnessThreadId,
+        "01abc",
+        "resume policy: failed turn reuses harness thread"
+    )
+    resumeCandidate.turns[0].status = .interrupted
+    t.expectNil(
+        resumeCandidate.resumableHarnessThreadId,
+        "resume policy: interrupted turn starts safely"
+    )
+    resumeCandidate.turns.append(Turn(
+        id: "new", userInput: "next", status: .running, startedAt: Date()
+    ))
+    t.expectNil(
+        resumeCandidate.resumableHarnessThreadId,
+        "resume policy: must be captured before new running turn"
+    )
 }
 
 @MainActor

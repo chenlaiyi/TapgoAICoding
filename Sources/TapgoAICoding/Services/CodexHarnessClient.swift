@@ -44,6 +44,9 @@ final class CodexHarnessClient {
     private(set) var activeThreadId: String?
     private var activeTurnId: String?
     private var turnContinuation: CheckedContinuation<RunState, Never>?
+    /// Set as soon as the user presses stop, including during initialize /
+    /// thread start when no turn id exists yet.
+    private var cancelRequested = false
 
     init(transport: HarnessTransport) {
         self.transport = transport
@@ -75,13 +78,24 @@ final class CodexHarnessClient {
         cwd: String?,
         images: [URL],
         baseInstructions: String? = nil,
+        resumeBaseInstructions: String? = nil,
         onEvent: @escaping @MainActor (ExecEvent) -> Void
     ) async -> RunState {
         if case .running = state {
             return .failed("已有任务在执行")
         }
+        cancelRequested = false
+        defer { cancelRequested = false }
         do {
             try transport.start()
+
+            // Attach the event handler *before* the handshake / thread call so
+            // we never drop the harness's `thread/started` notification (which
+            // carries the thread id we must persist as `harnessThreadId` for
+            // `thread/resume` on the next turn). The harness may emit it as soon
+            // as `thread/start`/`thread/resume` is acked, before the app-side
+            // `eventHandler` assignment below was previously reached.
+            eventHandler = onEvent
 
             // The codex app-server requires the JSON-RPC `initialize`
             // handshake before any other request — otherwise it replies
@@ -95,6 +109,7 @@ final class CodexHarnessClient {
                     "version": .string(TapgoConfig.clientInfoVersion),
                 ]),
             ])
+            try throwIfCancelled()
             try? transport.send(frame: .object([
                 "method": .string("initialized"),
                 "params": .object([:]),
@@ -103,40 +118,37 @@ final class CodexHarnessClient {
             // `initialized` notification before thread/start (mirrors the
             // reference integration test).
             try? await Task.sleep(nanoseconds: 400_000_000)
+            try throwIfCancelled()
 
             let threadId: String
             if let resumeThreadId {
-                threadId = resumeThreadId
-                _ = try await request(method: "thread/resume", params: [
-                    "threadId": .string(threadId),
-                ])
+                do {
+                    var params = threadRuntimeParams(
+                        cwd: cwd,
+                        baseInstructions: resumeBaseInstructions,
+                        includeServiceName: false,
+                        clearBaseInstructionsWhenNil: true
+                    )
+                    params["threadId"] = .string(resumeThreadId)
+                    let response = try await request(method: "thread/resume", params: params)
+                    threadId = response.objectValue?["thread"]?.objectValue?["id"]?.stringValue
+                        ?? resumeThreadId
+                } catch let error as HarnessError where error.isMissingRollout {
+                    // App-server may prune an old rollout while the native app
+                    // still has its local transcript. Start a replacement
+                    // thread with the bounded recovery baseInstructions built
+                    // by SessionStore instead of dropping the user's context.
+                    TapgoConfig.log("[harness] rollout unavailable; recovering with thread/start")
+                    threadId = try await startThread(cwd: cwd, baseInstructions: baseInstructions)
+                }
             } else {
-                var startParams: [String: JSONValue] = [
-                    "model": .string(TapgoConfig.modelName),
-                    "modelProvider": .string(TapgoConfig.modelProvider),
-                    "approvalPolicy": .string(TapgoConfig.approvalPolicy.rawValue),
-                    "sandbox": .string(TapgoConfig.sandboxMode.rawValue),
-                    "serviceName": .string(TapgoConfig.serviceName),
-                ]
-                if let cwd, !cwd.isEmpty {
-                    startParams["cwd"] = .string(cwd)
-                }
-                if let effort = TapgoConfig.reasoningEffort {
-                    startParams["effort"] = .string(effort)
-                }
-                if let baseInstructions, !baseInstructions.isEmpty {
-                    startParams["baseInstructions"] = .string(baseInstructions)
-                }
-                let resp = try await request(method: "thread/start", params: startParams)
-                guard let id = resp.objectValue?["thread"]?.objectValue?["id"]?.stringValue else {
-                    throw HarnessError.invalidResponse("thread/start 未返回 thread.id")
-                }
-                threadId = id
+                threadId = try await startThread(cwd: cwd, baseInstructions: baseInstructions)
             }
             activeThreadId = threadId
             activeThreadIdSnapshot = threadId
             eventHandler = onEvent
             state = .running(threadId: threadId)
+            try throwIfCancelled()
 
             // Build user input — text first, then any local images.
             var input: [JSONValue] = []
@@ -155,66 +167,135 @@ final class CodexHarnessClient {
             if input.isEmpty {
                 throw HarnessError.invalidResponse("没有可发送的输入内容")
             }
-            let resp = try await request(method: "turn/start", params: [
+            var turnParams: [String: JSONValue] = [
                 "threadId": .string(threadId),
                 "input": .array(input),
-            ])
+            ]
+            if let effort = TapgoConfig.reasoningEffort {
+                turnParams["effort"] = .string(effort)
+            }
+            let resp = try await request(method: "turn/start", params: turnParams)
             activeTurnId = resp.objectValue?["turn"]?.objectValue?["id"]?.stringValue
+            try throwIfCancelled()
 
             return await withCheckedContinuation { (cont: CheckedContinuation<RunState, Never>) in
-                turnContinuation = cont
+                // app-server may emit turn/completed in the same stdout chunk
+                // immediately after the turn/start response. In that case
+                // finish() ran before this continuation existed; return the
+                // already-terminal state instead of waiting forever.
+                if case .running = state {
+                    turnContinuation = cont
+                } else {
+                    cont.resume(returning: state)
+                }
             }
         } catch {
+            if cancelRequested || (error as? HarnessError)?.isCancellation == true {
+                eventHandler?(.turnCompleted(status: "interrupted", errorMessage: nil, usage: nil))
+                state = .finished
+                activeTurnId = nil
+                eventHandler = nil
+                return state
+            }
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             state = .failed(message)
+            activeTurnId = nil
+            eventHandler = nil
             return state
         }
     }
 
     /// Cancel the active turn. Sends `turn/interrupt` to the harness.
     func cancel() {
-        guard let threadId = activeThreadId, let turnId = activeTurnId else { return }
+        guard !cancelRequested else { return }
+        cancelRequested = true
+        guard let threadId = activeThreadId, let turnId = activeTurnId else {
+            abortHandshakeForCancellation()
+            return
+        }
         Task {
-            _ = try? await request(method: "turn/interrupt", params: [
-                "threadId": .string(threadId),
-                "turnId": .string(turnId),
-            ])
+            do {
+                _ = try await request(method: "turn/interrupt", params: [
+                    "threadId": .string(threadId),
+                    "turnId": .string(turnId),
+                ])
+            } catch {
+                // If interrupt itself cannot reach app-server, fail closed and
+                // terminate the transport instead of leaving a hidden turn live.
+                transport.stop()
+                if case .running = state {
+                    eventHandler?(.turnCompleted(status: "interrupted", errorMessage: nil, usage: nil))
+                    finish(.finished)
+                }
+            }
         }
     }
 
-    /// Resolve a pending approval. Sends a fire-and-forget notification
-    /// to the harness (no response is expected). `decision` mirrors the
-    /// harness's `approve` / `decline` values.
-    func respondToApproval(_ request: ApprovalRequest, approve: Bool) {
-        let kind: String
-        switch request.kind {
-        case .commandExecution: kind = "commandExecution"
-        case .fileChange:       kind = "fileChange"
-        case .toolCall:         kind = "toolCall"
+    /// Resolve a pending approval. Current app-server versions send approval
+    /// as a server-initiated JSON-RPC request, so we must echo the original
+    /// top-level id and use `accept` / `decline`.
+    @discardableResult
+    func respondToApproval(_ request: ApprovalRequest, approve: Bool) -> Bool {
+        guard let frame = request.rpcResponseFrame(approve: approve) else {
+            TapgoConfig.log("[harness] rejected approval without JSON-RPC request id: \(request.id)")
+            return false
         }
-        let method = "item/\(kind)/requestApproval/response"
-        let frame = JSONValue.object([
-            "method": .string(method),
-            "params": .object([
-                "id": .string(request.id),
-                "request_id": .string(request.id),
-                "decision": .string(approve ? "approve" : "decline"),
-            ]),
-        ])
         do {
             try transport.send(frame: frame)
+            return true
         } catch {
-            TapgoConfig.log("[harness] respondToApproval failed: \(error.localizedDescription)")
+            TapgoConfig.log("[harness] approval response failed: \(error.localizedDescription)")
+            return false
         }
     }
 
-    /// Tear down the underlying transport. Call before quit.
-    func shutdown() {
-        transport.stop()
+    /// Tear down the underlying transport and wait for the subprocess to exit
+    /// before a queued turn starts another app-server.
+    func shutdownAndWait() async {
+        await transport.stopAndWait()
         state = .idle
     }
 
     // MARK: - JSON-RPC transport
+
+    private func startThread(cwd: String?, baseInstructions: String?) async throws -> String {
+        let params = threadRuntimeParams(
+            cwd: cwd,
+            baseInstructions: baseInstructions,
+            includeServiceName: true,
+            clearBaseInstructionsWhenNil: false
+        )
+        let response = try await request(method: "thread/start", params: params)
+        guard let id = response.objectValue?["thread"]?.objectValue?["id"]?.stringValue else {
+            throw HarnessError.invalidResponse("thread/start 未返回 thread.id")
+        }
+        return id
+    }
+
+    /// Runtime policy is re-applied on resume so changing the UI from full
+    /// access to read-only (or vice versa) takes effect on the existing
+    /// thread. `serviceName` is accepted only by thread/start.
+    private func threadRuntimeParams(
+        cwd: String?,
+        baseInstructions: String?,
+        includeServiceName: Bool,
+        clearBaseInstructionsWhenNil: Bool
+    ) -> [String: JSONValue] {
+        var params: [String: JSONValue] = [
+            "model": .string(TapgoConfig.modelName),
+            "modelProvider": .string(TapgoConfig.modelProvider),
+            "approvalPolicy": .string(TapgoConfig.approvalPolicy.rawValue),
+            "sandbox": .string(TapgoConfig.sandboxMode.rawValue),
+        ]
+        if includeServiceName { params["serviceName"] = .string(TapgoConfig.serviceName) }
+        if let cwd, !cwd.isEmpty { params["cwd"] = .string(cwd) }
+        if let baseInstructions, !baseInstructions.isEmpty {
+            params["baseInstructions"] = .string(baseInstructions)
+        } else if clearBaseInstructionsWhenNil {
+            params["baseInstructions"] = .null
+        }
+        return params
+    }
 
     private func request(method: String, params: [String: JSONValue]) async throws -> JSONValue {
         let id = nextRequestId
@@ -227,6 +308,11 @@ final class CodexHarnessClient {
                 case .failure(let error):
                     continuation.resume(throwing: error)
                 }
+            }
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                guard let callback = self?.pending.removeValue(forKey: id) else { return }
+                callback(.failure(HarnessError.timeout(method)))
             }
             do {
                 try transport.send(frame: .object([
@@ -241,9 +327,34 @@ final class CodexHarnessClient {
         }
     }
 
+    private func throwIfCancelled() throws {
+        if cancelRequested { throw HarnessError.cancelled }
+    }
+
+    private func abortHandshakeForCancellation() {
+        let callbacks = Array(pending.values)
+        pending.removeAll()
+        for callback in callbacks {
+            callback(.failure(HarnessError.cancelled))
+        }
+        transport.stop()
+    }
+
     private func handleFrame(_ value: JSONValue) {
         guard let object = value.objectValue else { return }
         TapgoConfig.log("← \(value.toJSONString().prefix(800))")
+        // A server request also has a top-level `id`. Route method-bearing
+        // frames before client responses so an approval id can never collide
+        // with one of our pending request ids.
+        if let method = object["method"]?.stringValue {
+            let params = object["params"]?.objectValue ?? [:]
+            handleNotification(
+                method: method,
+                params: params,
+                rpcRequestId: object["id"]
+            )
+            return
+        }
         if let id = object["id"]?.intOrBoolAsInt, let cont = pending.removeValue(forKey: id) {
             if let error = object["error"]?.objectValue {
                 let message = error["message"]?.stringValue ?? "未知错误"
@@ -254,13 +365,13 @@ final class CodexHarnessClient {
             }
             return
         }
-        guard let method = object["method"]?.stringValue,
-              let params = object["params"]?.objectValue
-        else { return }
-        handleNotification(method: method, params: params)
     }
 
-    private func handleNotification(method: String, params: [String: JSONValue]) {
+    private func handleNotification(
+        method: String,
+        params: [String: JSONValue],
+        rpcRequestId: JSONValue?
+    ) {
         if method == "turn/completed" {
             let turn = params["turn"]?.objectValue ?? [:]
             let status = turn["status"]?.stringValue ?? "completed"
@@ -287,19 +398,38 @@ final class CodexHarnessClient {
             }
             return
         }
-        if let event = ExecEventParser.parse(method: method, params: params) {
+        if let event = ExecEventParser.parse(
+            method: method,
+            params: params,
+            rpcRequestId: rpcRequestId
+        ) {
             eventHandler?(event)
+        } else if let rpcRequestId {
+            // Fail closed: an unknown server request must not hang the active
+            // turn indefinitely or be treated as implicitly approved.
+            try? transport.send(frame: .object([
+                "id": rpcRequestId,
+                "error": .object([
+                    "code": .int(-32601),
+                    "message": .string("Tapgo AICoding 不支持服务端请求：\(method)"),
+                ]),
+            ]))
         }
     }
 
     private func serverStopped(code: Int32) {
-        let pendingError = HarnessError.processExit(Int(code))
+        let pendingError: HarnessError = cancelRequested
+            ? .cancelled
+            : .processExit(Int(code))
         let pendingContinuations = pending.values
         pending.removeAll()
         for cont in pendingContinuations {
             cont(.failure(pendingError))
         }
-        if case .running = state {
+        if cancelRequested, case .running = state {
+            eventHandler?(.turnCompleted(status: "interrupted", errorMessage: nil, usage: nil))
+            finish(.finished)
+        } else if case .running = state {
             finish(.failed("Harness 进程退出 (code \(code))"))
         } else {
             state = .idle
@@ -320,12 +450,28 @@ enum HarnessError: LocalizedError {
     case invalidResponse(String)
     case rpc(code: Int, message: String)
     case processExit(Int)
+    case timeout(String)
+    case cancelled
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse(let message): return message
         case .rpc(_, let message): return "Harness RPC 错误: \(message)"
         case .processExit(let code): return "Harness 进程意外退出 (\(code))"
+        case .timeout(let method): return "Harness RPC 超时：\(method)"
+        case .cancelled: return "任务已取消"
         }
+    }
+
+    var isMissingRollout: Bool {
+        guard case .rpc(_, let message) = self else { return false }
+        let normalized = message.lowercased()
+        return normalized.contains("no rollout found")
+            || (normalized.contains("thread") && normalized.contains("not found"))
+    }
+
+    var isCancellation: Bool {
+        if case .cancelled = self { return true }
+        return false
     }
 }

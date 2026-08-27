@@ -22,6 +22,7 @@ struct SettingsView: View {
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
+    @AppStorage(TapgoConfig.memoryEnabledKey) private var memoryEnabled = true
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -318,10 +319,18 @@ struct SettingsView: View {
                 Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
                     Text("默认 (模型定)").tag("")
                     Text("无 (none)").tag("none")
-                    Text("低 (low)").tag("low")
-                    Text("中 (medium)").tag("medium")
                     Text("高 (high)").tag("high")
                 }
+                Toggle(isOn: $memoryEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("跨会话记忆")
+                            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                        Text("每轮完成后会额外调用一次模型，提炼最多 3 条要点写入 memory.md；关闭后不再写入或注入。")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
                 TextField("Endpoint (Base URL)", text: $baseURL)
                     .textFieldStyle(.roundedBorder)
                     .disableAutocorrection(true)
@@ -448,7 +457,7 @@ struct SettingsView: View {
     @ViewBuilder
     private var aboutTab: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3")")
+            Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0")")
                 .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 .textSelection(.enabled)
             Text("固定模型: \(TapgoConfig.modelName)")
@@ -499,7 +508,7 @@ struct SettingsView: View {
     }
 
     private func copyDiagnostics() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.3.3"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0"
         let text = [
             "Tapgo AICoding \(version)",
             "模型: \(TapgoConfig.modelName)",

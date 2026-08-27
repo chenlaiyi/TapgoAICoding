@@ -137,6 +137,18 @@ public struct Thread: Identifiable, Hashable, Codable {
         )
     }
 
+    /// Harness history can be resumed only after the previous local turn
+    /// reached a terminal state known to be safe. Call this before appending
+    /// the next `.running` turn; afterwards `turns.last` is the new turn and
+    /// can no longer describe the prior run.
+    public var resumableHarnessThreadId: String? {
+        guard let harnessThreadId,
+              let lastStatus = turns.last?.status,
+              lastStatus == .completed || lastStatus == .failed
+        else { return nil }
+        return harnessThreadId
+    }
+
     /// Sum of token usage across all turns that reported usage.
     public var usageTotal: Int {
         turns.compactMap { $0.usage?.total }.reduce(0, +)

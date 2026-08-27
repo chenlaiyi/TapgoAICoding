@@ -66,3 +66,19 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 新增 Sources/TapgoCore/AppFont.swift:AppFontScale 枚举(small 0.85×/medium 1.00×/large 1.20×) + EnvironmentKey + AppFont.scaled(_:multiplier:)/monoScaled(size:multiplier:) 统一字号 token,所有视图 .font(.caption/.body/.title3 等) 统一改为 AppFont.scaled(...),SettingsView 新增'外观' tab(分段 picker + 实时预览),ChatView ⋮ 菜单字号切换继续走同一 UserDefaults key(tapgo.fontScale)→App 根级通过 @Environment(\.tapgoFontScale) 注入;彻底避开 dynamicTypeSize(macOS 失效)和 scaleEffect(撕裂布局)。22 个 AppFontScale 单测,总测试 357→379。修一个老 bug:ChatView StreamingIndicator struct 缺'{'导致 Swift 解析异常。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.4.0 — Harness 协议与上下文恢复升级
+**Date**: 2026-08-27
+**Commit**: _(see `git log -1 v0.4.0`)_
+**Tag**: v0.4.0
+**Test status**: — 420 passed, 0 failed —
+**Changed**:
+- 修复同一聊天永远不执行 `thread/resume` 的上下文断链，并在 rollout 被清理时用最近 8 轮、最多 24k 字符的本地摘录恢复。
+- 对齐 Codex 0.149/0.150 JSON-RPC server-request 审批：保留顶层 request id，回复 `accept` / `decline`，未知请求失败关闭。
+- 接入 `item/commandExecution/outputDelta` 与 `aggregatedOutput` 回填，真实保留 `interrupted` 状态，并为 RPC 增加 30 秒超时与 turn 后进程回收。
+- 借鉴 DeepSeek Harness `dsh-v0.1.1-rc.2` 的 80% 压缩压力阈值、失败关闭和恢复原则；不嵌入仍处 Developer Preview 的 Node/Python Runtime。
+- 跨会话记忆改为串行 actor 写入，校验 HTTP 状态，仅接受最多 3 条短 Markdown 要点并去重；关闭开关后不再写入或注入。
+- 初始化脚本统一 harness 选择并强制最低 Codex 0.149.1；纳入此前漏提交的 AppFont/搜索测试文件，恢复干净 clone 可测试性。
+**Why**: 修复原生 App 的实际上下文失忆、审批失效、终端无实时输出和旧 CLI 被误选等主链问题，同时吸收两套最新 Harness 中已经成熟且适合 Swift 客户端的设计。
+**Next**: 接入 `thread/read`/`thread/compact/start` 可见状态、文件 patch 增量与 FakeTransport 两轮端到端测试。

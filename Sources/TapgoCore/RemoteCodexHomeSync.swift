@@ -21,6 +21,7 @@ import Foundation
 public enum RemoteCodexHomeSync {
 
     public static let defaultRemoteHome = "~/.tapgo-aicoding/remote"
+    public static let minimumHarnessVersion = "0.149.1"
 
     /// Locate the `ssh` binary on this Mac. Falls back to
     /// `/usr/bin/env` (which the user can extend via PATH) if
@@ -44,14 +45,76 @@ public enum RemoteCodexHomeSync {
 
     /// Locate the local `codex` binary. Returns "" if not found.
     public static func findHarness() -> String {
+        if let override = ProcessInfo.processInfo.environment["HARNESS_BIN"],
+           FileManager.default.isExecutableFile(atPath: override) {
+            return override
+        }
         for c in [
-            "\(NSHomeDirectory())/.local/bin/codex",
             "/opt/homebrew/bin/codex",
             "/usr/local/bin/codex",
+            "\(NSHomeDirectory())/.local/bin/codex",
         ] {
             if FileManager.default.isExecutableFile(atPath: c) { return c }
         }
+        if let path = ProcessInfo.processInfo.environment["PATH"] {
+            for directory in path.split(separator: ":").map(String.init) where !directory.isEmpty {
+                let candidate = URL(fileURLWithPath: directory)
+                    .appendingPathComponent("codex").path
+                if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+            }
+        }
         return ""
+    }
+
+    /// Parse the first semantic x.y.z triple from `codex --version` output.
+    /// Kept public and side-effect free so setup compatibility is testable.
+    public static func parseHarnessVersion(_ output: String) -> [Int]? {
+        guard let regex = try? NSRegularExpression(pattern: #"([0-9]+)\.([0-9]+)\.([0-9]+)"#),
+              let match = regex.firstMatch(
+                in: output,
+                range: NSRange(output.startIndex..., in: output)
+              )
+        else { return nil }
+        return (1...3).compactMap { index -> Int? in
+            guard let range = Range(match.range(at: index), in: output) else { return nil }
+            return Int(output[range])
+        }
+    }
+
+    public static func isSupportedHarnessVersion(_ version: [Int]) -> Bool {
+        guard version.count == 3,
+              let minimum = parseHarnessVersion(minimumHarnessVersion)
+        else { return false }
+        for index in 0..<3 {
+            if version[index] != minimum[index] {
+                return version[index] > minimum[index]
+            }
+        }
+        return true
+    }
+
+    /// Read and validate the actual binary selected by `findHarness()`.
+    /// Returns the normalized x.y.z string, or nil if the process/version is
+    /// invalid or below the supported protocol floor.
+    public static func supportedHarnessVersion(at path: String) -> String? {
+        guard !path.isEmpty else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = ["--version"]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0,
+              let text = String(
+                data: output.fileHandleForReading.readDataToEndOfFile(),
+                encoding: .utf8
+              ),
+              let version = parseHarnessVersion(text),
+              isSupportedHarnessVersion(version)
+        else { return nil }
+        return version.map(String.init).joined(separator: ".")
     }
 
     /// Render a clean `config.toml` for the remote CODEX_HOME.
@@ -309,6 +372,24 @@ public enum RemoteCodexHomeSync {
         // we pass it through `printf %q` to make it shell-safe.
         return #"""
         set -e
+        VERSION_OUTPUT=$(\#(codexPathOnRemote) --version 2>/dev/null) || {
+          echo "tapgo:unsupported-version actual=unavailable required=\#(minimumHarnessVersion)" 1>&2
+          exit 4
+        }
+        VERSION=$(printf '%s\n' "$VERSION_OUTPUT" | sed -nE 's/[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n 1)
+        VERSION_MAJOR=${VERSION%%.*}
+        VERSION_REST=${VERSION#*.}
+        VERSION_MINOR=${VERSION_REST%%.*}
+        VERSION_PATCH=${VERSION_REST#*.}
+        if [ -z "$VERSION" ] || ! {
+          [ "$VERSION_MAJOR" -gt 0 ] ||
+          [ "$VERSION_MINOR" -gt 149 ] ||
+          { [ "$VERSION_MINOR" -eq 149 ] && [ "$VERSION_PATCH" -ge 1 ]; }
+        }; then
+          echo "tapgo:unsupported-version actual=${VERSION:-unknown} required=\#(minimumHarnessVersion)" 1>&2
+          exit 4
+        fi
+        echo "tapgo:version=$VERSION" 1>&2
         IFS= read -r KEY || true
         if [ -z "$KEY" ]; then
           echo "tapgo:received=false reason=no-stdin-line" 1>&2

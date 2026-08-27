@@ -6,10 +6,56 @@ import Foundation
 /// `item/fileChange/requestApproval`.
 public struct ApprovalRequest: Identifiable, Hashable, Codable {
     public let id: String
+    /// Top-level JSON-RPC id supplied by current Codex app-server approval
+    /// requests. The client must echo this exact value in its response frame.
+    /// Nil is retained for compatibility with legacy notification-shaped
+    /// approvals, which used an id inside `params` instead.
+    public var rpcRequestId: JSONValue?
     public var kind: Kind
     public var reason: String
     public var payload: Payload
     public var decision: Decision?
+
+    public init(
+        id: String,
+        rpcRequestId: JSONValue? = nil,
+        kind: Kind,
+        reason: String,
+        payload: Payload,
+        decision: Decision? = nil
+    ) {
+        self.id = id
+        self.rpcRequestId = rpcRequestId
+        self.kind = kind
+        self.reason = reason
+        self.payload = payload
+        self.decision = decision
+    }
+
+    /// Current app-server approvals are server-initiated JSON-RPC requests,
+    /// not notifications. Return the response frame that unblocks the server.
+    public func rpcResponseFrame(approve: Bool) -> JSONValue? {
+        guard let rpcRequestId else { return nil }
+        return .object([
+            "id": rpcRequestId,
+            "result": .object([
+                "decision": .string(approve ? "accept" : "decline"),
+            ]),
+        ])
+    }
+
+    /// Make the display/persistence id unique across app-server processes.
+    /// The protocol-level rpcRequestId is intentionally preserved verbatim.
+    public func scoped(forTurn turnId: String) -> ApprovalRequest {
+        ApprovalRequest(
+            id: "\(turnId):\(id)",
+            rpcRequestId: rpcRequestId,
+            kind: kind,
+            reason: reason,
+            payload: payload,
+            decision: decision
+        )
+    }
 
     public enum Kind: String, Hashable, Codable {
         case commandExecution
@@ -21,6 +67,7 @@ public struct ApprovalRequest: Identifiable, Hashable, Codable {
         case approved
         case denied
         case approvedForSession
+        case cancelled
     }
 
     /// One of these is set depending on `kind`. We keep the data

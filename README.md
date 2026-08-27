@@ -1,6 +1,6 @@
 # Tapgo AICoding
 
-A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex), hard-pinned to **MiniMax-M3** as the only available model. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks.
+A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex), hard-pinned to **MiniMax-M3** as the only available model. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.4.0 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -33,7 +33,9 @@ A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.c
 
 - **Codex Harness is the runtime** — agent loop, sandboxing, approvals, trajectory logging. We don't reinvent it; we just give it a Mac-native UI.
 - **OpenAI-compatible API** — the harness's `model_provider` plugin accepts `base_url` + bearer token. Pin the URL to `api.minimaxi.com` and the harness itself doesn't change.
-- **App-server mode** — unlike the legacy `codex exec` mode, the persistent JSON-RPC service gives us proper streaming deltas, per-item lifecycle, and tool-call notifications.
+- **App-server mode** — unlike the legacy `codex exec` mode, the persistent JSON-RPC service gives us proper streaming deltas, per-item lifecycle, server-request approvals and tool-call notifications.
+- **Recoverable context** — completed/failed turns resume the same harness thread; a pruned rollout falls back to a bounded local transcript instead of silently forgetting the conversation.
+- **Fail-closed approvals** — current JSON-RPC approval request IDs are preserved and answered with `accept`/`decline`; unknown server requests are rejected rather than implicitly approved or left hanging.
 - **Swift/SwiftUI** — true Mac app, no Electron, ~5 MB binary, fast startup.
 
 ## Hard isolation from the official Codex install
@@ -54,7 +56,7 @@ Logs go to `~/Library/Logs/Tapgo AICoding/harness.log`.
 
 The official `~/.codex/config.toml` and `~/.codex/auth.json` are not touched. The official Codex desktop app and CLI keep working exactly as they did before.
 
-The **only** time `init-tapgo.sh` reads the official Codex home is to pull the MiniMax-M3 bearer token from a specific backup file (see migration below). That backup is read-only.
+`init-tapgo.sh` never reads the official Codex home or its backups；凭据只来自用户显式提供的文件、环境变量或隐藏交互输入。
 
 ## Project layout
 
@@ -92,12 +94,10 @@ cd ~/TapgoAICoding
 
 The script will:
 
-1. Check that the `codex` CLI is installed (Homebrew cask, ≥ 0.149.0).
-2. **Try to migrate** the MiniMax-M3 bearer token from
-   `~/.codex/config.toml.bak.pre-official-restore.20260824-202414` if it
-   exists. The backup is **read only** — never modified.
-3. If no migration source is found, prompt for the key. The key is
-   stored `0600` in `~/Library/Application Support/Tapgo AICoding/codex/auth.json`.
+1. Check that the `codex` CLI is installed (Homebrew cask, ≥ 0.149.1). Resolution order is explicit `HARNESS_BIN`, Homebrew paths, `~/.local/bin/codex`, then `PATH`.
+2. Read the MiniMax-M3 bearer token only from an explicit `--from-file` path, `MINIMAX_API_KEY` / `TAPGO_API_KEY`, or a hidden interactive prompt. The script never probes `~/.codex/` backups.
+3. Store the selected key with mode `0600` in
+   `~/Library/Application Support/Tapgo AICoding/codex/auth.json`.
 4. Write the model catalog, `config.toml`, and verify by launching the
    harness with `CODEX_HOME=…` and confirming the `initialize` response
    reports the isolated `codexHome`.
@@ -138,7 +138,7 @@ app in Finder → Open → Open. After that, double-click works normally.
 | Assistant markdown-lite | fenced code blocks (copyable) + inline code + bold + strikethrough + headings + bullet/numbered/task lists + auto-linked URLs + blockquotes + horizontal rules + pipe tables + images (`![alt](url)`), via `MarkdownLite` → `MarkdownMessageView` |
 | Copy assistant message | `CopyIconButton` in `MessageRow` (copies the full reply to the pasteboard) |
 | Export conversation as Markdown | header `square.and.arrow.up` button → `TurnMarkdown.render` (all turns joined) |
-| **MiniMax-M3 only** — no model picker, no reasoning-effort picker | `TapgoConfig.modelName` / `SessionStore.modelName` |
+| **MiniMax-M3 only** — no model picker; reasoning uses 默认/关闭/高 | `TapgoConfig.modelName` + `TapgoConfig.reasoningEffort`; `effort` is sent only on `turn/start` |
 | Multimodal input (text + image) | `ComposerView` + `CodexHarnessClient.run(images:)` |
 | Inline tool calls | `MessageRow` `.toolCall` case |
 | Embedded terminal output | `CommandExecutionView` |
@@ -156,7 +156,7 @@ app in Finder → Open → Open. After that, double-click works normally.
 
 ```bash
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
-#   379/379 — must stay green (skipping SSH-integration; they need a
+#   420/420 — must stay green (skipping SSH-integration; they need a
 #   real remote codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3)
 
 # To run the FULL suite including SSH-integration (will fail without
@@ -200,14 +200,11 @@ suite covers:
 - **No model picker.** Only `MiniMax-M3` is exposed in the model
   catalog. Adding another model would require editing
   `TapgoConfig.modelName` + `tapgo-catalog.json`.
-- **No reasoning-effort picker.** The harness advertises two
-  `supported_reasoning_levels` for catalog completeness, but the app
-  never sends `effort` to `turn/start`. MiniMax-M3 uses its own
-  server-side default.
+- **No arbitrary reasoning levels.** 设置仅提供服务端默认、`none`、`high`；
+  非默认值只在 `turn/start` 发送，旧的 `low` / `medium` 持久值会自动迁移。
 - **No edits to `~/.codex/`.** The official Codex install is treated
-  as an unrelated program. The only exception is reading
-  `config.toml.bak.pre-official-restore.20260824-202414` once during
-  `init-tapgo.sh` to migrate the MiniMax key.
+  as an unrelated program；初始化只接受显式 `--from-file`、环境变量或隐藏交互输入，
+  不扫描任何官方配置或历史备份。
 - **No app-server token store.** Tokens live in
   `~/Library/Application Support/Tapgo AICoding/codex/auth.json`
   (0600), not in Keychain — keep parity with how `codex` itself stores

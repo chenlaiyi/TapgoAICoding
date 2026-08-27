@@ -84,6 +84,7 @@ enum L10n {
     static let approvalDenied = "已拒绝"
     static let approvalApprovedForSession = "本次会话已批准"
     static let approvalAutoApproved = "已自动通过"
+    static let approvalCancelled = "已取消"
     static let approvalPolicyTitle = "批准策略"
     static let sandboxModeTitle = "沙箱模式"
     static let reasoningEffortTitle = "思考强度"

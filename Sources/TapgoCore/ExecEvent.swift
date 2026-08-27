@@ -21,6 +21,11 @@ public enum ExecEvent: Hashable {
     /// meter live instead of waiting for the turn to complete.
     case tokenUsageUpdated(usage: TokenUsage)
 
+    /// Stable app-server snapshots. Both replace the prior snapshot for the
+    /// same turn rather than representing append-only deltas.
+    case planUpdated(turnId: String, explanation: String?, steps: [PlanStep])
+    case turnDiffUpdated(turnId: String, diff: String)
+
     case agentMessageDelta(id: String, delta: String)
     case agentMessage(id: String, text: String)
 
@@ -33,7 +38,7 @@ public enum ExecEvent: Hashable {
 
     case commandStarted(id: String, command: String, cwd: String?)
     case commandOutput(id: String, output: String)
-    case commandCompleted(id: String, exitCode: Int32?, status: String)
+    case commandCompleted(id: String, exitCode: Int32?, status: String, aggregatedOutput: String?)
 
     case fileChange(id: String, changes: [FileChangeOp])
 
@@ -41,6 +46,7 @@ public enum ExecEvent: Hashable {
     case mcpToolCallCompleted(id: String, status: String, error: String?, resultSummary: String?)
 
     case webSearch(id: String, query: String?)
+    case contextCompaction(id: String, status: String)
 
     /// The harness wants the user to approve a command, file change, or
     /// tool call before it proceeds. `ApprovalRow` renders this inline
@@ -53,12 +59,26 @@ public enum ExecEvent: Hashable {
         public let path: String
         public let kind: String   // "add" | "delete" | "update"
     }
+
+    public struct PlanStep: Hashable {
+        public let step: String
+        public let status: String
+
+        public init(step: String, status: String) {
+            self.step = step
+            self.status = status
+        }
+    }
 }
 
 /// Map a single app-server notification into an ExecEvent, or nil if we
 /// don't care about this method/payload.
 public enum ExecEventParser {
-    public static func parse(method: String, params: [String: JSONValue]) -> ExecEvent? {
+    public static func parse(
+        method: String,
+        params: [String: JSONValue],
+        rpcRequestId: JSONValue? = nil
+    ) -> ExecEvent? {
         switch method {
         case "thread/started":
             guard let id = params["thread"]?.objectValue?["id"]?.stringValue else { return nil }
@@ -94,6 +114,28 @@ public enum ExecEventParser {
             guard let usage = TokenUsage.fromJSON(.object(merged)) else { return nil }
             return .tokenUsageUpdated(usage: usage)
 
+        case "turn/plan/updated":
+            let turnId = params["turnId"]?.stringValue
+                ?? params["turn_id"]?.stringValue
+                ?? "current"
+            let steps = (params["plan"]?.arrayValue ?? []).compactMap { value -> ExecEvent.PlanStep? in
+                guard let item = value.objectValue,
+                      let step = item["step"]?.stringValue else { return nil }
+                return .init(step: step, status: item["status"]?.stringValue ?? "pending")
+            }
+            return .planUpdated(
+                turnId: turnId,
+                explanation: params["explanation"]?.stringValue,
+                steps: steps
+            )
+
+        case "turn/diff/updated":
+            guard let diff = params["diff"]?.stringValue else { return nil }
+            let turnId = params["turnId"]?.stringValue
+                ?? params["turn_id"]?.stringValue
+                ?? "current"
+            return .turnDiffUpdated(turnId: turnId, diff: diff)
+
         case "item/started", "item/completed":
             guard let item = params["item"]?.objectValue,
                   let id = item["id"]?.stringValue,
@@ -106,6 +148,13 @@ public enum ExecEventParser {
                   let delta = params["delta"]?.stringValue
             else { return nil }
             return .agentMessageDelta(id: id, delta: delta)
+
+        case "item/commandExecution/outputDelta", "commandExecution/outputDelta":
+            guard let id = params["itemId"]?.stringValue
+                    ?? params["item_id"]?.stringValue,
+                  let delta = params["delta"]?.stringValue
+            else { return nil }
+            return .commandOutput(id: id, output: delta)
 
         case "reasoning/textDelta", "item/reasoning/textDelta":
             guard let id = params["itemId"]?.stringValue,
@@ -139,13 +188,25 @@ public enum ExecEventParser {
             return .error(message: "Harness 错误")
 
         case "item/commandExecution/requestApproval":
-            return parseApprovalRequest(kind: .commandExecution, params: params).map { .approvalRequested($0) }
+            return parseApprovalRequest(
+                kind: .commandExecution,
+                params: params,
+                rpcRequestId: rpcRequestId
+            ).map { .approvalRequested($0) }
 
         case "item/fileChange/requestApproval":
-            return parseApprovalRequest(kind: .fileChange, params: params).map { .approvalRequested($0) }
+            return parseApprovalRequest(
+                kind: .fileChange,
+                params: params,
+                rpcRequestId: rpcRequestId
+            ).map { .approvalRequested($0) }
 
         case "item/toolCall/requestApproval":
-            return parseApprovalRequest(kind: .toolCall, params: params).map { .approvalRequested($0) }
+            return parseApprovalRequest(
+                kind: .toolCall,
+                params: params,
+                rpcRequestId: rpcRequestId
+            ).map { .approvalRequested($0) }
 
         default:
             return nil
@@ -180,7 +241,14 @@ public enum ExecEventParser {
                 return .commandStarted(id: id, command: command, cwd: item["cwd"]?.stringValue)
             } else if completed {
                 let exit = item["exitCode"]?.intOrBoolAsInt.map(Int32.init)
-                return .commandCompleted(id: id, exitCode: exit, status: status)
+                let output = item["aggregatedOutput"]?.stringValue
+                    ?? item["output"]?.stringValue
+                return .commandCompleted(
+                    id: id,
+                    exitCode: exit,
+                    status: status,
+                    aggregatedOutput: output
+                )
             } else {
                 return nil
             }
@@ -211,6 +279,11 @@ public enum ExecEventParser {
         case "webSearch":
             guard completed else { return nil }
             return .webSearch(id: id, query: item["query"]?.stringValue)
+        case "contextCompaction":
+            return .contextCompaction(
+                id: id,
+                status: completed ? "completed" : "inProgress"
+            )
         default:
             return nil
         }
@@ -265,15 +338,24 @@ public enum ExecEventParser {
     /// item's `id`.
     private static func parseApprovalRequest(
         kind: ApprovalRequest.Kind,
-        params: [String: JSONValue]
+        params: [String: JSONValue],
+        rpcRequestId: JSONValue?
     ) -> ApprovalRequest? {
         let item = params["item"]?.objectValue
             ?? params[kind.rawValue]?.objectValue
             ?? params["request"]?.objectValue
 
-        guard let requestId = params["request_id"]?.stringValue
-            ?? params["id"]?.stringValue
-            ?? item?["id"]?.stringValue else { return nil }
+        var requestId = params["approvalId"]?.stringValue
+        if requestId == nil { requestId = params["request_id"]?.stringValue }
+        if requestId == nil { requestId = params["id"]?.stringValue }
+        if requestId == nil { requestId = params["itemId"]?.stringValue }
+        if requestId == nil { requestId = params["item_id"]?.stringValue }
+        if requestId == nil { requestId = item?["id"]?.stringValue }
+        if requestId == nil { requestId = rpcRequestId?.stringValue }
+        if requestId == nil, let numericId = rpcRequestId?.intOrBoolAsInt {
+            requestId = String(numericId)
+        }
+        guard let requestId else { return nil }
 
         let reason = item?["reason"]?.stringValue
             ?? params["reason"]?.stringValue
@@ -292,13 +374,27 @@ public enum ExecEventParser {
             payload = .toolCall(tc)
         }
 
-        return ApprovalRequest(id: requestId, kind: kind, reason: reason, payload: payload, decision: nil)
+        return ApprovalRequest(
+            id: requestId,
+            rpcRequestId: rpcRequestId,
+            kind: kind,
+            reason: reason,
+            payload: payload,
+            decision: nil
+        )
     }
 
     private static func parseApprovalCommand(_ v: [String: JSONValue]) -> CommandExecution? {
-        guard let command = v["command"]?.stringValue else { return nil }
+        let command = v["command"]?.stringValue
+            ?? v["networkApprovalContext"]?.objectValue?["host"]?.stringValue.map {
+                "访问网络主机 \($0)"
+            }
+            ?? "待批准的命令"
         return CommandExecution(
-            id: v["id"]?.stringValue ?? "",
+            id: v["itemId"]?.stringValue
+                ?? v["item_id"]?.stringValue
+                ?? v["id"]?.stringValue
+                ?? "",
             command: command,
             cwd: v["cwd"]?.stringValue,
             status: .awaitingApproval,
@@ -307,11 +403,16 @@ public enum ExecEventParser {
     }
 
     private static func parseApprovalFileChange(_ v: [String: JSONValue]) -> FileChange? {
-        guard let path = v["path"]?.stringValue else { return nil }
+        let path = v["path"]?.stringValue
+            ?? v["grantRoot"]?.stringValue
+            ?? "待批准的文件变更"
         let kindRaw = v["kind"]?.stringValue ?? v["patchKind"]?.stringValue ?? "update"
-        guard let kind = FileChange.Kind(rawValue: kindRaw) else { return nil }
+        let kind = FileChange.Kind(rawValue: kindRaw) ?? .update
         return FileChange(
-            id: v["id"]?.stringValue ?? "",
+            id: v["itemId"]?.stringValue
+                ?? v["item_id"]?.stringValue
+                ?? v["id"]?.stringValue
+                ?? "",
             kind: kind,
             path: path,
             diff: v["diff"]?.stringValue ?? "",

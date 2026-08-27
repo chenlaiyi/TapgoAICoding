@@ -11,6 +11,7 @@ struct TapgoAICodingApp: App {
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
 
     init() {
+        TapgoConfig.migratePersistedSettings()
         let workspace = WorkspaceStore()
         let threads = ThreadStore()
         _workspace = StateObject(wrappedValue: workspace)

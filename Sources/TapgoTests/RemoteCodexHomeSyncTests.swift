@@ -17,6 +17,19 @@ func runRemoteCodexHomeSyncConfigNoSecret(_ t: TestRunner) {
              "rendered config uses the responses wire API")
     t.expect(config.contains("auth.json") == false,
              "rendered config does not reference an auth.json file path (the key is delivered at runtime)")
+    t.expectEqual(
+        RemoteCodexHomeSync.parseHarnessVersion("codex-cli 0.150.1"),
+        [0, 150, 1],
+        "harness version: parses current CLI output"
+    )
+    t.expect(RemoteCodexHomeSync.isSupportedHarnessVersion([0, 149, 1]),
+             "harness version: minimum accepted")
+    t.expect(RemoteCodexHomeSync.isSupportedHarnessVersion([0, 150, 1]),
+             "harness version: newer accepted")
+    t.expect(!RemoteCodexHomeSync.isSupportedHarnessVersion([0, 149, 0]),
+             "harness version: older rejected")
+    t.expectNil(RemoteCodexHomeSync.parseHarnessVersion("unknown"),
+                "harness version: malformed rejected")
 }
 
 @MainActor
@@ -33,6 +46,17 @@ func runRemoteCodexHomeSyncTrustedProjects(_ t: TestRunner) {
 @MainActor
 func runRemoteCodexHomeSyncWrapper(_ t: TestRunner) {
     let wrapper = RemoteCodexHomeSync.remoteHarnessWrapper(remoteHome: "/Users/remoteuser/.tapgo-aicoding/remote")
+    t.expect(wrapper.contains("codex --version"),
+             "wrapper checks the actual remote codex binary version")
+    t.expect(wrapper.contains("required=\(RemoteCodexHomeSync.minimumHarnessVersion)"),
+             "wrapper enforces the supported remote protocol floor")
+    if let versionCheck = wrapper.range(of: "codex --version"),
+       let keyRead = wrapper.range(of: "IFS= read -r KEY") {
+        t.expect(versionCheck.lowerBound < keyRead.lowerBound,
+                 "wrapper validates the remote harness before reading the API key")
+    } else {
+        t.expect(false, "wrapper contains ordered version and key checks")
+    }
     t.expect(wrapper.contains("IFS= read -r KEY"),
              "wrapper reads the API key from stdin (no on-disk source)")
     t.expect(wrapper.contains("export OPENAI_API_KEY=\"$KEY\""),
@@ -47,6 +71,17 @@ func runRemoteCodexHomeSyncWrapper(_ t: TestRunner) {
              "wrapper launches the codex app-server over stdio")
     t.expect(wrapper.contains("sk-cp-") == false,
              "wrapper does NOT embed any literal API key")
+    let shellCheck = Process()
+    shellCheck.executableURL = URL(fileURLWithPath: "/bin/sh")
+    shellCheck.arguments = ["-n", "-c", wrapper]
+    do {
+        try shellCheck.run()
+        shellCheck.waitUntilExit()
+        t.expectEqual(shellCheck.terminationStatus, 0,
+                      "wrapper is valid POSIX shell syntax")
+    } catch {
+        t.expect(false, "wrapper shell syntax check launches")
+    }
 }
 
 @MainActor

@@ -61,6 +61,8 @@ let allSections: [String] = [
     "e2e: remote turn with `false` (exit code propagation)",
     "Thread: auto-title from first user message",
     "ExecEvent: approval request parsing",
+    "ExecEvent: command output streaming",
+    "ExecEvent: turn plan, diff, compaction",
     "ExecEvent: reasoning summary delta",
     "TokenUsage: parsing (camelCase + snake_case)",
     "MarkdownLite: fenced code blocks",
@@ -211,6 +213,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)
+        }
+        await runIfInScope(runner, "ExecEvent: command output streaming") {
+            runExecEventParserCommandOutput(runner)
+        }
+        await runIfInScope(runner, "ExecEvent: turn plan, diff, compaction") {
+            runExecEventParserTurnSnapshots(runner)
         }
         await runIfInScope(runner, "ExecEvent: reasoning summary delta") {
             runExecEventParserReasoningSummary(runner)

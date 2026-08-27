@@ -289,6 +289,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
             EvolutionEntry(
+                version: "v0.4.0",
+                date: "2026-08-27",
+                commit: nil,
+                tag: "v0.4.0",
+                summary: "Harness 协议与上下文恢复升级",
+                changes: [
+                    "修复同一会话未复用 thread/resume 的上下文断链，并增加 rollout 丢失后的有界恢复",
+                    "对齐 Codex 0.149/0.150 server-request 审批与实时命令输出协议",
+                    "真实保留 interrupted 状态，RPC 增加超时，回合结束后回收 app-server",
+                    "借鉴 DeepSeek Harness rc.2 的失败关闭、80% 压缩压力和恢复设计",
+                    "跨会话记忆串行化、限长、校验、去重，并明确额外模型调用"
+                ],
+                why: "解决原生 App 的实际上下文失忆、审批失效、命令输出缺失与旧 Codex CLI 被误选问题。",
+                next: "接入可见的 thread compact 状态、文件 patch 增量与 FakeTransport 两轮端到端测试。"
+            ),
+            EvolutionEntry(
                 version: "v0.3.3",
                 date: "2026-08-26",
                 commit: nil,

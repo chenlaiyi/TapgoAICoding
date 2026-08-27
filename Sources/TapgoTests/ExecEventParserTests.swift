@@ -83,6 +83,174 @@ func runExecEventParserApprovalRequests(_ t: TestRunner) {
     // 4) Unknown method must not produce a stray event.
     t.expectNil(ExecEventParser.parse(method: "item/commandExecution/foo", params: cmd),
                 "unknown method: nil")
+
+    // 5) Current app-server shape: top-level JSON-RPC id + itemId in params.
+    let currentCommand: [String: JSONValue] = [
+        "threadId": .string("thread-1"),
+        "turnId": .string("turn-1"),
+        "itemId": .string("item-current"),
+        "reason": .string("需要访问工作区外目录"),
+        "command": .string("git fetch --prune origin"),
+        "cwd": .string("/tmp/repo"),
+    ]
+    if case .approvalRequested(let req)? = ExecEventParser.parse(
+        method: "item/commandExecution/requestApproval",
+        params: currentCommand,
+        rpcRequestId: .int(77)
+    ) {
+        t.expectEqual(req.id, "item-current", "current cmd approval: itemId")
+        t.expectEqual(req.rpcRequestId, .int(77), "current cmd approval: rpc id preserved")
+        if case .command(let ce) = req.payload {
+            t.expectEqual(ce.id, "item-current", "current cmd approval: payload item id")
+            t.expectEqual(ce.command, "git fetch --prune origin", "current cmd approval: command")
+        } else {
+            t.expect(false, "current cmd approval: payload is command")
+        }
+        if let response = req.rpcResponseFrame(approve: true)?.objectValue {
+            t.expectEqual(response["id"], .int(77), "current cmd response: rpc id echoed")
+            t.expectEqual(
+                response["result"]?.objectValue?["decision"],
+                .string("accept"),
+                "current cmd response: accept decision"
+            )
+        } else {
+            t.expect(false, "current cmd response: frame generated")
+        }
+        let scoped = req.scoped(forTurn: "local-turn")
+        t.expectEqual(scoped.id, "local-turn:item-current",
+                      "current cmd approval: display id is turn-scoped")
+        t.expectEqual(scoped.rpcRequestId, .int(77),
+                      "current cmd approval: scoping preserves rpc id")
+        var cancelled = scoped
+        cancelled.decision = .cancelled
+        let roundTripped = try? JSONDecoder().decode(
+            ApprovalRequest.self,
+            from: JSONEncoder().encode(cancelled)
+        )
+        t.expectEqual(roundTripped?.decision, .cancelled,
+                      "current cmd approval: cancelled decision persists")
+    } else {
+        t.expect(false, "current cmd approval: parsed")
+    }
+
+    // 6) Current file approval may contain only itemId/reason/grantRoot.
+    let currentFile: [String: JSONValue] = [
+        "itemId": .string("item-file-current"),
+        "reason": .string("需要写入外部目录"),
+        "grantRoot": .string("/tmp/export"),
+    ]
+    if case .approvalRequested(let req)? = ExecEventParser.parse(
+        method: "item/fileChange/requestApproval",
+        params: currentFile,
+        rpcRequestId: .string("rpc-file-1")
+    ) {
+        t.expectEqual(req.id, "item-file-current", "current file approval: itemId")
+        if case .fileChange(let file) = req.payload {
+            t.expectEqual(file.path, "/tmp/export", "current file approval: grantRoot shown")
+        } else {
+            t.expect(false, "current file approval: payload is fileChange")
+        }
+        let decision = req.rpcResponseFrame(approve: false)?
+            .objectValue?["result"]?.objectValue?["decision"]
+        t.expectEqual(decision, .string("decline"), "current file response: decline decision")
+    } else {
+        t.expect(false, "current file approval: parsed")
+    }
+}
+
+/// Current Codex command output streams via an outputDelta notification and
+/// repeats the canonical aggregate on item/completed as a recovery fallback.
+@MainActor
+func runExecEventParserCommandOutput(_ t: TestRunner) {
+    let delta: [String: JSONValue] = [
+        "itemId": .string("cmd-1"),
+        "delta": .string("line 1\n"),
+    ]
+    if case .commandOutput(let id, let output)? = ExecEventParser.parse(
+        method: "item/commandExecution/outputDelta",
+        params: delta
+    ) {
+        t.expectEqual(id, "cmd-1", "command delta: item id")
+        t.expectEqual(output, "line 1\n", "command delta: output")
+    } else {
+        t.expect(false, "command delta: parsed")
+    }
+
+    let completed: [String: JSONValue] = [
+        "item": .object([
+            "id": .string("cmd-1"),
+            "type": .string("commandExecution"),
+            "command": .string("printf test"),
+            "status": .string("completed"),
+            "exitCode": .int(0),
+            "aggregatedOutput": .string("line 1\nline 2\n"),
+        ]),
+    ]
+    if case .commandCompleted(let id, let exitCode, let status, let output)? =
+        ExecEventParser.parse(method: "item/completed", params: completed) {
+        t.expectEqual(id, "cmd-1", "command completed: item id")
+        t.expectEqual(exitCode, 0, "command completed: exit code")
+        t.expectEqual(status, "completed", "command completed: status")
+        t.expectEqual(output, "line 1\nline 2\n", "command completed: aggregate fallback")
+    } else {
+        t.expect(false, "command completed: parsed")
+    }
+}
+
+/// Stable turn snapshots and context-compaction lifecycle introduced by the
+/// current app-server UI protocol.
+@MainActor
+func runExecEventParserTurnSnapshots(_ t: TestRunner) {
+    let plan: [String: JSONValue] = [
+        "turnId": .string("turn-plan-1"),
+        "explanation": .string("先检查，再修改"),
+        "plan": .array([
+            .object(["step": .string("检查代码"), "status": .string("completed")]),
+            .object(["step": .string("实施升级"), "status": .string("inProgress")]),
+        ]),
+    ]
+    if case .planUpdated(let turnId, let explanation, let steps)? =
+        ExecEventParser.parse(method: "turn/plan/updated", params: plan) {
+        t.expectEqual(turnId, "turn-plan-1", "plan: turn id")
+        t.expectEqual(explanation, "先检查，再修改", "plan: explanation")
+        t.expectEqual(steps.count, 2, "plan: steps count")
+        t.expectEqual(steps.last?.status, "inProgress", "plan: status")
+    } else {
+        t.expect(false, "plan: parsed")
+    }
+
+    let diff: [String: JSONValue] = [
+        "turnId": .string("turn-diff-1"),
+        "diff": .string("--- a/a.swift\n+++ b/a.swift\n"),
+    ]
+    if case .turnDiffUpdated(let turnId, let snapshot)? =
+        ExecEventParser.parse(method: "turn/diff/updated", params: diff) {
+        t.expectEqual(turnId, "turn-diff-1", "diff: turn id")
+        t.expect(snapshot.contains("+++"), "diff: unified diff preserved")
+    } else {
+        t.expect(false, "diff: parsed")
+    }
+
+    let compactStarted: [String: JSONValue] = [
+        "item": .object([
+            "id": .string("compact-1"),
+            "type": .string("contextCompaction"),
+        ]),
+    ]
+    if case .contextCompaction(let id, let status)? =
+        ExecEventParser.parse(method: "item/started", params: compactStarted) {
+        t.expectEqual(id, "compact-1", "compact start: id")
+        t.expectEqual(status, "inProgress", "compact start: status")
+    } else {
+        t.expect(false, "compact start: parsed")
+    }
+    if case .contextCompaction(let id, let status)? =
+        ExecEventParser.parse(method: "item/completed", params: compactStarted) {
+        t.expectEqual(id, "compact-1", "compact complete: id")
+        t.expectEqual(status, "completed", "compact complete: status")
+    } else {
+        t.expect(false, "compact complete: parsed")
+    }
 }
 
 /// Exercises `TokenUsage.fromJSON` (both camelCase and snake_case wire

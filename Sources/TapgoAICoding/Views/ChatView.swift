@@ -31,7 +31,7 @@ private struct PermissionChoice: Identifiable {
               detail: "仅对检测到的风险操作请求批准",
               icon: "checkmark.seal",
               sandbox: TapgoConfig.SandboxMode.workspaceWrite.rawValue,
-              approval: TapgoConfig.ApprovalPolicy.onFailure.rawValue),
+              approval: TapgoConfig.ApprovalPolicy.untrusted.rawValue),
         .init(id: "full", title: "完全访问权限",
               detail: "可不受限制地访问互联网和你电脑上的任何文件",
               icon: "exclamationmark.shield",

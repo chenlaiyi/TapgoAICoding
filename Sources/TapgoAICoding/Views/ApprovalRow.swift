@@ -98,6 +98,7 @@ struct ApprovalRow: View {
         case .approved:          return (L10n.approvalApproved, .green)
         case .denied:            return (L10n.approvalDenied, .red)
         case .approvedForSession: return (L10n.approvalApprovedForSession, .green)
+        case .cancelled:         return (L10n.approvalCancelled, .secondary)
         case nil:                return (L10n.approvalAutoApproved, .green)
         }
     }
