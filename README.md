@@ -146,6 +146,7 @@ app in Finder → Open → Open. After that, double-click works normally.
 | Approval flow | configurable `approvalPolicy` (设置 → 运行); interactive 批准/拒绝 via `ApprovalRow` when the harness asks |
 | Trajectory replay | `TrajectoryView` (detail pane), with per-turn status + start time + duration + filter (全部/命令/文件/错误/工具 via `TrajectoryFilter`); turns collapse (latest expanded) |
 | Interrupt running turn | `turn/interrupt` JSON-RPC method via `ChatView` toolbar |
+| Parallel conversations | each conversation owns an independent runner, queue, cancellation path, approval route, and visible run state; switching chats never interrupts another chat |
 | Thread persistence + resume | `ThreadStore` persists `turns` + `harnessThreadId`; `sendUserMessage` resumes via `thread/resume` |
 | Token usage per turn | `Turn.usage` (`TokenUsage`, parsed from `turn/completed`); caption in `ChatView` |
 | Context meter + composer quick-switch | header color-coded `context N%` progress bar (`TokenUsage.contextLevel`); `ComposerView` sandbox + approval-policy menus (persisted) |
@@ -156,7 +157,7 @@ app in Finder → Open → Open. After that, double-click works normally.
 
 ```bash
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
-#   420/420 — must stay green (skipping SSH-integration; they need a
+#   572/572 — must stay green (skipping SSH-integration; they need a
 #   real remote codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3)
 
 # To run the FULL suite including SSH-integration (will fail without

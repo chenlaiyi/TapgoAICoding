@@ -86,7 +86,7 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 
 ## v0.4.1 — Harness 进程监督、JSON-RPC id 防重用、审批超时
 **Date**: 2026-08-27
-**Commit**: `623efa3`
+**Commit**: `fa917d3`
 **Tag**: v0.4.1
 **Test status**: — 517 passed, 0 failed —
 **Changed**:
@@ -100,8 +100,8 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 
 ## v0.4.2 — 适配 macOS 27 SDK 缺失的 SwiftUI macros plugin
 **Date**: 2026-08-28
-**Commit**: _(see `git log -1 v0.4.2`)_
-**Tag**: v0.4.2
+**Commit**: _(see `git log -1 v0.4.3`)_
+**Tag**: v0.4.3
 **Test status**: — 517 passed, 0 failed —
 **Changed**:
 - `Sources/TapgoAICoding/Views/ChatView.swift`：补 `import Combine`，消除 `Timer.publish` 用的 `Combine.Publishers` 未导入 warning（之前靠 SDK 26.5 隐式允许，SDK 27 收紧后会变成 warning）。
@@ -110,3 +110,19 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 - **Core / Tests 完全不动**，517 项测试仍全过，`.app` bundle 在 SDK 26.5 下 release build 成功（44.8s），ld 的两条 search-path warning 是 SDK 26.5 期望 Xcode `Developer/usr/lib` 路径（与本机只有 CommandLineTools 相关，与代码无关）。
 **Why**: macOS 27 SDK 的 CommandLineTools Swift 6.4 不再带 `SwiftUI.StateMacro` / `.Environment` 等外部宏的 plugin，导致 `@State private var foo` 直接报 `external macro implementation type 'SwiftUIMacros.StateMacro' could not be found`，整 app target 编译失败。这是 v0.4.0 / v0.4.1 baseline 就存在的限制（之前用户用 SDK 26.5 工具链 build，机器升级后失败），不是新代码引入的；修复策略是把脚本的 SDK 选择 pin 到最后一个仍带 SwiftUI macros plugin 的 SDK（26.5），等 Apple 在 macOS 28 重加 plugin 后用 `TAPGO_SDK=macosx27.0` 或更高显式覆盖即可。
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.4.3 — 对话独立执行与 Harness 失效恢复修复
+**Date**: 2026-08-28
+**Commit**: _(see `git log -1 v0.4.3`)_
+**Tag**: v0.4.3
+**Test status**: — 572 passed, 0 failed —
+**Changed**:
+- 每个对话独立持有 runner、异步任务、运行状态和停止标记；切换到新对话后可立即执行，原对话继续在后台运行。
+- 队列、插话、停止和目标计时改为按对话隔离；A 完成不会启动、删除或中断 B 的任务。
+- 审批请求按本地 turn 命名空间和所属 runner 路由，避免并发 app-server 的相同 JSON-RPC id 串线。
+- 审批使用真实 60 秒定时任务自动拒绝，兼容数字和字符串 RPC id，并在完成、停止、进程丢失时清理。
+- Harness 未经显式停止却退出时立即结束旧请求/回合，code 0、信号退出与重启 spawn 失败均纳入有限重试，避免旧 continuation 永久挂起。
+- 新增 `ConversationRunRegistry` 与更完整的 `HarnessSupervisor` 回归测试；测试总数 517 → 572。
+**Why**: 修复“会话 A 执行时切到 B，B 只能排队；插话又会中断 A”的全局单 runner 架构缺陷，同时封堵审批超时和进程重启仍可能让任务永久卡住的两条链路。
+**Next**: 增加 App target 的可注入 runner 协调器测试和长任务无事件看门狗。

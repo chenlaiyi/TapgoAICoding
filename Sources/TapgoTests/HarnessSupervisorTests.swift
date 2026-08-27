@@ -11,6 +11,61 @@ private let fastSupervisorConfig = HarnessSupervisor.Config(
     restartBackoffUpperBound: 0.2
 )
 
+/// Deterministic transport used for lifecycle edge cases that the general
+/// FakeHarnessTransport intentionally does not model (repeated spawn failures
+/// and an onClose callback delivered synchronously by stop()).
+@MainActor
+private final class ScriptedSupervisorTransport: HarnessTransport {
+    var onNotification: ((JSONValue) -> Void)?
+    var onClose: ((Int32) -> Void)?
+
+    private(set) var isRunning = false
+    private(set) var startAttempts = 0
+    private(set) var successfulStarts = 0
+    var failingStartAttempts: Set<Int> = []
+    var closeCodeOnStop: Int32?
+
+    func start() throws {
+        startAttempts += 1
+        if failingStartAttempts.contains(startAttempts) {
+            isRunning = false
+            throw HarnessTransportError.notRunning
+        }
+        successfulStarts += 1
+        isRunning = true
+    }
+
+    func stop() {
+        isRunning = false
+        if let closeCodeOnStop {
+            onClose?(closeCodeOnStop)
+        }
+    }
+
+    func send(frame: JSONValue) throws {
+        guard isRunning else { throw HarnessTransportError.notRunning }
+    }
+
+    func simulateExit(code: Int32) {
+        guard isRunning else { return }
+        isRunning = false
+        onClose?(code)
+    }
+}
+
+@MainActor
+private func waitForSupervisor(
+    timeout: TimeInterval = 1.0,
+    until predicate: @escaping @MainActor () -> Bool
+) async -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+        if predicate() { return true }
+        try? await Task.sleep(nanoseconds: 5_000_000)
+    }
+    return predicate()
+}
+
 // MARK: - Per-section wrappers (called by TestMain dispatch)
 
 @MainActor
@@ -52,24 +107,61 @@ func runHarnessSupervisorStopCancels(_ t: TestRunner) async {
     else { t.expect(false, "state should be .stopped, got \(sup.state)") }
     t.expectEqual(gaveUp, [], "stop() must not fire onGiveUp")
     t.expect(!fake.isRunning, "transport not running after stop()")
+    t.expectEqual(fake.startCount, 1, "cancelled backoff never starts a replacement")
+
+    // stop() must publish .stopped before transport.stop(), because real
+    // transports may synchronously deliver either a zero or signal exit.
+    for code: Int32 in [0, -15] {
+        let stoppingTransport = ScriptedSupervisorTransport()
+        stoppingTransport.closeCodeOnStop = code
+        let stoppingSupervisor = HarnessSupervisor(
+            transport: stoppingTransport,
+            config: fastSupervisorConfig
+        )
+        var unexpected: [Int32] = []
+        var restarts = 0
+        var stopGiveUps = 0
+        stoppingSupervisor.onUnexpectedExit = { unexpected.append($0) }
+        stoppingSupervisor.onRestart = { restarts += 1 }
+        stoppingSupervisor.onGiveUp = { _ in stopGiveUps += 1 }
+        try? stoppingSupervisor.start()
+
+        stoppingSupervisor.stop()
+        try? await Task.sleep(nanoseconds: 150_000_000)
+
+        t.expectEqual(unexpected, [], "explicit stop code \(code) is expected")
+        t.expectEqual(restarts, 0, "explicit stop code \(code) never restarts")
+        t.expectEqual(stopGiveUps, 0, "explicit stop code \(code) never gives up")
+        t.expectEqual(stoppingTransport.startAttempts, 1, "explicit stop code \(code) starts once")
+        t.expectEqual(stoppingSupervisor.state, .stopped, "explicit stop code \(code) stays stopped")
+    }
 }
 
 @MainActor
-func runHarnessSupervisorCleanExit(_ t: TestRunner) async {
-    t.section("HarnessSupervisor: clean exit (code 0) does not restart")
-    let fake = FakeHarnessTransport()
-    let sup = HarnessSupervisor(transport: fake, config: fastSupervisorConfig)
-    var unexpected: [Int32] = []
-    sup.onUnexpectedExit = { code in unexpected.append(code) }
-    try? sup.start()
-    fake.simulateExit(code: 0)
-    let d3 = Date().addingTimeInterval(0.3)
-    while Date() < d3 { try? await Task.sleep(nanoseconds: 20_000_000) }
-    if case .stopped = sup.state { t.expect(true, "clean exit → .stopped") }
-    else { t.expect(false, "clean exit should leave .stopped, got \(sup.state)") }
-    t.expectEqual(sup.restartCount, 0, "no restarts on clean exit")
-    t.expectEqual(unexpected, [], "clean exit does not fire onUnexpectedExit")
-    t.expectEqual(fake.startCount, 1, "transport started once, never restarted")
+func runHarnessSupervisorRunningExitCodes(_ t: TestRunner) async {
+    t.section("HarnessSupervisor: code 0 and signal exits restart while running")
+
+    for code: Int32 in [0, -9] {
+        let fake = ScriptedSupervisorTransport()
+        let sup = HarnessSupervisor(transport: fake, config: fastSupervisorConfig)
+        var unexpected: [Int32] = []
+        var restarts = 0
+        sup.onUnexpectedExit = { unexpected.append($0) }
+        sup.onRestart = { restarts += 1 }
+        try? sup.start()
+
+        fake.simulateExit(code: code)
+        t.expectEqual(unexpected, [code], "running exit code \(code) is reported immediately")
+        let restarted = await waitForSupervisor {
+            restarts == 1 && fake.successfulStarts == 2
+        }
+
+        t.expect(restarted, "running exit code \(code) reaches replacement start")
+        t.expectEqual(sup.restartCount, 1, "running exit code \(code) consumes one retry")
+        t.expectEqual(fake.startAttempts, 2, "running exit code \(code) starts replacement once")
+        t.expectEqual(sup.state, .running, "running exit code \(code) returns to running")
+        sup.stop()
+    }
 }
 
 @MainActor
@@ -98,31 +190,39 @@ func runHarnessSupervisorRestartAfterBackoff(_ t: TestRunner) async {
 
 @MainActor
 func runHarnessSupervisorGivesUp(_ t: TestRunner) async {
-    t.section("HarnessSupervisor: gives up after maxAutoRestarts")
-    let fake = FakeHarnessTransport()
-    let oneMore = HarnessSupervisor.Config(
-        maxAutoRestarts: 1,
-        restartBackoffLowerBound: 0.05,
-        restartBackoffUpperBound: 0.1
+    t.section("HarnessSupervisor: restart start failures consume retry budget")
+    let fake = ScriptedSupervisorTransport()
+    fake.failingStartAttempts = [2, 3]
+    let twoRetries = HarnessSupervisor.Config(
+        maxAutoRestarts: 2,
+        restartBackoffLowerBound: 0.02,
+        restartBackoffUpperBound: 0.02
     )
-    let sup = HarnessSupervisor(transport: fake, config: oneMore)
+    let sup = HarnessSupervisor(transport: fake, config: twoRetries)
     var gaveUps: [String] = []
+    var unexpected: [Int32] = []
+    var restarts = 0
     sup.onGiveUp = { reason in gaveUps.append(reason) }
+    sup.onUnexpectedExit = { unexpected.append($0) }
+    sup.onRestart = { restarts += 1 }
     try? sup.start()
-    fake.simulateExit(code: 1)
-    let d5a = Date().addingTimeInterval(0.5)
-    while Date() < d5a && fake.startCount < 2 {
-        try? await Task.sleep(nanoseconds: 20_000_000)
+    fake.simulateExit(code: 0)
+
+    let gaveUp = await waitForSupervisor {
+        gaveUps.count == 1 && fake.startAttempts == 3
     }
-    t.expectEqual(fake.startCount, 2, "second start attempted")
-    fake.simulateExit(code: 2)
-    fake.pendingStartError = HarnessTransportError.notRunning
-    let d5b = Date().addingTimeInterval(0.5)
-    while Date() < d5b && gaveUps.isEmpty {
-        try? await Task.sleep(nanoseconds: 20_000_000)
-    }
+    // Wait beyond another backoff interval to catch accidental duplicate
+    // terminal callbacks/tasks.
+    try? await Task.sleep(nanoseconds: 100_000_000)
+
+    t.expect(gaveUp, "two failed replacement starts reach give-up")
+    t.expectEqual(fake.startAttempts, 3, "initial start plus exactly two restart attempts")
+    t.expectEqual(fake.successfulStarts, 1, "both replacement starts failed")
+    t.expectEqual(sup.restartCount, 2, "both failed starts consume retry budget")
+    t.expectEqual(unexpected, [0, -1, -1], "zero exit and both spawn failures are unexpected")
+    t.expectEqual(restarts, 0, "onRestart is not fired for failed starts")
     t.expectEqual(gaveUps.count, 1, "onGiveUp fired exactly once")
-    t.expect(gaveUps.first?.contains("已重试") == true, "give-up reason mentions retry count")
+    t.expect(gaveUps.first?.contains("已重试 2 次") == true, "give-up reason reports exhausted budget")
     if case .givingUp = sup.state { t.expect(true, "state is .givingUp") }
     else { t.expect(false, "state should be .givingUp, got \(sup.state)") }
 }

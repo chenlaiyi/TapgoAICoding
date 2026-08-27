@@ -1212,7 +1212,7 @@ struct ComposerView: View {
 
             goalCard
 
-            VStack(spacing: store.queue.isEmpty ? 0 : -cardOverlap) {
+            VStack(spacing: store.activeQueue.isEmpty ? 0 : -cardOverlap) {
                 queueStatusBar
                     .zIndex(0)
 
@@ -1718,13 +1718,13 @@ struct ComposerView: View {
         // Only show the task card when there is an actual task list (queued
         // messages). With an empty queue it would just repeat the running
         // message — so it stays hidden.
-        if !store.queue.isEmpty {
+        if !store.activeQueue.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "list.bullet")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(DSHTheme.brand)
-                    Text("任务清单 · \(store.queue.count) 待处理")
+                    Text("任务清单 · \(store.activeQueue.count) 待处理")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .fontWeight(.medium)
                         .foregroundStyle(DSHTheme.brand)
@@ -1743,7 +1743,7 @@ struct ComposerView: View {
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 5) {
-                        ForEach(store.queue) { q in
+                        ForEach(store.activeQueue) { q in
                             HStack(spacing: 6) {
                                 Image(systemName: "text.bubble")
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
@@ -1855,7 +1855,7 @@ struct ComposerView: View {
     private func interjectSend() {
         let hasContent = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !store.attachedImages.isEmpty
-        guard hasContent || !store.queue.isEmpty else {
+        guard hasContent || !store.activeQueue.isEmpty else {
             // Nothing to send or interrupt.
             return
         }

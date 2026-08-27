@@ -52,22 +52,31 @@ final class SessionStore: ObservableObject {
     let workspace: WorkspaceStore
     let threads: ThreadStore
 
-    /// One harness client per active thread. The transport
-    /// (local or remote) is built when the user starts a turn on
-    /// a thread. We don't keep them around for the lifetime of
-    /// the app because that would hold an idle SSH connection.
-    private var runner: CodexHarnessClient?
-    /// The app owns a single app-server runner. Keep this set until `run()`
-    /// has fully returned (not merely until a `turn/completed` event arrives),
-    /// so a fast click in another conversation cannot replace the live runner.
-    @Published private var activeRunThreadId: String?
-    /// True after an explicit "stop" so the queue drain is suppressed until the
-    /// next turn starts (or the user hits "插话").
-    private var suppressAutoDrain = false
+    /// A conversation owns its own harness process and lifecycle. Keeping the
+    /// runner, orchestration task, cancellation latch, and approvals scoped by
+    /// local thread id lets conversation A continue in the background while B
+    /// starts immediately after the user switches to it.
+    private final class RunContext {
+        let runner: CodexHarnessClient
+        let turnId: String
+        var task: Task<Void, Never>?
+
+        init(runner: CodexHarnessClient, turnId: String) {
+            self.runner = runner
+            self.turnId = turnId
+        }
+    }
+
+    private var runsByThreadId: [String: RunContext] = [:]
+    @Published private var runRegistry = ConversationRunRegistry()
+    @Published private var runnerStatesByThreadId: [String: CodexHarnessClient.RunState] = [:]
+    /// Scoped approval id -> local conversation id. JSON-RPC ids are only
+    /// unique inside one harness process, so responses must never use a global
+    /// "latest runner" pointer.
+    private var approvalOwnerThreadIds: [String: String] = [:]
 
     // Live state
     @Published var activeThreadId: String?
-    @Published var runnerState: CodexHarnessClient.RunState = .idle
     @Published var attachedImages: [URL] = []
     /// Messages queued while a turn is running. Drawn automatically after each
     /// turn completes; flushed immediately by the "插话" action.
@@ -207,11 +216,13 @@ final class SessionStore: ObservableObject {
     }
 
     func deleteThread(_ id: String) {
-        if activeRunThreadId == id {
+        if runRegistry.isRunning(id) {
             return
         }
         liveThreads.removeAll { $0.id == id }
         queue.removeAll { $0.threadId == id }
+        runnerStatesByThreadId.removeValue(forKey: id)
+        approvalOwnerThreadIds = approvalOwnerThreadIds.filter { $0.value != id }
         threads.delete(id)
         if activeThreadId == id { activeThreadId = liveThreads.first?.id }
         persistActiveThread()
@@ -273,7 +284,7 @@ final class SessionStore: ObservableObject {
         updated.goalResumedAt = nil
         updated.updatedAt = Date()
         replaceThread(updated)
-        if activeRunThreadId == id { cancelActiveTurn() }
+        if runRegistry.isRunning(id) { cancelActiveTurn() }
     }
 
     /// Live elapsed goal time: worked seconds + any current running span.
@@ -321,9 +332,9 @@ final class SessionStore: ObservableObject {
         guard let targetThreadId = activeThreadId else { return }
         let imagesToUse = attachedImages
         attachedImages = []
-        // While a turn is running, queue the message instead of dropping it.
-        // The queue is drained automatically when the current turn wraps up.
-        if isRunning {
+        // Queue only behind another turn in this same conversation. A task in
+        // conversation A must never block a first turn in conversation B.
+        if runRegistry.isRunning(targetThreadId) {
             queue.append(QueuedMessage(
                 threadId: targetThreadId,
                 text: trimmed,
@@ -340,11 +351,17 @@ final class SessionStore: ObservableObject {
     private func sendNow(text rawText: String, images: [URL], threadId requestedThreadId: String? = nil) {
         let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImages = !images.isEmpty
-        suppressAutoDrain = false
         if requestedThreadId == nil, activeThreadId == nil { newThread() }
         guard let threadId = requestedThreadId ?? activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == threadId })
         else { return }
+        // All mutations are MainActor-isolated, so this is the atomic per-chat
+        // writer gate. Same-chat follow-ups stay serial; different chats run in
+        // parallel with independent app-server transports.
+        guard runRegistry.markStarted(threadId) else {
+            queue.append(QueuedMessage(threadId: threadId, text: trimmed, images: images))
+            return
+        }
 
         // Capture the resumable harness id and prior transcript before the new
         // `.running` turn is appended. Reading `turns.last` afterwards always
@@ -400,12 +417,15 @@ final class SessionStore: ObservableObject {
             ? Self.fallbackBaseInstructions(persistent: persistentBase, turns: priorTurns)
             : persistentBase
 
-        // Build the right transport for this thread.
+        // Build the right transport for this thread and retain it in a context
+        // keyed by the local conversation. Cancellation and approval routing
+        // never consult whichever conversation happens to be selected later.
         let newRunner = makeRunner(for: project)
-        runner = newRunner
-        activeRunThreadId = threadId
+        let context = RunContext(runner: newRunner, turnId: turnId)
+        runsByThreadId[threadId] = context
+        runnerStatesByThreadId[threadId] = .running(threadId: resumeId)
 
-        Task { [weak self] in
+        let task = Task { [weak self] in
             guard let self else { return }
             let finalState = await newRunner.run(
                 prompt: effectivePrompt,
@@ -417,7 +437,7 @@ final class SessionStore: ObservableObject {
             ) { [weak self] event in
                 self?.handle(event: event, threadId: threadId, turnId: turnId)
             }
-            self.runnerState = finalState
+            self.runnerStatesByThreadId[threadId] = finalState
             var completedTurn: TapgoCore.Turn?
             if let currentThreadIdx = self.liveThreads.firstIndex(where: { $0.id == threadId }) {
                 // Always record the thread id the harness actually used for this
@@ -461,6 +481,7 @@ final class SessionStore: ObservableObject {
             for approvalId in unresolvedApprovalIds {
                 self.setApprovalDecision(id: approvalId, decide: .cancelled)
                 self.pendingApprovals.removeValue(forKey: approvalId)
+                self.approvalOwnerThreadIds.removeValue(forKey: approvalId)
             }
             // Cross-conversation memory: after a cleanly finished turn, extract
             // durable facts from the exchange and append them to memory.md so
@@ -476,10 +497,11 @@ final class SessionStore: ObservableObject {
             // Each turn currently owns its app-server transport; close it
             // deterministically before a queued turn creates the next one.
             await newRunner.shutdownAndWait()
-            if self.runner === newRunner { self.runner = nil }
-            if self.activeRunThreadId == threadId { self.activeRunThreadId = nil }
+            guard self.runsByThreadId[threadId]?.runner === newRunner else { return }
+            self.runsByThreadId.removeValue(forKey: threadId)
             self.finishTurnAndDrain(finishedThreadId: threadId)
         }
+        context.task = task
     }
 
     /// Extract a durable memory note from a finished turn and append it to
@@ -636,15 +658,19 @@ final class SessionStore: ObservableObject {
     /// and suppresses the automatic queue drain — the queue is left for the
     /// user to decide (清空 or 插话).
     func cancelActiveTurn() {
-        suppressAutoDrain = true
-        runner?.cancel()
+        guard let threadId = activeThreadId,
+              runRegistry.requestStop(threadId) else { return }
+        runsByThreadId[threadId]?.runner.cancel()
     }
 
     /// Resolve a pending approval. Forwards the decision to the harness
     /// and updates the in-chat approval item so the user sees the outcome.
     func respondToApproval(_ request: ApprovalRequest, approve: Bool) {
-        guard runner?.respondToApproval(request, approve: approve) == true else { return }
+        guard let ownerThreadId = approvalOwnerThreadIds[request.id],
+              let runner = runsByThreadId[ownerThreadId]?.runner,
+              runner.respondToApproval(request, approve: approve) else { return }
         pendingApprovals.removeValue(forKey: request.id)
+        approvalOwnerThreadIds.removeValue(forKey: request.id)
         setApprovalDecision(id: request.id, decide: approve ? .approved : .denied)
     }
 
@@ -665,24 +691,37 @@ final class SessionStore: ObservableObject {
         }
     }
 
-    /// True while any thread's latest turn is in progress (running or
-    /// awaiting approval). The app owns one runner/approval channel, so this
-    /// global gate prevents cross-thread runner and approval corruption.
-    /// `runnerState` only records the terminal run result (it is never
-    /// `.running` mid-turn, so it cannot gate queueing).
+    /// Run state is conversation-scoped. `isRunning` deliberately follows the
+    /// currently selected conversation so switching to an idle chat leaves its
+    /// composer ready even while another chat continues in the background.
     var isRunning: Bool {
-        activeRunThreadId != nil
+        guard let activeThreadId else { return false }
+        return runRegistry.isRunning(activeThreadId)
     }
 
-    /// "In progress" task count for the composer status strip (0 or 1 — the
-    /// app runs a single harness task at a time).
-    var inProgressTasks: Int { isRunning ? 1 : 0 }
+    var hasAnyRunningTasks: Bool { runRegistry.count > 0 }
+    var inProgressTasks: Int { runRegistry.count }
+
+    /// Terminal/live state for the selected conversation. The sidebar footer
+    /// separately uses `hasAnyRunningTasks` for the global activity indicator.
+    var runnerState: CodexHarnessClient.RunState {
+        guard let activeThreadId else { return .idle }
+        return runnerStatesByThreadId[activeThreadId] ?? .idle
+    }
 
     // MARK: - Send queue
 
+    var activeQueue: [QueuedMessage] {
+        guard let activeThreadId else { return [] }
+        return queue.filter { $0.threadId == activeThreadId }
+    }
+
     func removeQueued(_ id: String) { queue.removeAll { $0.id == id } }
 
-    func clearQueue() { queue = [] }
+    func clearQueue() {
+        guard let activeThreadId else { return }
+        queue.removeAll { $0.threadId == activeThreadId }
+    }
 
     /// Replace a queued message's text (keeps its images).
     func updateQueuedMessage(_ id: String, text: String) {
@@ -702,14 +741,14 @@ final class SessionStore: ObservableObject {
         queue = all
     }
 
-    /// Send the next queued message if the harness is idle. Called after each
-    /// turn finishes so queued messages drain automatically (one at a time).
-    func drainQueueIfIdle() {
-        guard !isRunning, !queue.isEmpty else { return }
+    /// Send the next queued message for one conversation when that
+    /// conversation's harness is idle. Other conversations are independent.
+    func drainQueueIfIdle(threadId: String) {
+        guard !runRegistry.isRunning(threadId) else { return }
         guard setupError == nil else { return }
-        while !queue.isEmpty {
-            let next = queue.removeFirst()
-            guard liveThreads.contains(where: { $0.id == next.threadId }) else { continue }
+        while let idx = queue.firstIndex(where: { $0.threadId == threadId }) {
+            let next = queue.remove(at: idx)
+            guard liveThreads.contains(where: { $0.id == threadId }) else { continue }
             sendNow(text: next.text, images: next.images, threadId: next.threadId)
             return
         }
@@ -719,14 +758,15 @@ final class SessionStore: ObservableObject {
     /// queue. Queued messages are sent serially — each new turn re-triggers
     /// the drain after it finishes.
     func interjectAndFlush() {
-        guard !queue.isEmpty else { return }
-        suppressAutoDrain = false
-        if isRunning {
-            runner?.cancel()
+        guard let threadId = activeThreadId,
+              queue.contains(where: { $0.threadId == threadId }) else { return }
+        runRegistry.allowAutoDrain(threadId)
+        if runRegistry.isRunning(threadId) {
+            runsByThreadId[threadId]?.runner.cancel()
             // The completing run task calls `finishTurnAndDrain()` once the
             // runner resets, which sends the queued messages in order.
         } else {
-            drainQueueIfIdle()
+            drainQueueIfIdle(threadId: threadId)
         }
     }
 
@@ -737,26 +777,23 @@ final class SessionStore: ObservableObject {
         guard let idx = queue.firstIndex(where: { $0.id == id }) else { return }
         let item = queue.remove(at: idx)
         queue.insert(item, at: 0)
-        suppressAutoDrain = false
-        if isRunning {
-            runner?.cancel()
+        runRegistry.allowAutoDrain(item.threadId)
+        if runRegistry.isRunning(item.threadId) {
+            runsByThreadId[item.threadId]?.runner.cancel()
             // run() → finishTurnAndDrain → drains the front (this message).
         } else {
-            drainQueueIfIdle()
+            drainQueueIfIdle(threadId: item.threadId)
         }
     }
 
-    /// Called when a turn finishes. Drains the queue automatically unless the
-    /// user explicitly stopped it first (`suppressAutoDrain`).
+    /// Called when one conversation's turn finishes. Only that conversation's
+    /// queue and goal state are affected.
     private func finishTurnAndDrain(finishedThreadId: String) {
-        let shouldDrain = !suppressAutoDrain
-        suppressAutoDrain = false
-        if shouldDrain, !queue.isEmpty {
-            if queue.first?.threadId != finishedThreadId {
-                pauseGoalRunningSegment(threadId: finishedThreadId)
-            }
+        guard let shouldDrain = runRegistry.markFinished(finishedThreadId) else { return }
+        let hasQueuedFollowUp = queue.contains { $0.threadId == finishedThreadId }
+        if shouldDrain, hasQueuedFollowUp {
             // A queued message will start the next turn — the goal keeps going.
-            drainQueueIfIdle()
+            drainQueueIfIdle(threadId: finishedThreadId)
         } else {
             // Nothing more to work on: close the goal's running segment so the
             // card stops showing "进行中" / ticking once the turn actually
@@ -866,6 +903,7 @@ final class SessionStore: ObservableObject {
             // rpcRequestId verbatim for the protocol response frame.
             let scopedRequest = request.scoped(forTurn: turnId)
             pendingApprovals[scopedRequest.id] = scopedRequest
+            approvalOwnerThreadIds[scopedRequest.id] = threadId
             if turn.items.firstIndex(where: {
                 if case .approval(let approval) = $0 { return approval.id == scopedRequest.id }
                 return false
@@ -873,6 +911,18 @@ final class SessionStore: ObservableObject {
                 turn.items.append(.approval(scopedRequest))
             }
             turn.status = .awaitingApproval
+        case .approvalExpired(let request):
+            let scopedRequest = request.scoped(forTurn: turnId)
+            pendingApprovals.removeValue(forKey: scopedRequest.id)
+            approvalOwnerThreadIds.removeValue(forKey: scopedRequest.id)
+            if let itemIdx = turn.items.firstIndex(where: {
+                if case .approval(let approval) = $0 { return approval.id == scopedRequest.id }
+                return false
+            }), case .approval(var approval) = turn.items[itemIdx] {
+                approval.decision = .denied
+                turn.items[itemIdx] = .approval(approval)
+            }
+            if turn.status == .awaitingApproval { turn.status = .running }
         case .agentMessageDelta(let id, let delta):
             appendToStreamingMessage(id: id, delta: delta, in: &turn) {
                 .assistantMessage(id: $0, text: "")

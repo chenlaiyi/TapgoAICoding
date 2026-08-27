@@ -11,8 +11,10 @@ import Foundation
 ///
 /// v0.4.1 makes the client **automatically recover** from these crashes:
 ///
-///   - On unexpected exit (non-zero code), the supervisor restarts the
-///     transport with exponential backoff (1s → 2s → 4s, capped).
+///   - On any exit that was not preceded by an explicit `stop()`, the
+///     supervisor restarts the transport with exponential backoff
+///     (1s → 2s → 4s, capped). Exit code 0 and signal-style negative
+///     codes are still unexpected while the supervisor is running.
 ///   - It bumps a `generation` counter and bumps the `idAllocator` so
 ///     old server-side ids from the dead process can never be reused
 ///     against the new one.
@@ -117,8 +119,11 @@ public final class HarnessSupervisor {
         restartTask?.cancel()
         restartTask = nil
         generation += 1
-        transport.stop()
+        // Mark the lifecycle stopped before touching the transport. A
+        // transport is allowed to deliver onClose synchronously from
+        // stop(); that callback must observe this explicit-stop marker.
         state = .stopped
+        transport.stop()
     }
 
     /// Compute the exponential backoff for the `attempt`-th restart.
@@ -183,22 +188,22 @@ public final class HarnessSupervisor {
     // MARK: - Private
 
     private func handleExit(code: Int32) {
-        // Code 0 = clean shutdown we initiated ourselves. We must
-        // NOT auto-restart or the user can never quit the app.
-        // Negative codes are signal kills (e.g. SIGKILL on stop());
-        // treat as expected shutdown too.
-        let clean = code == 0 || code < 0
-        if !clean {
-            onUnexpectedExit?(code)
-        }
+        // Exit codes alone cannot tell us whether shutdown was intended:
+        // a running harness may return 0 after losing its stdio peer, and
+        // restart start() failures use -1. Only stop() setting .stopped is
+        // an authoritative expected-shutdown marker.
         if state == .stopped { return }
-        if clean {
-            state = .stopped
-            return
-        }
+
+        onUnexpectedExit?(code)
+
+        // A transport should close only once, but ignore a duplicate close
+        // after the terminal callback so onGiveUp remains exactly-once.
+        if case .givingUp = state { return }
 
         if restartCount >= config.maxAutoRestarts {
             let reason = "Harness 进程意外退出 (\(code))，已重试 \(restartCount) 次后放弃"
+            restartTask?.cancel()
+            restartTask = nil
             state = .givingUp(reason: reason)
             onGiveUp?(reason)
             return
@@ -210,6 +215,7 @@ public final class HarnessSupervisor {
         state = .restarting(attempt: attempt, backoffSeconds: backoff)
         let myGeneration = generation
 
+        restartTask?.cancel()
         restartTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
             guard let self else { return }
@@ -217,11 +223,13 @@ public final class HarnessSupervisor {
             if self.generation != myGeneration { return }  // stopped mid-backoff
             do {
                 try self.transport.start()
+                self.restartTask = nil
                 self.state = .running
                 self.onRestart?()
             } catch {
-                // Restart itself failed — recurse with a synthetic
-                // "exit code" so the budget ticks down.
+                // Restart itself failed. Treat it as another unexpected
+                // lifecycle failure so it consumes the next retry slot;
+                // -1 must never be mistaken for an explicit stop.
                 self.handleExit(code: -1)
             }
         }

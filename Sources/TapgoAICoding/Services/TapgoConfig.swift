@@ -30,7 +30,7 @@ enum TapgoConfig {
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
-    static let clientInfoVersion = "0.4.0"
+    static let clientInfoVersion = "0.4.2"
 
     /// Token threshold at which the codex harness auto-compacts the transcript
     /// into a summary (replaces the user having to manually start a new

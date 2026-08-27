@@ -764,7 +764,7 @@ struct SidebarView: View {
     }
 
     private var runnerStatusColor: Color {
-        if store.isRunning { return .blue }
+        if store.hasAnyRunningTasks { return .blue }
         switch store.runnerState {
         case .running: return .blue
         case .failed: return DSHTheme.error
@@ -772,7 +772,7 @@ struct SidebarView: View {
         }
     }
     private var runnerStatusHelp: String {
-        if store.isRunning { return "执行中" }
+        if store.hasAnyRunningTasks { return "执行中（\(store.inProgressTasks)）" }
         switch store.runnerState {
         case .running: return "执行中"
         case .failed: return "异常"

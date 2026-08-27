@@ -89,6 +89,7 @@ let allSections: [String] = [
     "HarnessIdAllocator: reset",
     "HarnessIdAllocator: idempotence / repeat releases",
     "HarnessIdAllocator: 1000 allocations are strictly increasing",
+    "ConversationRunRegistry: per-thread isolation",
     "ApprovalTimeoutTracker: arm / disarm basics",
     "ApprovalTimeoutTracker: re-arm resets deadline",
     "ApprovalTimeoutTracker: sweep fires onExpire",
@@ -97,9 +98,9 @@ let allSections: [String] = [
     "ApprovalTimeoutTracker: default deadline matches config",
     "HarnessSupervisor: start transitions to .running",
     "HarnessSupervisor: stop cancels pending restart",
-    "HarnessSupervisor: clean exit (code 0) does not restart",
+    "HarnessSupervisor: code 0 and signal exits restart while running",
     "HarnessSupervisor: unexpected exit fires onRestart after backoff",
-    "HarnessSupervisor: gives up after maxAutoRestarts",
+    "HarnessSupervisor: restart start failures consume retry budget",
     "HarnessSupervisor: backoff is exponential and capped",
     "HarnessSupervisor: idempotent whitelist",
     "HarnessSupervisor: idAllocator is per-supervisor and resets on restart",
@@ -326,6 +327,9 @@ struct TapgoTestMain {
         await runIfInScope(runner, "HarnessIdAllocator: 1000 allocations are strictly increasing") {
             runHarnessIdAllocatorStress(runner)
         }
+        await runIfInScope(runner, "ConversationRunRegistry: per-thread isolation") {
+            runConversationRunRegistryTests(runner)
+        }
         await runIfInScope(runner, "ApprovalTimeoutTracker: arm / disarm basics") {
             runApprovalTimeoutArmDisarm(runner)
         }
@@ -350,13 +354,13 @@ struct TapgoTestMain {
         await runIfInScope(runner, "HarnessSupervisor: stop cancels pending restart") {
             await runHarnessSupervisorStopCancels(runner)
         }
-        await runIfInScope(runner, "HarnessSupervisor: clean exit (code 0) does not restart") {
-            await runHarnessSupervisorCleanExit(runner)
+        await runIfInScope(runner, "HarnessSupervisor: code 0 and signal exits restart while running") {
+            await runHarnessSupervisorRunningExitCodes(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: unexpected exit fires onRestart after backoff") {
             await runHarnessSupervisorRestartAfterBackoff(runner)
         }
-        await runIfInScope(runner, "HarnessSupervisor: gives up after maxAutoRestarts") {
+        await runIfInScope(runner, "HarnessSupervisor: restart start failures consume retry budget") {
             await runHarnessSupervisorGivesUp(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: backoff is exponential and capped") {

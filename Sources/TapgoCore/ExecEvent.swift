@@ -52,6 +52,9 @@ public enum ExecEvent: Hashable {
     /// tool call before it proceeds. `ApprovalRow` renders this inline
     /// and `SessionStore` resolves it via `respondToApproval`.
     case approvalRequested(ApprovalRequest)
+    /// A pending approval reached the local deadline and was automatically
+    /// declined so the harness cannot remain wedged in the background.
+    case approvalExpired(ApprovalRequest)
 
     case error(message: String)
 

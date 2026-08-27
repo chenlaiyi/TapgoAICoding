@@ -289,6 +289,35 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
             EvolutionEntry(
+                version: "v0.4.2",
+                date: "2026-08-27",
+                commit: nil,
+                tag: "v0.4.2",
+                summary: "对话独立执行与 Harness 失效恢复修复",
+                changes: [
+                    "每个对话独立持有 runner、队列、取消和运行状态，切换对话不会中断后台任务",
+                    "审批按 turn 与所属 runner 路由，60 秒真实定时自动拒绝，兼容数字和字符串 RPC id",
+                    "Harness 意外退出立即结束旧回合，code 0、信号退出和重启失败均纳入有限重试",
+                    "新增对话运行注册表与 Supervisor 回归覆盖，测试数 517 → 572"
+                ],
+                why: "解决新对话被全局 runner 阻塞、插话误停旧对话，以及审批或 Harness 异常导致永久卡住的问题。",
+                next: "增加 App target 的可注入 runner 协调器测试和长任务无事件看门狗。"
+            ),
+            EvolutionEntry(
+                version: "v0.4.1",
+                date: "2026-08-27",
+                commit: "fa917d3",
+                tag: "v0.4.1",
+                summary: "Harness 进程监督、JSON-RPC id 防重用、审批超时",
+                changes: [
+                    "新增 HarnessSupervisor、HarnessIdAllocator 与 ApprovalTimeoutTracker",
+                    "加入内存 FakeHarnessTransport 和协议层回归测试",
+                    "测试数 420 → 517"
+                ],
+                why: "为 Harness 进程退出、审批挂起和 JSON-RPC id 冲突建立专用防线。",
+                next: "按对话隔离执行生命周期，并验证异常恢复不会留下挂起回合。"
+            ),
+            EvolutionEntry(
                 version: "v0.4.0",
                 date: "2026-08-27",
                 commit: nil,
