@@ -77,6 +77,34 @@ let allSections: [String] = [
     "MarkdownLite: images",
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
+    "FakeHarnessTransport: start + send + exit",
+    "FakeHarnessTransport: send after exit throws",
+    "FakeHarnessTransport: simulateStartFailure is one-shot",
+    "FakeHarnessTransport: exit is idempotent",
+    "FakeHarnessTransport: stop() does not fire onClose by itself",
+    "HarnessIdAllocator: monotonic allocation",
+    "HarnessIdAllocator: release + reuse",
+    "HarnessIdAllocator: server id claim",
+    "HarnessIdAllocator: collision detection",
+    "HarnessIdAllocator: reset",
+    "HarnessIdAllocator: idempotence / repeat releases",
+    "HarnessIdAllocator: 1000 allocations are strictly increasing",
+    "ApprovalTimeoutTracker: arm / disarm basics",
+    "ApprovalTimeoutTracker: re-arm resets deadline",
+    "ApprovalTimeoutTracker: sweep fires onExpire",
+    "ApprovalTimeoutTracker: disarm prevents expire",
+    "ApprovalTimeoutTracker: disarmAll on shutdown",
+    "ApprovalTimeoutTracker: default deadline matches config",
+    "HarnessSupervisor: start transitions to .running",
+    "HarnessSupervisor: stop cancels pending restart",
+    "HarnessSupervisor: clean exit (code 0) does not restart",
+    "HarnessSupervisor: unexpected exit fires onRestart after backoff",
+    "HarnessSupervisor: gives up after maxAutoRestarts",
+    "HarnessSupervisor: backoff is exponential and capped",
+    "HarnessSupervisor: idempotent whitelist",
+    "HarnessSupervisor: idAllocator is per-supervisor and resets on restart",
+    "HarnessSupervisor: reserveServerId prevents collision",
+    "HarnessSupervisor: idempotent retry bookkeeping",
     "AppFontScale: enum shape",
     "TrajectoryFilter: item matching",
     "TurnMarkdown: render",
@@ -261,6 +289,90 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "MarkdownLite: strikethrough") {
             runMarkdownLiteStrikethrough(runner)
+        }
+        await runIfInScope(runner, "FakeHarnessTransport: start + send + exit") {
+            runFakeHarnessTransportStartSendExit(runner)
+        }
+        await runIfInScope(runner, "FakeHarnessTransport: send after exit throws") {
+            runFakeHarnessTransportSendAfterExitThrows(runner)
+        }
+        await runIfInScope(runner, "FakeHarnessTransport: simulateStartFailure is one-shot") {
+            runFakeHarnessTransportStartFailureIsOneShot(runner)
+        }
+        await runIfInScope(runner, "FakeHarnessTransport: exit is idempotent") {
+            runFakeHarnessTransportExitIsIdempotent(runner)
+        }
+        await runIfInScope(runner, "FakeHarnessTransport: stop() does not fire onClose by itself") {
+            runFakeHarnessTransportStopAlone(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: monotonic allocation") {
+            runHarnessIdAllocatorMonotonic(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: release + reuse") {
+            runHarnessIdAllocatorReleaseReuse(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: server id claim") {
+            runHarnessIdAllocatorServerClaim(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: collision detection") {
+            runHarnessIdAllocatorCollision(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: reset") {
+            runHarnessIdAllocatorReset(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: idempotence / repeat releases") {
+            runHarnessIdAllocatorRepeatReleases(runner)
+        }
+        await runIfInScope(runner, "HarnessIdAllocator: 1000 allocations are strictly increasing") {
+            runHarnessIdAllocatorStress(runner)
+        }
+        await runIfInScope(runner, "ApprovalTimeoutTracker: arm / disarm basics") {
+            runApprovalTimeoutArmDisarm(runner)
+        }
+        await runIfInScope(runner, "ApprovalTimeoutTracker: re-arm resets deadline") {
+            runApprovalTimeoutRearm(runner)
+        }
+        await runIfInScope(runner, "ApprovalTimeoutTracker: sweep fires onExpire") {
+            runApprovalTimeoutSweepFires(runner)
+        }
+        await runIfInScope(runner, "ApprovalTimeoutTracker: disarm prevents expire") {
+            runApprovalTimeoutDisarmPrevents(runner)
+        }
+        await runIfInScope(runner, "ApprovalTimeoutTracker: disarmAll on shutdown") {
+            runApprovalTimeoutDisarmAll(runner)
+        }
+        await runIfInScope(runner, "ApprovalTimeoutTracker: default deadline matches config") {
+            runApprovalTimeoutDefaultDeadline(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: start transitions to .running") {
+            await runHarnessSupervisorStartTransitions(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: stop cancels pending restart") {
+            await runHarnessSupervisorStopCancels(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: clean exit (code 0) does not restart") {
+            await runHarnessSupervisorCleanExit(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: unexpected exit fires onRestart after backoff") {
+            await runHarnessSupervisorRestartAfterBackoff(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: gives up after maxAutoRestarts") {
+            await runHarnessSupervisorGivesUp(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: backoff is exponential and capped") {
+            runHarnessSupervisorBackoff(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: idempotent whitelist") {
+            runHarnessSupervisorIdempotentWhitelist(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: idAllocator is per-supervisor and resets on restart") {
+            runHarnessSupervisorIdAllocator(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: reserveServerId prevents collision") {
+            runHarnessSupervisorReserveServerId(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: idempotent retry bookkeeping") {
+            runHarnessSupervisorRetryBookkeeping(runner)
         }
         await runIfInScope(runner, "AppFontScale: enum shape") {
             runAppFontScaleTests(runner)

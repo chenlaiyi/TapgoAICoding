@@ -82,3 +82,18 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 - 初始化脚本统一 harness 选择并强制最低 Codex 0.149.1；纳入此前漏提交的 AppFont/搜索测试文件，恢复干净 clone 可测试性。
 **Why**: 修复原生 App 的实际上下文失忆、审批失效、终端无实时输出和旧 CLI 被误选等主链问题，同时吸收两套最新 Harness 中已经成熟且适合 Swift 客户端的设计。
 **Next**: 接入 `thread/read`/`thread/compact/start` 可见状态、文件 patch 增量与 FakeTransport 两轮端到端测试。
+
+
+## v0.4.1 — Harness 进程监督、JSON-RPC id 防重用、审批超时
+**Date**: 2026-08-27
+**Commit**: `623efa3`
+**Tag**: v0.4.1
+**Test status**: — 517 passed, 0 failed —
+**Changed**:
+- 新增 `Sources/TapgoCore/HarnessSupervisor.swift` (200 行):包装 `HarnessTransport`,在 harness 进程意外退出时按指数退避(默认 1s→2s→4s,封顶 8s)自动重启,2 次失败后放弃并触发 `onGiveUp`;`stop()` / clean exit (code 0 / signal kill) 不触发自动重启;`onRestart` 回调让客户端在重启后重跑 JSON-RPC `initialize` 握手。
+- 新增 `Sources/TapgoCore/HarnessIdAllocator.swift` (99 行):单调递增 JSON-RPC id 分配器,**永不重用**已发 id;`reserveServerId(_:)` 让服务器发来的审批 id 占位,防止本端后续 outbound 请求撞 id;`reset()` 在 supervisor 自动重启后调用,清空上一进程的 ghost id。
+- 新增 `Sources/TapgoCore/ApprovalTimeoutTracker.swift` (80 行):审批超时追踪器,server→client 方向独立计时,默认 60s,超时自动 `decline`(此前只有 client→server 的 30s RPC 超时,审批可无限挂起);`sweep(now:)` 在每轮 turn 开始时跑一次,清掉过期 arm。
+- 新增 `Sources/TapgoTests/FakeHarnessTransport.swift` (118 行):内存内 `HarnessTransport` 实现,`sendNotification` / `sendServerRequest` / `respond` / `respondError` / `simulateExit` / `simulateStartFailure` 全部可脚本化,毫秒级测试,无需 SSH。
+- 新增 4 个测试文件共 ~80 测试:`FakeHarnessTransportTests` (18)、`HarnessIdAllocatorTests` (14)、`ApprovalTimeoutTests` (13)、`HarnessSupervisorTests` (32)。测试总数 420 → **517**。
+**Why**: v0.4.0 协议升级后,harness 进程意外退出/审批挂起/id 重用三个场景没有专用覆盖,生产中出现的偶发失败难以定位;Fake harness 让协议回归不再依赖 SSH(203.0.113.10),`evolve.sh` 默认跳过真实 SSH 集成测试的同时,协议层有了独立快速反馈。
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

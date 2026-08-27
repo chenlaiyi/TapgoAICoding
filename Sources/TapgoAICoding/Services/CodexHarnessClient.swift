@@ -35,9 +35,15 @@ final class CodexHarnessClient {
     }
 
     let transport: HarnessTransport
+    /// v0.4.1: wraps `transport` with auto-restart on unexpected exit
+    /// and owns the monotonic JSON-RPC id allocator.
+    let supervisor: HarnessSupervisor
+    /// v0.4.1: tracks pending server-initiated approval requests and
+    /// auto-declines them after `ApprovalTimeoutTracker.defaultDeadline`
+    /// so a missed approval can't wedge the harness forever.
+    private var approvalTimeouts = ApprovalTimeoutTracker()
 
     private(set) var state: RunState = .idle
-    private var nextRequestId = 1
     private var pending: [Int: (Result<JSONValue, Error>) -> Void] = [:]
     private var eventHandler: (@MainActor (ExecEvent) -> Void)?
 
@@ -48,20 +54,81 @@ final class CodexHarnessClient {
     /// thread start when no turn id exists yet.
     private var cancelRequested = false
 
-    init(transport: HarnessTransport) {
+    init(transport: HarnessTransport, supervisorConfig: HarnessSupervisor.Config = HarnessSupervisor.Config()) {
         self.transport = transport
+        self.supervisor = HarnessSupervisor(transport: transport, config: supervisorConfig)
         transport.onNotification = { [weak self] frame in
             self?.handleFrame(frame)
         }
-        transport.onClose = { [weak self] code in
-            self?.serverStopped(code: code)
+        // Note: do NOT install `transport.onClose` here — `HarnessSupervisor`
+        // already owns it. The supervisor calls `onRestart` / `onGiveUp`
+        // after deciding what to do with the exit.
+        supervisor.onRestart = { [weak self] in
+            self?.supervisorRestarted()
+        }
+        supervisor.onGiveUp = { [weak self] reason in
+            self?.supervisorGaveUp(reason: reason)
+        }
+        // v0.4.1: when an approval hits its 60s deadline, auto-decline
+        // by replying with the JSON-RPC `decline` result. The harness
+        // unblocks immediately and the user sees a brief "approval
+        // timed out" message in the trajectory.
+        approvalTimeouts.onExpire = { [weak self] rpcIdString in
+            guard let self else { return }
+            guard let id = Int(rpcIdString) else { return }
+            let frame: JSONValue = .object([
+                "id": .int(id),
+                "result": .object(["decision": .string("decline")]),
+            ])
+            do {
+                try self.transport.send(frame: frame)
+                TapgoConfig.log("[harness] auto-declined approval id=\(id) after timeout")
+            } catch {
+                TapgoConfig.log("[harness] failed to send auto-decline: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Re-run the JSON-RPC `initialize` handshake after a supervisor
+    /// auto-restart. Without this the new process rejects every request
+    /// with "Not initialized".
+    private func supervisorRestarted() {
+        TapgoConfig.log("[harness] supervisor auto-restarted; re-initializing")
+        Task { @MainActor in
+            do {
+                _ = try await self.request(method: "initialize", params: [
+                    "clientInfo": .object([
+                        "name": .string(TapgoConfig.clientInfoName),
+                        "title": .string(TapgoConfig.clientInfoTitle),
+                        "version": .string(TapgoConfig.clientInfoVersion),
+                    ]),
+                ])
+                try? self.transport.send(frame: .object([
+                    "method": .string("initialized"),
+                    "params": .object([:]),
+                ]))
+            } catch {
+                TapgoConfig.log("[harness] post-restart initialize failed: \(error.localizedDescription)")
+                self.serverStopped(code: -1)
+            }
+        }
+    }
+
+    /// Called when the supervisor has exhausted its restart budget.
+    /// Fail any in-flight turn with the reason so the UI can show it.
+    private func supervisorGaveUp(reason: String) {
+        TapgoConfig.log("[harness] supervisor gave up: \(reason)")
+        if case .running = state {
+            eventHandler?(.turnCompleted(status: "failed", errorMessage: reason, usage: nil))
+            finish(.failed(reason))
         }
     }
 
     /// True when the underlying transport is alive and ready to
-    /// accept JSON-RPC frames.
+    /// accept JSON-RPC frames. Reads through the supervisor so a
+    /// restart-in-progress correctly shows up as "not available".
     var isAvailable: Bool {
-        transport.isRunning
+        supervisor.isRunning
     }
 
     /// Read-only snapshot accessor for the SessionStore so it can persist
@@ -87,7 +154,7 @@ final class CodexHarnessClient {
         cancelRequested = false
         defer { cancelRequested = false }
         do {
-            try transport.start()
+            try supervisor.start()
 
             // Attach the event handler *before* the handshake / thread call so
             // we never drop the harness's `thread/started` notification (which
@@ -174,6 +241,10 @@ final class CodexHarnessClient {
             if let effort = TapgoConfig.reasoningEffort {
                 turnParams["effort"] = .string(effort)
             }
+            // v0.4.1: sweep expired approval timers at the start of every
+            // turn so we never carry over a deadline from the previous
+            // turn (the harness process is gone anyway after restart).
+            approvalTimeouts.sweep()
             let resp = try await request(method: "turn/start", params: turnParams)
             activeTurnId = resp.objectValue?["turn"]?.objectValue?["id"]?.stringValue
             try throwIfCancelled()
@@ -240,6 +311,13 @@ final class CodexHarnessClient {
             TapgoConfig.log("[harness] rejected approval without JSON-RPC request id: \(request.id)")
             return false
         }
+        // Disarm the timeout so it doesn't auto-decline a decision the
+        // user already made.
+        if let rpcId = request.rpcRequestId?.intValue {
+            approvalTimeouts.disarm(rpcRequestId: String(rpcId))
+        } else if let rpcId = request.rpcRequestId?.stringValue {
+            approvalTimeouts.disarm(rpcRequestId: rpcId)
+        }
         do {
             try transport.send(frame: frame)
             return true
@@ -252,7 +330,11 @@ final class CodexHarnessClient {
     /// Tear down the underlying transport and wait for the subprocess to exit
     /// before a queued turn starts another app-server.
     func shutdownAndWait() async {
+        // supervisor.stop() cancels any pending restart task before
+        // signalling the transport to terminate.
+        supervisor.stop()
         await transport.stopAndWait()
+        approvalTimeouts.disarmAll()
         state = .idle
     }
 
@@ -298,8 +380,7 @@ final class CodexHarnessClient {
     }
 
     private func request(method: String, params: [String: JSONValue]) async throws -> JSONValue {
-        let id = nextRequestId
-        nextRequestId += 1
+        let id = supervisor.allocateId()
         return try await withCheckedThrowingContinuation { continuation in
             pending[id] = { result in
                 switch result {
@@ -312,6 +393,7 @@ final class CodexHarnessClient {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 guard let callback = self?.pending.removeValue(forKey: id) else { return }
+                self?.supervisor.releaseId(id)
                 callback(.failure(HarnessError.timeout(method)))
             }
             do {
@@ -322,6 +404,7 @@ final class CodexHarnessClient {
                 ]))
             } catch {
                 pending.removeValue(forKey: id)
+                supervisor.releaseId(id)
                 continuation.resume(throwing: error)
             }
         }
@@ -403,6 +486,22 @@ final class CodexHarnessClient {
             params: params,
             rpcRequestId: rpcRequestId
         ) {
+            // v0.4.1: when an approval arrives, arm a 60s deadline and
+            // reserve the server-supplied id so our allocator never
+            // hands the same number to an outbound request.
+            if case .approvalRequested(let req) = event, let rpcId = req.rpcRequestId {
+                let key: String = {
+                    if let s = rpcId.stringValue { return s }
+                    if let i = rpcId.intValue { return String(i) }
+                    return req.id
+                }()
+                do {
+                    try supervisor.reserveServerId(rpcId.intValue ?? Int.max)
+                } catch {
+                    TapgoConfig.log("[harness] could not reserve server approval id: \(error.localizedDescription)")
+                }
+                approvalTimeouts.arm(rpcRequestId: key)
+            }
             eventHandler?(event)
         } else if let rpcRequestId {
             // Fail closed: an unknown server request must not hang the active
@@ -418,6 +517,9 @@ final class CodexHarnessClient {
     }
 
     private func serverStopped(code: Int32) {
+        // Disarm every approval timer — the harness is gone, no point
+        // auto-declining requests it can never answer.
+        approvalTimeouts.disarmAll()
         let pendingError: HarnessError = cancelRequested
             ? .cancelled
             : .processExit(Int(code))
