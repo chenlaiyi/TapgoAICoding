@@ -226,15 +226,14 @@ struct FileChangeView: View {
                 .accessibilityLabel(isExpanded ? "折叠差异" : "展开差异")
             }
             if isExpanded && !change.diff.isEmpty {
-                ScrollView {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        DiffText(diff: change.diff)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                }
-                .frame(maxHeight: 220)
-                .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 4))
+                // Structured diff view: parses the unified diff, lets
+                // the reviewer toggle unified / split / raw, and add
+                // per-line review comments. Replaces the previous
+                // naive `DiffText` colorizer (kept inside DiffView as
+                // the "Raw" mode for users who want the literal text).
+                DiffView(change: change)
+                    .frame(maxHeight: 360)
+                    .padding(.bottom, 4)
             }
         }
         .padding(.horizontal, 10)

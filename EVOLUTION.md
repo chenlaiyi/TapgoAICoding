@@ -126,3 +126,15 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 - 新增 `ConversationRunRegistry` 与更完整的 `HarnessSupervisor` 回归测试；测试总数 517 → 572。
 **Why**: 修复“会话 A 执行时切到 B，B 只能排队；插话又会中断 A”的全局单 runner 架构缺陷，同时封堵审批超时和进程重启仍可能让任务永久卡住的两条链路。
 **Next**: 增加 App target 的可注入 runner 协调器测试和长任务无事件看门狗。
+
+
+## v0.5.0 — feat: structured diff view with per-line review comments
+**Date**: 2026-08-28
+**Commit**: _(see )_
+**Tag**: v0.5.0
+**Test status**: — 667 passed, 0 failed —
+**Changed**:
+- feat: structured diff view with per-line review comments
+新增 Sources/TapgoCore/DiffParser.swift:把 unified diff 文本解析为 DiffFile/DiffHunk/DiffLine 结构(支持 git a//b/ 前缀、多文件、/dev/null 创建/删除、CRLF 规范化、binary marker、no-newline marker),共 18 个 parser 单测 + 1 个独立 parseHunkHeader 测试。新增 Sources/TapgoCore/ReviewComment.swift:ReviewComment + ObservableObject/NSCoding/并发安全的 ReviewCommentStore(lineKey 锚定),11 个 store 单测覆盖 add/fetch/update/remove/clear/并发 100 写入。新增 Sources/TapgoAICoding/Views/DiffView.swift:替换原 naive DiffText 着色器,提供 unified / split / raw 三种渲染模式、行号 gutter、+/- 单色背景、行级评论输入(bubble 按钮 + 内联 composer);新加 splitSide() 让删除行在右侧呈现空槽、添加行在左侧空槽,context 行双侧同内容。新增 Sources/TapgoTests/TestMain.swift 注册 28 个新 section。FileChangeView 用 DiffView 替换 ScrollView+DiffText。Core/Tests:572 -> 667 全过(+95)。diff 渲染从纯字符串着色升级为可审查、可评论的结构化视图,harness 协议层稳定后第一次功能型 minor 升级。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

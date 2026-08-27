@@ -106,6 +106,34 @@ let allSections: [String] = [
     "HarnessSupervisor: idAllocator is per-supervisor and resets on restart",
     "HarnessSupervisor: reserveServerId prevents collision",
     "HarnessSupervisor: idempotent retry bookkeeping",
+    "DiffParser: empty input returns no files",
+    "DiffParser: whitespace-only input returns no files",
+    "DiffParser: single-file diff parses file + hunk + lines",
+    "DiffParser: total additions + removals computed",
+    "DiffParser: comma-less hunk header defaults count to 1",
+    "DiffParser: trailing heading after hunk header is preserved",
+    "DiffParser: brand-new file has /dev/null old path",
+    "DiffParser: deleted file has /dev/null new path",
+    "DiffParser: multi-file diff splits into one DiffFile each",
+    "DiffParser: git-style 'diff --git' header pre-seeds paths",
+    "DiffParser: CRLF input is normalised to LF before parsing",
+    "DiffParser: malformed @@ header is skipped, not crashed on",
+    "DiffParser: DiffLine.stableKey is unique per line",
+    "DiffParser: binary marker produces a DiffFile with isBinary=true",
+    "DiffParser: allLines preserves hunk + line order",
+    "DiffParser: '\\ No newline' marker is preserved",
+    "DiffParser.parseHunkHeader: returns numeric fields",
+    "ReviewCommentStore: add then fetch by fileChangeId",
+    "ReviewCommentStore: filter by lineKey",
+    "ReviewCommentStore: update text by id",
+    "ReviewCommentStore: update on missing id returns false",
+    "ReviewCommentStore: remove by id",
+    "ReviewCommentStore: removeAll(fileChangeId) clears that file only",
+    "ReviewCommentStore: clear wipes everything",
+    "ReviewCommentStore: allComments spans every file",
+    "ReviewComment: Codable round-trips through JSON",
+    "ReviewComment: hunk-level comment uses empty lineKey",
+    "ReviewCommentStore: 100 concurrent adds don't lose data",
     "AppFontScale: enum shape",
     "TrajectoryFilter: item matching",
     "TurnMarkdown: render",
@@ -377,6 +405,90 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "HarnessSupervisor: idempotent retry bookkeeping") {
             runHarnessSupervisorRetryBookkeeping(runner)
+        }
+        await runIfInScope(runner, "DiffParser: empty input returns no files") {
+            runDiffParserEmpty(runner)
+        }
+        await runIfInScope(runner, "DiffParser: whitespace-only input returns no files") {
+            runDiffParserWhitespaceOnly(runner)
+        }
+        await runIfInScope(runner, "DiffParser: single-file diff parses file + hunk + lines") {
+            runDiffParserSingleFileBasic(runner)
+        }
+        await runIfInScope(runner, "DiffParser: total additions + removals computed") {
+            runDiffParserStats(runner)
+        }
+        await runIfInScope(runner, "DiffParser: comma-less hunk header defaults count to 1") {
+            runDiffParserSingleLineHunk(runner)
+        }
+        await runIfInScope(runner, "DiffParser: trailing heading after hunk header is preserved") {
+            runDiffParserHunkWithHeading(runner)
+        }
+        await runIfInScope(runner, "DiffParser: brand-new file has /dev/null old path") {
+            runDiffParserCreate(runner)
+        }
+        await runIfInScope(runner, "DiffParser: deleted file has /dev/null new path") {
+            runDiffParserDelete(runner)
+        }
+        await runIfInScope(runner, "DiffParser: multi-file diff splits into one DiffFile each") {
+            runDiffParserMultiFile(runner)
+        }
+        await runIfInScope(runner, "DiffParser: git-style 'diff --git' header pre-seeds paths") {
+            runDiffParserGitHeader(runner)
+        }
+        await runIfInScope(runner, "DiffParser: CRLF input is normalised to LF before parsing") {
+            runDiffParserCRLFNormalisation(runner)
+        }
+        await runIfInScope(runner, "DiffParser: malformed @@ header is skipped, not crashed on") {
+            runDiffParserMalformedHeaderIsSkipped(runner)
+        }
+        await runIfInScope(runner, "DiffParser: DiffLine.stableKey is unique per line") {
+            runDiffParserStableKey(runner)
+        }
+        await runIfInScope(runner, "DiffParser: binary marker produces a DiffFile with isBinary=true") {
+            runDiffParserBinaryMarker(runner)
+        }
+        await runIfInScope(runner, "DiffParser: allLines preserves hunk + line order") {
+            runDiffParserAllLinesOrder(runner)
+        }
+        await runIfInScope(runner, "DiffParser: '\\ No newline' marker is preserved") {
+            runDiffParserNoNewlineAtEOF(runner)
+        }
+        await runIfInScope(runner, "DiffParser.parseHunkHeader: returns numeric fields") {
+            runDiffParserHunkHeaderParserDirectly(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: add then fetch by fileChangeId") {
+            runReviewCommentAddAndFetch(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: filter by lineKey") {
+            runReviewCommentFetchByLineKey(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: update text by id") {
+            runReviewCommentUpdate(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: update on missing id returns false") {
+            runReviewCommentUpdateMiss(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: remove by id") {
+            runReviewCommentRemove(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: removeAll(fileChangeId) clears that file only") {
+            runReviewCommentRemoveAll(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: clear wipes everything") {
+            runReviewCommentClear(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: allComments spans every file") {
+            runReviewCommentAllComments(runner)
+        }
+        await runIfInScope(runner, "ReviewComment: Codable round-trips through JSON") {
+            runReviewCommentCodableRoundTrip(runner)
+        }
+        await runIfInScope(runner, "ReviewComment: hunk-level comment uses empty lineKey") {
+            runReviewCommentHunkLevelUsesEmptyKey(runner)
+        }
+        await runIfInScope(runner, "ReviewCommentStore: 100 concurrent adds don't lose data") {
+            runReviewCommentStoreConcurrency(runner)
         }
         await runIfInScope(runner, "AppFontScale: enum shape") {
             runAppFontScaleTests(runner)
