@@ -97,3 +97,16 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 - 新增 4 个测试文件共 ~80 测试:`FakeHarnessTransportTests` (18)、`HarnessIdAllocatorTests` (14)、`ApprovalTimeoutTests` (13)、`HarnessSupervisorTests` (32)。测试总数 420 → **517**。
 **Why**: v0.4.0 协议升级后,harness 进程意外退出/审批挂起/id 重用三个场景没有专用覆盖,生产中出现的偶发失败难以定位;Fake harness 让协议回归不再依赖 SSH(203.0.113.10),`evolve.sh` 默认跳过真实 SSH 集成测试的同时,协议层有了独立快速反馈。
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+## v0.4.2 — 适配 macOS 27 SDK 缺失的 SwiftUI macros plugin
+**Date**: 2026-08-28
+**Commit**: _(see `git log -1 v0.4.2`)_
+**Tag**: v0.4.2
+**Test status**: — 517 passed, 0 failed —
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`：补 `import Combine`，消除 `Timer.publish` 用的 `Combine.Publishers` 未导入 warning（之前靠 SDK 26.5 隐式允许，SDK 27 收紧后会变成 warning）。
+- `scripts/build-app.sh`：默认走 `xcrun -sdk macosx26.5 swift ...`，可通过 `TAPGO_SDK=macosx27.0` 覆盖。脚本入口做 SDK 存在性校验，缺 SDK 时列出已安装的 SDK 并以 exit 7 退出。
+- `scripts/evolve.sh`：step 3 的 `swift build -c release --product TapgoAICoding` 同样改为 `${SWIFT[@]}`（SDK 26.5），与 `build-app.sh` 保持一致；step 8 调 `./scripts/build-app.sh` 自动复用。`swift run TapgoTests` 不动（TapgoTests 无 SwiftUI import，SDK 选择不影响）。
+- **Core / Tests 完全不动**，517 项测试仍全过，`.app` bundle 在 SDK 26.5 下 release build 成功（44.8s），ld 的两条 search-path warning 是 SDK 26.5 期望 Xcode `Developer/usr/lib` 路径（与本机只有 CommandLineTools 相关，与代码无关）。
+**Why**: macOS 27 SDK 的 CommandLineTools Swift 6.4 不再带 `SwiftUI.StateMacro` / `.Environment` 等外部宏的 plugin，导致 `@State private var foo` 直接报 `external macro implementation type 'SwiftUIMacros.StateMacro' could not be found`，整 app target 编译失败。这是 v0.4.0 / v0.4.1 baseline 就存在的限制（之前用户用 SDK 26.5 工具链 build，机器升级后失败），不是新代码引入的；修复策略是把脚本的 SDK 选择 pin 到最后一个仍带 SwiftUI macros plugin 的 SDK（26.5），等 Apple 在 macOS 28 重加 plugin 后用 `TAPGO_SDK=macosx27.0` 或更高显式覆盖即可。
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

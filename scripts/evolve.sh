@@ -22,7 +22,9 @@
 #      OTHER than the ones this script itself creates).
 #   2. Compute the next version from the current tag (or Info.plist).
 #   3. Patch Info.plist's CFBundleShortVersionString + CFBundleVersion.
-#   4. swift build -c release --product TapgoAICoding  (must succeed)
+#   4. swift build -c release --product TapgoAICoding  (must succeed; uses
+#      SDK 26.5 via xcrun — see scripts/build-app.sh for the rationale)
+#   5. swift run TapgoTests                         (must stay green)
 #   5. swift run TapgoTests                         (must stay green)
 #   6. Append a section to EVOLUTION.md.
 #   7. git add + commit + tag + push (origin main + tags).
@@ -43,6 +45,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+# ---------- SDK selection ----------
+# Match scripts/build-app.sh: pin to SDK 26.5 because macOS 27 SDK
+# dropped the SwiftUI macros plugin from CommandLineTools. Override
+# with TAPGO_SDK=macosx27.0 to opt back in.
+TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
+if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
+  echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2
+  echo "  Installed SDKs:" >&2
+  ls -1 /Library/Developer/CommandLineTools/SDKs/ 2>/dev/null | sed "s/^/    /" >&2
+  exit 7
+fi
+SWIFT=(xcrun -sdk "$TAPGO_SDK" swift)
+echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 
 # ---------- Args ----------
 BUMP="${1:-patch}"
@@ -99,7 +115,7 @@ echo "==> Version: ${MAJ}.${MIN}.${PAT} → ${NEW_VERSION}  (${BUMP})"
 
 # ---------- 3. Build ----------
 echo "==> Building release"
-if ! swift build -c release --product TapgoAICoding; then
+if ! "${SWIFT[@]}" build -c release --product TapgoAICoding; then
   echo "BUILD FAILED — reverting Info.plist" >&2
   git checkout -- "$PLIST"
   exit 4

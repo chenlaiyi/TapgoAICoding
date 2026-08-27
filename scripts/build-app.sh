@@ -4,6 +4,16 @@
 #
 # What this does:
 #   1. swift build -c release (executable: TapgoAICoding)
+#
+# Toolchain note (v0.4.2+):
+#   As of macOS 27 SDK, Apple's CommandLineTools Swift ships WITHOUT the
+#   SwiftUI macros plugin (SwiftUIMacros.StateMacro / .Environment / etc.),
+#   so a bare `swift build` against the default SDK errors out with
+#   `external macro implementation type ... could not be found`. We pin
+#   to SDK 26.5 which still ships the plugin, via:
+#       xcrun -sdk macosx26.5 swift build ...
+#   Override with:   TAPGO_SDK=macosx27.0 ./scripts/build-app.sh
+#   Detect with:     xcrun --show-sdk-path  (check for missing SwiftUIMacros)
 #   2. Creates Tapgo AICoding.app/Contents/{MacOS,Resources}/
 #   3. Copies the binary, Info.plist, entitlements
 #   4. Ad-hoc codesigns so Gatekeeper is lenient for local use
@@ -20,6 +30,21 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+# ---------- SDK selection ----------
+# Pick a Swift SDK that actually carries the SwiftUI macros plugin.
+# Default = macosx26.5 (last SDK that ships the plugin via
+# CommandLineTools). Override via TAPGO_SDK=macosx27.0 to try the
+# bleeding edge — that build will fail until Apple re-adds the plugin.
+TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
+if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
+  echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2
+  echo "  Installed SDKs:" >&2
+  ls -1 /Library/Developer/CommandLineTools/SDKs/ 2>/dev/null | sed "s/^/    /" >&2
+  exit 7
+fi
+SWIFT=(xcrun -sdk "$TAPGO_SDK" swift)
+echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 
 APP_DISPLAY_NAME="Tapgo AICoding"
 APP_DIR_NAME="Tapgo AICoding"
@@ -39,7 +64,7 @@ echo "==> Building ${BIN_NAME} (release)"
 # Build only the app product — the TapgoTests target isn't part of the
 # .app bundle and uses `@testable import TapgoCore`, which SwiftPM
 # rejects in a release build (only enabled for debug/testing).
-swift build -c release --product TapgoAICoding
+"${SWIFT[@]}" build -c release --product TapgoAICoding
 
 if [[ ! -f "$BIN_SRC" ]]; then
   echo "ERROR: built binary not found at $BIN_SRC" >&2
