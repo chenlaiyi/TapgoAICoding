@@ -1107,8 +1107,6 @@ struct ComposerView: View {
     var contentWidth: CGFloat = 760
     /// How much of the "任务" status card's bottom is tucked behind the
     /// composer card (the "peeking tab" overlap). Keep small so the task
-    /// text stays readable (≈1/10 of the card height).
-    private let cardOverlap: CGFloat = 6
     /// Keep live editing local. The persisted draft is written by the
     /// coalescer instead of invalidating SwiftUI for every character.
     @State private var text: String = UserDefaults.standard.string(forKey: "tapgo.composerDraft") ?? ""
@@ -1216,14 +1214,16 @@ struct ComposerView: View {
 
             turnProgressBadge
 
-            VStack(spacing: store.activeQueue.isEmpty ? 0 : -cardOverlap) {
+            // Queue sits directly above the composer as an independent rounded
+            // panel — matching Codex: both cards stay full-width, same surface,
+            // same radius, separated by a small gap (no overlap, no shared
+            // border).
+            VStack(spacing: store.activeQueue.isEmpty ? 0 : 10) {
                 queueStatusBar
-                    .zIndex(0)
 
                 // Centered, max-width rounded dock (mirrors the DSH composer
                 // 'composer-card-max-width'). The input and its controls live
-                // inside one raised card. zIndex(1) so it draws on top,
-                // covering the task card's bottom `cardOverlap` pixels.
+                // inside one raised card.
                 VStack(spacing: 8) {
             GrowingTextEditor(
                     text: $text,
@@ -1523,7 +1523,6 @@ struct ComposerView: View {
             }
 
             composerMetricsBar
-            subscriptionBadge
         }
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
@@ -1786,60 +1785,6 @@ struct ComposerView: View {
         }
     }
 
-    /// v0.5.9+：输入框下方右侧独立的"套餐用量" badge。
-    /// 从 `composerMetricsBar` 中抽出，避免与 rounds/steps/LLM/cache
-    /// 等本会话指标挤在同一行；始终右对齐渲染（即便没有 thread
-    /// 累计 token、没有 codex 套餐用量也保持"套餐用量 · 加载中"
-    /// 占位），让用户任何时候进入会话都能直接看到当前订阅用量。
-    @ViewBuilder
-    private var subscriptionBadge: some View {
-        HStack {
-            Spacer(minLength: 0)
-            subscriptionChip(subscription)
-        }
-        .padding(.horizontal, 4)
-        .frame(maxWidth: contentWidth, alignment: .trailing)
-    }
-
-    /// 输入框下方的"套餐用量"摘要。v0.5.6 用本会话累计 token +
-    /// 最近 turn 的模型上下文窗口组合而成；v0.5.9 接入 codex
-    /// `account/rateLimits/read` 与 `account/rateLimits/updated` 通知，
-    /// 优先使用 5h / 周两档真实剩余，未拿到时回退到 v0.5.6 语义。
-    private var subscription: SubscriptionUsage {
-        let used = activeThread?.usageTotal ?? 0
-        let latest = activeThread?.turns.last(where: { $0.usage != nil })?.usage
-        return SubscriptionUsage.from(
-            turnsTotalTokens: used,
-            latestUsage: latest,
-            fallbackWindow: 1_000_000,
-            accountRateLimits: store.accountRateLimits
-        )
-    }
-
-    /// 套餐用量 chip — 输入框下方右侧。颜色随压力等级切换：
-    /// normal=brand（蓝）、warn=warn（黄）、critical=error（红）。
-    @ViewBuilder
-    private func subscriptionChip(_ usage: SubscriptionUsage) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "chart.bar.fill")
-            Text(usage.chipLabel)
-        }
-        .foregroundStyle(Self.color(for: usage.level))
-        .help(usage.detailText)
-        .accessibilityLabel("模型订阅套餐当前使用情况：" + usage.detailText)
-    }
-
-    /// 套餐用量 chip 的颜色映射：与 `TokenUsage.contextLevel` 同源，
-    /// 用 `DSHTheme.brand` / `warn` / `error` 一套色板，保持 UI
-    /// 视觉一致。
-    private static func color(for level: ContextLevel) -> Color {
-        switch level {
-        case .critical: return DSHTheme.error
-        case .warn:     return DSHTheme.warn
-        case .normal:   return DSHTheme.brand
-        }
-    }
-
     private func cacheHitPercent(_ usage: TokenUsage?) -> Int? {
         guard let usage, usage.input > 0 else { return nil }
         return Int((Double(usage.cached) / Double(usage.input) * 100).rounded())
@@ -1860,7 +1805,7 @@ struct ComposerView: View {
     @ViewBuilder
     private var queueStatusBar: some View {
         if !store.activeQueue.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(store.activeQueue) { q in
@@ -1969,7 +1914,7 @@ struct ComposerView: View {
             .accessibilityLabel("更多排队操作")
         }
         .padding(.horizontal, 16)
-        .frame(minHeight: 56)
+        .frame(minHeight: 64)
         .contentShape(Rectangle())
         .accessibilityIdentifier("queued-message-row-\(q.id)")
     }

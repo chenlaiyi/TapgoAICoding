@@ -56,11 +56,6 @@ public enum ExecEvent: Hashable {
     /// declined so the harness cannot remain wedged in the background.
     case approvalExpired(ApprovalRequest)
 
-    /// v0.5.9: codex 主动推送的套餐用量更新（来自
-    /// `account/rateLimits/updated` 通知）。UI 用它即时刷新
-    /// 输入框下方的"套餐用量"chip，避免每轮 turn 完成才拉一次。
-    case rateLimitsUpdated(AccountRateLimits)
-
     case error(message: String)
 
     public struct FileChangeOp: Hashable {
@@ -111,14 +106,6 @@ public enum ExecEventParser {
                 params["usage"] ?? params["total_token_usage"] ?? turn["usage"]
             )
             return .turnCompleted(status: status, errorMessage: errorMessage, usage: usage)
-
-        case "account/rateLimits/updated":
-            // codex 会主动推送 5h / 周窗口的用量；我们把它直接
-            // 解析成 AccountRateLimits，UI 不用关心 JSON 形态。
-            if let limits = AccountRateLimits.fromJSON(.object(params)) {
-                return .rateLimitsUpdated(limits)
-            }
-            return nil
 
         case "thread/tokenUsage/updated":
             // The live tick nests the counters under `tokenUsage.total` /

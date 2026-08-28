@@ -79,10 +79,6 @@ let allSections: [String] = [
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
     "MobilePairing: protocol + URL round-trip",
-    "SubscriptionUsage: chip label + percent + level",
-    "RateLimits: parse codex account/rateLimits JSON",
-    "SubscriptionUsage: rate limits override chip label + level",
-    "SubscriptionUsage: chip 始终可见（v0.5.9+）",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -635,18 +631,6 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "MobilePairing: protocol + URL round-trip") {
             runMobilePairing(runner)
-        }
-        await runIfInScope(runner, "SubscriptionUsage: chip label + percent + level") {
-            runSubscriptionUsage(runner)
-        }
-        await runIfInScope(runner, "RateLimits: parse codex account/rateLimits JSON") {
-            runRateLimits(runner)
-        }
-        await runIfInScope(runner, "SubscriptionUsage: rate limits override chip label + level") {
-            runSubscriptionUsageWithRateLimits(runner)
-        }
-        await runIfInScope(runner, "SubscriptionUsage: chip 始终可见（v0.5.9+）") {
-            runSubscriptionUsageAlwaysVisible(runner)
         }
     }
 }

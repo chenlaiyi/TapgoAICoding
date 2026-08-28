@@ -95,11 +95,6 @@ final class SessionStore: ObservableObject {
     @Published var turnFeedback: [String: Int] = [:]
     @Published var setupError: SetupError?
 
-    /// v0.5.9: codex `account/rateLimits/read` 与
-    /// `account/rateLimits/updated` 通知汇聚出的当前账号套餐用量。
-    /// ChatView 据此渲染输入框下方右侧的"套餐用量"chip。
-    @Published private(set) var accountRateLimits: AccountRateLimits?
-
     /// Approval requests the harness is waiting on, keyed by request id.
     /// `ApprovalRow` watches this and resolves entries by calling
     /// `respondToApproval`.
@@ -481,11 +476,6 @@ final class SessionStore: ObservableObject {
                 self?.handle(event: event, threadId: threadId, turnId: turnId)
             }
             self.runnerStatesByThreadId[threadId] = finalState
-            // v0.5.9: 每次新开 run 之后顺便拉一次 codex 套餐用量，
-            // 让输入框下方的 chip 立刻显示 5h / 周真实剩余。
-            if let fresh = await newRunner.fetchAccountRateLimits() {
-                self.accountRateLimits = fresh
-            }
             var completedTurn: TapgoCore.Turn?
             if let currentThreadIdx = self.liveThreads.firstIndex(where: { $0.id == threadId }) {
                 // Always record the thread id the harness actually used for this
@@ -1218,10 +1208,6 @@ final class SessionStore: ObservableObject {
                     status: finished ? .succeeded : .running
                 )))
             }
-        case .rateLimitsUpdated(let limits):
-            // v0.5.9: 主线程上同步刷新输入框下方的"套餐用量"chip。
-            // 不绑到某个 turn，因为这是账号级别的快照。
-            accountRateLimits = limits
         case .error(let message):
             turn.items.append(.error(id: "e-" + UUID().uuidString, message: message))
         }
