@@ -1538,6 +1538,7 @@ struct ComposerView: View {
 
             composerMetricsBar
         }
+        .frame(maxWidth: contentWidth, alignment: .center)
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
             focused = true
@@ -1870,10 +1871,10 @@ struct ComposerView: View {
                         .padding(.bottom, 6)
                 }
             }
-            // 队列卡片宽度 = composer 宽度 × 0.95，即比输入框窄 5%。
-            // 整体居中显示，让 composer 包裹感更明显。
-            .frame(maxWidth: contentWidth * 0.95)
-            .frame(maxWidth: .infinity, alignment: .center)
+            // 队列卡片与下方输入卡片共享同一宽度 (= contentWidth),
+            // 整体居中。SwiftUI HStack 默认会把卡片按行宽 proposal 撑开,
+            // 这里用 contentWidth 限制防越界; 同时 composer 主 VStack
+            // 也加了同款 frame, 两块自然对齐。
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1903,7 +1904,7 @@ struct ComposerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .blendMode(.plusLighter)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: contentWidth, alignment: .center)
             .accessibilityIdentifier("queued-message-card")
         }
     }

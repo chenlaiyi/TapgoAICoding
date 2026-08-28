@@ -21,7 +21,7 @@
 
 ## v0.5.13 — 队列卡片 Codex 紧凑样式 + 拖拽排序
 **Date**: 2026-08-29
-**Commit**: _(see `git log -1 v0.5.13`)_
+**Commit**: 5ccb271
 **Tag**: v0.5.13
 **Test status**: — TapgoCore 1246 passed, 8 failed (失败均为 RemoteSSH/RemoteDirectoryLister 远端集成用例，与本次 UI 改动无关) —
 **Changed**:
