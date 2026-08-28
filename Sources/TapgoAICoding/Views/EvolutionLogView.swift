@@ -288,6 +288,23 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
+                EvolutionEntry(
+                    version: "v0.5.7",
+                    date: "2026-08-28",
+                    commit: "_pending_",
+                    tag: "v0.5.7",
+                    summary: "iOS 原生工程闭环：DashboardView + 协议层自包含副本 + 446 断言同步校验",
+                    changes: [
+                        "补齐 mobile/ios/Sources/DashboardView.swift，让 RootView 能编译。",
+                        "新增 mobile/ios/Sources/MobilePairing.swift，作为 Sources/TapgoCore/MobilePairing.swift 的字节级同步副本，由 Scripts/check-sync.sh 强制一致。",
+                        "新增 Scripts/{check-sync,run-tests,build}.sh + Tests/MobilePairingProtocolTests.swift，协议层 446 断言本机 Foundation 即可跑过。",
+                        "新增 Assets.xcassets/AppIcon + AccentColor 占位 + project.yml 引用，避免 ASSETCATALOG_COMPILER_APPICON_NAME 编译失败。",
+                        "mobile/README.md 状态表对齐 v0.5.7 真实进度。",
+                        "6 个 iOS SwiftUI 源文件 swiftc -parse 全部通过。"
+                    ],
+                    why: "mobile/ios/ 原本缺 DashboardView，且 MobilePairing 协议层需通过 SPM 引用兄弟模块，违反独立 Xcode 工程约束；本版让 iOS 工程自包含并强制两端协议同步漂移。",
+                    next: "在装全 Xcode 的机器上 build.sh 生成 .xcodeproj，跑模拟器验证 PairingStore ↔ PairingView ↔ DashboardView 闭环；接 AVFoundation 扫码 + Bonjour 长连接。"
+                ),
             EvolutionEntry(
                 version: "v0.5.6",
                 date: "2026-08-28",
