@@ -301,6 +301,7 @@ struct MessageBubble: View {
 
 private struct UserMessageThumbnail: View {
     let path: String
+    @State private var showPreview = false
 
     var body: some View {
         Group {
@@ -322,7 +323,70 @@ private struct UserMessageThumbnail: View {
         .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        // 点击缩略图弹出大图预览；双击则在 Finder 中显示原文件。
+        .onTapGesture { showPreview = true }
+        .help("点击查看大图")
+        .sheet(isPresented: $showPreview) {
+            ImagePreviewSheet(path: path)
+        }
     }
+}
+
+/// 大图预览：居中放大原图，Esc / 点击背景关闭。
+private struct ImagePreviewSheet: View {
+    let path: String
+
+    var body: some View {
+        ZStack {
+            // 半透明深色背景，点击关闭
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture { dismiss() }
+
+            VStack(spacing: 12) {
+                if let image = NSImage(contentsOfFile: path) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 720, maxHeight: 520)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: .black.opacity(0.4), radius: 24, y: 12)
+                } else {
+                    Label("图片不可用", systemImage: "photo.badge.exclamationmark")
+                        .foregroundStyle(.white)
+                        .padding(40)
+                }
+                HStack(spacing: 8) {
+                    Text(URL(fileURLWithPath: path).lastPathComponent)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting(
+                            [URL(fileURLWithPath: path)]
+                        )
+                        dismiss()
+                    } label: {
+                        Label("在访达中显示", systemImage: "folder")
+                    }
+                    .controlSize(.small)
+                    Button("关闭") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
+                        .controlSize(.small)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .padding(24)
+        }
+        .frame(minWidth: 480, minHeight: 360)
+    }
+
+    @Environment(\.dismiss) private var dismiss
 }
 
 struct ReasoningDisclosure: View {
