@@ -1801,7 +1801,7 @@ struct ComposerView: View {
     /// 内部滚动；1 条排队时仅占 1 行高度，不会出现 v0.5.12 那
     /// 永远 240pt 留白的问题。
     private var queueAdaptiveHeight: CGFloat {
-        let perRow: CGFloat = 45 // 44 row + 1 divider
+        let perRow: CGFloat = 41 // 32 row content + 8 vertical padding + 1 divider
         let count = CGFloat(store.activeQueue.count)
         let natural = count * perRow + 6 // VStack spacing/padding
         return min(natural, 240)
@@ -1860,7 +1860,7 @@ struct ComposerView: View {
             Image(systemName: "arrow.turn.down.right")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
-                .frame(width: 18)
+                .frame(width: 16)
 
             if let firstImage = q.images.first {
                 queueThumbnail(for: firstImage, count: q.images.count)
@@ -1920,8 +1920,8 @@ struct ComposerView: View {
             .accessibilityLabel("删除排队消息")
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(minHeight: 44)
+        .padding(.vertical, 4)
+        .frame(minHeight: 32)
         .contentShape(Rectangle())
         .overlay(alignment: .top) {
             if isDropTop {
