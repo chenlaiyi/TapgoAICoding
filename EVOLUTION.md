@@ -21,7 +21,7 @@
 
 ## v0.5.9 — Codex 式步骤进度、真实变更统计与运行流光
 **Date**: 2026-08-29
-**Commit**: _pending_
+**Commit**: cd5db2d
 **Tag**: v0.5.9
 **Test status**: — 步骤进度 12/12、限额解析 30/30、新套餐展示 16/16、旧展示兼容 30/30；macOS Release build + 原生界面回归通过 —
 **Changed**:

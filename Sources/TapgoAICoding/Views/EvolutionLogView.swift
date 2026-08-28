@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.9",
                     date: "2026-08-29",
-                    commit: "_pending_",
+                    commit: "cd5db2d",
                     tag: "v0.5.9",
                     summary: "Codex 式步骤进度、真实变更统计、运行流光与账户限额",
                     changes: [
