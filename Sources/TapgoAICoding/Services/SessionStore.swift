@@ -124,7 +124,7 @@ final class SessionStore: ObservableObject {
     func addImages(_ urls: [URL]) {
         let valid = urls.filter {
             let exists = FileManager.default.fileExists(atPath: $0.path)
-            let isImage = ["png", "jpg", "jpeg", "gif", "webp"].contains($0.pathExtension.lowercased())
+            let isImage = ["png", "jpg", "jpeg", "gif", "webp", "heic"].contains($0.pathExtension.lowercased())
             return exists && isImage
         }
         attachedImages.append(contentsOf: valid)
@@ -224,6 +224,12 @@ final class SessionStore: ObservableObject {
         runnerStatesByThreadId.removeValue(forKey: id)
         approvalOwnerThreadIds = approvalOwnerThreadIds.filter { $0.value != id }
         threads.delete(id)
+        UserImageAttachmentStore.removeAll(
+            baseDirectory: TapgoConfig.codexHome
+                .deletingLastPathComponent()
+                .appendingPathComponent("attachments", isDirectory: true),
+            threadId: id
+        )
         if activeThreadId == id { activeThreadId = liveThreads.first?.id }
         persistActiveThread()
     }
@@ -374,13 +380,23 @@ final class SessionStore: ObservableObject {
         if trimmed.isEmpty { displayText = hasImages ? "(图片)" : "" }
         else { displayText = trimmed }
 
+        let turnId = "turn-" + UUID().uuidString
+        let persistedImagePaths = UserImageAttachmentStore.persist(
+            images,
+            baseDirectory: TapgoConfig.codexHome
+                .deletingLastPathComponent()
+                .appendingPathComponent("attachments", isDirectory: true),
+            threadId: threadId,
+            turnId: turnId
+        )
         let turn = Turn(
-            id: "turn-" + UUID().uuidString,
+            id: turnId,
             userInput: displayText,
             items: [.userMessage(id: "u-" + UUID().uuidString, text: displayText)],
             status: .running,
             startedAt: Date(),
-            completedAt: nil
+            completedAt: nil,
+            userImagePaths: persistedImagePaths
         )
         liveThreads[idx].turns.append(turn)
         liveThreads[idx].updatedAt = Date()
@@ -392,8 +408,6 @@ final class SessionStore: ObservableObject {
             liveThreads[idx].title = TapgoCore.Thread.autoTitle(from: displayText)
         }
         threads.save(liveThreads[idx])
-        let turnId = turn.id
-
         let cwd = liveThreads[idx].cwd
         let project = liveThreads[idx].projectId.flatMap { workspace.project(byId: $0) }
 
@@ -963,6 +977,11 @@ final class SessionStore: ObservableObject {
                 replaceReasoningText(id: id, text: ReasoningMerge.finalizeText(streamed: "", summary: summary), in: &turn)
             }
         case .commandStarted(let id, let command, let cwd):
+            appendAppProgress(
+                id: "app-progress-command-start-\(id)",
+                text: AgentOutputPolicy.commandStarted(),
+                in: &turn
+            )
             // For remote threads, tag the cell with the SSH host
             // alias up front so the user sees "via SSH remotehost"
             // while the command is running. The harness is on the
@@ -1049,6 +1068,11 @@ final class SessionStore: ObservableObject {
                 )
             }
         case .mcpToolCallStarted(let id, let server, let tool, let arguments):
+            appendAppProgress(
+                id: "app-progress-tool-start-\(id)",
+                text: AgentOutputPolicy.toolStarted(name: "\(server).\(tool)"),
+                in: &turn
+            )
             let argsString = arguments.flatMap { value -> String? in
                 if let data = try? JSONEncoder().encode(value),
                    let s = String(data: data, encoding: .utf8) { return s }

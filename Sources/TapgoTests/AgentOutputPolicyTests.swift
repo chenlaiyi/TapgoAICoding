@@ -22,6 +22,10 @@ func runAgentOutputPolicyContract(_ t: TestRunner) {
     t.expect(catalog.contains("Report every failure or blocker immediately"), "catalog reports failures immediately")
 
     let commandOK = AgentOutputPolicy.commandProgress(exitCode: 0, status: "completed")
+    let commandStarted = AgentOutputPolicy.commandStarted()
+    t.expectEqual(commandStarted.split(separator: "\n").count, 2, "command start progress is exactly two lines")
+    t.expect(commandStarted.contains("步骤开始"), "command start is visible before completion")
+    t.expect(commandStarted.contains("失败不会等到最终回复"), "command start promises immediate failure feedback")
     t.expectEqual(commandOK.split(separator: "\n").count, 2, "command progress is exactly two lines")
     t.expect(commandOK.contains("步骤完成"), "successful command is reported as completed")
     t.expect(commandOK.contains("退出码 0"), "successful command includes exit code")
@@ -33,6 +37,8 @@ func runAgentOutputPolicyContract(_ t: TestRunner) {
              "successful tool progress names the tool")
     t.expect(AgentOutputPolicy.toolProgress(name: "browser.open", failed: true).contains("立即反馈"),
              "failed tool progress is immediate")
+    t.expect(AgentOutputPolicy.toolStarted(name: "browser.open").contains("步骤开始"),
+             "tool start is visible before completion")
     t.expect(AgentOutputPolicy.fileProgress(changeCount: 3).contains("3 项文件变更"),
              "file progress includes change count")
     t.expect(AgentOutputPolicy.immediateError("network down").contains("异常：network down"),

@@ -46,6 +46,7 @@ let allSections: [String] = [
     "ThreadStore: delete removes file",
     "ThreadStore: v0 → v1 migration",
     "ThreadStore: turns + items round-trip",
+    "UserImageAttachmentStore: durable thumbnail copies",
     "ThreadStore: legacy file without turns decodes",
     "RemoteCodexHomeSync: rendered config has no secret material",
     "RemoteCodexHomeSync: trusted projects are remote-only",
@@ -255,6 +256,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ThreadStore: turns + items round-trip") {
             runThreadStoreTurnsPersisted(runner)
+        }
+        await runIfInScope(runner, "UserImageAttachmentStore: durable thumbnail copies") {
+            runUserImageAttachmentStore(runner)
         }
         await runIfInScope(runner, "ThreadStore: legacy file without turns decodes") {
             runThreadStoreDecodesLegacyWithoutTurns(runner)

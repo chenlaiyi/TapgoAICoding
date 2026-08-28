@@ -10,6 +10,10 @@ public struct Turn: Identifiable, Hashable, Codable {
     public var status: Status
     public var startedAt: Date
     public var completedAt: Date?
+    /// App-owned copies of images submitted with the user's message.
+    /// Paths are persisted so the user bubble can restore thumbnails after
+    /// relaunch instead of depending on an ephemeral clipboard temp file.
+    public var userImagePaths: [String] = []
     /// Persisted with the thread so the chat history survives a
     /// relaunch.
     public var items: [TurnItem] = []
@@ -27,7 +31,7 @@ public struct Turn: Identifiable, Hashable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, userInput, status, startedAt, completedAt, items, usage
+        case id, userInput, status, startedAt, completedAt, userImagePaths, items, usage
     }
 
     public init(from decoder: Decoder) throws {
@@ -37,6 +41,7 @@ public struct Turn: Identifiable, Hashable, Codable {
         status = try c.decode(Status.self, forKey: .status)
         startedAt = try c.decode(Date.self, forKey: .startedAt)
         completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
+        userImagePaths = try c.decodeIfPresent([String].self, forKey: .userImagePaths) ?? []
         // Older thread files persisted turns without `items` — default
         // to empty so we don't fail to decode an existing thread.
         items = try c.decodeIfPresent([TurnItem].self, forKey: .items) ?? []
@@ -50,6 +55,7 @@ public struct Turn: Identifiable, Hashable, Codable {
         try c.encode(status, forKey: .status)
         try c.encode(startedAt, forKey: .startedAt)
         try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try c.encode(userImagePaths, forKey: .userImagePaths)
         try c.encode(items, forKey: .items)
         try c.encodeIfPresent(usage, forKey: .usage)
     }
@@ -61,6 +67,7 @@ public struct Turn: Identifiable, Hashable, Codable {
         status: Status,
         startedAt: Date,
         completedAt: Date? = nil,
+        userImagePaths: [String] = [],
         usage: TokenUsage? = nil
     ) {
         self.id = id
@@ -69,6 +76,7 @@ public struct Turn: Identifiable, Hashable, Codable {
         self.status = status
         self.startedAt = startedAt
         self.completedAt = completedAt
+        self.userImagePaths = userImagePaths
         self.usage = usage
     }
 

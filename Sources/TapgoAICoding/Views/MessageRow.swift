@@ -8,6 +8,9 @@ struct MessageRow: View {
     /// reasoning / command blocks as compact single-line views instead of
     /// growing, so repeated output stays minimized.
     var isRunning: Bool = false
+    /// Persisted images submitted with the user message. Ignored by every
+    /// non-user item, so existing MessageRow call sites stay source-compatible.
+    var userImagePaths: [String] = []
     /// When set, the user message bubble shows a bottom action bar with a
     /// timestamp (and reply/edit controls).
     var startedAt: Date? = nil
@@ -18,6 +21,7 @@ struct MessageRow: View {
         switch item {
         case .userMessage(_, let text):
             MessageBubble(text: text, role: .user,
+                          userImagePaths: userImagePaths,
                           startedAt: startedAt, onReply: onReply, onEdit: onEdit)
         case .assistantMessage(_, let text):
             MessageBubble(text: text, role: .assistant)
@@ -44,6 +48,7 @@ struct MessageBubble: View {
     @EnvironmentObject var store: SessionStore
     let text: String
     let role: Role
+    var userImagePaths: [String] = []
     var startedAt: Date? = nil
     var onReply: (() -> Void)? = nil
     var onEdit: ((String) -> Void)? = nil
@@ -87,30 +92,42 @@ struct MessageBubble: View {
     var body: some View {
         if role == .user {
             VStack(alignment: .trailing, spacing: 4) {
-                HStack(alignment: .top) {
-                    Spacer(minLength: 32)
-                    Text(text)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            DSHTheme.brand,
-                            in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
-                        )
-                        .textSelection(.enabled)
-                        .contextMenu {
-                            Button {
-                                copy(text)
-                            } label: {
-                                Label("复制消息", systemImage: "doc.on.doc")
-                            }
-                            Button {
-                                store.newThread()
-                                store.sendUserMessage(text)
-                            } label: {
-                                Label("以此内容新建会话", systemImage: "plus.message")
+                if !userImagePaths.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(userImagePaths, id: \.self) { path in
+                                UserMessageThumbnail(path: path)
                             }
                         }
+                    }
+                    .frame(maxWidth: 420, alignment: .trailing)
+                }
+                HStack(alignment: .top) {
+                    Spacer(minLength: 32)
+                    if text != "(图片)" || userImagePaths.isEmpty {
+                        Text(text)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                DSHTheme.brand,
+                                in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                            )
+                            .textSelection(.enabled)
+                            .contextMenu {
+                                Button {
+                                    copy(text)
+                                } label: {
+                                    Label("复制消息", systemImage: "doc.on.doc")
+                                }
+                                Button {
+                                    store.newThread()
+                                    store.sendUserMessage(text)
+                                } label: {
+                                    Label("以此内容新建会话", systemImage: "plus.message")
+                                }
+                            }
+                    }
                 }
                 userActionBar
             }
@@ -209,6 +226,32 @@ struct MessageBubble: View {
         }
         .padding(20)
         .frame(width: 440)
+    }
+}
+
+private struct UserMessageThumbnail: View {
+    let path: String
+
+    var body: some View {
+        Group {
+            if let image = NSImage(contentsOfFile: path) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .accessibilityLabel("已发送图片 \(URL(fileURLWithPath: path).lastPathComponent)")
+            } else {
+                VStack(spacing: 4) {
+                    Image(systemName: "photo.badge.exclamationmark")
+                    Text("图片不可用")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 180, height: 120)
+        .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
     }
 }
 

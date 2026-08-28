@@ -757,28 +757,21 @@ struct ChatView: View {
     @ViewBuilder
     private func turnSection(turn: Turn, isLast: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            if turn.status == .running {
-                // Show the user's question immediately, then ONE compact
-                // activity line that cycles through thinking / commands.
-                ForEach(Array(userMessageItems(turn)), id: \.id) { userItem in
-                    MessageRow(item: userItem, isRunning: false,
+            ForEach(chatBlocks(turn.items)) { block in
+                switch block {
+                case .item(let item):
+                    MessageRow(item: item,
+                               isRunning: turn.status == .running,
+                               userImagePaths: turn.userImagePaths,
                                startedAt: turn.startedAt,
-                               onReply: userReplyClosure(userItem),
+                               onReply: userReplyClosure(item),
                                onEdit: { store.sendUserMessage($0) })
+                case .fileBatch(let files):
+                    FileEditBatchView(files: files)
                 }
+            }
+            if turn.status == .running && !hasVisibleRunningCard(turn) {
                 runningActivityLine(turn: turn)
-            } else {
-                ForEach(chatBlocks(turn.items)) { block in
-                    switch block {
-                    case .item(let item):
-                        MessageRow(item: item, isRunning: false,
-                                   startedAt: turn.startedAt,
-                                   onReply: userReplyClosure(item),
-                                   onEdit: { store.sendUserMessage($0) })
-                    case .fileBatch(let files):
-                        FileEditBatchView(files: files)
-                    }
-                }
             }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
                 // Single-line footer: metadata + copy + feedback / actions.
@@ -846,6 +839,17 @@ struct ChatView: View {
                 }
                 .padding(.leading, 8)
             }
+        }
+    }
+
+    /// Running command/tool cards already contain their own spinner and stop
+    /// button. Other states keep the compact activity line as a live tail.
+    private func hasVisibleRunningCard(_ turn: Turn) -> Bool {
+        guard let last = turn.items.last else { return false }
+        switch last {
+        case .commandExecution(let execution): return execution.status == .running
+        case .toolCall(let call): return call.status == .running
+        default: return false
         }
     }
 
@@ -991,41 +995,6 @@ private struct QueuedMessageEditor: View {
         }
         .padding(20)
         .frame(width: 460)
-    }
-}
-
-/// Compact context meter shown in the composer metrics bar: a "context N%"
-/// label plus a small progress bar, colour-coded green → yellow → red.
-private struct ContextMeter: View {
-    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
-
-    let percent: Int
-
-    private var color: Color {
-        switch percent {
-        case 80...: return .red
-        case 50...: return DSHTheme.warn
-        default:    return .green
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text("context \(percent)%")
-                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(DSHTheme.border)
-                    Capsule()
-                        .fill(color)
-                        .frame(width: g.size.width * CGFloat(min(max(percent, 0), 100)) / 100)
-                }
-            }
-            .frame(width: 72, height: 5)
-        }
-        .help("当前离线上下文占用 \(percent)%（80% 触发自动压缩）")
-        .accessibilityLabel("上下文占用 \(percent)%")
     }
 }
 
@@ -1650,8 +1619,9 @@ struct ComposerView: View {
     }
 
     /// DSH-style metrics bar below the input: rounds · steps · LLM time ·
-    /// cache hit · input tokens · a live context meter (replaces the old top
-    /// context banner).
+    /// cache hit · input tokens. Context percentage is intentionally omitted:
+    /// Harness compacts automatically, so an instantaneous fill meter implies
+    /// a hard per-conversation limit that does not exist.
     @ViewBuilder
     private var composerMetricsBar: some View {
         if let thread = activeThread {
@@ -1665,7 +1635,6 @@ struct ComposerView: View {
                 }.count
             }
             let lastUsage = thread.turns.last(where: { $0.usage != nil })?.usage
-            let pct = lastUsage?.contextPercent
             let cacheHit = cacheHitPercent(lastUsage)
 
             HStack(spacing: 12) {
@@ -1684,9 +1653,6 @@ struct ComposerView: View {
                     Text("输入 \(tapgoFormatCount(thread.usageTotal))")
                 }
                 Spacer()
-                if let pct {
-                    ContextMeter(percent: pct)
-                }
             }
             .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             .foregroundStyle(.secondary)

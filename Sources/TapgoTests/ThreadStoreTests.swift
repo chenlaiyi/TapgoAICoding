@@ -171,7 +171,8 @@ func runThreadStoreTurnsPersisted(_ t: TestRunner) {
             ],
             status: .completed,
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            completedAt: Date(timeIntervalSince1970: 1_700_000_100)
+            completedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            userImagePaths: ["/app-support/attachments/screenshot.png"]
         ),
     ]
     store.save(th)
@@ -197,6 +198,7 @@ func runThreadStoreTurnsPersisted(_ t: TestRunner) {
     t.expectEqual(rturn.userInput, "hello", "turn userInput round-trips")
     t.expectEqual(rturn.status, .completed, "turn status round-trips")
     t.expectEqual(rturn.completedAt, Date(timeIntervalSince1970: 1_700_000_100), "turn completedAt round-trips")
+    t.expectEqual(rturn.userImagePaths, ["/app-support/attachments/screenshot.png"], "turn image paths round-trip")
     t.expectEqual(rturn.items.count, 3, "turn items round-trip")
     guard case .userMessage(let uid, let utext) = rturn.items[0] else {
         t.expect(false, "item[0] is userMessage"); return

@@ -29,6 +29,10 @@ public enum AgentOutputPolicy {
     /// batches tool calls or forgets to emit an intermediate agent message.
     /// Tool output stays in its native card; repeating arbitrary stdout here
     /// could accidentally surface secrets and would make the update noisy.
+    public static func commandStarted() -> String {
+        "步骤开始：正在执行命令，命令详情和实时状态已显示在下方卡片。\n命令结束后会立即报告结果；失败不会等到最终回复。"
+    }
+
     public static func commandProgress(exitCode: Int32?, status: String) -> String {
         let failed = status == "failed" || status == "declined" || (exitCode != nil && exitCode != 0)
         let code = exitCode.map(String.init) ?? "未知"
@@ -43,6 +47,10 @@ public enum AgentOutputPolicy {
             return "异常：工具 \(name) 执行失败，详情已显示在上方工具卡片。\n已立即反馈；继续前先处理失败或说明阻塞。"
         }
         return "步骤完成：工具 \(name) 执行成功，结果已显示在上方工具卡片。\n继续处理下一项检查、修改或验证。"
+    }
+
+    public static func toolStarted(name: String) -> String {
+        "步骤开始：正在调用工具 \(name)，实时状态已显示在下方卡片。\n工具结束后会立即报告结果；失败不会等到最终回复。"
     }
 
     public static func fileProgress(changeCount: Int) -> String {

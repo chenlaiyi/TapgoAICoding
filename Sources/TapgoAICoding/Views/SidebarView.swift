@@ -507,12 +507,6 @@ struct SidebarView: View {
                         .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 4)
-                    if let pct = contextPercent(for: t) {
-                        Text(pct >= 90 ? "\(pct)% 已满" : "\(pct)%")
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(contextColor(t))
-                            .help("上下文已用 \(pct)%")
-                    }
                     Text(relativeTime(t.updatedAt))
                         .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
@@ -534,18 +528,6 @@ struct SidebarView: View {
     private func projectForThread(_ t: TapgoCore.Thread) -> Project? {
         guard let pid = t.projectId else { return nil }
         return workspace.project(byId: pid)
-    }
-
-    private func contextPercent(for t: TapgoCore.Thread) -> Int? {
-        t.turns.last(where: { $0.usage != nil })?.usage?.contextPercent
-    }
-    private func contextColor(_ t: TapgoCore.Thread) -> Color {
-        let level = t.turns.last(where: { $0.usage != nil })?.usage?.contextLevel
-        switch level {
-        case .critical: return DSHTheme.error
-        case .warn: return DSHTheme.warn
-        case .normal, .none: return DSHTheme.success
-        }
     }
 
     private func sidebarSubtitle(for t: TapgoCore.Thread) -> String {
