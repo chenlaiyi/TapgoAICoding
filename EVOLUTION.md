@@ -153,6 +153,17 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 **Why**: 长期记忆原文被直接当作基础指令，污染内容覆盖了开发代理角色，导致模型复述旧任务、虚构“工具不可用”并等待追问。
 **Next**: 持续做安装版原生 App 的跨对话、实际工具调用和记忆再写入回归。
 
+## v0.5.3 — 修复截图粘贴被吞掉但未生成附件
+**Date**: 2026-08-28
+**Commit**: _(see `git log -1 v0.5.3`)_
+**Tag**: v0.5.3
+**Test status**: — 706 passed, 0 failed —
+**Changed**:
+- ⌘V 监听改用 AppKit 可读对象检测，覆盖图片对象与图片文件 URL。
+- 剪贴板没有 PNG 表示时，通过 `NSImage` 解码 TIFF/JPEG/HEIC 等表示并统一转成临时 PNG 附件。
+**Why**: 旧代码识别到通用图片后会吞掉 ⌘V，但真正读取时只取 `.png`；macOS 截图常提供 TIFF，导致输入框看起来完全没有反应。
+**Next**: 已用 Preview 复制真实截图并在安装版 App 验证缩略图与临时 PNG；继续覆盖更多第三方图片来源。
+
 ## v0.5.2 — 强制小步增量输出与异常即时反馈
 **Date**: 2026-08-28
 **Commit**: _(see `git log -1 v0.5.2`)_

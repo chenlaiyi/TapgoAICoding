@@ -289,6 +289,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
             EvolutionEntry(
+                version: "v0.5.3",
+                date: "2026-08-28",
+                commit: nil,
+                tag: "v0.5.3",
+                summary: "修复截图剪贴板被吞掉、却没有生成附件的问题",
+                changes: [
+                    "⌘V 改为识别 AppKit 可读取的图片对象与图片文件 URL",
+                    "PNG 缺失时解码 TIFF/JPEG/HEIC 等剪贴板表示，并统一转换为临时 PNG 附件"
+                ],
+                why: "旧实现只读取 PNG；macOS 截图常提供 TIFF，因此按键被拦截后界面没有任何响应。",
+                next: "706 项核心回归及 Preview → 安装版 App 的真实截图粘贴、缩略图和临时 PNG 验证均已通过。"
+            ),
+            EvolutionEntry(
                 version: "v0.5.2",
                 date: "2026-08-28",
                 commit: nil,

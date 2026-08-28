@@ -1997,7 +1997,9 @@ struct ComposerView: View {
             guard event.modifierFlags.contains(.command),
                   event.charactersIgnoringModifiers == "v" else { return event }
             let pb = NSPasteboard.general
-            if pb.canReadItem(withDataConformingToTypes: [UTType.image.identifier, UTType.fileURL.identifier]) {
+            let hasImage = pb.canReadObject(forClasses: [NSImage.self], options: nil)
+            let hasFileURL = pb.canReadItem(withDataConformingToTypes: [UTType.fileURL.identifier])
+            if hasImage || hasFileURL {
                 handlePasteboard(pb)
                 return nil
             }
@@ -2010,6 +2012,11 @@ struct ComposerView: View {
             DispatchQueue.main.async { store.addImages([url]) }
         } else if let data = pb.data(forType: .png) {
             decodeAndAttachImage(data)
+        } else if let image = NSImage(pasteboard: pb),
+                  let tiff = image.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: tiff),
+                  let png = bitmap.representation(using: .png, properties: [:]) {
+            decodeAndAttachImage(png)
         }
     }
 

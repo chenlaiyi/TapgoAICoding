@@ -1,6 +1,6 @@
 # Tapgo AICoding
 
-A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex), hard-pinned to **MiniMax-M3** as the only available model. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.2 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
+A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex), hard-pinned to **MiniMax-M3** as the only available model. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.3 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -38,6 +38,7 @@ A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.c
 - **Fail-closed approvals** — current JSON-RPC approval request IDs are preserved and answered with `accept`/`decline`; unknown server requests are rejected rather than implicitly approved or left hanging.
 - **Durable agent role and memory hygiene** — coding-agent instructions are always present; only stable, sanitized user/project facts are injected as memory, while reasoning traces, transient tasks and version snapshots are rejected.
 - **Incremental progress contract** — every meaningful completed step produces an immediate 1–3-line update; failures and blockers surface immediately, while the final answer only closes the loop.
+- **Clipboard screenshot compatibility** — ⌘V accepts PNG plus the TIFF/JPEG/HEIC-style image representations exposed by macOS apps, normalizing them to a temporary PNG attachment.
 - **Swift/SwiftUI** — true Mac app, no Electron, ~5 MB binary, fast startup.
 
 ## Hard isolation from the official Codex install
