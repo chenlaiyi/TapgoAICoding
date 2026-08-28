@@ -21,9 +21,9 @@
 
 ## v0.5.14 — 队列卡片宽度改为输入框的 90%
 **Date**: 2026-08-29
-**Commit**: _(see `git log -1 v0.5.14`)_
+**Commit**: a7ffa45
 **Tag**: v0.5.14
-**Test status**: _(待构建后回填)_
+**Test status**: — Release App 构建通过（SwiftUI 宽度常量改动，无对应单测）；三机安装重启回读 0.5.14 正常 —
 **Changed**:
 - `queueStatusBar` 末尾宽度约束从 `contentWidth` 改为 `contentWidth * 0.90`：队列卡片固定为输入框卡片的 90% 并整体居中，恢复「排队卡片比输入框略窄」的层次感。
 - 同步更新两处注释（queueStatusBar 与队列面板说明），避免后续再被改回同宽。
