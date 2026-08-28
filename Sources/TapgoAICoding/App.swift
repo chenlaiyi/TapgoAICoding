@@ -168,6 +168,7 @@ extension Notification.Name {
     static let tapgoRetryTurn = Notification.Name("tapgo.retryTurn")
     static let tapgoClearComposer = Notification.Name("tapgo.clearComposer")
     static let tapgoFindInConversation = Notification.Name("tapgo.findInConversation")
+    static let tapgoRequestScrollToBottom = Notification.Name("tapgo.requestScrollToBottom")
     static let tapgoInsertSkill = Notification.Name("tapgo.insertSkill")
     static let tapgoSelectPrevThread = Notification.Name("tapgo.selectPrevThread")
     static let tapgoSelectNextThread = Notification.Name("tapgo.selectNextThread")

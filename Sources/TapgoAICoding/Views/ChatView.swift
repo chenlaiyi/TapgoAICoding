@@ -372,6 +372,20 @@ struct ChatView: View {
                         }
                     }
                 }
+                // The user just submitted a message — jump to the bottom
+                // regardless of where the viewport was, so the new bubble is
+                // always visible right above the composer.
+                .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestScrollToBottom)) { _ in
+                    showNewMessage = false
+                    streamScrollCoalescer.schedule {
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            proxy.scrollTo("BOTTOM", anchor: .bottom)
+                        }
+                    }
+                    lastWasNearBottom = true
+                }
                 .onPreferenceChange(ChatContentBottomKey.self) { bottom in
                     isNearBottom = bottom <= viewportHeight + 120
                 }
@@ -2085,6 +2099,10 @@ struct ComposerView: View {
                 || !store.attachedImages.isEmpty else { return }
         text = ""
         store.sendUserMessage(t)
+        // The user just spoke — land at the latest message. We bypass the
+        // "isNearBottom" gate (which is async from preferences) so the new
+        // user bubble always sits right above the composer, matching Codex.
+        NotificationCenter.default.post(name: .tapgoRequestScrollToBottom, object: nil)
         // Keep the composer focused so the user can type the next message
         // immediately, matching Codex's always-ready input.
         focused = true
@@ -2105,6 +2123,7 @@ struct ComposerView: View {
             store.sendUserMessage(t)
         }
         store.interjectAndFlush()
+        NotificationCenter.default.post(name: .tapgoRequestScrollToBottom, object: nil)
         focused = true
     }
 
