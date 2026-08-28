@@ -21,7 +21,11 @@ struct PairingView: View {
             Spacer()
         }
         .padding(24)
+        #if os(iOS)
         .background(Color(.systemBackground))
+#else
+        .background(Color(NSColor.windowBackgroundColor))
+#endif
     }
 
     private var header: some View {
@@ -41,7 +45,6 @@ struct PairingView: View {
     private var manualEntry: some View {
         VStack(spacing: 12) {
             TextField("6 位配对码", text: $manualCode)
-                .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
                 .font(.system(size: 32, weight: .semibold, design: .monospaced))
                 .multilineTextAlignment(.center)
@@ -51,8 +54,8 @@ struct PairingView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.secondary.opacity(0.3))
                 )
-                .onChange(of: manualCode) { _, new in
-                    manualCode = String(new.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(6))
+                .onChange(of: manualCode) { newValue in
+                    manualCode = String(newValue.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(6))
                 }
             Button {
                 pairing.acceptManualCode(manualCode) { result in

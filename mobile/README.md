@@ -14,7 +14,7 @@
 - 后续每个平台一个子目录：`ios/` / `android/`，各自维护自己的 `project.yml`
   （XcodeGen）和 `build.gradle` 模板。
 
-## 当前状态（v0.5.6）
+## 当前状态（v0.5.9）
 
 | 项 | 状态 | 备注 |
 | --- | --- | --- |
@@ -25,7 +25,8 @@
 | iOS `MobilePairing` 协议层自包含副本 | ✅ 与 `Sources/TapgoCore/MobilePairing.swift` 字节级同步 | `Scripts/check-sync.sh` 强制保证；任何一端修改必须同步另一端 |
 | iOS `Assets.xcassets`（AppIcon + AccentColor） | ✅ 占位 | `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` 引用真实目录；图标 PNG 为 1x1 占位，上架前需替换为 1024x1024 真图标 |
 | iOS 协议层测试 | ✅ **446 断言全部通过** | `Scripts/run-tests.sh`，本机 Mac（仅 Foundation 即可）即可跑，无需 iOS SDK |
-| iOS SwiftUI 源码 `swiftc -parse` 语法校验 | ✅ 6 个 .swift 全部 parse 通过 | `TapgoTerminalApp / PairingView / PairingStore / DashboardView / MobilePairing / Tests` |
+| iOS 13–16 真机兼容性 fix | ✅ 删 `.textInputAutocapitalization(.characters)` (iOS 15+), 改用 iOS 13+ 兼容的 `.onChange(of:perform:)` 单参数 API | 见 commit: `fix: iOS 13–16 PairingView 兼容性 (v0.5.9)` |
+| iOS SwiftUI 源码完整编译 | ✅ `mobile/ios/Sources/` 在 macOS SDK 26.5 下 `swift build` 完整通过 | 临时 SwiftPM target 把 iOS Sources 包入可执行，验证 SwiftUI / Combine 签名正确；唯一跨平台假阳性 (`Color(.systemBackground)`) 用 `#if os(iOS)` 包起 |
 | iOS 真机 / 模拟器构建 | ⏸ 下一步 | 需要本机或 CI 装全 Xcode；`Scripts/build.sh` 已写好，缺 xcodegen/xcodebuild 时给出明确指引 |
 | Mac 端"连接手机"菜单项 | ✅ 已加到 `SidebarView` 自进化/新对话 之间 | 见 `Sources/TapgoAICoding/Views/SidebarView.swift` |
 | Mac 端配对码 / QR / 状态机 | ✅ 已加到 `Sources/TapgoAICoding/Views/ConnectPhoneView.swift` | 6 位配对码 + QR + 60s 自动轮换 + 未配对/已配对/已连接三态 |
@@ -76,6 +77,15 @@ mobile/ios/Scripts/run-tests.sh
 # 真机/模拟器构建（需全 Xcode + brew install xcodegen）
 mobile/ios/Scripts/build.sh
 ```
+
+## v0.5.9 增量（PairingView 兼容性 fix）
+
+- 删 `.textInputAutocapitalization(.characters)` (iOS 15+ API, 13/14 真机会编译失败)
+- `.onChange(of:initial:_:)` (iOS 17+ 签名) → `.onChange(of:perform:)` (iOS 13+ 单参数)
+- `.background(Color(.systemBackground))` 用 `#if os(iOS)` 包起，避免 macOS SDK 跨平台验证假阳性
+- `mobile/ios/Scripts/run-tests.sh` 仍 446/446 通过；新增的临时 SwiftPM target `/tmp/tapgo_ios_swiftpm` 在 SDK 26.5 下 `swift build` Build complete
+
+不影响 Mac App 版本号；用户 WIP (v0.5.9 RateLimits / TurnProgressSummary) 保留未提交。
 
 ## 下一步执行清单
 
