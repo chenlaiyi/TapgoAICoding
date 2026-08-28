@@ -21,7 +21,7 @@
 
 ## v0.5.11 — 响应式环境信息与来源卡片
 **Date**: 2026-08-29
-**Commit**: _pending_
+**Commit**: e710977
 **Tag**: v0.5.11
 **Test status**: — 响应式布局 7/7；macOS Release build + 原生宽窄窗口回归通过 —
 **Changed**:

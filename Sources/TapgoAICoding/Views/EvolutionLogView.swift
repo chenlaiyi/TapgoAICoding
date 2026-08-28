@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.11",
                     date: "2026-08-29",
-                    commit: "_pending_",
+                    commit: "e710977",
                     tag: "v0.5.11",
                     summary: "宽屏自动显示环境信息与来源卡片，窄屏自动隐藏",
                     changes: [
