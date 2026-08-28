@@ -1217,7 +1217,7 @@ struct ComposerView: View {
             // panel — matching Codex: both cards stay full-width, same surface,
             // same radius, separated by a small gap (no overlap, no shared
             // border).
-            VStack(spacing: store.activeQueue.isEmpty ? 0 : 10) {
+            VStack(spacing: store.activeQueue.isEmpty ? 0 : 12) {
                 queueStatusBar
 
                 // Centered, max-width rounded dock (mirrors the DSH composer
@@ -1503,7 +1503,7 @@ struct ComposerView: View {
                 }
             }
             .padding(10)
-            .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+            .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
             .overlay(
                 RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
                     .stroke(isDropTargeted ? DSHTheme.brand : (focused ? DSHTheme.brand : DSHTheme.border), lineWidth: isDropTargeted ? 2 : 1)
