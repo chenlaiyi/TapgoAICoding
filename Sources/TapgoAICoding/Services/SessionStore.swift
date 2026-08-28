@@ -1,11 +1,12 @@
 import Foundation
 import SwiftUI
+import Combine
 import TapgoCore
 
 /// A user message queued while a turn is already running. Queued messages are
 /// drained automatically (one at a time) once the current turn finishes, and
 /// can be flushed immediately via the "插话" (Cmd/Ctrl+Enter) action.
-struct QueuedMessage: Identifiable, Equatable {
+struct QueuedMessage: Identifiable, Equatable, Codable {
     let id: String
     let threadId: String
     let text: String
@@ -107,6 +108,23 @@ final class SessionStore: ObservableObject {
 
     private static let lastThreadKey = "tapgo.lastThreadId"
 
+    /// Persistent queue store: `~/Library/Application Support/Tapgo AICoding/queue.json`.
+    /// Rebuilt from disk at launch so a restart (or crash) does not lose the
+    /// user's queued messages.
+    private static let queueStoreURL: URL = {
+        let base = (try? FileManager.default.url(for: .applicationSupportDirectory,
+                                                in: .userDomainMask,
+                                                appropriateFor: nil,
+                                                create: true))
+            ?? URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent("Library/Application Support", isDirectory: true)
+        let dir = base.appendingPathComponent("Tapgo AICoding", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("queue.json")
+    }()
+
+    private var cancellables = Set<AnyCancellable>()
+
     init(workspace: WorkspaceStore, threads: ThreadStore) {
         self.workspace = workspace
         self.threads = threads
@@ -115,9 +133,54 @@ final class SessionStore: ObservableObject {
         // than auto-selecting the last thread — the user picks a
         // conversation (or starts a new one) from there.
         self.activeThreadId = nil
+        // Restore any messages that were queued before the previous quit
+        // (normal restart, crash, or quit-while-typing).
+        loadQueue()
         if (try? TapgoConfig.ensureReady()) == nil {
             setupError = catchSetupError()
         }
+        // Persist any subsequent queue mutations to disk so the next launch
+        // can rebuild the same list. Drop the initial value (loaded above)
+        // and debounce to avoid hammering the disk during drag-reorder.
+        $queue
+            .dropFirst()
+            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+            .sink { [weak self] q in self?.persistQueue(q) }
+            .store(in: &cancellables)
+    }
+
+    /// Decode the previously persisted queue (if any) and drop any rows whose
+    /// backing conversation no longer exists — orphaned rows reference
+    /// threads the user has since deleted.
+    private func loadQueue() {
+        guard let data = try? Data(contentsOf: Self.queueStoreURL) else { return }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let decoded = try? decoder.decode([QueuedMessage].self, from: data) else { return }
+        let liveIds = Set(liveThreads.map { $0.id })
+        queue = decoded.filter { liveIds.contains($0.threadId) }
+    }
+
+    /// Encode the current queue to JSON. Image URLs that point at temporary
+    /// files are dropped here so the persisted blob doesn't grow unbounded;
+    /// the editor and adjust-direction affordances still work on text-only
+    /// entries, and a restart never resurrects a stale file path.
+    private func persistQueue(_ snapshot: [QueuedMessage]) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let trimmed = snapshot.map { msg -> QueuedMessage in
+            let liveImages = msg.images.filter { url in
+                FileManager.default.fileExists(atPath: url.path)
+            }
+            return QueuedMessage(id: msg.id,
+                                 threadId: msg.threadId,
+                                 text: msg.text,
+                                 images: liveImages,
+                                 enqueuedAt: msg.enqueuedAt)
+        }
+        guard let data = try? encoder.encode(trimmed) else { return }
+        try? data.write(to: Self.queueStoreURL, options: .atomic)
     }
 
     private func catchSetupError() -> SetupError? {
