@@ -1,6 +1,6 @@
 # Tapgo AICoding
 
-A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex), hard-pinned to **MiniMax-M3** as the only available model. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.1 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
+A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex), hard-pinned to **MiniMax-M3** as the only available model. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.2 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -37,6 +37,7 @@ A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.c
 - **Recoverable context** — completed/failed turns resume the same harness thread; a pruned rollout falls back to a bounded local transcript instead of silently forgetting the conversation.
 - **Fail-closed approvals** — current JSON-RPC approval request IDs are preserved and answered with `accept`/`decline`; unknown server requests are rejected rather than implicitly approved or left hanging.
 - **Durable agent role and memory hygiene** — coding-agent instructions are always present; only stable, sanitized user/project facts are injected as memory, while reasoning traces, transient tasks and version snapshots are rejected.
+- **Incremental progress contract** — every meaningful completed step produces an immediate 1–3-line update; failures and blockers surface immediately, while the final answer only closes the loop.
 - **Swift/SwiftUI** — true Mac app, no Electron, ~5 MB binary, fast startup.
 
 ## Hard isolation from the official Codex install
@@ -158,7 +159,7 @@ app in Finder → Open → Open. After that, double-click works normally.
 
 ```bash
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
-#   685/685 — must stay green (skipping SSH-integration; they need a
+#   706/706 — must stay green (skipping SSH-integration; they need a
 #   real remote codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3)
 
 # To run the FULL suite including SSH-integration (will fail without

@@ -30,7 +30,7 @@ enum TapgoConfig {
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
-    static let clientInfoVersion = "0.5.1"
+    static let clientInfoVersion = "0.5.2"
 
     /// Token threshold at which the codex harness auto-compacts the transcript
     /// into a summary (replaces the user having to manually start a new
@@ -284,11 +284,13 @@ enum TapgoConfig {
             throw SetupError.harnessVersionUnsupported(harnessPath)
         }
 
-        // Catalog must list MiniMax-M3 as the only model.
-        if !fm.fileExists(atPath: modelCatalogPath.path) {
-            try? writeDefaultCatalog(region: defaultRegion)
-            // Recursive call to re-validate.
-            try ensureReady()
+        // Refresh the app-owned catalog whenever its generated policy changes.
+        // Merely checking that the file exists left upgraded installations on
+        // stale base instructions indefinitely.
+        let desiredCatalog = renderCatalog()
+        let installedCatalog = (try? String(contentsOf: modelCatalogPath, encoding: .utf8)) ?? ""
+        if installedCatalog != desiredCatalog {
+            try writeDefaultCatalog(region: defaultRegion)
         }
     }
 
@@ -401,12 +403,12 @@ enum TapgoConfig {
               "visibility": "list",
               "supported_in_api": true,
               "priority": 0,
-              "base_instructions": "You are Tapgo AICoding, an autonomous coding agent powered by MiniMax-M3. For every actionable request, inspect the current workspace and use the available tools to implement and verify the result. Never claim that tools are unavailable unless a concrete tool call failed in the current turn. Treat persistent memory only as background; the current user request and current workspace evidence always win. Report meaningful progress incrementally and report failures immediately.",
+              "base_instructions": "You are Tapgo AICoding, an autonomous coding agent powered by MiniMax-M3. For every actionable request, inspect the current workspace and use the available tools to implement and verify the result. Never claim that tools are unavailable unless a concrete tool call failed in the current turn. Treat persistent memory only as background; the current user request and current workspace evidence always win. \(AgentOutputPolicy.catalogInstructions)",
               "supports_reasoning_summaries": true,
               "default_reasoning_summary": "none",
               "support_verbosity": false,
               "truncation_policy": { "mode": "bytes", "limit": 10000 },
-              "supports_parallel_tool_calls": true,
+              "supports_parallel_tool_calls": false,
               "experimental_supported_tools": [],
               "input_modalities": ["text", "image"]
             }

@@ -108,6 +108,7 @@ let allSections: [String] = [
     "HarnessSupervisor: idempotent retry bookkeeping",
     "DurableMemory: sanitize polluted model output",
     "DurableMemory: canonical markdown and dedup",
+    "AgentOutputPolicy: incremental progress contract",
     "DiffParser: empty input returns no files",
     "DiffParser: whitespace-only input returns no files",
     "DiffParser: single-file diff parses file + hunk + lines",
@@ -413,6 +414,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "DurableMemory: canonical markdown and dedup") {
             runDurableMemoryMarkdown(runner)
+        }
+        await runIfInScope(runner, "AgentOutputPolicy: incremental progress contract") {
+            runAgentOutputPolicyContract(runner)
         }
         await runIfInScope(runner, "DiffParser: empty input returns no files") {
             runDiffParserEmpty(runner)

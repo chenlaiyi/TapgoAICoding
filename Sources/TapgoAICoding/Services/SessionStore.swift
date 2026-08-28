@@ -535,7 +535,8 @@ final class SessionStore: ObservableObject {
 
     static func turnAssistantText(_ turn: TapgoCore.Turn) -> String {
         turn.items.compactMap { item -> String? in
-            if case .assistantMessage(_, let text) = item { return text }
+            if case .assistantMessage(let id, let text) = item,
+               !id.hasPrefix("app-progress-") { return text }
             return nil
         }.joined(separator: "\n")
     }
@@ -581,9 +582,10 @@ final class SessionStore: ObservableObject {
     /// The model sees the same `host` / `user` / `pwd` the user
     /// sees, and is explicitly told not to nest `ssh` again.
     static func composeEffectivePrompt(userPrompt: String, project: Project?) -> String {
+        let policyWrappedPrompt = AgentOutputPolicy.wrap(userPrompt: userPrompt)
         guard let project, project.kind == .remote,
               project.remoteHostId != nil else {
-            return userPrompt
+            return policyWrappedPrompt
         }
         // The host alias is the second half of `displayPath`. We
         // deliberately keep this short — long system prompts eat
@@ -593,7 +595,7 @@ final class SessionStore: ObservableObject {
         [环境] 你正在远程主机上工作 (display path: \(display))。
         所有 `exec_command` 工具调用都会在远端实际执行,stdout/stderr/exitCode 就是远端真实结果。
         不要在远端 shell 里再 `ssh` 到当前主机,会失败。
-        用户消息: \(userPrompt)
+        \(policyWrappedPrompt)
         """
     }
 
@@ -602,13 +604,13 @@ final class SessionStore: ObservableObject {
     /// multi-folder projects), and any `MEMORY.md` in each source folder.
     /// Gives the model cross-conversation context even in a brand-new thread.
     static func baseInstructions(for project: Project?) -> String? {
-        var parts: [String] = ["""
+        var parts: [String] = [AgentOutputPolicy.threadInstructions, """
         【核心职责·始终有效】
         你是 Tapgo AICoding 编码代理，不是只复述上下文的聊天机器人。
         - 用户给出可执行任务后，主动检查当前工作区，使用实际可用工具完成修改并验证；不要停在复述、规划或追问“下一步”。
         - 只有当前回合中的具体工具调用真实失败，才能说该工具不可用；不得根据旧记忆或猜测宣布工具不可用。
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。
-        - 用简体中文小步报告有意义进度，失败或异常立即反馈，最终给精简结论。
+        - 使用简体中文；输出节奏严格遵守前面的强制协议。
         """]
         if TapgoConfig.memoryEnabled, let userMem = TapgoConfig.readUserMemory() {
             parts.append("【已清洗的长期记忆】\n\(userMem)")
@@ -1023,6 +1025,11 @@ final class SessionStore: ObservableObject {
                 )
                 turn.items.append(.commandExecution(ce))
             }
+            appendAppProgress(
+                id: "app-progress-command-\(id)",
+                text: AgentOutputPolicy.commandProgress(exitCode: exitCode, status: status),
+                in: &turn
+            )
         case .fileChange(let id, let changes):
             for (i, op) in changes.enumerated() {
                 let kind: FileChange.Kind
@@ -1033,6 +1040,13 @@ final class SessionStore: ObservableObject {
                 }
                 let fc = FileChange(id: "\(id)-\(i)", kind: kind, path: op.path, diff: "", status: .applied)
                 turn.items.append(.fileChange(fc))
+            }
+            if !changes.isEmpty {
+                appendAppProgress(
+                    id: "app-progress-file-\(id)",
+                    text: AgentOutputPolicy.fileProgress(changeCount: changes.count),
+                    in: &turn
+                )
             }
         case .mcpToolCallStarted(let id, let server, let tool, let arguments):
             let argsString = arguments.flatMap { value -> String? in
@@ -1045,8 +1059,10 @@ final class SessionStore: ObservableObject {
                 turn.items.append(.toolCall(tc))
             }
         case .mcpToolCallCompleted(let id, let status, let error, let resultSummary):
+            var toolName = "未知工具"
             if let i = turn.items.firstIndex(where: { $0.id == id }),
                case .toolCall(var tc) = turn.items[i] {
+                toolName = tc.name
                 switch status {
                 case "completed": tc.status = .succeeded
                 case "failed":    tc.status = .failed
@@ -1056,6 +1072,14 @@ final class SessionStore: ObservableObject {
                 tc.result = resultSummary ?? error ?? status
                 turn.items[i] = .toolCall(tc)
             }
+            appendAppProgress(
+                id: "app-progress-tool-\(id)",
+                text: AgentOutputPolicy.toolProgress(
+                    name: toolName,
+                    failed: status == "failed" || status == "declined" || error != nil
+                ),
+                in: &turn
+            )
         case .webSearch(let id, let query):
             let tc = ToolCall(id: id, name: "web_search", arguments: query ?? "", result: nil, status: .succeeded)
             turn.items.append(.toolCall(tc))
@@ -1077,11 +1101,21 @@ final class SessionStore: ObservableObject {
             }
         case .error(let message):
             turn.items.append(.error(id: "e-" + UUID().uuidString, message: message))
+            appendAppProgress(
+                id: "app-progress-error-" + UUID().uuidString,
+                text: AgentOutputPolicy.immediateError(message),
+                in: &turn
+            )
         }
 
         liveThreads[threadIdx].turns[turnIdx] = turn
         liveThreads[threadIdx].updatedAt = Date()
         threads.save(liveThreads[threadIdx])
+    }
+
+    private func appendAppProgress(id: String, text: String, in turn: inout Turn) {
+        guard turn.items.firstIndex(where: { $0.id == id }) == nil else { return }
+        turn.items.append(.assistantMessage(id: id, text: text))
     }
 
     private func appendToStreamingMessage(
