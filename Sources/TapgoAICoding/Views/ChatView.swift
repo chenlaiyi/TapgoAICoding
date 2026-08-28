@@ -1797,6 +1797,16 @@ struct ComposerView: View {
     /// Codex-style queue attached directly above the composer. The queue is a
     /// single quiet surface: rows update in place, keep one-line previews, and
     /// leave the primary actions aligned at the trailing edge.
+    /// 队列卡片自适应高度：每行 44pt + 1pt 分隔线，封顶 240pt 后
+    /// 内部滚动；1 条排队时仅占 1 行高度，不会出现 v0.5.12 那
+    /// 永远 240pt 留白的问题。
+    private var queueAdaptiveHeight: CGFloat {
+        let perRow: CGFloat = 45 // 44 row + 1 divider
+        let count = CGFloat(store.activeQueue.count)
+        let natural = count * perRow + 6 // VStack spacing/padding
+        return min(natural, 240)
+    }
+
     @ViewBuilder
     private var queueStatusBar: some View {
         if !store.activeQueue.isEmpty {
@@ -1814,7 +1824,7 @@ struct ComposerView: View {
                     }
                 }
                 .scrollIndicators(.hidden)
-                .frame(maxHeight: 240)
+                .frame(height: queueAdaptiveHeight)
 
                 if let error = store.activeQueueActionError {
                     Label(error, systemImage: "exclamationmark.circle")
