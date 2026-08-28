@@ -21,7 +21,7 @@
 
 ## v0.5.7 — iOS 原生工程闭环（Dashboard + 协议层同步 + 协议测试）
 **Date**: 2026-08-28
-**Commit**: _(see `git log -1 v0.5.7`)_
+**Commit**: e5d2eea
 **Tag**: v0.5.7
 **Test status**: — iOS MobilePairing 协议层 446 断言全过 — Mac `swift run TapgoTests` 仍 1251 全过
 **Changed**:

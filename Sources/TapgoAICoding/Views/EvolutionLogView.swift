@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.7",
                     date: "2026-08-28",
-                    commit: "_pending_",
+                    commit: "e5d2eea",
                     tag: "v0.5.7",
                     summary: "iOS 原生工程闭环：DashboardView + 协议层自包含副本 + 446 断言同步校验",
                     changes: [
