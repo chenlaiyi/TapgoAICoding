@@ -52,3 +52,35 @@ func runPluginCatalogConfigEditing(_ runner: TestRunner) {
         "unsafe plugin identifiers are rejected"
     )
 }
+
+func runPluginCatalogDeepSeekFiltering(_ runner: TestRunner) {
+    let records = [
+        NPMPackageSearchRecord(
+            name: "@deepseek-ai/dsh-subagent-codex",
+            version: "0.1.1-rc.2",
+            description: "Codex subagent bundle"
+        ),
+        NPMPackageSearchRecord(
+            name: "@deepseek-ai/dsh-subagent-acp",
+            version: "0.1.1-rc.2",
+            description: "Internal patch layer"
+        ),
+        NPMPackageSearchRecord(
+            name: "@deepseek-ai/dsh-subagent-claude-code",
+            version: "0.1.1-rc.2",
+            description: "Claude Code subagent bundle"
+        )
+    ]
+    let items = PluginCatalogParser.deepSeekItems(
+        records,
+        installedNames: ["@deepseek-ai/dsh-subagent-codex"]
+    )
+
+    runner.expectEqual(items.count, 2, "only documented official bundles are listed")
+    runner.expect(items.allSatisfy { $0.installSpecifier.hasSuffix("@next") },
+                  "DeepSeek installs use the release channel matching Harness")
+    runner.expect(items.contains { $0.name == "@deepseek-ai/dsh-subagent-acp" } == false,
+                  "internal DeepSeek patch packages stay hidden")
+    runner.expect(items.first { $0.name == "@deepseek-ai/dsh-subagent-codex" }?.installed == true,
+                  "installed state uses the package name without its dist-tag")
+}

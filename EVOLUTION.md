@@ -19,6 +19,20 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.8 — Codex / DeepSeek 官方插件管理
+**Date**: 2026-08-28
+**Commit**: _(see `git log -1 v0.5.8`)_
+**Tag**: v0.5.8
+**Test status**: — PluginCatalog 13 passed, 0 failed；macOS Release build + 原生界面回归通过 —
+**Changed**:
+- 左上菜单新增「插件」，通过 980 × 680 原生弹窗管理已安装插件、搜索并浏览官方来源。
+- Codex 官方目录直接读取 App 当前使用的 Codex CLI 与隔离 `CODEX_HOME`；显示应用 / MCP / 技能能力，支持安装、卸载和启停。
+- DeepSeek 官方区只展示 CLI 文档明确支持的 Codex 与 Claude Code 子代理包；安装固定使用和当前 Harness 对齐的 `next` 通道，不再暴露内部 patch / driver / SDK 依赖。
+- 安装与卸载均经过安全插件标识校验；操作前确认，完成后刷新目录，并明确提示新会话或重启 Harness 生效。
+- 按用户参考图完成深色布局、分类计数、搜索框、来源说明、插件行与状态操作；本机真实 UI 验证为 0 / 46 / 2，搜索 `Figma` 仅保留一个匹配项。
+**Why**: 用户需要在 Tapgo AICoding 内统一管理 Codex 与 DeepSeek Harness 插件，而不是自行执行不透明的 CLI 命令；同时必须避免把 DeepSeek 内部 npm 依赖误展示成可安装插件。
+**Next**: 为已安装插件增加详情页，展示权限、依赖、更新状态与变更日志。
+
 ## v0.5.7 — iOS 原生工程闭环（Dashboard + 协议层同步 + 协议测试）
 **Date**: 2026-08-28
 **Commit**: e5d2eea

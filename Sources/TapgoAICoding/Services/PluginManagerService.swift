@@ -85,9 +85,12 @@ struct PluginManagerService: Sendable {
             _ = try await runCodex(["plugin", "remove", item.installSpecifier, "--json"])
         case .deepSeek:
             guard let dshPath else { throw PluginManagerError.executableMissing("dsh") }
+            guard PluginConfigEditor.isSafePluginId(item.name) else {
+                throw PluginManagerError.invalidPluginId
+            }
             _ = try await Self.run(
                 executable: dshPath,
-                arguments: ["plugin", "--profile", dshProfileName, "remove", item.installSpecifier],
+                arguments: ["plugin", "--profile", dshProfileName, "remove", item.name],
                 environment: Self.commandEnvironment(extraPath: URL(fileURLWithPath: dshPath).deletingLastPathComponent().path)
             )
         }
@@ -145,24 +148,9 @@ struct PluginManagerService: Sendable {
     private func loadDeepSeekCatalog() async throws -> [PluginCatalogItem] {
         guard let npmPath else { return [] }
         let installed = Self.deepSeekInstalledPackages(profile: dshProfileName)
-        let output = try await Self.run(
-            executable: npmPath,
-            arguments: ["search", "--json", "--searchlimit=250", "@deepseek-ai/dsh-"],
-            environment: Self.commandEnvironment(extraPath: URL(fileURLWithPath: npmPath).deletingLastPathComponent().path)
-        )
-        let records: [NPMPackageSearchRecord]
-        do {
-            var decoded = try JSONDecoder().decode([NPMPackageSearchRecord].self, from: output.data)
-            for package in ["@deepseek-ai/dsh-subagent-codex", "@deepseek-ai/dsh-subagent-claude-code"]
-            where !decoded.contains(where: { $0.name == package }) {
-                if let record = try? await loadNPMPackage(package, npmPath: npmPath) {
-                    decoded.append(record)
-                }
-            }
-            records = decoded
-        } catch {
-            throw PluginManagerError.invalidOutput("DeepSeek 官方插件目录解析失败：\(error.localizedDescription)")
-        }
+        async let codex = loadNPMPackage("@deepseek-ai/dsh-subagent-codex@next", npmPath: npmPath)
+        async let claude = loadNPMPackage("@deepseek-ai/dsh-subagent-claude-code@next", npmPath: npmPath)
+        let records = try await [codex, claude]
         return PluginCatalogParser.deepSeekItems(records, installedNames: installed)
     }
 

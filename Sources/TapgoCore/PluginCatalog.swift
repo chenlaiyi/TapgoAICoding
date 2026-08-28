@@ -145,30 +145,25 @@ public enum PluginCatalogParser {
         _ records: [NPMPackageSearchRecord],
         installedNames: Set<String>
     ) -> [PluginCatalogItem] {
-        let builtIn = Set([
-            "@deepseek-ai/dsh", "@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app",
-            "@deepseek-ai/dsh-headless", "@deepseek-ai/dsh-sdk-app",
-            "@deepseek-ai/dsh-sdk-minimal", "@deepseek-ai/dsh-acp-app"
-        ])
+        let officialBundles: [String: String] = [
+            "@deepseek-ai/dsh-subagent-codex": "Codex 子代理",
+            "@deepseek-ai/dsh-subagent-claude-code": "Claude Code 子代理"
+        ]
         return records
-            .filter { record in
-                guard record.name.hasPrefix("@deepseek-ai/"), !builtIn.contains(record.name) else { return false }
-                let description = record.description?.lowercased() ?? ""
-                return record.name.contains("subagent-") || description.contains("profile bundle")
-                    || description.contains("plugin bundle") || description.contains("patch layer")
-            }
+            .filter { officialBundles[$0.name] != nil }
             .map { record in
                 PluginCatalogItem(
                     id: "deepseek:\(record.name)",
                     name: record.name,
+                    displayName: officialBundles[record.name],
                     version: record.version,
                     summary: record.description ?? "DeepSeek Harness 官方插件包",
                     marketplace: .deepSeek,
                     marketplaceName: "@deepseek-ai",
-                    installSpecifier: record.name,
+                    installSpecifier: record.name + "@next",
                     installed: installedNames.contains(record.name),
                     enabled: installedNames.contains(record.name),
-                    capabilities: ["Harness 插件"]
+                    capabilities: ["Harness 插件", "官方适配"]
                 )
             }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }

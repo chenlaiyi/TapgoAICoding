@@ -157,6 +157,7 @@ let allSections: [String] = [
     "AgentCapabilities: skills",
     "PluginCatalog: Codex parsing",
     "PluginCatalog: config editing",
+    "PluginCatalog: DeepSeek filtering",
     "Thread: usage & duration summary",
     "RemoteDirectoryLister: argv shape (pure)",
     "RemoteDirectoryLister: live on remotehost",
@@ -569,6 +570,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "PluginCatalog: config editing") {
             runPluginCatalogConfigEditing(runner)
+        }
+        await runIfInScope(runner, "PluginCatalog: DeepSeek filtering") {
+            runPluginCatalogDeepSeekFiltering(runner)
         }
         await runIfInScope(runner, "Thread: usage & duration summary") {
             runThreadSummary(runner)

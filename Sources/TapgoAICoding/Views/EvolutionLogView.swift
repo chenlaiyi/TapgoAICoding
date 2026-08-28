@@ -289,6 +289,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.8",
+                    date: "2026-08-28",
+                    commit: "_pending_",
+                    tag: "v0.5.8",
+                    summary: "Codex / DeepSeek 官方插件目录、安装管理与安全过滤",
+                    changes: [
+                        "左上菜单新增『插件』，以原生弹窗管理已安装插件、搜索并浏览官方来源。",
+                        "Codex 官方目录读取当前 App 使用的 CLI 与隔离 CODEX_HOME，展示应用/MCP/技能能力并支持安装、卸载和启停。",
+                        "DeepSeek 官方区只保留文档明确支持的 Codex 与 Claude Code 子代理，安装使用和当前 Harness 对齐的 next 通道。",
+                        "过滤 DeepSeek 内部 patch/driver/SDK 依赖；安装与卸载经过安全标识校验、确认和目录刷新。",
+                        "PluginCatalog 13 项回归、Release build、参考图同屏视觉 QA 与本机原生交互回归全部通过。"
+                    ],
+                    why: "用户需要在 Tapgo AICoding 内直接管理两套 Harness 的官方插件，同时不能把内部 npm 依赖伪装成可安装市场项目。",
+                    next: "为已安装插件增加详情页，展示权限、依赖、更新状态与变更日志。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.7",
                     date: "2026-08-28",
                     commit: "e5d2eea",
