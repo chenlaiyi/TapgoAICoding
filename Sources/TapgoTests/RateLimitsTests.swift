@@ -180,3 +180,66 @@ func runSubscriptionUsageWithRateLimits(_ t: TestRunner) {
     t.expectEqual(newAgg.accountRateLimits?.planType, "plus", ".from passes rate limits")
     t.expectEqual(newAgg.level, .warn, ".from level uses rate limits")
 }
+
+
+@MainActor
+func runSubscriptionUsageAlwaysVisible(_ t: TestRunner) {
+    // v0.5.9+：保证 chip 永远渲染，缺数据时降级为"加载中"。
+    // 这是修"用户进入新会话看到输入框下方右侧啥都没有"的根因。
+
+    // 1. 完全无数据：仅构造默认 init
+    let brandNew = SubscriptionUsage(usedTokens: 0, contextWindow: nil)
+    t.expect(brandNew.isVisible, "alwaysVisible: brand-new (no tokens, no cw) → visible")
+    t.expectEqual(brandNew.chipLabel, "套餐用量 · 加载中", "alwaysVisible: brand-new → loading chip")
+    t.expectEqual(brandNew.detailText, "正在获取模型订阅套餐用量…", "alwaysVisible: brand-new → loading detail")
+    t.expectEqual(brandNew.level, .normal, "alwaysVisible: brand-new level stays normal")
+
+    // 2. 有 contextWindow 但没有 token：仍然显示加载中
+    let onlyWindow = SubscriptionUsage(usedTokens: 0, contextWindow: 1_000_000)
+    t.expect(onlyWindow.isVisible, "alwaysVisible: only window → visible")
+    t.expectEqual(onlyWindow.chipLabel, "套餐用量 · 加载中", "alwaysVisible: only window → loading chip")
+
+    // 3. 有 token 但没有 codex 套餐用量 + 没有上下文窗口 → 走"本会话 fallback"
+    let onlyTokens = SubscriptionUsage(usedTokens: 12_300, contextWindow: nil)
+    t.expect(onlyTokens.isVisible, "alwaysVisible: only tokens → visible")
+    t.expectEqual(onlyTokens.chipLabel, "套餐用量 12k", "alwaysVisible: only tokens → session-only chip")
+    t.expectEqual(onlyTokens.detailText, "本会话已用 12k tokens。", "alwaysVisible: only tokens → session-only detail")
+
+    // 4. 拿到 codex 套餐用量：可见且走套餐角度
+    let primary = RateLimitWindow(usedPercent: 80, windowMinutes: 300, resetsAt: nil)
+    let secondary = RateLimitWindow(usedPercent: 7, windowMinutes: 10080, resetsAt: nil)
+    let limits = AccountRateLimits(primary: primary, secondary: secondary, planType: "pro")
+    let withLimits = SubscriptionUsage(usedTokens: 0, contextWindow: 1_000_000, accountRateLimits: limits)
+    t.expect(withLimits.isVisible, "alwaysVisible: with rate limits → visible")
+    t.expectEqual(withLimits.chipLabel, "5h 80% · 周 7%", "alwaysVisible: rate-limit label overrides loading")
+    t.expectEqual(withLimits.level, .critical, "alwaysVisible: 5h 80% → critical (overrides normal)")
+    t.expectEqual(withLimits.detailText.contains("Pro 套餐"), true, "alwaysVisible: detail includes plan name")
+
+    // 5. 5h 80% 单档：critical 触发
+    let onlyCritical = AccountRateLimits(
+        primary: RateLimitWindow(usedPercent: 80, windowMinutes: 300, resetsAt: nil),
+        secondary: nil,
+        planType: nil
+    )
+    let onlyCriticalUsage = SubscriptionUsage(usedTokens: 0, contextWindow: nil, accountRateLimits: onlyCritical)
+    t.expectEqual(onlyCriticalUsage.level, .critical, "alwaysVisible: 5h 80% single-window → critical")
+
+    // 6. 周 7% 单档：normal
+    let onlyWeekly = AccountRateLimits(
+        primary: nil,
+        secondary: RateLimitWindow(usedPercent: 7, windowMinutes: 10080, resetsAt: nil),
+        planType: "plus"
+    )
+    let onlyWeeklyUsage = SubscriptionUsage(usedTokens: 0, contextWindow: nil, accountRateLimits: onlyWeekly)
+    t.expectEqual(onlyWeeklyUsage.level, .normal, "alwaysVisible: 周 7% single-window → normal")
+    t.expectEqual(onlyWeeklyUsage.chipLabel, "周 7%", "alwaysVisible: weekly-only chip label")
+
+    // 7. 5h 60% 单档：warn 触发
+    let warnOnly = AccountRateLimits(
+        primary: RateLimitWindow(usedPercent: 60, windowMinutes: 300, resetsAt: nil),
+        secondary: nil,
+        planType: nil
+    )
+    let warnUsage = SubscriptionUsage(usedTokens: 0, contextWindow: nil, accountRateLimits: warnOnly)
+    t.expectEqual(warnUsage.level, .warn, "alwaysVisible: 5h 60% single-window → warn")
+}

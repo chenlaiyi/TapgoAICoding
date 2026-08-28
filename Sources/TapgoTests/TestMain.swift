@@ -82,6 +82,7 @@ let allSections: [String] = [
     "SubscriptionUsage: chip label + percent + level",
     "RateLimits: parse codex account/rateLimits JSON",
     "SubscriptionUsage: rate limits override chip label + level",
+    "SubscriptionUsage: chip 始终可见（v0.5.9+）",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -639,6 +640,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "SubscriptionUsage: rate limits override chip label + level") {
             runSubscriptionUsageWithRateLimits(runner)
+        }
+        await runIfInScope(runner, "SubscriptionUsage: chip 始终可见（v0.5.9+）") {
+            runSubscriptionUsageAlwaysVisible(runner)
         }
     }
 }
