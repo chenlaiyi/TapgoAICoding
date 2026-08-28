@@ -1231,7 +1231,7 @@ struct ComposerView: View {
             // panel — matching Codex: both cards stay full-width, same surface,
             // same radius, separated by a small gap (no overlap, no shared
             // border).
-            VStack(spacing: store.activeQueue.isEmpty ? 0 : 12) {
+            VStack(spacing: store.activeQueue.isEmpty ? 0 : -10) {
                 queueStatusBar
 
                 // Centered, max-width rounded dock (mirrors the DSH composer
