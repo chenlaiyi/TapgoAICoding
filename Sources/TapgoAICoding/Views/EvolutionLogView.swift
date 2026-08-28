@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.8",
                     date: "2026-08-28",
-                    commit: "_pending_",
+                    commit: "ad339ce",
                     tag: "v0.5.8",
                     summary: "Codex / DeepSeek 官方插件目录、安装管理与安全过滤",
                     changes: [

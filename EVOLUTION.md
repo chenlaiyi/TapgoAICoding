@@ -21,7 +21,7 @@
 
 ## v0.5.8 — Codex / DeepSeek 官方插件管理
 **Date**: 2026-08-28
-**Commit**: _(see `git log -1 v0.5.8`)_
+**Commit**: ad339ce
 **Tag**: v0.5.8
 **Test status**: — PluginCatalog 13 passed, 0 failed；macOS Release build + 原生界面回归通过 —
 **Changed**:
