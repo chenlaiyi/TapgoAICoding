@@ -89,6 +89,35 @@ final result: passed
 
 ---
 
+# Codex 式输入区排队卡片回归
+
+- 参考视觉真值：`/var/folders/rc/12_j75493m5bd29vc05fzr3w0000gn/T/codex-clipboard-b6c98511-94d4-40be-b00f-609b40b612c7.png`
+- 原生实现截图：`/var/folders/rc/12_j75493m5bd29vc05fzr3w0000gn/T/com.openai.sky.CUAService/Tapgo AICoding QA Screenshot 2026-08-29 at 1.18.51 AM.jpeg`
+- 同屏聚焦比较：`/tmp/tapgo-queue-comparison-final.png`
+- 状态：本机 v0.5.12 Release 同源独立 QA bundle，加载五条真实截图附件队列；临时数据夹具未进入生产源码。
+
+## 同屏比较结论
+
+- 队列卡片与输入框使用相同最大宽度并以 6pt 叠接，形成一组连续组件；20pt 连续圆角、1px 边框和深色面板与参考层级一致。
+- 五条消息均保持 56pt 紧凑单行，长文本尾部截断；真实图片附件以 42pt 圆角缩略图显示。
+- 逐行分隔线、更多按钮圆形底和 SwiftUI Menu 默认下拉箭头均已移除，避免多余视觉噪声。
+- 行首使用低强调的转向箭头；“调整方向”、删除和更多固定右对齐，字号、颜色和间距与参考一致。
+
+## 原生交互验证
+
+- AX 树出现唯一 `queued-message-card`，包含五条 `queued-message-row-*`；每条均有图片、单行文本、调整方向、删除和更多菜单语义。
+- 点击第一条删除按钮后，AX 明确移除该行的 6 个元素（126–131），其余队列顺序及输入框保持稳定。
+- 卡片最多容纳五行，超出后在卡片内部滚动；输入框仍为独立原生文本控件，不因队列刷新重建。
+
+## Findings
+
+- 无 P0/P1/P2 视觉或交互问题。
+- 可接受差异：参考图来自更宽的 Codex 窗口；Tapgo AICoding 遵循自身内容最大宽度，但行高、缩略图、操作密度与衔接方式按相同绝对尺寸实现。
+
+final result: passed
+
+---
+
 # 响应式环境信息与来源卡片回归
 
 - 参考视觉真值：`/var/folders/rc/12_j75493m5bd29vc05fzr3w0000gn/T/codex-clipboard-d93156ae-2539-4452-846b-bc7e15cb2caf.png`

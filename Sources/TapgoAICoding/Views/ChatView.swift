@@ -1854,23 +1854,22 @@ struct ComposerView: View {
         return hasText || hasImage
     }
 
-    /// Compact queue attached above the composer. Each row can stay in FIFO
-    /// order or use native same-turn steering via "调整方向".
+    /// Codex-style queue attached directly above the composer. The queue is a
+    /// single quiet surface: rows update in place, keep one-line previews, and
+    /// leave the primary actions aligned at the trailing edge.
     @ViewBuilder
     private var queueStatusBar: some View {
         if !store.activeQueue.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
+                        ForEach(store.activeQueue) { q in
                             queueRow(q)
-                            if index < store.activeQueue.count - 1 {
-                                Divider().padding(.leading, 32)
-                            }
                         }
                     }
                 }
-                .frame(maxHeight: 160)
+                .scrollIndicators(.hidden)
+                .frame(maxHeight: 286)
 
                 if let error = store.activeQueueActionError {
                     Label(error, systemImage: "exclamationmark.circle")
@@ -1880,38 +1879,37 @@ struct ComposerView: View {
                         .padding(.bottom, 6)
                 }
             }
-            .frame(maxWidth: contentWidth - 24)
-            .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+            .frame(maxWidth: contentWidth)
+            .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(DSHTheme.border, lineWidth: 1)
             )
             .frame(maxWidth: .infinity, alignment: .center)
+            .accessibilityIdentifier("queued-message-card")
         }
     }
 
     @ViewBuilder
     private func queueRow(_ q: QueuedMessage) -> some View {
         let adjusting = store.isAdjustingDirection(q.id)
-        HStack(spacing: 8) {
-            Image(systemName: "text.line.first.and.arrowtriangle.forward")
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.turn.down.right")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
+                .foregroundStyle(.tertiary)
+                .frame(width: 20)
+
+            if let firstImage = q.images.first {
+                queueThumbnail(for: firstImage, count: q.images.count)
+            }
 
             Text(q.text.isEmpty ? "(图片附件)" : q.text)
-                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
 
-            if !q.images.isEmpty {
-                Label("\(q.images.count)", systemImage: "photo")
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 8)
+            Spacer(minLength: 12)
 
             Button {
                 store.steerQueuedMessage(q.id)
@@ -1927,7 +1925,7 @@ struct ComposerView: View {
             }
             .buttonStyle(.borderless)
             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-            .foregroundStyle(DSHTheme.brand)
+            .foregroundStyle(.secondary)
             .disabled(store.isAdjustingActiveQueue)
             .help("立即补充到当前任务，不中断正在进行的工作")
             .accessibilityLabel(adjusting ? "正在调整方向" : "立即调整方向")
@@ -1937,6 +1935,7 @@ struct ComposerView: View {
             } label: {
                 Image(systemName: "trash")
                     .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
             }
             .buttonStyle(.borderless)
             .disabled(adjusting)
@@ -1960,16 +1959,56 @@ struct ComposerView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .frame(width: 22, height: 22)
-                    .background(DSHTheme.interactiveHover, in: Circle())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .disabled(adjusting)
             .help("排队消息操作")
             .accessibilityLabel("更多排队操作")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 56)
+        .contentShape(Rectangle())
+        .accessibilityIdentifier("queued-message-row-\(q.id)")
+    }
+
+    @ViewBuilder
+    private func queueThumbnail(for url: URL, count: Int) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            Group {
+                if let image = NSImage(contentsOf: url) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "photo")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(DSHTheme.surface)
+                }
+            }
+            .frame(width: 42, height: 42)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(DSHTheme.border, lineWidth: 1)
+            )
+
+            if count > 1 {
+                Text("\(count)")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .frame(width: 46, height: 46)
+        .accessibilityLabel(count == 1 ? "1 张图片" : "\(count) 张图片")
     }
 
     /// Send the composed message. While a turn is running the message is
