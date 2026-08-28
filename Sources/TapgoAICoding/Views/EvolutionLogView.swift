@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
             EvolutionEntry(
                 version: "v0.5.5",
                 date: "2026-08-28",
-                commit: "pending",
+                commit: "1c25dbb",
                 tag: "v0.5.5",
                 summary: "连接手机菜单 + MobilePairing 协议 + 长期记忆解析修复",
                 changes: [
