@@ -1684,12 +1684,54 @@ struct ComposerView: View {
                     Text("输入 \(tapgoFormatCount(thread.usageTotal))")
                 }
                 Spacer()
+                if subscription.isVisible {
+                    subscriptionChip(subscription)
+                }
             }
             .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
             .frame(maxWidth: contentWidth)
             .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    /// 输入框下方的"套餐用量"摘要。v0.5.6 用本会话累计 token +
+    /// 最近 turn 的模型上下文窗口组合而成；将来 codex 暴露
+    /// `account/rateLimits/read` 后只需扩展 `SubscriptionUsage` 数据源，
+    /// UI 不用改签名。
+    private var subscription: SubscriptionUsage {
+        guard let thread = activeThread else {
+            return SubscriptionUsage(usedTokens: 0, contextWindow: nil)
+        }
+        return SubscriptionUsage.from(
+            turnsTotalTokens: thread.usageTotal,
+            latestUsage: thread.turns.last(where: { $0.usage != nil })?.usage,
+            fallbackWindow: 1_000_000
+        )
+    }
+
+    /// 套餐用量 chip — 输入框下方右侧。颜色随压力等级切换：
+    /// normal=brand（蓝）、warn=warn（黄）、critical=error（红）。
+    @ViewBuilder
+    private func subscriptionChip(_ usage: SubscriptionUsage) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "chart.bar.fill")
+            Text(usage.chipLabel)
+        }
+        .foregroundStyle(Self.color(for: usage.level))
+        .help(usage.detailText)
+        .accessibilityLabel("模型订阅套餐当前使用情况：" + usage.detailText)
+    }
+
+    /// 套餐用量 chip 的颜色映射：与 `TokenUsage.contextLevel` 同源，
+    /// 用 `DSHTheme.brand` / `warn` / `error` 一套色板，保持 UI
+    /// 视觉一致。
+    private static func color(for level: ContextLevel) -> Color {
+        switch level {
+        case .critical: return DSHTheme.error
+        case .warn:     return DSHTheme.warn
+        case .normal:   return DSHTheme.brand
         }
     }
 

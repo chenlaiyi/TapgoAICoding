@@ -79,6 +79,7 @@ let allSections: [String] = [
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
     "MobilePairing: protocol + URL round-trip",
+    "SubscriptionUsage: chip label + percent + level",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -154,6 +155,8 @@ let allSections: [String] = [
     "DurationFormatter: string + turn duration",
     "ReasoningMerge: streamed trace wins",
     "AgentCapabilities: skills",
+    "PluginCatalog: Codex parsing",
+    "PluginCatalog: config editing",
     "Thread: usage & duration summary",
     "RemoteDirectoryLister: argv shape (pure)",
     "RemoteDirectoryLister: live on remotehost",
@@ -561,6 +564,12 @@ struct TapgoTestMain {
         await runIfInScope(runner, "AgentCapabilities: skills") {
             runAgentCapabilities(runner)
         }
+        await runIfInScope(runner, "PluginCatalog: Codex parsing") {
+            runPluginCatalogCodexParsing(runner)
+        }
+        await runIfInScope(runner, "PluginCatalog: config editing") {
+            runPluginCatalogConfigEditing(runner)
+        }
         await runIfInScope(runner, "Thread: usage & duration summary") {
             runThreadSummary(runner)
         }
@@ -611,6 +620,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "MobilePairing: protocol + URL round-trip") {
             runMobilePairing(runner)
+        }
+        await runIfInScope(runner, "SubscriptionUsage: chip label + percent + level") {
+            runSubscriptionUsage(runner)
         }
     }
 }

@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.6 — 输入框下方右侧"套餐用量"chip
+**Date**: 2026-08-28
+**Commit**: _(see `git log -1 v0.5.6`)_
+**Tag**: v0.5.6
+**Test status**: — 1251 passed, 0 failed —
+**Changed**:
+- 新增 `TapgoCore/SubscriptionUsage`：聚合 `Thread.usageTotal` + 最近一次 turn 的 `TokenUsage.contextWindow` + `ContextLevel` 配色等级。
+- `composerMetricsBar` 右侧新增"套餐用量 X / Y (Z%)"chip，按压力等级 brand / warn / error 着色；空用量时自动隐藏。
+- `TapgoTests/SubscriptionUsageTests`：30 项断言覆盖 isVisible / percent / level / chipLabel / detailText / from(turnsTotalTokens, latestUsage, fallbackWindow)。
+- 顺手把上一会话未提交的插件管理 WIP（`PluginManagerService` / `PluginManagerView` / `PluginCatalog` / `PluginCatalogTests` / `SidebarView` 的『插件』菜单项与 sheet）一并 commit，避免 v0.5.6 的 SidebarView 引用悬空；`PluginManagerService.init()` 调用 `RemoteCodexHomeSync.findHarness()` 已用 `MainActor.assumeIsolated` 包装，App target 在 SDK 26.5 下恢复 build。
+**Why**: 用户要求在输入框下方右侧看到当前订阅套餐用量；本版用 thread 累计 token 作为最小可用数据源，codex `account/rateLimits/read` 接入留给后续迭代。
+**Next**: 接入 codex `account/rateLimits/read` 拿到真实剩余/重置时间，把 chip 升级为"已用 X / 剩余 Y / 重置于 Z"。
+
 ## v0.5.5 — 连接手机菜单 + MobilePairing 协议 + 长期记忆解析修复
 **Date**: 2026-08-28
 **Commit**: _(see `git log -1 v0.5.5`)_

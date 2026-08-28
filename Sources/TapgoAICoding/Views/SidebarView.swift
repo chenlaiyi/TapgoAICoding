@@ -22,6 +22,7 @@ struct SidebarView: View {
     @State private var searchScope = false
     @State private var showEvolutionLog = false
     @State private var showConnectPhone = false
+    @State private var showPluginManager = false
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
@@ -102,6 +103,9 @@ struct SidebarView: View {
         .sheet(isPresented: $showConnectPhone) {
             ConnectPhoneView()
         }
+        .sheet(isPresented: $showPluginManager) {
+            PluginManagerView()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusSearch)) { _ in
             searchFocused = true
         }
@@ -128,6 +132,11 @@ struct SidebarView: View {
             }
             .help("连接点点够终端 iOS App (⌘⇧P)")
             .accessibilityLabel("连接手机")
+            menuItem("插件", "puzzlepiece.extension") {
+                showPluginManager = true
+            }
+            .help("管理 Codex 与 DeepSeek Harness 插件")
+            .accessibilityLabel("插件管理")
             menuItem("新对话", "plus.message") {
                 store.newThread()
             }

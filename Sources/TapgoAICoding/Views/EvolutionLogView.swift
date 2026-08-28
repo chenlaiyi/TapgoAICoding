@@ -289,6 +289,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
             EvolutionEntry(
+                version: "v0.5.6",
+                date: "2026-08-28",
+                commit: "_",
+                tag: "v0.5.6",
+                summary: "输入框下方右侧『套餐用量』chip + SubscriptionUsage 聚合",
+                changes: [
+                    "TapgoCore/SubscriptionUsage:聚合 Thread.usageTotal + 最近一次 turn 的 TokenUsage.contextWindow + ContextLevel 配色等级。",
+                    "composerMetricsBar 右侧新增『套餐用量 X / Y (Z%)』chip,按压力等级 brand / warn / error 着色;空用量自动隐藏。",
+                    "TapgoTests/SubscriptionUsageTests:30 项断言覆盖 isVisible / percent / level / chipLabel / detailText / from(turnsTotalTokens, latestUsage, fallbackWindow)。",
+                    "把上一会话未提交的插件管理 WIP(PluginManagerService / PluginManagerView / PluginCatalog / PluginCatalogTests / SidebarView 的『插件』菜单与 sheet)一并 commit,避免 v0.5.6 SidebarView 引用悬空;PluginManagerService.init() 用 MainActor.assumeIsolated 包装 RemoteCodexHomeSync.findHarness() 调用,App target 恢复 SDK 26.5 build。"
+                ],
+                why: "用户要求在输入框下方右侧看到当前订阅套餐用量;本版用 thread 累计 token + 上下文窗口作为最小可用数据源,codex account/rateLimits/read 接入留给后续迭代。",
+                next: "接入 codex account/rateLimits/read 拿到真实剩余/重置时间,把 chip 升级为『已用 X / 剩余 Y / 重置于 Z』并启用 iOS 端 Keychain 持久化。"
+            ),
+            EvolutionEntry(
                 version: "v0.5.5",
                 date: "2026-08-28",
                 commit: "1c25dbb",
