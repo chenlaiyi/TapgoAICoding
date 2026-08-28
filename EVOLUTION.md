@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.14 — 队列卡片宽度改为输入框的 90%
+**Date**: 2026-08-29
+**Commit**: _(see `git log -1 v0.5.14`)_
+**Tag**: v0.5.14
+**Test status**: _(待构建后回填)_
+**Changed**:
+- `queueStatusBar` 末尾宽度约束从 `contentWidth` 改为 `contentWidth * 0.90`：队列卡片固定为输入框卡片的 90% 并整体居中，恢复「排队卡片比输入框略窄」的层次感。
+- 同步更新两处注释（queueStatusBar 与队列面板说明），避免后续再被改回同宽。
+**Why**: 上一版把队列卡片改成与输入框同宽后，用户反馈宽度弄错了，明确要求队列卡片应为输入框卡片宽度的 90%。
+**Next**: 收集 720 / 980 两种内容宽度下的视觉反馈，必要时再微调比例。
+
 ## v0.5.13 — 队列卡片 Codex 紧凑样式 + 拖拽排序
 **Date**: 2026-08-29
 **Commit**: 5ccb271

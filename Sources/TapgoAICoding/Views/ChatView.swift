@@ -1228,9 +1228,8 @@ struct ComposerView: View {
             turnProgressBadge
 
             // Queue sits directly above the composer as an independent rounded
-            // panel — matching Codex: both cards stay full-width, same surface,
-            // same radius, separated by a small gap (no overlap, no shared
-            // border).
+            // panel — matching Codex: queue card is 90% of the composer card
+            // width, same surface, same radius, separated by a small gap.
             // spacing -25 让 composer 顶部向下压住队列卡片约 25pt，
             // 形成清晰的「输入框浮在排队卡片上方」层次。
             VStack(spacing: store.activeQueue.isEmpty ? 0 : -25) {
@@ -1871,10 +1870,9 @@ struct ComposerView: View {
                         .padding(.bottom, 6)
                 }
             }
-            // 队列卡片与下方输入卡片共享同一宽度 (= contentWidth),
+            // 队列卡片宽度 = 输入卡片宽度 (contentWidth) × 0.90,
             // 整体居中。SwiftUI HStack 默认会把卡片按行宽 proposal 撑开,
-            // 这里用 contentWidth 限制防越界; 同时 composer 主 VStack
-            // 也加了同款 frame, 两块自然对齐。
+            // 这里用 0.90 倍 frame 收窄, 保持「队列卡片比输入框略窄」的层次。
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1904,7 +1902,7 @@ struct ComposerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .blendMode(.plusLighter)
             }
-            .frame(maxWidth: contentWidth, alignment: .center)
+            .frame(maxWidth: contentWidth * 0.90, alignment: .center)
             .accessibilityIdentifier("queued-message-card")
         }
     }
