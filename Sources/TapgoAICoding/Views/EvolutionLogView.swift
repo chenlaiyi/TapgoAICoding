@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.13",
                     date: "2026-08-29",
-                    commit: "TBD",
+                    commit: "5ccb271",
                     tag: "v0.5.13",
                     summary: "队列卡片 Codex 紧凑样式 + 拖拽排序",
                     changes: [
