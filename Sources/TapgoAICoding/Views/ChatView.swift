@@ -56,6 +56,51 @@ private struct ChatContentBottomKey: PreferenceKey {
     }
 }
 
+/// Coalesces high-frequency stream updates without publishing another piece
+/// of SwiftUI state. Command stdout and assistant deltas can arrive many times
+/// per second; starting a new scroll animation for every delta starves the
+/// text editor and makes IME composition visibly jump.
+private final class StreamScrollCoalescer {
+    private var pending: DispatchWorkItem?
+
+    func schedule(_ action: @escaping () -> Void) {
+        guard pending == nil else { return }
+        let item = DispatchWorkItem { [weak self] in
+            self?.pending = nil
+            action()
+        }
+        pending = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: item)
+    }
+
+    func cancel() {
+        pending?.cancel()
+        pending = nil
+    }
+}
+
+/// Persists composer drafts only after typing pauses. AppStorage used to
+/// publish on every keystroke while the transcript was also streaming.
+private final class ComposerDraftSaver {
+    private var pending: DispatchWorkItem?
+    private let key = "tapgo.composerDraft"
+
+    func schedule(_ value: String) {
+        pending?.cancel()
+        let item = DispatchWorkItem { [key] in
+            UserDefaults.standard.set(value, forKey: key)
+        }
+        pending = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: item)
+    }
+
+    func flush(_ value: String) {
+        pending?.cancel()
+        pending = nil
+        UserDefaults.standard.set(value, forKey: key)
+    }
+}
+
 struct ChatView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
@@ -68,6 +113,7 @@ struct ChatView: View {
     @State private var searchActive = false
     @State private var searchQuery = ""
     @State private var jumpToTurnId: String? = nil
+    @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
     @FocusState private var searchFieldFocused: Bool
@@ -75,19 +121,33 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Group {
-                if let thread = activeThread, hasConversation {
-                    threadBody(thread: thread)
-                } else {
-                    emptyStateBody
-                }
+            if let thread = activeThread, hasConversation {
+                threadBody(thread: thread)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Spacer()
+                Text("我们该处理什么工作？")
+                    .font(AppFont.scaled(.largeTitle, multiplier: appFontScale.multiplier).bold())
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, 8)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // The composer only docks at the bottom once a conversation has
-            // content; in the empty / initial state it is centered in the body.
+
             if hasConversation {
                 Divider()
-                ComposerView(contentWidth: wideContent ? 980 : 720)
+            }
+
+            // Keep one structural ComposerView for the entire lifetime of
+            // ChatView. Moving between the empty and active layouts must not
+            // recreate NSTextView while the user is entering the next prompt.
+            ComposerView(contentWidth: wideContent ? 980 : 720)
+                .padding(.horizontal, hasConversation ? 0 : 16)
+
+            if !hasConversation {
+                Text("从左侧选择会话继续，或直接输入开始新任务。")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 8)
+                Spacer()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -263,23 +323,6 @@ struct ChatView: View {
         return "独立会话"
     }
 
-    @ViewBuilder
-    private var emptyStateBody: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Text("我们该处理什么工作？")
-                .font(AppFont.scaled(.largeTitle, multiplier: appFontScale.multiplier).bold())
-                .foregroundStyle(.primary)
-            ComposerView(contentWidth: 720)
-                .padding(.horizontal, 16)
-            Text("从左侧选择会话继续，或直接输入开始新任务。")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     /// Session-goal banner set via `/goal`, shown above the conversation.
     @ViewBuilder
     private func threadBody(thread: TapgoCore.Thread) -> some View {
@@ -377,8 +420,12 @@ struct ChatView: View {
                 // content growth during streaming doesn't immediately flip it.
                 .onChange(of: thread.turns) { _, newTurns in
                     if lastWasNearBottom || isNearBottom {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo("BOTTOM", anchor: .bottom)
+                        streamScrollCoalescer.schedule {
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                proxy.scrollTo("BOTTOM", anchor: .bottom)
+                            }
                         }
                         showNewMessage = false
                     } else if !newTurns.isEmpty {
@@ -389,10 +436,15 @@ struct ChatView: View {
                 // When the user manually scrolls back to the bottom, drop the
                 // "回到最新" chip instead of leaving it over the latest message.
                 .onChange(of: isNearBottom) { _, near in
-                    if near { showNewMessage = false }
+                    if near {
+                        showNewMessage = false
+                    } else {
+                        streamScrollCoalescer.cancel()
+                    }
                 }
                 // When switching threads, land at the latest message.
                 .onChange(of: thread.id) { _, _ in
+                    streamScrollCoalescer.cancel()
                     scrollChatToBottom(proxy)
                     showNewMessage = false
                 }
@@ -409,6 +461,9 @@ struct ChatView: View {
                 // at the latest message so the input box sits right below it.
                 .onAppear {
                     scrollChatToBottom(proxy)
+                }
+                .onDisappear {
+                    streamScrollCoalescer.cancel()
                 }
             }
         }
@@ -589,6 +644,7 @@ struct ChatView: View {
         var parts: [String] = []
         for turn in thread.turns {
             for item in turn.items {
+                if item.isAppGeneratedProgress { continue }
                 switch item {
                 case .userMessage(_, let t):
                     parts.append("用户: " + t.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -627,6 +683,7 @@ struct ChatView: View {
         var parts: [String] = []
         for turn in thread.turns {
             for item in turn.items {
+                if item.isAppGeneratedProgress { continue }
                 switch item {
                 case .userMessage(_, let t):
                     parts.append("用户: " + t.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -678,26 +735,6 @@ struct ChatView: View {
         .accessibilityLabel("会话状态 \(label)")
     }
 
-    /// Groups consecutive file-change items into one Codex-style "已编辑
-    /// N 个文件" batch block; everything else renders one row per item.
-    private func chatBlocks(_ items: [TurnItem]) -> [ChatBlock] {
-        var out: [ChatBlock] = []
-        var fileAcc: [FileChange] = []
-        func flush() {
-            if !fileAcc.isEmpty { out.append(.fileBatch(fileAcc)); fileAcc = [] }
-        }
-        for item in items {
-            if case .fileChange(let fc) = item {
-                fileAcc.append(fc)
-            } else {
-                flush()
-                out.append(.item(item))
-            }
-        }
-        flush()
-        return out
-    }
-
     /// Compact "HH:mm" timestamp for a turn, used in the per-turn footer.
     private func turnTime(_ date: Date) -> String {
         let f = DateFormatter()
@@ -740,24 +777,20 @@ struct ChatView: View {
         }
     }
 
-    /// One renderable unit in a turn: either a single item or a merged
-    /// batch of consecutive file changes.
-    private enum ChatBlock: Identifiable {
-        case item(TurnItem)
-        case fileBatch([FileChange])
-
-        var id: String {
-            switch self {
-            case .item(let it): return "item-" + it.id
-            case .fileBatch(let files): return "batch-" + (files.first?.id ?? "e")
-            }
-        }
-    }
-
     @ViewBuilder
     private func turnSection(turn: Turn, isLast: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(chatBlocks(turn.items)) { block in
+            if turn.status == .running {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("已处理 \(DurationFormatter.string(seconds: max(0, context.date.timeIntervalSince(turn.startedAt))))")
+                            .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                        Divider()
+                    }
+                }
+            }
+            ForEach(TurnPresentation.compactBlocks(turn.items)) { block in
                 switch block {
                 case .item(let item):
                     MessageRow(item: item,
@@ -766,11 +799,16 @@ struct ChatView: View {
                                startedAt: turn.startedAt,
                                onReply: userReplyClosure(item),
                                onEdit: { store.sendUserMessage($0) })
+                case .activity(let activity):
+                    ActivityRollupView(
+                        activity: activity,
+                        turnIsRunning: turn.status == .running
+                    )
                 case .fileBatch(let files):
                     FileEditBatchView(files: files)
                 }
             }
-            if turn.status == .running && !hasVisibleRunningCard(turn) {
+            if turn.status == .running && !hasRollingActivityTail(turn) {
                 runningActivityLine(turn: turn)
             }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
@@ -842,58 +880,46 @@ struct ChatView: View {
         }
     }
 
-    /// Running command/tool cards already contain their own spinner and stop
-    /// button. Other states keep the compact activity line as a live tail.
-    private func hasVisibleRunningCard(_ turn: Turn) -> Bool {
+    /// Reasoning, command and tool events are already represented by the
+    /// single rolling activity row. Do not append a second generic row.
+    private func hasRollingActivityTail(_ turn: Turn) -> Bool {
         guard let last = turn.items.last else { return false }
         switch last {
-        case .commandExecution(let execution): return execution.status == .running
-        case .toolCall(let call): return call.status == .running
+        case .reasoning, .reasoningSummary, .commandExecution, .toolCall: return true
         default: return false
         }
     }
 
-    /// While a turn runs, render a single compact activity line (thinking /
-    /// command / generating) that updates live, with one stop button.
+    /// While a reply streams without a tool item, keep one muted activity row
+    /// at the latest position. The composer already owns the global stop
+    /// control, so historical chat content never grows another stop card.
     @ViewBuilder
     private func runningActivityLine(turn: Turn) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "bolt.horizontal.circle")
-                .foregroundStyle(DSHTheme.brand)
+            Image(systemName: "text.bubble")
             Text(runningActivityLabel(turn))
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
+                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(.tail)
                 .help(runningActivityLabel(turn))
             Spacer(minLength: 0)
-            ProgressView().controlSize(.mini)
-            Button {
-                store.cancelActiveTurn()
-            } label: {
-                Label("停止", systemImage: "stop.fill")
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.red)
-            .help("中断当前任务")
-            .accessibilityLabel("中断当前任务")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
+        .foregroundStyle(.secondary)
+        .opacity(0.78)
     }
 
     private func runningActivityLabel(_ turn: Turn) -> String {
         guard let last = turn.items.last else { return "思考中…" }
         switch last {
-        case .reasoning(_, let t): return t.isEmpty ? "思考中…" : "思考 · \(t)"
-        case .reasoningSummary(_, let t): return t.isEmpty ? "思考中…" : "思考 · \(t)"
-        case .commandExecution(let ce): return "Bash · \(ce.command)"
-        case .toolCall(let tc): return "工具 · \(tc.name)"
-        case .assistantMessage(_, let t): return t.isEmpty ? "生成中…" : "生成 · \(t)"
-        default: return "处理中…"
+        case .reasoning, .reasoningSummary: return "正在思考"
+        case .commandExecution(let execution):
+            return TurnPresentation.activityDisplay(for: .commandExecution(execution)).text
+        case .toolCall(let call):
+            return TurnPresentation.activityDisplay(for: .toolCall(call)).text
+        case .fileChange(let change):
+            return TurnPresentation.activityDisplay(for: .fileChange(change)).text
+        case .assistantMessage: return "正在生成回复"
+        default: return "正在处理"
         }
     }
 
@@ -1082,7 +1108,10 @@ struct ComposerView: View {
     /// composer card (the "peeking tab" overlap). Keep small so the task
     /// text stays readable (≈1/10 of the card height).
     private let cardOverlap: CGFloat = 6
-    @AppStorage("tapgo.composerDraft") private var text: String = ""
+    /// Keep live editing local. The persisted draft is written by the
+    /// coalescer instead of invalidating SwiftUI for every character.
+    @State private var text: String = UserDefaults.standard.string(forKey: "tapgo.composerDraft") ?? ""
+    @State private var draftSaver = ComposerDraftSaver()
     @FocusState private var focused: Bool
     @State private var isDropTargeted = false
     @State private var editorExpanded = false
@@ -1506,6 +1535,7 @@ struct ComposerView: View {
             retryLastTurn()
         }
         .onChange(of: text) { _, newValue in
+            draftSaver.schedule(newValue)
             // Show the slash-command menu while the user is typing a
             // `/command` prefix (no space yet).
             showSlashMenu = newValue.hasPrefix("/") && !newValue.contains(" ")
@@ -1536,6 +1566,7 @@ struct ComposerView: View {
             setUpPasteMonitor()
         }
         .onDisappear {
+            draftSaver.flush(text)
             if let m = pasteMonitor { NSEvent.removeMonitor(m); pasteMonitor = nil }
         }
         .sheet(item: $editingGoalItem) { item in
@@ -1676,106 +1707,122 @@ struct ComposerView: View {
         return hasText || hasImage
     }
 
-    /// Status strip above the composer mirroring the DSH "任务 进行中 · 待处理"
-    /// queue affordance. Shown only when a turn is running or messages are
-    /// awaiting send.
+    /// Compact queue attached above the composer. Each row can stay in FIFO
+    /// order or use native same-turn steering via "调整方向".
     @ViewBuilder
     private var queueStatusBar: some View {
-        // Only show the task card when there is an actual task list (queued
-        // messages). With an empty queue it would just repeat the running
-        // message — so it stays hidden.
         if !store.activeQueue.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Image(systemName: "list.bullet")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(DSHTheme.brand)
-                    Text("任务清单 · \(store.activeQueue.count) 待处理")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .fontWeight(.medium)
-                        .foregroundStyle(DSHTheme.brand)
-                    Spacer()
-                    Button {
-                        store.interjectAndFlush()
-                    } label: {
-                        Label("发送全部", systemImage: "bolt.fill")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-                    .tint(DSHTheme.warn)
-                    .keyboardShortcut(.return, modifiers: [.control])
-                    .help("Ctrl+Enter 中断当前并立即发送全部排队消息")
-                    .accessibilityLabel("发送全部排队消息")
-                }
+            VStack(alignment: .leading, spacing: 4) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(store.activeQueue) { q in
-                            HStack(spacing: 6) {
-                                Image(systemName: "text.bubble")
-                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                    .foregroundStyle(.secondary)
-                                Text(q.text.isEmpty ? "(图片附件)" : q.text)
-                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                    .lineLimit(1)
-                                    .foregroundStyle(.primary)
-                                if !q.images.isEmpty {
-                                    Text("🖼 \(q.images.count)")
-                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button {
-                                    editingQueued = q
-                                } label: {
-                                    Image(systemName: "pencil")
-                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.borderless)
-                                .help("编辑这条排队消息")
-                                .accessibilityLabel("编辑排队消息")
-                                Button {
-                                    store.removeQueued(q.id)
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.borderless)
-                                .help("删除这条排队消息")
-                                .accessibilityLabel("删除排队消息")
-                                Button {
-                                    store.sendQueuedNow(q.id)
-                                } label: {
-                                    Image(systemName: "arrow.up")
-                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                        .foregroundStyle(DSHTheme.brand)
-                                }
-                                .buttonStyle(.borderless)
-                                .help("发送这条（让当前任务/目标调整方向）")
-                                .accessibilityLabel("发送这条排队消息")
+                    VStack(spacing: 0) {
+                        ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
+                            queueRow(q)
+                            if index < store.activeQueue.count - 1 {
+                                Divider().padding(.leading, 32)
                             }
                         }
-                        HStack {
-                            Spacer()
-                            Button("清空排队") { store.clearQueue() }
-                                .buttonStyle(.borderless)
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(.secondary)
-                        }
                     }
                 }
-                .frame(maxHeight: 150)
-                .padding(6)
-                .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
+                .frame(maxHeight: 160)
+
+                if let error = store.activeQueueActionError {
+                    Label(error, systemImage: "exclamationmark.circle")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(DSHTheme.warn)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 6)
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: contentWidth - 48)
-            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
+            .frame(maxWidth: contentWidth - 24)
+            .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+            .overlay(
+                RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                    .stroke(DSHTheme.border, lineWidth: 1)
+            )
             .frame(maxWidth: .infinity, alignment: .center)
         }
+    }
+
+    @ViewBuilder
+    private func queueRow(_ q: QueuedMessage) -> some View {
+        let adjusting = store.isAdjustingDirection(q.id)
+        HStack(spacing: 8) {
+            Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+
+            Text(q.text.isEmpty ? "(图片附件)" : q.text)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(.primary)
+
+            if !q.images.isEmpty {
+                Label("\(q.images.count)", systemImage: "photo")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                store.steerQueuedMessage(q.id)
+            } label: {
+                if adjusting {
+                    HStack(spacing: 5) {
+                        ProgressView().controlSize(.mini)
+                        Text("调整中")
+                    }
+                } else {
+                    Label("调整方向", systemImage: "arrow.turn.up.right")
+                }
+            }
+            .buttonStyle(.borderless)
+            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+            .foregroundStyle(DSHTheme.brand)
+            .disabled(store.isAdjustingActiveQueue)
+            .help("立即补充到当前任务，不中断正在进行的工作")
+            .accessibilityLabel(adjusting ? "正在调整方向" : "立即调整方向")
+
+            Button {
+                store.removeQueued(q.id)
+            } label: {
+                Image(systemName: "trash")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .disabled(adjusting)
+            .help("删除这条排队消息")
+            .accessibilityLabel("删除排队消息")
+
+            Menu {
+                Button {
+                    editingQueued = q
+                } label: {
+                    Label("编辑消息", systemImage: "pencil")
+                }
+                .disabled(adjusting)
+
+                Divider()
+
+                Button {
+                    store.clearQueue()
+                } label: {
+                    Label("关闭排队", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .frame(width: 22, height: 22)
+                    .background(DSHTheme.interactiveHover, in: Circle())
+            }
+            .menuStyle(.borderlessButton)
+            .disabled(adjusting)
+            .help("排队消息操作")
+            .accessibilityLabel("更多排队操作")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     /// Send the composed message. While a turn is running the message is
@@ -2274,9 +2321,8 @@ struct ComposerView: View {
     }
 }
 
-/// A single-line-by-default text input that grows as the user types: the
-/// height tracks the rendered text, capped at `maxHeight` (after which the
-/// editor scrolls). Mirrors the harness composer's behaviour.
+/// A native input that keeps selection and IME marked text intact while the
+/// surrounding SwiftUI transcript receives high-frequency stream updates.
 private struct GrowingTextEditor: View {
     @Binding var text: String
     var placeholder: String = ""
@@ -2293,29 +2339,23 @@ private struct GrowingTextEditor: View {
     }
 
     var body: some View {
-        TextEditor(text: $text)
-            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
-            .focused($focused)
-            .onSubmit(onSubmit)
-            .frame(height: editorHeight)
-            .overlay(alignment: .topLeading) {
-                // Invisible replica that measures the natural height at the
-                // current editor width; height never contributes to layout.
-                Text(text.isEmpty ? " " : text)
-                    .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(0)
-                    .background(GeometryReader { g in
-                        Color.clear
-                            .onAppear { contentHeight = min(g.size.height, maxHeight) }
-                            .onChange(of: g.size.height) { _, newValue in contentHeight = min(newValue, maxHeight) }
-                    })
+        StableComposerTextView(
+            text: $text,
+            font: NSFont.systemFont(
+                ofSize: NSFont.systemFontSize * appFontScale.multiplier,
+                weight: .regular
+            ),
+            wantsFocus: focused,
+            onFocusChange: { focused = $0 },
+            onSubmit: onSubmit,
+            onHeightChange: { newValue in
+                let clamped = max(min(newValue, maxHeight), minHeight)
+                if abs(contentHeight - clamped) > 0.5 {
+                    contentHeight = clamped
+                }
             }
+        )
+            .frame(height: editorHeight)
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
                     Text(placeholder)
@@ -2326,5 +2366,128 @@ private struct GrowingTextEditor: View {
                         .allowsHitTesting(false)
                 }
             }
+    }
+}
+
+private final class ComposerNSTextView: NSTextView {
+    var onCommandReturn: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        let isReturn = event.keyCode == 36 || event.keyCode == 76
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if isReturn && flags.contains(.command) {
+            onCommandReturn?()
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+
+/// Only applies external text when it really differs, and never overwrites
+/// native storage during an active Chinese/Japanese/Korean IME composition.
+private struct StableComposerTextView: NSViewRepresentable {
+    @Binding var text: String
+    let font: NSFont
+    let wantsFocus: Bool
+    let onFocusChange: (Bool) -> Void
+    let onSubmit: () -> Void
+    let onHeightChange: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+
+        let editor = ComposerNSTextView()
+        editor.delegate = context.coordinator
+        editor.drawsBackground = false
+        editor.isRichText = false
+        editor.importsGraphics = false
+        editor.allowsUndo = true
+        editor.isAutomaticQuoteSubstitutionEnabled = false
+        editor.isAutomaticDashSubstitutionEnabled = false
+        editor.isAutomaticTextReplacementEnabled = false
+        editor.font = font
+        editor.textContainerInset = NSSize(width: 3, height: 4)
+        editor.textContainer?.widthTracksTextView = true
+        editor.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+        editor.isVerticallyResizable = true
+        editor.isHorizontallyResizable = false
+        editor.autoresizingMask = [.width]
+        editor.string = text
+        editor.onCommandReturn = onSubmit
+        scrollView.documentView = editor
+        context.coordinator.editor = editor
+
+        DispatchQueue.main.async {
+            context.coordinator.reportHeight()
+            if wantsFocus { editor.window?.makeFirstResponder(editor) }
+        }
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        context.coordinator.parent = self
+        guard let editor = scrollView.documentView as? ComposerNSTextView else { return }
+        editor.font = font
+        editor.onCommandReturn = onSubmit
+
+        if editor.string != text && !editor.hasMarkedText() {
+            let selections = editor.selectedRanges
+            editor.string = text
+            let utf16Count = (text as NSString).length
+            editor.selectedRanges = selections.map { value in
+                let range = value.rangeValue
+                let location = min(range.location, utf16Count)
+                let length = min(range.length, max(0, utf16Count - location))
+                return NSValue(range: NSRange(location: location, length: length))
+            }
+        }
+
+        if wantsFocus && editor.window?.firstResponder !== editor {
+            DispatchQueue.main.async { editor.window?.makeFirstResponder(editor) }
+        }
+        DispatchQueue.main.async { context.coordinator.reportHeight() }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: StableComposerTextView
+        weak var editor: ComposerNSTextView?
+        private var lastHeight: CGFloat = 0
+
+        init(parent: StableComposerTextView) {
+            self.parent = parent
+        }
+
+        func textDidBeginEditing(_ notification: Notification) {
+            parent.onFocusChange(true)
+        }
+
+        func textDidEndEditing(_ notification: Notification) {
+            parent.onFocusChange(false)
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let editor else { return }
+            if parent.text != editor.string { parent.text = editor.string }
+            reportHeight()
+        }
+
+        func reportHeight() {
+            guard let editor,
+                  let layoutManager = editor.layoutManager,
+                  let textContainer = editor.textContainer else { return }
+            layoutManager.ensureLayout(for: textContainer)
+            let used = layoutManager.usedRect(for: textContainer)
+            let height = ceil(used.height + editor.textContainerInset.height * 2)
+            guard abs(height - lastHeight) > 0.5 else { return }
+            lastHeight = height
+            parent.onHeightChange(height)
+        }
     }
 }

@@ -12,9 +12,11 @@ public enum TurnMarkdown {
             case .userMessage(_, let text):
                 let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !t.isEmpty { blocks.append("**用户**: \(t)") }
-            case .assistantMessage(_, let text):
+            case .assistantMessage(_, let text) where !item.isAppGeneratedProgress:
                 let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !t.isEmpty { blocks.append(t) }
+            case .assistantMessage:
+                break
             case .reasoning(_, let text):
                 let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !t.isEmpty { blocks.append("> 思考: \(t)") }

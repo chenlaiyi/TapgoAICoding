@@ -30,9 +30,9 @@ struct MessageRow: View {
         case .reasoningSummary(_, let text):
             ReasoningDisclosure(text: text, label: L10n.reasoningSummary, icon: "text.quote", isRunning: isRunning)
         case .toolCall(let tc):
-            ToolCallRow(toolCall: tc, isRunning: isRunning)
+            ToolCallRow(toolCall: tc, isRunning: isRunning && tc.status == .running)
         case .commandExecution(let ce):
-            CommandExecutionView(execution: ce, isRunning: isRunning)
+            CommandExecutionView(execution: ce, isRunning: isRunning && ce.status == .running)
         case .fileChange(let fc):
             FileChangeView(change: fc)
         case .approval(let req):
@@ -40,6 +40,36 @@ struct MessageRow: View {
         case .error(_, let message):
             ErrorBubble(message: message)
         }
+    }
+}
+
+/// A single quiet activity line. Search/read/reason/edit/run replace each
+/// other in place; raw commands and tool arguments remain hidden by default.
+struct ActivityRollupView: View {
+    let activity: TurnActivityRollup
+    let turnIsRunning: Bool
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    var body: some View {
+        let display = TurnPresentation.activityDisplay(
+            for: activity,
+            turnIsRunning: turnIsRunning
+        )
+        HStack(spacing: 8) {
+            if let icon = display.systemImage {
+                Image(systemName: icon)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .frame(width: 18)
+            }
+            Text(display.text)
+                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .foregroundStyle(.secondary)
+        .opacity(turnIsRunning && display.isRunning ? 0.78 : 0.68)
+        .animation(nil, value: activity.latest.id)
+        .accessibilityLabel(display.text)
     }
 }
 

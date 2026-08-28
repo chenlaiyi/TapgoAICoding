@@ -3,6 +3,11 @@ import TapgoCore
 import UniformTypeIdentifiers
 
 struct SidebarView: View {
+    private enum Layout {
+        static let projectIconWidth: CGFloat = 20
+        static let threadTitleIndent: CGFloat = projectIconWidth + 6
+    }
+
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     @EnvironmentObject var authStore: AdminAuthStore
@@ -16,6 +21,7 @@ struct SidebarView: View {
     @FocusState private var searchFocused: Bool
     @State private var searchScope = false
     @State private var showEvolutionLog = false
+    @State private var showConnectPhone = false
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
@@ -93,6 +99,9 @@ struct SidebarView: View {
         .sheet(isPresented: $showEvolutionLog) {
             EvolutionLogView()
         }
+        .sheet(isPresented: $showConnectPhone) {
+            ConnectPhoneView()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusSearch)) { _ in
             searchFocused = true
         }
@@ -114,6 +123,11 @@ struct SidebarView: View {
             }
             .help("查看 Tapgo AICoding 的自进化日志与使用指南")
             .accessibilityLabel("自进化日志")
+            menuItem("连接手机", "iphone.gen3.radiowaves.left.and.right") {
+                showConnectPhone = true
+            }
+            .help("连接点点够终端 iOS App (⌘⇧P)")
+            .accessibilityLabel("连接手机")
             menuItem("新对话", "plus.message") {
                 store.newThread()
             }
@@ -202,10 +216,8 @@ struct SidebarView: View {
                 ForEach(grouped, id: \.project?.id) { group in
                     Section {
                         if !collapsedGroups.contains(group.id) {
-                            // Each row already shows its own relative time
-                            // ("2m ago"), so a separate 今天/昨天/更早
-                            // sub-header would be redundant. Render the
-                            // project's threads flat, ordered by recency.
+                            // Keep project children visually flat and compact:
+                            // one title per row, ordered by recency.
                             ForEach(group.threads) { t in
                                 threadRow(t)
                                     .tag(t.id)
@@ -273,15 +285,16 @@ struct SidebarView: View {
                 Image(systemName: p.isRemote ? "globe" : "folder.fill")
                     .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
                     .foregroundStyle(p.isRemote ? .blue : DSHTheme.brand)
+                    .frame(width: Layout.projectIconWidth, alignment: .leading)
+                Text(p.displayName)
+                    .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
                 if workspace.isProjectPinned(p.id) {
                     Image(systemName: "pin.fill")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(DSHTheme.brand)
                 }
-                Text(p.displayName)
-                    .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
                 if groupHasRunningTask(group) {
                     runningDot
                 }
@@ -289,9 +302,9 @@ struct SidebarView: View {
                     activeBadge
                 }
                 Spacer()
-                projectCountBadge(group.threads.count)
-                projectEditButton(p)
-                projectMoreMenu(p)
+                if hoveredProjectId == p.id {
+                    projectMoreMenu(p)
+                }
                 projectCollapseButton(group.id)
             }
             .contentShape(Rectangle())
@@ -391,31 +404,6 @@ struct SidebarView: View {
             .background(DSHTheme.brand.opacity(0.12), in: Capsule())
     }
 
-    private func projectCountBadge(_ count: Int) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: "number")
-                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-            Text("\(count) 个任务")
-        }
-        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-        .foregroundStyle(.tertiary)
-        .help("该项目下的会话/任务数")
-        .accessibilityLabel("\(count) 个任务")
-    }
-
-    private func projectEditButton(_ p: Project) -> some View {
-        Button {
-            editingProject = p
-        } label: {
-            Image(systemName: "pencil")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.borderless)
-        .help("编辑项目")
-        .accessibilityLabel("编辑项目")
-    }
-
     private func projectMoreMenu(_ p: Project) -> some View {
         Menu {
             Button {
@@ -484,38 +472,23 @@ struct SidebarView: View {
     @ViewBuilder
     private func threadRow(_ t: TapgoCore.Thread) -> some View {
         HStack(alignment: .center, spacing: 6) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    if t.isPinned {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 9))
-                            .foregroundStyle(DSHTheme.brand)
-                    }
-                    Text(t.title)
-                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                HStack(spacing: 4) {
-                    if let p = projectForThread(t), p.isRemote {
-                        Image(systemName: "globe")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.blue)
-                    }
-                    Text(sidebarSubtitle(for: t))
-                        .lineLimit(1)
-                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 4)
-                    Text(relativeTime(t.updatedAt))
-                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                }
+            Text(t.title)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            if t.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(DSHTheme.brand)
             }
-            statusDot(t)
+            Spacer(minLength: 6)
+            if shouldShowStatus(for: t) {
+                statusDot(t)
+            }
         }
-        .padding(.vertical, 3)
-        .padding(.horizontal, 2)
+        .padding(.vertical, 5)
+        .padding(.leading, Layout.threadTitleIndent)
+        .padding(.trailing, 2)
         .contentShape(Rectangle())
         .background(hoveredThreadId == t.id ? DSHTheme.interactiveHover : Color.clear,
                     in: RoundedRectangle(cornerRadius: 6))
@@ -525,9 +498,13 @@ struct SidebarView: View {
         .accessibilityLabel("会话 \(t.title), \(sidebarSubtitle(for: t))")
     }
 
-    private func projectForThread(_ t: TapgoCore.Thread) -> Project? {
-        guard let pid = t.projectId else { return nil }
-        return workspace.project(byId: pid)
+    private func shouldShowStatus(for t: TapgoCore.Thread) -> Bool {
+        switch t.turns.last?.status {
+        case .running, .awaitingApproval, .failed:
+            return true
+        default:
+            return false
+        }
     }
 
     private func sidebarSubtitle(for t: TapgoCore.Thread) -> String {
@@ -612,12 +589,6 @@ struct SidebarView: View {
         case .interrupted: return "中断"
         default: return nil
         }
-    }
-
-    private func relativeTime(_ d: Date) -> String {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f.localizedString(for: d, relativeTo: Date())
     }
 
     private func copyToPasteboard(_ s: String) {

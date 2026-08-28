@@ -144,8 +144,8 @@ struct EvolutionLogView: View {
                 .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
                 .foregroundStyle(DSHTheme.label)
 
-            Text("每次发布我都会让 AI 跑一遍 `evolve.sh`：自动改代码 → 跑 332 个测试 → 打 tag → 推 git。"
-                 + "这一页就是这条流水线的对外广播。")
+            Text("每次发布我都会让 AI 跑一遍 `evolve.sh`：自动改代码 → 跑全量核心回归测试 → 打 tag → 推 git。"
+                 + "这一页就是这条流水线的对外广播，测试数会随每个版本自动变化。")
                 .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -289,22 +289,55 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
             EvolutionEntry(
+                version: "v0.5.5",
+                date: "2026-08-28",
+                commit: "pending",
+                tag: "v0.5.5",
+                summary: "连接手机菜单 + MobilePairing 协议 + 长期记忆解析修复",
+                changes: [
+                    "左上角菜单栏在「自进化/新对话」之间插入「连接手机」,对接 Ter-Tapgo iOS 端『点点够终端』App。",
+                    "TapgoCore/MobilePairing:6 位配对码生成、字符集过滤、tapgo://pair? URL 打包/解析、State 状态机与 PairedMac 持久化。",
+                    "ConnectPhoneView 提供 6 位码 + CoreImage QR + 倒计时 + 未配对/已配对/已连接三态,MobilePairingStore 关闭后恢复。",
+                    "同步产出 iOS 端 PairingStore(v0.5.5 走 UserDefaults,v0.5.6 切 Keychain)与 mobile/ 工程骨架。",
+                    "DurableMemory.parseBullets timestamped 分支保留 - 前缀,与 legacy 分支统一;原回归 DurableMemoryTests:69 通过。",
+                    "新增 MemoryCloudSync / MemoryConsolidator / TurnPresentation / TurnSteerPayload 与对应测试,测试数 706 → 1221。"
+                ],
+                why: "用户要在 Mac 端对接 iOS 原生 App『点点够终端』,先打通协议层与 Mac 端 UI;同时修复 19 个累积改动中遗留的旧记忆解析 bug,保证长期记忆语义一致。",
+                next: "v0.5.6 引入 Bonjour 长链接 + iOS 端 Keychain 持久化,并在真实 iOS 设备上做端到端配对验证。"
+            ),
+            EvolutionEntry(
+                version: "v0.5.4",
+                date: "2026-08-28",
+                commit: "5ec4e7c",
+                tag: "v0.5.4",
+                summary: "用户截图持久缩略图、运行中逐步输出与精简上下文 UI",
+                changes: [
+                    "发送图片复制到 App 专属附件目录并随 Turn 持久化，用户消息中显示可恢复的缩略图；删除会话时同步清理附件。",
+                    "运行中的回合不再隐藏已收到的 assistant、命令、工具和文件事件；命令/工具状态只由原生卡片呈现，不再追加重复模板说明。",
+                    "输入区在空白页与会话页之间保持同一实例；流式滚动改为限频且无动画，任务执行时仍可稳定输入下一条消息。",
+                    "删除会话列表的上下文百分比，以及输入框右下角的 context 进度条；Harness 自动压缩机制保持不变。"
+                ],
+                why: "旧 UI 只把图片交给 Harness、没有写入会话模型；运行分支又主动隐藏中间 items。随后为每个命令强插开始/完成说明，又造成卡片与文字重复刷屏。高频流式事件还会持续叠加滚动动画并重建输入框，导致焦点抖动。上下文百分比则把可自动压缩的动态窗口误导成硬上限。",
+                next: "用安装版继续验证截图重启恢复、长时间流式输入和多会话并行输入。"
+            ),
+            EvolutionEntry(
                 version: "v0.5.3",
                 date: "2026-08-28",
-                commit: nil,
+                commit: "de53c9a",
                 tag: "v0.5.3",
                 summary: "修复截图剪贴板被吞掉、却没有生成附件的问题",
                 changes: [
                     "⌘V 改为识别 AppKit 可读取的图片对象与图片文件 URL",
-                    "PNG 缺失时解码 TIFF/JPEG/HEIC 等剪贴板表示，并统一转换为临时 PNG 附件"
+                    "PNG 缺失时解码 TIFF/JPEG/HEIC 等剪贴板表示，并统一转换为临时 PNG 附件",
+                    "Preview → 安装版 App 的真实截图粘贴、缩略图、临时 PNG 端到端验证已通过"
                 ],
                 why: "旧实现只读取 PNG；macOS 截图常提供 TIFF，因此按键被拦截后界面没有任何响应。",
-                next: "706 项核心回归及 Preview → 安装版 App 的真实截图粘贴、缩略图和临时 PNG 验证均已通过。"
+                next: "继续守护其它粘贴路径（拖拽、Finder 拷贝）并按用户行为扩展更多自动场景。"
             ),
             EvolutionEntry(
                 version: "v0.5.2",
                 date: "2026-08-28",
-                commit: nil,
+                commit: "ce507a5",
                 tag: "v0.5.2",
                 summary: "强制小步增量输出与异常即时反馈",
                 changes: [
@@ -319,7 +352,7 @@ struct EvolutionLogView: View {
             EvolutionEntry(
                 version: "v0.5.1",
                 date: "2026-08-28",
-                commit: nil,
+                commit: "7ff7750",
                 tag: "v0.5.1",
                 summary: "恢复开发代理职责并清洗长期记忆",
                 changes: [
@@ -348,7 +381,7 @@ struct EvolutionLogView: View {
             EvolutionEntry(
                 version: "v0.4.3",
                 date: "2026-08-27",
-                commit: nil,
+                commit: "eb68ed1",
                 tag: "v0.4.3",
                 summary: "对话独立执行与 Harness 失效恢复修复",
                 changes: [

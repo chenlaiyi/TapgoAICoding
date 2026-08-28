@@ -20,6 +20,19 @@ struct TapgoAICodingApp: App {
             wrappedValue: SessionStore(workspace: workspace, threads: threads)
         )
         _authStore = StateObject(wrappedValue: AdminAuthStore())
+        // Cross-device durable memory: pull any newer memory files from the
+        // iCloud Drive mirror at startup so the user sees what they wrote on
+        // their other Macs (JKmacmini / fafamacmini / laptop). Detached so a
+        // slow filesystem never blocks the App init path.
+        Task.detached(priority: .utility) {
+            TapgoConfig.syncMemoryPullAll()
+        }
+        // Run a deterministic Phase 2 consolidation pass on each memory
+        // layer to dedup / enforce the per-file byte cap. Idempotent.
+        Task.detached(priority: .utility) {
+            await MemoryConsolidator.consolidate(url: TapgoConfig.userMemoryURL)
+            await MemoryConsolidator.consolidate(url: TapgoConfig.globalMemoryURL)
+        }
     }
 
     /// Resolve the pinned appearance (system / light / dark) from settings.

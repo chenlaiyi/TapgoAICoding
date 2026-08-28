@@ -319,6 +319,31 @@ final class CodexHarnessClient {
         }
     }
 
+    /// Add new user input to the active turn without interrupting it.
+    /// Codex app-server rejects the request if the turn changed between the
+    /// queue-row click and delivery, allowing the caller to keep that message
+    /// queued as a normal follow-up instead of losing it.
+    @discardableResult
+    func steer(text: String, images: [URL]) async throws -> String {
+        guard case .running = state,
+              let threadId = activeThreadId,
+              let turnId = activeTurnId else {
+            throw HarnessError.invalidResponse("当前任务尚未准备好接收调整")
+        }
+        let params = try TurnSteerPayload.make(
+            threadId: threadId,
+            expectedTurnId: turnId,
+            text: text,
+            imagePaths: images.map(\.path)
+        )
+        let response = try await request(method: "turn/steer", params: params)
+        guard let acceptedTurnId = response.objectValue?["turnId"]?.stringValue,
+              !acceptedTurnId.isEmpty else {
+            throw HarnessError.invalidResponse("调整方向请求未返回任务 ID")
+        }
+        return acceptedTurnId
+    }
+
     /// Resolve a pending approval. Current app-server versions send approval
     /// as a server-initiated JSON-RPC request, so we must echo the original
     /// top-level id and use `accept` / `decline`.

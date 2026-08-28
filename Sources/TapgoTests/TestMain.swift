@@ -78,6 +78,7 @@ let allSections: [String] = [
     "MarkdownLite: images",
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
+    "MobilePairing: protocol + URL round-trip",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -91,6 +92,8 @@ let allSections: [String] = [
     "HarnessIdAllocator: idempotence / repeat releases",
     "HarnessIdAllocator: 1000 allocations are strictly increasing",
     "ConversationRunRegistry: per-thread isolation",
+    "TurnSteerPayload: native same-turn steering",
+    "TurnPresentation: semantic activity summaries",
     "ApprovalTimeoutTracker: arm / disarm basics",
     "ApprovalTimeoutTracker: re-arm resets deadline",
     "ApprovalTimeoutTracker: sweep fires onExpire",
@@ -109,6 +112,13 @@ let allSections: [String] = [
     "HarnessSupervisor: idempotent retry bookkeeping",
     "DurableMemory: sanitize polluted model output",
     "DurableMemory: canonical markdown and dedup",
+    "DurableMemory: timestamped bullets",
+    "DurableMemory: appendBullet",
+    "DurableMemory: byte limit",
+    "DurableMemory: summary layer",
+    "MemoryConsolidator: deterministic pass",
+    "MemoryCloudSync: availability",
+    "MemoryCloudSync: relative path round-trip",
     "AgentOutputPolicy: incremental progress contract",
     "DiffParser: empty input returns no files",
     "DiffParser: whitespace-only input returns no files",
@@ -365,6 +375,12 @@ struct TapgoTestMain {
         await runIfInScope(runner, "ConversationRunRegistry: per-thread isolation") {
             runConversationRunRegistryTests(runner)
         }
+        await runIfInScope(runner, "TurnSteerPayload: native same-turn steering") {
+            runTurnSteerPayloadTests(runner)
+        }
+        await runIfInScope(runner, "TurnPresentation: semantic activity summaries") {
+            runTurnPresentationTests(runner)
+        }
         await runIfInScope(runner, "ApprovalTimeoutTracker: arm / disarm basics") {
             runApprovalTimeoutArmDisarm(runner)
         }
@@ -418,6 +434,27 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "DurableMemory: canonical markdown and dedup") {
             runDurableMemoryMarkdown(runner)
+        }
+        await runIfInScope(runner, "DurableMemory: timestamped bullets") {
+            runDurableMemoryTimestampedBullets(runner)
+        }
+        await runIfInScope(runner, "DurableMemory: appendBullet") {
+            runDurableMemoryAppendBullet(runner)
+        }
+        await runIfInScope(runner, "DurableMemory: byte limit") {
+            runDurableMemoryByteLimit(runner)
+        }
+        await runIfInScope(runner, "DurableMemory: summary layer") {
+            runDurableMemorySummaryLayer(runner)
+        }
+        await runIfInScope(runner, "MemoryConsolidator: deterministic pass") {
+            await runMemoryConsolidatorDeterministic(runner)
+        }
+        await runIfInScope(runner, "MemoryCloudSync: availability") {
+            runMemoryCloudSyncAvailability(runner)
+        }
+        await runIfInScope(runner, "MemoryCloudSync: relative path round-trip") {
+            runMemoryCloudSyncRelativePath(runner)
         }
         await runIfInScope(runner, "AgentOutputPolicy: incremental progress contract") {
             runAgentOutputPolicyContract(runner)
@@ -571,6 +608,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "e2e: remote turn with `false` (exit code propagation)") {
             await runRemoteSSHFailedCommand(runner)
+        }
+        await runIfInScope(runner, "MobilePairing: protocol + URL round-trip") {
+            runMobilePairing(runner)
         }
     }
 }

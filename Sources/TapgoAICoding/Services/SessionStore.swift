@@ -81,6 +81,8 @@ final class SessionStore: ObservableObject {
     /// Messages queued while a turn is running. Drawn automatically after each
     /// turn completes; flushed immediately by the "插话" action.
     @Published private(set) var queue: [QueuedMessage] = []
+    @Published private var steeringQueuedMessageIds: Set<String> = []
+    @Published private var queueActionErrorsByThreadId: [String: String] = [:]
     /// Session-local feedback votes (turn id → 1 up / -1 down / 0 none),
     /// mirroring Codex's message action bar without a remote backend.
     @Published var turnFeedback: [String: Int] = [:]
@@ -336,6 +338,7 @@ final class SessionStore: ObservableObject {
         if setupError != nil { return }
         if activeThreadId == nil { newThread() }
         guard let targetThreadId = activeThreadId else { return }
+        queueActionErrorsByThreadId.removeValue(forKey: targetThreadId)
         let imagesToUse = attachedImages
         attachedImages = []
         // Queue only behind another turn in this same conversation. A task in
@@ -523,7 +526,7 @@ final class SessionStore: ObservableObject {
     /// never blocks or fails a turn; memory.md is read fresh by
     /// `baseInstructions` on every new thread.
     private func rememberTurn(_ turn: TapgoCore.Turn) {
-        guard TapgoConfig.memoryEnabled else { return }
+        guard TapgoConfig.memoryWriteEnabled else { return }
         let userText = Self.turnUserText(turn)
         let assistantText = Self.turnAssistantText(turn)
         guard !userText.isEmpty else { return }
@@ -613,10 +616,37 @@ final class SessionStore: ObservableObject {
         """
     }
 
+    /// Detect the current git branch for `project` (best effort, never throws).
+    /// Returns `nil` if the project has no root, no `.git`, or git isn't
+    /// available. Used to filter per-branch KEY memory files.
+    static func detectGitBranch(for project: Project?) -> String? {
+        guard let root = project?.worktreeRoot else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["git", "-C", root.path, "rev-parse", "--abbrev-ref", "HEAD"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+        } catch { return nil }
+        // Bounded wait so we never block `baseInstructions`.
+        let deadline = Date().addingTimeInterval(0.4)
+        while process.isRunning, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+        if process.isRunning { process.terminate(); return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let branch = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return branch.isEmpty || branch == "HEAD" ? nil : branch
+    }
+
     /// Persistent memory injected as the thread's `baseInstructions`: the
-    /// user-level `memory.md`, the project's source-folder list (for
-    /// multi-folder projects), and any `MEMORY.md` in each source folder.
-    /// Gives the model cross-conversation context even in a brand-new thread.
+    /// user-level memory files (USER / GLOBAL / KEY), the project's source-
+    /// folder list (for multi-folder projects), and any `MEMORY.md` in each
+    /// source folder. Gives the model cross-conversation context even in a
+    /// brand-new thread.
     static func baseInstructions(for project: Project?) -> String? {
         var parts: [String] = [AgentOutputPolicy.threadInstructions, """
         【核心职责·始终有效】
@@ -626,7 +656,10 @@ final class SessionStore: ObservableObject {
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。
         - 使用简体中文；输出节奏严格遵守前面的强制协议。
         """]
-        if TapgoConfig.memoryEnabled, let userMem = TapgoConfig.readUserMemory() {
+        if let userMem = TapgoConfig.readMemoryForInjection(
+            projectRoot: project?.worktreeRoot,
+            gitBranch: Self.detectGitBranch(for: project)
+        ) {
             parts.append("【已清洗的长期记忆】\n\(userMem)")
         }
         if let project {
@@ -738,15 +771,35 @@ final class SessionStore: ObservableObject {
         return queue.filter { $0.threadId == activeThreadId }
     }
 
-    func removeQueued(_ id: String) { queue.removeAll { $0.id == id } }
+    var activeQueueActionError: String? {
+        guard let activeThreadId else { return nil }
+        return queueActionErrorsByThreadId[activeThreadId]
+    }
+
+    var isAdjustingActiveQueue: Bool {
+        activeQueue.contains { steeringQueuedMessageIds.contains($0.id) }
+    }
+
+    func isAdjustingDirection(_ id: String) -> Bool {
+        steeringQueuedMessageIds.contains(id)
+    }
+
+    func removeQueued(_ id: String) {
+        guard !steeringQueuedMessageIds.contains(id) else { return }
+        queue.removeAll { $0.id == id }
+    }
 
     func clearQueue() {
         guard let activeThreadId else { return }
-        queue.removeAll { $0.threadId == activeThreadId }
+        queue.removeAll {
+            $0.threadId == activeThreadId && !steeringQueuedMessageIds.contains($0.id)
+        }
+        queueActionErrorsByThreadId.removeValue(forKey: activeThreadId)
     }
 
     /// Replace a queued message's text (keeps its images).
     func updateQueuedMessage(_ id: String, text: String) {
+        guard !steeringQueuedMessageIds.contains(id) else { return }
         guard let idx = queue.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -768,6 +821,12 @@ final class SessionStore: ObservableObject {
     func drainQueueIfIdle(threadId: String) {
         guard !runRegistry.isRunning(threadId) else { return }
         guard setupError == nil else { return }
+        // A `turn/steer` request may still be resolving while the turn emits
+        // completion. Preserve FIFO order until that request either succeeds
+        // or falls back to normal queue draining.
+        guard !queue.contains(where: {
+            $0.threadId == threadId && steeringQueuedMessageIds.contains($0.id)
+        }) else { return }
         while let idx = queue.firstIndex(where: { $0.threadId == threadId }) {
             let next = queue.remove(at: idx)
             guard liveThreads.contains(where: { $0.id == threadId }) else { continue }
@@ -792,20 +851,57 @@ final class SessionStore: ObservableObject {
         }
     }
 
-    /// Send ONE queued message now, to nudge the running task/goal in a new
-    /// direction: it is pulled to the front of the queue, the current turn is
-    /// interrupted (if any), and it is sent immediately.
-    func sendQueuedNow(_ id: String) {
-        guard let idx = queue.firstIndex(where: { $0.id == id }) else { return }
-        let item = queue.remove(at: idx)
-        queue.insert(item, at: 0)
-        runRegistry.allowAutoDrain(item.threadId)
-        if runRegistry.isRunning(item.threadId) {
-            runsByThreadId[item.threadId]?.runner.cancel()
-            // run() → finishTurnAndDrain → drains the front (this message).
-        } else {
+    /// Use Codex app-server's native `turn/steer` to add ONE queued message to
+    /// the active turn without cancelling it. If the active turn finishes or
+    /// rejects steering, the item remains queued and follows the normal FIFO
+    /// path, so the user's input is never lost.
+    func steerQueuedMessage(_ id: String) {
+        guard let item = queue.first(where: { $0.id == id }),
+              !steeringQueuedMessageIds.contains(id) else { return }
+        guard !queue.contains(where: {
+            $0.threadId == item.threadId && steeringQueuedMessageIds.contains($0.id)
+        }) else { return }
+        queueActionErrorsByThreadId.removeValue(forKey: item.threadId)
+
+        guard runRegistry.isRunning(item.threadId),
+              let context = runsByThreadId[item.threadId] else {
             drainQueueIfIdle(threadId: item.threadId)
+            return
         }
+
+        steeringQueuedMessageIds.insert(id)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await context.runner.steer(text: item.text, images: item.images)
+                self.queue.removeAll { $0.id == id }
+                self.steeringQueuedMessageIds.remove(id)
+                self.appendSteeredUserMessage(item, turnId: context.turnId)
+            } catch {
+                self.steeringQueuedMessageIds.remove(id)
+                self.queueActionErrorsByThreadId[item.threadId] =
+                    "当前任务未能立即调整，消息已保留排队。"
+                if !self.runRegistry.isRunning(item.threadId) {
+                    self.drainQueueIfIdle(threadId: item.threadId)
+                }
+            }
+        }
+    }
+
+    /// Compatibility entry point for older UI call sites.
+    func sendQueuedNow(_ id: String) {
+        steerQueuedMessage(id)
+    }
+
+    private func appendSteeredUserMessage(_ item: QueuedMessage, turnId: String) {
+        guard let threadIdx = liveThreads.firstIndex(where: { $0.id == item.threadId }),
+              let turnIdx = liveThreads[threadIdx].turns.firstIndex(where: { $0.id == turnId }) else { return }
+        let displayText = item.text.isEmpty ? "(图片)" : item.text
+        liveThreads[threadIdx].turns[turnIdx].items.append(
+            .userMessage(id: "steer-" + item.id, text: displayText)
+        )
+        liveThreads[threadIdx].updatedAt = Date()
+        threads.save(liveThreads[threadIdx])
     }
 
     /// Called when one conversation's turn finishes. Only that conversation's
@@ -977,11 +1073,6 @@ final class SessionStore: ObservableObject {
                 replaceReasoningText(id: id, text: ReasoningMerge.finalizeText(streamed: "", summary: summary), in: &turn)
             }
         case .commandStarted(let id, let command, let cwd):
-            appendAppProgress(
-                id: "app-progress-command-start-\(id)",
-                text: AgentOutputPolicy.commandStarted(),
-                in: &turn
-            )
             // For remote threads, tag the cell with the SSH host
             // alias up front so the user sees "via SSH remotehost"
             // while the command is running. The harness is on the
@@ -1044,11 +1135,6 @@ final class SessionStore: ObservableObject {
                 )
                 turn.items.append(.commandExecution(ce))
             }
-            appendAppProgress(
-                id: "app-progress-command-\(id)",
-                text: AgentOutputPolicy.commandProgress(exitCode: exitCode, status: status),
-                in: &turn
-            )
         case .fileChange(let id, let changes):
             for (i, op) in changes.enumerated() {
                 let kind: FileChange.Kind
@@ -1060,19 +1146,7 @@ final class SessionStore: ObservableObject {
                 let fc = FileChange(id: "\(id)-\(i)", kind: kind, path: op.path, diff: "", status: .applied)
                 turn.items.append(.fileChange(fc))
             }
-            if !changes.isEmpty {
-                appendAppProgress(
-                    id: "app-progress-file-\(id)",
-                    text: AgentOutputPolicy.fileProgress(changeCount: changes.count),
-                    in: &turn
-                )
-            }
         case .mcpToolCallStarted(let id, let server, let tool, let arguments):
-            appendAppProgress(
-                id: "app-progress-tool-start-\(id)",
-                text: AgentOutputPolicy.toolStarted(name: "\(server).\(tool)"),
-                in: &turn
-            )
             let argsString = arguments.flatMap { value -> String? in
                 if let data = try? JSONEncoder().encode(value),
                    let s = String(data: data, encoding: .utf8) { return s }
@@ -1083,10 +1157,8 @@ final class SessionStore: ObservableObject {
                 turn.items.append(.toolCall(tc))
             }
         case .mcpToolCallCompleted(let id, let status, let error, let resultSummary):
-            var toolName = "未知工具"
             if let i = turn.items.firstIndex(where: { $0.id == id }),
                case .toolCall(var tc) = turn.items[i] {
-                toolName = tc.name
                 switch status {
                 case "completed": tc.status = .succeeded
                 case "failed":    tc.status = .failed
@@ -1096,14 +1168,6 @@ final class SessionStore: ObservableObject {
                 tc.result = resultSummary ?? error ?? status
                 turn.items[i] = .toolCall(tc)
             }
-            appendAppProgress(
-                id: "app-progress-tool-\(id)",
-                text: AgentOutputPolicy.toolProgress(
-                    name: toolName,
-                    failed: status == "failed" || status == "declined" || error != nil
-                ),
-                in: &turn
-            )
         case .webSearch(let id, let query):
             let tc = ToolCall(id: id, name: "web_search", arguments: query ?? "", result: nil, status: .succeeded)
             turn.items.append(.toolCall(tc))
@@ -1125,21 +1189,11 @@ final class SessionStore: ObservableObject {
             }
         case .error(let message):
             turn.items.append(.error(id: "e-" + UUID().uuidString, message: message))
-            appendAppProgress(
-                id: "app-progress-error-" + UUID().uuidString,
-                text: AgentOutputPolicy.immediateError(message),
-                in: &turn
-            )
         }
 
         liveThreads[threadIdx].turns[turnIdx] = turn
         liveThreads[threadIdx].updatedAt = Date()
         threads.save(liveThreads[threadIdx])
-    }
-
-    private func appendAppProgress(id: String, text: String, in turn: inout Turn) {
-        guard turn.items.firstIndex(where: { $0.id == id }) == nil else { return }
-        turn.items.append(.assistantMessage(id: id, text: text))
     }
 
     private func appendToStreamingMessage(

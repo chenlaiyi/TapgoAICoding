@@ -13,6 +13,10 @@ struct SettingsView: View {
     @State private var addHostSheet = false
     @State private var testingHostId: String?
     @State private var testingOutput: String?
+    @State private var memoryStatus: MemoryFileStatus?
+    @State private var globalMemoryStatus: MemoryFileStatus?
+    @State private var codexMemoryStatus: MemoryFileStatus?
+    @State private var memoryCopyMessage: String?
 
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw =
         TapgoConfig.ApprovalPolicy.never.rawValue
@@ -23,6 +27,9 @@ struct SettingsView: View {
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
     @AppStorage(TapgoConfig.memoryEnabledKey) private var memoryEnabled = true
+    @AppStorage(TapgoConfig.memoryReadEnabledKey) private var memoryReadEnabled = true
+    @AppStorage(TapgoConfig.memoryWriteEnabledKey) private var memoryWriteEnabled = true
+    @AppStorage("tapgo.memory.cloudSync") private var cloudSyncEnabled = true
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -32,6 +39,7 @@ struct SettingsView: View {
         case runtime = "运行"
         case appearance = "外观"
         case about = "关于"
+        case memory = "记忆"
         var id: String { rawValue }
     }
 
@@ -59,6 +67,7 @@ struct SettingsView: View {
                     case .runtime:    runtimeTab
                     case .appearance: appearanceTab
                     case .about:      aboutTab
+                    case .memory:     memoryTab
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -321,16 +330,6 @@ struct SettingsView: View {
                     Text("无 (none)").tag("none")
                     Text("高 (high)").tag("high")
                 }
-                Toggle(isOn: $memoryEnabled) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("跨会话记忆")
-                            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
-                        Text("每轮完成后会额外调用一次模型，提炼最多 3 条要点写入 memory.md；关闭后不再写入或注入。")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .toggleStyle(.switch)
                 TextField("Endpoint (Base URL)", text: $baseURL)
                     .textFieldStyle(.roundedBorder)
                     .disableAutocorrection(true)
@@ -497,6 +496,237 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(20)
+    }
+
+    // MARK: - Memory tab
+
+    @ViewBuilder
+    private var memoryTab: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("记忆").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+            Form {
+                Section("跨会话记忆 · 三层架构") {
+                    Toggle(isOn: $memoryEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("启用跨会话记忆（总开关）")
+                                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                            Text("关闭后，下面两个细粒度开关也会被强制关闭。开启后，再分别控制“读”和“写”。")
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    Toggle(isOn: $memoryReadEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("读：注入摘要到新会话（use_memories）")
+                                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                            Text("开启后，新会话的 baseInstructions 会包含三层记忆摘要。关闭后模型看不到任何记忆。")
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .disabled(!memoryEnabled)
+                    Toggle(isOn: $memoryWriteEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("写：每轮完成后提炼要点（generate_memories）")
+                                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                            Text("开启后，每轮完成会调用模型抽取 1-3 条要点写入对应层；关闭后不再写入但仍可读取现有记忆。")
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .disabled(!memoryEnabled)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("分层与文件路径：")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                        Text("USER   层（跨项目用户偏好）：\(TapgoConfig.userMemoryURL.path)")
+                        Text("GLOBAL 层（环境 / 工具 / 定制轮）：\(TapgoConfig.globalMemoryURL.path)")
+                        Text("KEY    层（per-git-branch 项目记忆）：\(TapgoConfig.memoryDirectory.appendingPathComponent("keys").path)")
+                    }
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
+                }
+
+                Section("跨设备同步（iCloud Drive）") {
+                    Toggle(isOn: $cloudSyncEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("启用跨设备同步")
+                                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                            Text("记忆文件镜像到 iCloud Drive，当前 Apple ID 登录的其他 Mac（JKmacmini / fafamacmini 等）可以自动同步。只上传记忆文件，不会上传 API key / 代码 / 会话内容。")
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    iCloudStatusRow
+                    HStack(spacing: 8) {
+                        Button { TapgoConfig.syncMemoryPullAll(); refreshMemoryStatus() } label: {
+                            Label("从 iCloud 拉取现在", systemImage: "arrow.down.circle")
+                        }
+                        Button { TapgoConfig.syncMemoryPushAll(); refreshMemoryStatus() } label: {
+                            Label("推送到 iCloud 现在", systemImage: "arrow.up.circle")
+                        }
+                        Button { refreshMemoryStatus() } label: {
+                            Label("刷新", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                }
+
+                Section("跨会话记忆文件状态") {
+                    memoryFileRow(title: "USER layer", status: memoryStatus)
+                    memoryFileRow(title: "GLOBAL layer", status: globalMemoryStatus)
+                    HStack(spacing: 8) {
+                        Button {
+                            revealInFinder(
+                                TapgoConfig.memoryDirectory,
+                                fallbackDir: TapgoConfig.memoryDirectory
+                            )
+                        } label: {
+                            Label("在 Finder 中显示", systemImage: "folder")
+                        }
+                        Button { copyUserMemory() } label: {
+                            Label("复制 USER 层内容", systemImage: "doc.on.doc")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    if let msg = memoryCopyMessage {
+                        Text(msg)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Codex 内部记忆库") {
+                    Text("Codex 服务端按线程将模型生成的记忆条目持久化到 memories_1.sqlite，仅供查阅；本 App 不修改此文件。")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                    memoryFileRow(title: "codex memories", status: codexMemoryStatus)
+                    HStack(spacing: 8) {
+                        Button {
+                            let url = TapgoConfig.codexHome.appendingPathComponent("memories_1.sqlite")
+                            revealInFinder(url, fallbackDir: TapgoConfig.codexHome)
+                        } label: {
+                            Label("在 Finder 中显示", systemImage: "folder")
+                        }
+                        Button {
+                            revealInFinder(TapgoConfig.codexHome, fallbackDir: TapgoConfig.codexHome)
+                        } label: {
+                            Label("显示 Codex home", systemImage: "externaldrive")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                }
+            }
+            .formStyle(.grouped)
+            Text("App 不会读取或修改 ~/.codex/ 任何文件。")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .padding(.top, 20)
+        .task { refreshMemoryStatus() }
+    }
+
+    @ViewBuilder
+    private var iCloudStatusRow: some View {
+        let available = MemoryCloudSync.isICloudAvailable
+        let path = MemoryCloudSync.iCloudMirrorURL?.path ?? "(iCloud Drive 未配置)"
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(available ? Color.green : Color.orange)
+                    .frame(width: 8, height: 8)
+                Text(available ? "iCloud Drive 可用" : "iCloud Drive 未配置")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+            }
+            Text(path)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+                .textSelection(.enabled)
+        }
+    }
+
+    @ViewBuilder
+    private func memoryFileRow(title: String, status: MemoryFileStatus?) -> some View {
+        if let s = status, s.exists {
+            LabeledContent("大小", value: MemoryFileStatus.formatBytes(s.size))
+            LabeledContent("行数", value: "\(s.lines)")
+            LabeledContent("最近修改", value: MemoryFileStatus.formatDate(s.modifiedAt))
+        } else {
+            Text("\(title)：尚未生成")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func refreshMemoryStatus() {
+        memoryStatus = MemoryFileStatus.collect(at: TapgoConfig.userMemoryURL)
+        globalMemoryStatus = MemoryFileStatus.collect(at: TapgoConfig.globalMemoryURL)
+        codexMemoryStatus = MemoryFileStatus.collect(
+            at: TapgoConfig.codexHome.appendingPathComponent("memories_1.sqlite")
+        )
+    }
+
+    private func copyUserMemory() {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        if let body = try? String(contentsOf: TapgoConfig.userMemoryURL, encoding: .utf8) {
+            pb.setString(body, forType: .string)
+            memoryCopyMessage = "已复制 \(body.count) 个字符到剪贴板"
+        } else {
+            pb.setString("(memory.md 尚未生成)", forType: .string)
+            memoryCopyMessage = "memory.md 尚未生成；剪贴板放入占位提示"
+        }
+    }
+
+    /// Snapshot of an on-disk file relevant to memory: existence, size,
+    /// line count, and last-modified time. Pure value type so SwiftUI can
+    /// diff it cheaply.
+    struct MemoryFileStatus: Equatable {
+        let exists: Bool
+        let size: Int64
+        let lines: Int
+        let modifiedAt: Date?
+
+        static func collect(at url: URL) -> MemoryFileStatus {
+            let fm = FileManager.default
+            guard let attrs = try? fm.attributesOfItem(atPath: url.path),
+                  let size = (attrs[.size] as? NSNumber)?.int64Value,
+                  let mtime = (attrs[.modificationDate] as? Date)
+            else {
+                return MemoryFileStatus(exists: false, size: 0, lines: 0, modifiedAt: nil)
+            }
+            let lineCount: Int = {
+                guard let body = try? String(contentsOf: url, encoding: .utf8) else { return 0 }
+                if body.isEmpty { return 0 }
+                return body.reduce(into: 1) { acc, ch in if ch == "\n" { acc += 1 } }
+            }()
+            return MemoryFileStatus(exists: true, size: size, lines: lineCount, modifiedAt: mtime)
+        }
+
+        static func formatBytes(_ n: Int64) -> String {
+            let f = ByteCountFormatter()
+            f.allowedUnits = [.useKB, .useMB]
+            f.countStyle = .file
+            return f.string(fromByteCount: n)
+        }
+
+        static func formatDate(_ d: Date?) -> String {
+            guard let d else { return "-" }
+            let f = DateFormatter()
+            f.dateStyle = .medium
+            f.timeStyle = .short
+            return f.string(from: d)
+        }
     }
 
     private func revealInFinder(_ url: URL, fallbackDir: URL) {

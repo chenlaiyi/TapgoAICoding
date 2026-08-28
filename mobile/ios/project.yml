@@ -1,0 +1,51 @@
+# XcodeGen project spec for 点点够终端 (Tapgo Mobile Terminal).
+# 在已装全 Xcode + `brew install xcodegen` 的机器上:
+#     cd mobile/ios && xcodegen generate
+# 产物: mobile/ios/TapgoTerminal.xcodeproj
+#
+# 字段含义与 Ter-Tapgo/ios/Runner.xcodeproj 严格对齐; 若 App Store Connect
+# 的 Bundle ID 与此不一致, 只改 PRODUCT_BUNDLE_IDENTIFIER + DEVELOPMENT_TEAM,
+# 然后同步更新 ../../mobile/CONFIG.md。
+
+name: TapgoTerminal
+options:
+  bundleIdPrefix: com.devtools
+  deploymentTarget:
+    iOS: "13.0"
+  developmentLanguage: zh-Hans
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: "KF2CE24685"
+    CODE_SIGN_STYLE: "Automatic"
+    IPHONEOS_DEPLOYMENT_TARGET: "13.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  TapgoTerminal:
+    type: application
+    platform: iOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: "com.devtools.terminalSimple"
+        PRODUCT_NAME: "点点够终端"
+        INFOPLIST_FILE: "Info.plist"
+        CODE_SIGN_ENTITLEMENTS: "Runner.entitlements"
+        GENERATE_INFOPLIST_FILE: "NO"
+        ENABLE_PREVIEWS: "YES"
+        SUPPORTS_MACCATALYST: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
+    info:
+      path: "Info.plist"
+      properties:
+        CFBundleDisplayName: "点点够终端"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true

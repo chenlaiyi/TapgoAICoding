@@ -40,42 +40,232 @@ enum TapgoConfig {
     // matching the pressure-based strategy used by current agent harnesses.
     static let autoCompactTokenLimit = 800_000
 
-    /// User-level persistent memory file, injected as `baseInstructions` into
-    /// every new thread so the model "remembers" context across conversations.
-    static var userMemoryURL: URL {
+    /// Memory directory hosting the three-layer durable memory model:
+    /// `user.md` (cross-project user prefs), `memory.md` (global env / tools),
+    /// `key-<branch>.md` (per-project, per-git-branch decisions).
+    static var memoryDirectory: URL {
+        codexHome.deletingLastPathComponent().appendingPathComponent("memory", isDirectory: true)
+    }
+
+    /// Backwards-compatible single-file location. Older builds wrote to
+    /// `codex/memory.md`. We auto-migrate to `memory/user.md` on first read.
+    static var legacyUserMemoryURL: URL {
         codexHome.deletingLastPathComponent().appendingPathComponent("memory.md")
     }
 
-    static func readUserMemory() -> String? {
-        guard let data = try? Data(contentsOf: userMemoryURL) else { return nil }
-        guard let raw = String(data: data, encoding: .utf8) else { return nil }
-        return DurableMemory.sanitizedMarkdown(from: raw)
+    static var userMemoryURL: URL {
+        memoryDirectory.appendingPathComponent("user.md")
     }
 
-    /// Cross-conversation memory switch (like Codex's memory). When ON, the
-    /// app extracts durable facts from each completed turn into `memory.md`
-    /// and injects it as `baseInstructions` into every new thread so the model
-    /// "remembers" across conversations. Defaults to ON.
+    static var globalMemoryURL: URL {
+        memoryDirectory.appendingPathComponent("memory.md")
+    }
+
+    /// Per-project, per-git-branch key file. We sanitize `branch` to keep it
+    /// filename-safe; `main` and unknown branches all share `key-main.md`.
+    static func keyMemoryURL(projectRoot: URL?, branch: String?) -> URL {
+        let dir = memoryDirectory.appendingPathComponent("keys", isDirectory: true)
+        let safeBranch = sanitizeBranchName(branch ?? "main")
+        return dir.appendingPathComponent("key-\(safeBranch).md")
+    }
+
+    /// Replace any character that isn't alphanumeric / underscore / dash /
+    /// dot with `_`. Caps length at 64 to avoid pathological filenames.
+    static func sanitizeBranchName(_ raw: String) -> String {
+        let cleaned = raw.unicodeScalars.map { scalar -> Character in
+            if CharacterSet.alphanumerics.contains(scalar) || scalar == "-" || scalar == "_" || scalar == "." {
+                return Character(scalar)
+            }
+            return "_"
+        }
+        let s = String(cleaned).trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        if s.isEmpty { return "main" }
+        return String(s.prefix(64))
+    }
+
+    /// Migrate the legacy `codex/memory.md` file into the new `memory/user.md`
+    /// location, no-op if the source is missing or the destination already
+    /// exists. Called lazily from `readUserMemory` and `readMemoryForInjection`.
+    static func migrateLegacyMemoryIfNeeded() {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: legacyUserMemoryURL.path),
+              !fm.fileExists(atPath: userMemoryURL.path) else { return }
+        try? fm.createDirectory(at: memoryDirectory, withIntermediateDirectories: true)
+        try? fm.moveItem(at: legacyUserMemoryURL, to: userMemoryURL)
+    }
+
+    // MARK: - Memory read / write switches (Codex-style independent gates).
+
+    /// Master switch: when OFF, no extraction happens AND no injection happens.
+    /// Defaults to ON. Preserved for compatibility with the existing Settings
+    /// toggle; the more granular `memoryReadEnabled` / `memoryWriteEnabled`
+    /// give the same effect when both are set.
     static let memoryEnabledKey = "tapgo.memoryEnabled"
     static var memoryEnabled: Bool {
         get {
             if UserDefaults.standard.object(forKey: memoryEnabledKey) == nil { return true }
             return UserDefaults.standard.bool(forKey: memoryEnabledKey)
         }
-        set { UserDefaults.standard.set(newValue, forKey: memoryEnabledKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: memoryEnabledKey)
+        }
     }
 
-    /// Append memorized bullets to the user-level `memory.md`. Creates the
-    /// file on first use and rewrites existing content into canonical form.
-    static func appendMemory(_ note: String) {
-        let existing = (try? String(contentsOf: userMemoryURL, encoding: .utf8)) ?? ""
-        let combined = existing + "\n" + note
-        guard let body = DurableMemory.sanitizedMarkdown(from: combined) else { return }
-        guard body != existing else { return }
-        try? FileManager.default.createDirectory(
-            at: userMemoryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? body.write(to: userMemoryURL, atomically: true, encoding: .utf8)
+    /// Independent read gate (Codex's `use_memories`). When OFF, the app still
+    /// writes new bullets but stops injecting memory into `baseInstructions`.
+    static let memoryReadEnabledKey = "tapgo.memory.read"
+    static var memoryReadEnabled: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: memoryReadEnabledKey) == nil { return memoryEnabled }
+            return UserDefaults.standard.bool(forKey: memoryReadEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: memoryReadEnabledKey) }
     }
+
+    /// Independent write gate (Codex's `generate_memories`). When OFF, no new
+    /// bullets are persisted but the model still sees the existing memory.
+    static let memoryWriteEnabledKey = "tapgo.memory.write"
+    static var memoryWriteEnabled: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: memoryWriteEnabledKey) == nil { return memoryEnabled }
+            return UserDefaults.standard.bool(forKey: memoryWriteEnabledKey)
+        }
+        set { UserDefaults.standard.set(newValue, forKey: memoryWriteEnabledKey) }
+    }
+
+    // MARK: - Read paths.
+
+    /// Read the user-tier memory (legacy-compatible). Returns sanitized markdown.
+    static func readUserMemory() -> String? {
+        migrateLegacyMemoryIfNeeded()
+        guard let data = try? Data(contentsOf: userMemoryURL) else { return nil }
+        guard let raw = String(data: data, encoding: .utf8) else { return nil }
+        return DurableMemory.sanitizedMarkdown(from: raw)
+    }
+
+    /// Build the `baseInstructions` summary across all visible layers, honoring
+    /// `memoryReadEnabled`. Only the summary is injected (Codex-style
+    /// progressive disclosure); the full MEMORY.md and KEY files stay on disk
+    /// and the model is told it may `grep` them on demand via the injected
+    /// `grepMemory` tool-call hint.
+    static func readMemoryForInjection(projectRoot: URL?, gitBranch: String?) -> String? {
+        guard memoryReadEnabled else { return nil }
+        migrateLegacyMemoryIfNeeded()
+        var sections: [String] = []
+        if let user = readLayer(userMemoryURL) { sections.append(user) }
+        if let global = readLayer(globalMemoryURL) { sections.append(global) }
+        if let key = readLayer(keyMemoryURL(projectRoot: projectRoot, branch: gitBranch)) {
+            sections.append(key)
+        }
+        guard !sections.isEmpty else { return nil }
+        let header = """
+        # 长期记忆（摘要层）
+
+        下面是跨会话长期记忆的摘要层（最新 N 条）。需要更早或更细的内容时，使用 grep / cat 工具读取以下文件：
+        - 用户层：\(userMemoryURL.path)
+        - 全局层：\(globalMemoryURL.path)
+        - 项目层（当前分支）：\(keyMemoryURL(projectRoot: projectRoot, branch: gitBranch).path)
+
+        """
+        return header + sections.joined(separator: "\n\n")
+    }
+
+    private static func readLayer(_ url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        guard let raw = String(data: data, encoding: .utf8) else { return nil }
+        return DurableMemory.summaryForInjection(from: raw)
+    }
+
+    // MARK: - Write paths.
+
+    /// Which layer an extracted bullet belongs to. `user` and `global` are
+    /// machine-chosen by `MemoryWriter` based on content signals; `key` is
+    /// for project-specific facts and gets a per-branch file.
+    public enum MemoryScope: String {
+        case user
+        case global
+        case key
+    }
+
+    /// Append one bullet to the appropriate layer. Creates parent directories
+    /// and enforces the per-file byte cap. Honors `memoryWriteEnabled`.
+    @discardableResult
+    static func appendMemoryBullet(
+        _ text: String,
+        scope: MemoryScope,
+        projectRoot: URL? = nil,
+        gitBranch: String? = nil,
+        now: Date = Date()
+    ) -> Bool {
+        guard memoryWriteEnabled else { return false }
+        migrateLegacyMemoryIfNeeded()
+        let url: URL
+        switch scope {
+        case .user:   url = userMemoryURL
+        case .global: url = globalMemoryURL
+        case .key:    url = keyMemoryURL(projectRoot: projectRoot, branch: gitBranch)
+        }
+        let existing = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        guard let updated = DurableMemory.appendBullet(to: existing, text: text, now: now) else { return false }
+        let capped = DurableMemory.enforceByteLimit(updated)
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? capped.write(to: url, atomically: true, encoding: .utf8)
+        // Mirror to iCloud Drive so other Macs signed into the same Apple ID
+        // pick up the new bullet. Fire-and-forget; if iCloud isn't configured
+        // locally we just no-op (MemoryCloudSync.isICloudAvailable returns
+        // false in that case).
+        MemoryCloudSync.push(local: url, relativePath: MemoryCloudSync.relativePath(for: url, memoryDirectory: memoryDirectory))
+        return true
+    }
+
+    /// Backwards-compatible single-shot append (legacy callers — SessionStore
+    /// used this before the scope split). Writes to the **user** layer, which
+    /// is the closest semantic match to the old `memory.md` file.
+    static func appendMemory(_ note: String) {
+        appendMemoryBullet(note, scope: .user)
+    }
+
+    // MARK: - iCloud sync wrappers.
+
+    /// Push every memory file (user / global / key-*) currently on disk into
+    /// the iCloud Drive mirror. Fire-and-forget; failures are silent.
+    static func syncMemoryPushAll() {
+        let memDir = memoryDirectory
+        // USER + GLOBAL layers.
+        for url in [userMemoryURL, globalMemoryURL] {
+            MemoryCloudSync.push(
+                local: url,
+                relativePath: MemoryCloudSync.relativePath(for: url, memoryDirectory: memDir)
+            )
+        }
+        // KEY layer: scan `keys/` and push any per-branch files we find.
+        let keysDir = memDir.appendingPathComponent("keys", isDirectory: true)
+        if let entries = try? FileManager.default.contentsOfDirectory(at: keysDir, includingPropertiesForKeys: nil) {
+            for url in entries where url.pathExtension == "md" {
+                MemoryCloudSync.push(
+                    local: url,
+                    relativePath: MemoryCloudSync.relativePath(for: url, memoryDirectory: memDir)
+                )
+            }
+        }
+    }
+
+    /// Pull every memory file that the iCloud mirror holds and whose mtime
+    /// is newer than the local copy. Call on App startup so the user sees
+    /// memories written on their other Macs.
+    static func syncMemoryPullAll() {
+        let memDir = memoryDirectory
+        guard let mirror = MemoryCloudSync.iCloudMirrorURL else { return }
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: mirror, includingPropertiesForKeys: nil) else { return }
+        for remote in entries where remote.pathExtension == "md" {
+            let rel = MemoryCloudSync.relativePath(for: remote, memoryDirectory: memDir)
+            let local = MemoryCloudSync.localURL(forRemoteRelativePath: rel, memoryDirectory: memDir)
+            _ = MemoryCloudSync.pull(remoteRelativePath: rel, into: local)
+        }
+    }
+
 
     /// Codex-compatible approval policy. Mirrors the current app-server
     /// values (`never`, `on-request`, `untrusted`). Persisted so

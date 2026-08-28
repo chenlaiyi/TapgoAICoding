@@ -118,6 +118,14 @@ public enum TurnItem: Identifiable, Hashable, Codable {
 }
 
 public extension TurnItem {
+    /// v0.5.4 briefly persisted fixed assistant messages around commands,
+    /// tools, file changes and errors. Their native rows already contain the
+    /// same state, so keeping these messages in chat/search/export adds noise.
+    var isAppGeneratedProgress: Bool {
+        guard case .assistantMessage(let id, _) = self else { return false }
+        return id.hasPrefix("app-progress-")
+    }
+
     /// Flattened text used by the in-conversation search. Includes
     /// everything a user might reasonably want to match against when
     /// looking back through a thread: messages, reasoning, command
@@ -126,7 +134,7 @@ public extension TurnItem {
     var searchableText: String {
         switch self {
         case .userMessage(_, let t): return t
-        case .assistantMessage(_, let t): return t
+        case .assistantMessage(_, let t): return isAppGeneratedProgress ? "" : t
         case .reasoning(_, let t): return t
         case .reasoningSummary(_, let t): return t
         case .error(_, let message): return message
