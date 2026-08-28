@@ -1896,6 +1896,18 @@ struct ComposerView: View {
             .accessibilityLabel(adjusting ? "正在调整方向" : "立即调整方向")
 
             Button {
+                editingQueued = q
+            } label: {
+                Image(systemName: "pencil")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.borderless)
+            .disabled(adjusting)
+            .help("编辑这条排队消息的文本")
+            .accessibilityLabel("编辑排队消息")
+
+            Button {
                 store.removeQueued(q.id)
             } label: {
                 Image(systemName: "trash")
