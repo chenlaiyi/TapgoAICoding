@@ -10,15 +10,19 @@ struct ContentView: View {
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
     @State private var showShortcuts = false
     @State private var showCommandPalette = false
+    @AppStorage("tapgo.wideContent") private var wideContent = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
-        Group {
-            if let err = store.setupError {
-                SetupView(error: err) { store.revalidateSetup() }
-            } else {
-                mainSplit
+        GeometryReader { geometry in
+            Group {
+                if let err = store.setupError {
+                    SetupView(error: err) { store.revalidateSetup() }
+                } else {
+                    mainSplit(availableWidth: geometry.size.width)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .dynamicTypeSize(.xLarge)
         .frame(minWidth: 1100, minHeight: 720)
@@ -65,12 +69,18 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var mainSplit: some View {
+    private func mainSplit(availableWidth: CGFloat) -> some View {
+        let showAdaptiveEnvironment = AdaptiveEnvironmentLayout.shouldShow(
+            windowWidth: Double(availableWidth),
+            preferredChatWidth: wideContent ? 980 : 720,
+            hasActiveThread: store.activeThreadId != nil,
+            manualDetailVisible: showTrajectory
+        )
         Group {
             if showTrajectory {
-                split(showDetail: true)
+                split(showDetail: true, showAdaptiveEnvironment: false)
             } else {
-                split(showDetail: false)
+                split(showDetail: false, showAdaptiveEnvironment: showAdaptiveEnvironment)
             }
         }
         .toolbar {
@@ -105,7 +115,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func split(showDetail: Bool) -> some View {
+    private func split(showDetail: Bool, showAdaptiveEnvironment: Bool) -> some View {
         if showDetail {
             NavigationSplitView {
                 SidebarView(
@@ -128,11 +138,36 @@ struct ContentView: View {
                     showSettings: { showSettings = true }
                 )
             } detail: {
-                ChatView()
+                adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)
             }
             .navigationSplitViewStyle(.balanced)
             .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
         }
+    }
+
+    /// Keeps one structural ChatView while the window crosses the responsive
+    /// threshold. Only the trailing inset appears/disappears, so resizing the
+    /// window cannot recreate the composer or steal its text focus.
+    @ViewBuilder
+    private func adaptiveChat(showEnvironmentCard: Bool) -> some View {
+        ChatView()
+            .safeAreaInset(edge: .trailing, spacing: 0) {
+                if showEnvironmentCard,
+                   let threadId = store.activeThreadId,
+                   let thread = store.liveThreads.first(where: { $0.id == threadId }) {
+                    VStack(spacing: 0) {
+                        AdaptiveEnvironmentCard(thread: thread)
+                            .padding(.top, 10)
+                            .padding(.horizontal, 10)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(width: CGFloat(AdaptiveEnvironmentLayout.cardWidth))
+                    .background(DSHTheme.bg)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .accessibilityIdentifier("adaptive-environment-card")
+                }
+            }
+            .animation(.easeOut(duration: 0.16), value: showEnvironmentCard)
     }
 
     @ViewBuilder

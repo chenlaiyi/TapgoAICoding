@@ -1,5 +1,6 @@
 import SwiftUI
 import TapgoCore
+import UniformTypeIdentifiers
 
 /// Environment info (project, path, model, endpoint, sandbox, approval,
 /// reasoning effort, context) shown in the right sidebar. Default-open but
@@ -406,5 +407,300 @@ struct EnvironmentPanel: View {
             }
             .menuStyle(.borderlessButton)
         }
+    }
+}
+
+/// Codex-style compact environment/source card used only when the main
+/// window has enough horizontal room. The complete EnvironmentPanel and
+/// TrajectoryView remain available through the toolbar; this card is a
+/// glanceable, responsive summary rather than a replacement for them.
+struct AdaptiveEnvironmentCard: View {
+    @EnvironmentObject private var workspace: WorkspaceStore
+    @EnvironmentObject private var store: SessionStore
+    let thread: TapgoCore.Thread
+
+    @State private var branch: String?
+    @State private var remoteURL: String?
+    @State private var changeSummary: GitChangeSummary?
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("环境信息", actionLabel: "打开完整轨迹栏") {
+                NotificationCenter.default.post(name: .tapgoToggleTrajectory, object: nil)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                changeRow
+                actionRow(
+                    icon: project?.isRemote == true ? "globe" : "externaldrive",
+                    label: sourceLabel,
+                    trailingIcon: "chevron.down"
+                ) {
+                    openWorkspace()
+                }
+                valueRow(icon: "arrow.triangle.branch", value: branch ?? "—", trailingIcon: "chevron.down")
+                actionRow(icon: "slider.horizontal.3", label: "提交或推送") {
+                    openInTerminal()
+                }
+                actionRow(icon: "arrow.triangle.pull", label: "比较分支", trailingIcon: "arrow.up.right") {
+                    openComparison()
+                }
+            }
+
+            Divider()
+
+            sectionHeader("来源", actionLabel: "添加图片来源") {
+                pickSources()
+            }
+
+            if sourceURLs.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.on.rectangle")
+                    Text("暂无图片来源")
+                }
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+                .padding(.vertical, 3)
+            } else {
+                VStack(alignment: .leading, spacing: 9) {
+                    ForEach(Array(sourceURLs.prefix(3)), id: \.path) { url in
+                        sourceRow(url)
+                    }
+                    Button {
+                        revealAllSources()
+                    } label: {
+                        Label("查看全部", systemImage: "link")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(DSHTheme.border, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+        .task(id: refreshKey) {
+            await refreshGitSummary()
+        }
+    }
+
+    private var project: Project? {
+        thread.projectId.flatMap { workspace.project(byId: $0) }
+    }
+
+    private var worktreePath: String {
+        if let project, !project.isRemote { return project.worktreeRoot.path }
+        return thread.cwd ?? ""
+    }
+
+    private var sourceLabel: String {
+        guard let project else { return "本地" }
+        if project.isRemote {
+            let host = project.remoteHostId.flatMap { workspace.remoteHost(byId: $0)?.alias }
+                ?? project.remoteHostId
+                ?? "远程"
+            return host
+        }
+        return "本地"
+    }
+
+    private var refreshKey: String {
+        let last = thread.turns.last
+        return "\(thread.id):\(last?.items.count ?? 0):\(last?.status.rawValue ?? "none")"
+    }
+
+    private var sourceURLs: [URL] {
+        let persisted = thread.turns.flatMap(\.userImagePaths).map { URL(fileURLWithPath: $0) }
+        let candidates = persisted + store.attachedImages
+        var seen: Set<String> = []
+        return candidates.reversed().compactMap { url in
+            guard seen.insert(url.path).inserted else { return nil }
+            return url
+        }
+    }
+
+    @ViewBuilder
+    private var changeRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "plusminus.square")
+                .frame(width: 18)
+                .foregroundStyle(.secondary)
+            Text("变更")
+                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            if let summary = changeSummary, summary.files > 0 {
+                Text("+\(summary.additions)")
+                    .foregroundStyle(DSHTheme.success)
+                Text("-\(summary.deletions)")
+                    .foregroundStyle(DSHTheme.error)
+            } else {
+                Text("干净")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(AppFont.monoScaled(size: 12, multiplier: appFontScale.multiplier))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(changeAccessibilityLabel)
+    }
+
+    private var changeAccessibilityLabel: String {
+        guard let summary = changeSummary, summary.files > 0 else { return "工作树干净" }
+        return "\(summary.files) 个文件已更改，增加 \(summary.additions) 行，删除 \(summary.deletions) 行"
+    }
+
+    private func sectionHeader(
+        _ title: String,
+        actionLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button(action: action) {
+                Image(systemName: "plus")
+                    .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(actionLabel)
+            .accessibilityLabel(actionLabel)
+        }
+    }
+
+    private func valueRow(icon: String, value: String, trailingIcon: String? = nil) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .frame(width: 18)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 8)
+            if let trailingIcon {
+                Image(systemName: trailingIcon)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private func actionRow(
+        icon: String,
+        label: String,
+        trailingIcon: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            valueRow(icon: icon, value: label, trailingIcon: trailingIcon)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func sourceRow(_ url: URL) -> some View {
+        Button {
+            NSWorkspace.shared.open(url)
+        } label: {
+            HStack(spacing: 9) {
+                Group {
+                    if let image = NSImage(contentsOf: url) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image(systemName: "photo")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 24, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+
+                Text(url.lastPathComponent)
+                    .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("打开 \(url.lastPathComponent)")
+    }
+
+    private func refreshGitSummary() async {
+        let path = worktreePath
+        guard !path.isEmpty, project?.isRemote != true else { return }
+        let result = await Task.detached(priority: .utility) {
+            (
+                GitInfo.branch(at: path),
+                GitInfo.remoteURL(at: path),
+                GitInfo.changeSummary(at: path)
+            )
+        }.value
+        branch = result.0
+        remoteURL = result.1
+        changeSummary = result.2
+    }
+
+    private func openWorkspace() {
+        if let project, project.isRemote {
+            openComparison()
+            return
+        }
+        let path = worktreePath
+        guard !path.isEmpty else { return }
+        NSWorkspace.shared.open(URL(fileURLWithPath: path, isDirectory: true))
+    }
+
+    private func openInTerminal() {
+        let path = worktreePath
+        guard !path.isEmpty else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-a", "Terminal", path]
+        try? process.run()
+    }
+
+    private func openComparison() {
+        guard let remoteURL else {
+            openInTerminal()
+            return
+        }
+        var value = remoteURL
+        if value.hasPrefix("git@") {
+            value = "https://" + value.dropFirst(4).replacingOccurrences(of: ":", with: "/")
+        } else if value.hasPrefix("git://") {
+            value = "https://" + value.dropFirst(6)
+        }
+        if value.hasSuffix(".git") { value.removeLast(4) }
+        if let url = URL(string: value) { NSWorkspace.shared.open(url) }
+    }
+
+    private func pickSources() {
+        let panel = NSOpenPanel()
+        panel.title = "添加图片来源"
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK {
+            store.addImages(panel.urls)
+        }
+    }
+
+    private func revealAllSources() {
+        let urls = sourceURLs
+        guard !urls.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 }

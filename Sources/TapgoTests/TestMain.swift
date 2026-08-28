@@ -99,6 +99,7 @@ let allSections: [String] = [
     "TurnSteerPayload: native same-turn steering",
     "TurnPresentation: semantic activity summaries",
     "TurnProgressSummary: plan + diff statistics",
+    "AdaptiveEnvironmentLayout: responsive visibility threshold",
     "ApprovalTimeoutTracker: arm / disarm basics",
     "ApprovalTimeoutTracker: re-arm resets deadline",
     "ApprovalTimeoutTracker: sweep fires onExpire",
@@ -391,6 +392,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "TurnProgressSummary: plan + diff statistics") {
             runTurnProgressSummaryTests(runner)
+        }
+        await runIfInScope(runner, "AdaptiveEnvironmentLayout: responsive visibility threshold") {
+            runAdaptiveEnvironmentLayoutTests(runner)
         }
         await runIfInScope(runner, "ApprovalTimeoutTracker: arm / disarm basics") {
             runApprovalTimeoutArmDisarm(runner)

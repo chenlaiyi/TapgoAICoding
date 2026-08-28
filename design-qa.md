@@ -86,3 +86,36 @@
 - 可接受差异：参考截图为更宽的 Codex 视口；实机为当前 Tapgo 窗口尺寸，但信息层级、交互状态和颜色语义一致。
 
 final result: passed
+
+---
+
+# 响应式环境信息与来源卡片回归
+
+- 参考视觉真值：`/var/folders/rc/12_j75493m5bd29vc05fzr3w0000gn/T/codex-clipboard-d93156ae-2539-4452-846b-bc7e15cb2caf.png`
+- 宽屏实现截图：`/tmp/tapgo-adaptive-environment-wide.jpeg`
+- 窄屏实现截图：`/tmp/tapgo-adaptive-environment-narrow.jpeg`
+- 同屏比较：`/tmp/tapgo-adaptive-environment-comparison.jpeg`
+- 状态：本机 `/Applications/Tapgo AICoding.app`，真实 SwiftUI 窗口宽窄切换。
+
+## 同屏比较结论
+
+- 宽屏时卡片固定在聊天区右侧，圆角、深色背景、分组分隔与参考一致，不覆盖会话内容。
+- 卡片完整呈现“环境信息”和“来源”两个分组；变更、运行位置、分支、提交或推送、比较分支均使用真实项目数据。
+- 来源区复用真实用户图片缩略图；当前回归会话没有图片时显示明确空态，不伪造素材。
+- 字号、行高、图标、颜色语义与现有 Tapgo AICoding 设计系统一致；新增行绿色、删除行红色。
+- 实现采用聊天视图的 trailing safe-area inset，卡片出现或隐藏时不替换聊天视图和输入控件身份。
+
+## 动态布局与交互验证
+
+- 放大窗口后 AX 树出现唯一 `adaptive-environment-card`，包含“环境信息”“来源”及真实 `main` 分支。
+- 切到半屏后卡片立即从 AX 树消失；恢复上一窗口尺寸后卡片重新出现。
+- 宽屏、窄屏、恢复宽屏三次布局切换期间，输入框始终保持 AX 焦点。
+- 未发送草稿“响应式布局草稿保留验证”在三次切换中完整保留，回归结束后已清空。
+- 手动轨迹栏仍保留原交互；打开完整轨迹栏时自适应卡片让位，避免重复侧栏。
+
+## Findings
+
+- 无 P0/P1/P2 视觉或交互问题。
+- 可接受差异：参考会话包含图片来源，回归会话没有附件，因此实现截图展示来源空态；有图片的会话会显示最近三张真实缩略图。
+
+final result: passed

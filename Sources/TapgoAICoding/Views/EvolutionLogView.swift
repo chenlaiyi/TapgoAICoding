@@ -289,6 +289,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.11",
+                    date: "2026-08-29",
+                    commit: "_pending_",
+                    tag: "v0.5.11",
+                    summary: "宽屏自动显示环境信息与来源卡片，窄屏自动隐藏",
+                    changes: [
+                        "右侧空间足够时自动显示真实变更、运行位置、Git 分支、提交/推送和比较分支入口。",
+                        "来源区展示当前会话最近三张真实图片缩略图；没有图片时提供明确空态。",
+                        "窗口变窄时自动隐藏，恢复宽度后重新出现；手动轨迹栏打开时卡片让位。",
+                        "聊天区使用 trailing safe-area inset，宽窄切换保持输入框焦点和未发送草稿。",
+                        "响应式布局 7/7 通过；Release build 与本机真实窗口宽窄回归通过。"
+                    ],
+                    why: "宽屏应充分利用右侧空白展示环境上下文，窄屏则优先保护会话阅读与持续输入空间。",
+                    next: "根据真实使用反馈微调宽度阈值与卡片密度。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.10",
                     date: "2026-08-29",
                     commit: "6cc0517",
