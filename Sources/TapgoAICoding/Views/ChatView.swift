@@ -1870,9 +1870,9 @@ struct ComposerView: View {
                         .padding(.bottom, 6)
                 }
             }
-            // 队列卡片宽度比 composer 窄（左右各 24pt），让 composer
-            // 包裹感更强；卡片整体缩进居中显示。
-            .frame(maxWidth: contentWidth - 48)
+            // 队列卡片宽度 = composer 宽度 × 0.95，即比输入框窄 5%。
+            // 整体居中显示，让 composer 包裹感更明显。
+            .frame(maxWidth: contentWidth * 0.95)
             .frame(maxWidth: .infinity, alignment: .center)
             .background(
                 ZStack {
