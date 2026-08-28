@@ -21,7 +21,7 @@
 
 ## v0.5.6 — 输入框下方右侧"套餐用量"chip
 **Date**: 2026-08-28
-**Commit**: _(see `git log -1 v0.5.6`)_
+**Commit**: c716fe4
 **Tag**: v0.5.6
 **Test status**: — 1251 passed, 0 failed —
 **Changed**:
