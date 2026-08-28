@@ -1118,7 +1118,6 @@ struct ComposerView: View {
     @State private var showSlashMenu = false
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
-    @State private var isGoalMode = false
     /// NSEvent monitor that intercepts ⌘V to attach clipboard images/files.
     @State private var pasteMonitor: Any?
     /// Goal-card "edit" sheet state (the item carries the initial goal text).
@@ -1262,6 +1261,7 @@ struct ComposerView: View {
                         Image(systemName: "plus.circle")
                     }
                     .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
                     .help("添加附件 / 插入技能")
                     .accessibilityLabel("添加附件或技能")
 
@@ -1335,7 +1335,6 @@ struct ComposerView: View {
                                         .lineLimit(1)
                                         .truncationMode(.middle)
                                 }
-                                Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(DSHTheme.surface, in: Capsule())
@@ -1371,8 +1370,6 @@ struct ComposerView: View {
                     }
 
                     environmentChip
-
-                    goalChip
 
                     Spacer()
 
@@ -1562,8 +1559,6 @@ struct ComposerView: View {
             text = ""
         }
         .onChange(of: store.activeThreadId) { _, _ in
-            // Goal mode belongs to the previous thread — reset on switch.
-            isGoalMode = false
             showTurnProgressDetails = false
         }
         .onChange(of: isRunning) { _, running in
@@ -1808,13 +1803,18 @@ struct ComposerView: View {
             VStack(alignment: .leading, spacing: 6) {
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(store.activeQueue) { q in
-                            queueRow(q)
+                        ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
+                            queueRow(q, index: index)
+                            if index < store.activeQueue.count - 1 {
+                                Divider()
+                                    .opacity(0.25)
+                                    .padding(.leading, 32)
+                            }
                         }
                     }
                 }
                 .scrollIndicators(.hidden)
-                .frame(maxHeight: 286)
+                .frame(maxHeight: 240)
 
                 if let error = store.activeQueueActionError {
                     Label(error, systemImage: "exclamationmark.circle")
@@ -1835,26 +1835,34 @@ struct ComposerView: View {
         }
     }
 
+    /// Drag-over indicator target. `nil` = no drop hover; otherwise the
+    /// id of the row currently targeted, with `.top` / `.bottom` indicating
+    /// which half the cursor is over.
+    @State private var dropTarget: (id: String, half: DropHalf)?
+    private enum DropHalf { case top, bottom }
+
     @ViewBuilder
-    private func queueRow(_ q: QueuedMessage) -> some View {
+    private func queueRow(_ q: QueuedMessage, index: Int) -> some View {
         let adjusting = store.isAdjustingDirection(q.id)
-        HStack(spacing: 10) {
+        let isDropTop = dropTarget?.id == q.id && dropTarget?.half == .top
+        let isDropBottom = dropTarget?.id == q.id && dropTarget?.half == .bottom
+        HStack(spacing: 8) {
             Image(systemName: "arrow.turn.down.right")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
-                .frame(width: 20)
+                .frame(width: 18)
 
             if let firstImage = q.images.first {
                 queueThumbnail(for: firstImage, count: q.images.count)
             }
 
             Text(q.text.isEmpty ? "(图片附件)" : q.text)
-                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             Button {
                 store.steerQueuedMessage(q.id)
@@ -1866,12 +1874,14 @@ struct ComposerView: View {
                     }
                 } else {
                     Label("调整方向", systemImage: "arrow.turn.up.right")
+                        .labelStyle(.iconOnly)
+                        .frame(width: 22, height: 22)
                 }
             }
             .buttonStyle(.borderless)
             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
             .foregroundStyle(.secondary)
-            .disabled(store.isAdjustingActiveQueue)
+            .disabled(store.isAdjustingActiveQueue || adjusting)
             .help("立即补充到当前任务，不中断正在进行的工作")
             .accessibilityLabel(adjusting ? "正在调整方向" : "立即调整方向")
 
@@ -1880,42 +1890,73 @@ struct ComposerView: View {
             } label: {
                 Image(systemName: "trash")
                     .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 22, height: 22)
             }
             .buttonStyle(.borderless)
             .disabled(adjusting)
             .help("删除这条排队消息")
             .accessibilityLabel("删除排队消息")
-
-            Menu {
-                Button {
-                    editingQueued = q
-                } label: {
-                    Label("编辑消息", systemImage: "pencil")
-                }
-                .disabled(adjusting)
-
-                Divider()
-
-                Button {
-                    store.clearQueue()
-                } label: {
-                    Label("关闭排队", systemImage: "text.line.first.and.arrowtriangle.forward")
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .disabled(adjusting)
-            .help("排队消息操作")
-            .accessibilityLabel("更多排队操作")
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 64)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
+        .overlay(alignment: .top) {
+            if isDropTop {
+                Rectangle().fill(DSHTheme.brand).frame(height: 3)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if isDropBottom {
+                Rectangle().fill(DSHTheme.brand).frame(height: 3)
+            }
+        }
+        .contextMenu {
+            Button {
+                editingQueued = q
+            } label: {
+                Label("编辑消息", systemImage: "pencil")
+            }
+            .disabled(adjusting)
+            .help("修改这条排队消息的文本")
+
+            Button {
+                store.clearQueue()
+            } label: {
+                Label("关闭排队", systemImage: "text.line.first.and.arrowtriangle.forward")
+            }
+            .disabled(adjusting)
+            .help("清空当前对话的整个排队")
+        }
+        .draggable(q.id) {
+            // Drag preview: a compact representation of the queued message.
+            Text(q.text.isEmpty ? "(图片附件)" : q.text)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                .lineLimit(1)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .dropDestination(for: String.self) { items, location in
+            guard let draggedId = items.first, draggedId != q.id else {
+                dropTarget = nil
+                return false
+            }
+            let frameHeight: CGFloat = 44
+            let half = location.y < frameHeight / 2 ? DropHalf.top : .bottom
+            let targetIndex = half == .top ? index : index + 1
+            store.moveQueued(draggedId, to: targetIndex)
+            dropTarget = nil
+            return true
+        } isTargeted: { isOver in
+            if isOver {
+                // Probe cursor y via the next dropDestination? Without a
+                // pointer-events API we approximate by toggling on enter;
+                // actual half is decided inside `action` using location.y.
+                if dropTarget?.id != q.id { dropTarget = (q.id, .top) }
+            } else if dropTarget?.id == q.id {
+                dropTarget = nil
+            }
+        }
         .accessibilityIdentifier("queued-message-row-\(q.id)")
     }
 
@@ -1935,10 +1976,10 @@ struct ComposerView: View {
                         .background(DSHTheme.surface)
                 }
             }
-            .frame(width: 42, height: 42)
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .frame(width: 32, height: 32)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .stroke(DSHTheme.border, lineWidth: 1)
             )
 
@@ -1952,24 +1993,13 @@ struct ComposerView: View {
                     .offset(x: 4, y: 4)
             }
         }
-        .frame(width: 46, height: 46)
+        .frame(width: 36, height: 36)
         .accessibilityLabel(count == 1 ? "1 张图片" : "\(count) 张图片")
     }
 
     /// Send the composed message. While a turn is running the message is
     /// queued instead of dropped.
     private func send() {
-        // Goal mode: submit sets/updates the thread's goal, not a message.
-        if isGoalMode {
-            let goalText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !goalText.isEmpty {
-                store.setActiveThreadGoal(goalText)
-                text = ""
-                isGoalMode = false
-            }
-            focused = true
-            return
-        }
         // Slash commands are intercepted before hitting the harness.
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if let goal = slashGoal(trimmed) {
@@ -2223,7 +2253,6 @@ struct ComposerView: View {
 
     /// Composer placeholder, mentioning the active project when set.
     private var composerPlaceholder: String {
-        if isGoalMode { return "描述你想完成的目标" }
         if let p = workspace.state.activeProject {
             return "给 \(p.displayName) 发条任务…"
         }
@@ -2234,49 +2263,6 @@ struct ComposerView: View {
     private var activeThreadGoal: String? {
         guard let id = store.activeThreadId else { return nil }
         return store.liveThreads.first(where: { $0.id == id })?.goal
-    }
-
-    /// "目标" mode toggle in the composer toolbar. Highlights when a goal is
-    /// set or goal mode is active.
-    private var goalChip: some View {
-        Button {
-            toggleGoalMode()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "scope").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Text(titleForGoalChip)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background((isGoalMode || activeThreadGoal != nil) ? DSHTheme.brandSoft : DSHTheme.surface, in: Capsule())
-            .foregroundStyle((isGoalMode || activeThreadGoal != nil) ? DSHTheme.brand : .secondary)
-        }
-        .buttonStyle(.plain)
-        .help(isGoalMode ? "退出目标模式" : "设置会话目标")
-        .accessibilityLabel("目标")
-    }
-
-    private var titleForGoalChip: String {
-        // The goal card above the input already shows the full text; the chip
-        // is a compact toggle.
-        if isGoalMode || activeThreadGoal != nil { return "目标" }
-        return "设为目标"
-    }
-
-    /// Clicking the 目标 chip: if the user has typed a goal, commit it
-    /// directly (one step) — the goal card appears at the top and the chip
-    /// highlights. We deliberately leave the text in the composer so the user
-    /// can also press 发送 to have the model act on it. If nothing is typed,
-    /// toggle goal mode instead.
-    private func toggleGoalMode() {
-        let typed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !typed.isEmpty {
-            store.setActiveThreadGoal(typed)
-            isGoalMode = false
-        } else {
-            isGoalMode.toggle()
-        }
     }
 
     /// Goal card rendered just above the input box (not at the top of the

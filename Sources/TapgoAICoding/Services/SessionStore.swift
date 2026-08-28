@@ -810,6 +810,32 @@ final class SessionStore: ObservableObject {
         queue.removeAll { $0.id == id }
     }
 
+    /// Reorder a queued message within its own conversation. `toIndex` is
+    /// clamped to the conversation's queue range so partial drags don't
+    /// strand the message outside its thread.
+    func moveQueued(_ id: String, to toIndex: Int) {
+        guard !steeringQueuedMessageIds.contains(id) else { return }
+        guard let threadId = queue.first(where: { $0.id == id })?.threadId else { return }
+        var scoped = queue.filter { $0.threadId == threadId }
+        guard let fromIdx = scoped.firstIndex(where: { $0.id == id }) else { return }
+        let clamped = max(0, min(toIndex, scoped.count - 1))
+        guard clamped != fromIdx else { return }
+        let item = scoped.remove(at: fromIdx)
+        scoped.insert(item, at: clamped)
+        var merged: [QueuedMessage] = []
+        var scopedIter = scoped.makeIterator()
+        for existing in queue {
+            if existing.threadId == threadId, let next = scopedIter.next() {
+                merged.append(next)
+            } else {
+                merged.append(existing)
+            }
+        }
+        queue = merged
+        queueActionErrorsByThreadId.removeValue(forKey: activeThreadId ?? "")
+    }
+
+
     func clearQueue() {
         guard let activeThreadId else { return }
         queue.removeAll {

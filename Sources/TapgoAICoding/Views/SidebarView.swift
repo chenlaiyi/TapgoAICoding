@@ -26,7 +26,15 @@ struct SidebarView: View {
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
+    /// 每个分组的展开阈值：默认每组只展示最新 5 条；点一次"展开显示"按钮 +10。
+    /// 搜索激活时不限制，全部命中结果都会展示，便于用户快速定位。
+    @State private var expandedThreadLimits: [String: Int] = [:]
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    private enum ThreadLimit {
+        static let `default`: Int = 5
+        static let step: Int = 10
+    }
 
     let showNewTask: () -> Void
     let showSettings: () -> Void
@@ -223,23 +231,85 @@ struct SidebarView: View {
                 emptyState
             } else {
                 ForEach(grouped, id: \.project?.id) { group in
-                    Section {
-                        if !collapsedGroups.contains(group.id) {
-                            // Keep project children visually flat and compact:
-                            // one title per row, ordered by recency.
-                            ForEach(group.threads) { t in
-                                threadRow(t)
-                                    .tag(t.id)
-                                    .contextMenu { contextMenu(for: t) }
-                            }
-                        }
-                    } header: {
-                        projectGroupHeader(group)
-                    }
+                    threadSection(for: group)
                 }
             }
         }
         .listStyle(.sidebar)
+    }
+
+    /// Render a single project (or the legacy "未分类" bucket) as a
+    /// `Section`. The body honours the user's collapsed flag and the
+    /// per-group pagination limit (default 5, +10 per "展开显示" tap).
+    @ViewBuilder
+    private func threadSection(for group: ThreadGroup) -> some View {
+        let visible = visibleThreads(in: group)
+        let limit = threadLimit(for: group)
+        Section {
+            if !collapsedGroups.contains(group.id) {
+                // Keep project children visually flat and compact:
+                // one title per row, ordered by recency.
+                ForEach(Array(visible)) { t in
+                    threadRow(t)
+                        .tag(t.id)
+                        .contextMenu { contextMenu(for: t) }
+                }
+                if !isSearching, group.threads.count > limit {
+                    expandThreadsButton(for: group)
+                }
+            }
+        } header: {
+            projectGroupHeader(group)
+        }
+    }
+
+    /// 搜索激活时永远返回全部线程，让用户能看到所有命中；
+    /// 否则按当前分组阈值切片。
+    private var isSearching: Bool {
+        !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func threadLimit(for group: ThreadGroup) -> Int {
+        expandedThreadLimits[group.id] ?? ThreadLimit.default
+    }
+
+    private func visibleThreads(in group: ThreadGroup) -> [TapgoCore.Thread] {
+        if isSearching { return group.threads }
+        let limit = threadLimit(for: group)
+        return Array(group.threads.prefix(limit))
+    }
+
+    private func expandThreads(in group: ThreadGroup) {
+        let current = threadLimit(for: group)
+        expandedThreadLimits[group.id] = current + ThreadLimit.step
+    }
+
+    /// 渲染"展开显示 N 条"按钮。N 是点击后实际会达到的阈值
+    /// (current+10，但不会超过该组线程总数)。
+    @ViewBuilder
+    private func expandThreadsButton(for group: ThreadGroup) -> some View {
+        let current = threadLimit(for: group)
+        let target = min(current + ThreadLimit.step, group.threads.count)
+        let remaining = group.threads.count - current
+        Button {
+            expandThreads(in: group)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.down")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                Text("展开显示 \(target) 条")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Text("(还剩 \(remaining) 条)")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+            }
+            .foregroundStyle(DSHTheme.brand)
+            .padding(.vertical, 4)
+            .padding(.leading, Layout.threadTitleIndent)
+        }
+        .buttonStyle(.plain)
+        .help("点击展开，再多显示 10 条会话")
+        .accessibilityLabel("展开显示 \(target) 条会话，当前 \(current) 条，共 \(group.threads.count) 条")
     }
 
     @ViewBuilder

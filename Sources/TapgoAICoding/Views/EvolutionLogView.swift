@@ -289,6 +289,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.13",
+                    date: "2026-08-29",
+                    commit: "TBD",
+                    tag: "v0.5.13",
+                    summary: "队列卡片 Codex 紧凑样式 + 拖拽排序",
+                    changes: [
+                        "输入框上方排队卡片改成 Codex 式紧凑面板：行 padding 12/8、minHeight 44、缩略图 36pt，行间用 25% 透明 Divider 分隔。",
+                        "行尾去掉「更多」常驻按钮（编辑 / 关闭排队改为右键菜单），只保留「调整方向」+「删除」图标按钮。",
+                        "新增 macOS 14 风格的拖拽排序：拖到目标行的上 / 下半区决定插入位，目标行显示品牌色 3pt 插入指示线。",
+                        "输入框右侧主操作按钮合并为互斥的「停止」/「发送」单按钮，避免同框视觉冗余。",
+                        "SessionStore 新增 moveQueued(_ id: String, to newIndex: Int)，仅在当前 active 对话且未在 steering 时改写子数组顺序。"
+                    ],
+                    why: "用户参照 Codex 当前界面要求队列卡片更紧凑、行内右侧不要过大空白，且希望可拖拽重排多条排队；同框的「停止 / 发送」双按钮也合并为单按钮。",
+                    next: "收集真实拖拽手感后，再决定是否加入 ⌥↑ / ⌥↓ 备用排序快捷键。"
+                ),
+                                EvolutionEntry(
                     version: "v0.5.12",
                     date: "2026-08-29",
                     commit: "b93bed6",
