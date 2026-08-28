@@ -106,6 +106,8 @@ let allSections: [String] = [
     "HarnessSupervisor: idAllocator is per-supervisor and resets on restart",
     "HarnessSupervisor: reserveServerId prevents collision",
     "HarnessSupervisor: idempotent retry bookkeeping",
+    "DurableMemory: sanitize polluted model output",
+    "DurableMemory: canonical markdown and dedup",
     "DiffParser: empty input returns no files",
     "DiffParser: whitespace-only input returns no files",
     "DiffParser: single-file diff parses file + hunk + lines",
@@ -405,6 +407,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "HarnessSupervisor: idempotent retry bookkeeping") {
             runHarnessSupervisorRetryBookkeeping(runner)
+        }
+        await runIfInScope(runner, "DurableMemory: sanitize polluted model output") {
+            runDurableMemorySanitization(runner)
+        }
+        await runIfInScope(runner, "DurableMemory: canonical markdown and dedup") {
+            runDurableMemoryMarkdown(runner)
         }
         await runIfInScope(runner, "DiffParser: empty input returns no files") {
             runDiffParserEmpty(runner)

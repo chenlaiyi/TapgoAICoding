@@ -289,10 +289,39 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
             EvolutionEntry(
-                version: "v0.4.2",
+                version: "v0.5.1",
+                date: "2026-08-28",
+                commit: nil,
+                tag: "v0.5.1",
+                summary: "恢复开发代理职责并清洗长期记忆",
+                changes: [
+                    "核心开发职责与长期记忆分层注入，当前请求和工作区证据始终优先",
+                    "长期记忆只保留稳定 Markdown 要点，过滤思考轨迹、NONE、临时任务、凭据与版本快照",
+                    "旧记忆在追加时自动规范化、语义去重，污染文件已备份后修复",
+                    "新增 DurableMemory 回归测试，测试数 667 → 685"
+                ],
+                why: "修复记忆内容覆盖基础指令后，模型只复述旧上下文、虚构工具不可用并停止开发的问题。",
+                next: "继续补充真实原生 App 的长周期记忆与跨对话开发回归。"
+            ),
+            EvolutionEntry(
+                version: "v0.5.0",
+                date: "2026-08-28",
+                commit: "eaa3d90",
+                tag: "v0.5.0",
+                summary: "结构化 Diff 与逐行审查评论",
+                changes: [
+                    "解析 unified diff 为文件、hunk 与行级结构",
+                    "支持 unified、split、raw 三种渲染模式和逐行评论",
+                    "新增 DiffParser 与 ReviewCommentStore 回归覆盖，测试数 572 → 667"
+                ],
+                why: "把纯字符串着色升级为可审查、可评论的结构化代码变更视图。",
+                next: "恢复开发代理职责并加固长期记忆边界。"
+            ),
+            EvolutionEntry(
+                version: "v0.4.3",
                 date: "2026-08-27",
                 commit: nil,
-                tag: "v0.4.2",
+                tag: "v0.4.3",
                 summary: "对话独立执行与 Harness 失效恢复修复",
                 changes: [
                     "每个对话独立持有 runner、队列、取消和运行状态，切换对话不会中断后台任务",

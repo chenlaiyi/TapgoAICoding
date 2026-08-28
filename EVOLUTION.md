@@ -138,3 +138,17 @@ evolve.sh now sets TAPGO_SKIP_REMOTE_INTEGRATION=1 unless WITH_INTEGRATION is se
 新增 Sources/TapgoCore/DiffParser.swift:把 unified diff 文本解析为 DiffFile/DiffHunk/DiffLine 结构(支持 git a//b/ 前缀、多文件、/dev/null 创建/删除、CRLF 规范化、binary marker、no-newline marker),共 18 个 parser 单测 + 1 个独立 parseHunkHeader 测试。新增 Sources/TapgoCore/ReviewComment.swift:ReviewComment + ObservableObject/NSCoding/并发安全的 ReviewCommentStore(lineKey 锚定),11 个 store 单测覆盖 add/fetch/update/remove/clear/并发 100 写入。新增 Sources/TapgoAICoding/Views/DiffView.swift:替换原 naive DiffText 着色器,提供 unified / split / raw 三种渲染模式、行号 gutter、+/- 单色背景、行级评论输入(bubble 按钮 + 内联 composer);新加 splitSide() 让删除行在右侧呈现空槽、添加行在左侧空槽,context 行双侧同内容。新增 Sources/TapgoTests/TestMain.swift 注册 28 个新 section。FileChangeView 用 DiffView 替换 ScrollView+DiffText。Core/Tests:572 -> 667 全过(+95)。diff 渲染从纯字符串着色升级为可审查、可评论的结构化视图,harness 协议层稳定后第一次功能型 minor 升级。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+## v0.5.1 — 恢复开发代理职责并清洗长期记忆
+**Date**: 2026-08-28
+**Commit**: _(see `git log -1 v0.5.1`)_
+**Tag**: v0.5.1
+**Test status**: — 685 passed, 0 failed —
+**Changed**:
+- `thread/start.baseInstructions` 始终包含自主开发代理职责；长期记忆只作为低优先级事实附加，当前请求、代码和工具结果优先。
+- 新增 `DurableMemory`：过滤 `<think>`、`NONE`、提示注入、凭据标记、临时路径/任务和易失版本快照，并做稳定主题的语义去重。
+- `MemoryWriter` 与 `TapgoConfig` 共用同一清洗器；读取时不再注入旧污染，追加时会规范化并重写既有记忆。
+- App 专属 `memory.md` 已先备份污染原件，再恢复为稳定的项目与协作偏好要点。
+- 新增 18 项长期记忆回归测试；总测试数 667 → 685。
+**Why**: 长期记忆原文被直接当作基础指令，污染内容覆盖了开发代理角色，导致模型复述旧任务、虚构“工具不可用”并等待追问。
+**Next**: 持续做安装版原生 App 的跨对话、实际工具调用和记忆再写入回归。

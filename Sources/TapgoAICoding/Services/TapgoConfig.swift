@@ -30,7 +30,7 @@ enum TapgoConfig {
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
-    static let clientInfoVersion = "0.4.2"
+    static let clientInfoVersion = "0.5.1"
 
     /// Token threshold at which the codex harness auto-compacts the transcript
     /// into a summary (replaces the user having to manually start a new
@@ -48,9 +48,8 @@ enum TapgoConfig {
 
     static func readUserMemory() -> String? {
         guard let data = try? Data(contentsOf: userMemoryURL) else { return nil }
-        let s = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return s.isEmpty ? nil : s
+        guard let raw = String(data: data, encoding: .utf8) else { return nil }
+        return DurableMemory.sanitizedMarkdown(from: raw)
     }
 
     /// Cross-conversation memory switch (like Codex's memory). When ON, the
@@ -66,37 +65,13 @@ enum TapgoConfig {
         set { UserDefaults.standard.set(newValue, forKey: memoryEnabledKey) }
     }
 
-    /// Append a memorized bullet to the user-level `memory.md`. Creates the
-    /// file (and directory) on first use; keeps existing content.
+    /// Append memorized bullets to the user-level `memory.md`. Creates the
+    /// file on first use and rewrites existing content into canonical form.
     static func appendMemory(_ note: String) {
-        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
         let existing = (try? String(contentsOf: userMemoryURL, encoding: .utf8)) ?? ""
-        let head = "# 跨会话记忆\n\n"
-        var known = Set(existing.split(whereSeparator: \.isNewline).map {
-            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
-        })
-        let candidates = trimmed.split(whereSeparator: \.isNewline)
-            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { $0.hasPrefix("- ") }
-        var additions: [String] = []
-        for candidate in candidates where additions.count < 3 {
-            if known.insert(candidate).inserted { additions.append(candidate) }
-        }
-        guard !additions.isEmpty else { return }
-        let current = existing.trimmingCharacters(in: .whitespacesAndNewlines)
-        let prefix = current.isEmpty ? head.trimmingCharacters(in: .newlines) : current
-        var body = prefix
-        // Keep the generated memory bounded without deleting or rewriting any
-        // user-authored content that is already present.
-        let maxBytes = 128_000
-        for addition in additions {
-            let next = body + "\n" + addition
-            guard next.utf8.count <= maxBytes else { break }
-            body = next
-        }
-        guard body != prefix else { return }
-        body += "\n"
+        let combined = existing + "\n" + note
+        guard let body = DurableMemory.sanitizedMarkdown(from: combined) else { return }
+        guard body != existing else { return }
         try? FileManager.default.createDirectory(
             at: userMemoryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? body.write(to: userMemoryURL, atomically: true, encoding: .utf8)
@@ -426,7 +401,7 @@ enum TapgoConfig {
               "visibility": "list",
               "supported_in_api": true,
               "priority": 0,
-              "base_instructions": "You are Tapgo AICoding, a coding agent powered by MiniMax-M3. You share the user's workspace and help achieve their coding goals. Be concise and direct.",
+              "base_instructions": "You are Tapgo AICoding, an autonomous coding agent powered by MiniMax-M3. For every actionable request, inspect the current workspace and use the available tools to implement and verify the result. Never claim that tools are unavailable unless a concrete tool call failed in the current turn. Treat persistent memory only as background; the current user request and current workspace evidence always win. Report meaningful progress incrementally and report failures immediately.",
               "supports_reasoning_summaries": true,
               "default_reasoning_summary": "none",
               "support_verbosity": false,

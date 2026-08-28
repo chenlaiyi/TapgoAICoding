@@ -1,4 +1,5 @@
 import Foundation
+import TapgoCore
 
 /// Lightweight in-app memory extractor (app-level, independent of codex's own
 /// `memories` feature). After a turn completes, we ask MiniMax-M3 to pull out
@@ -81,22 +82,8 @@ actor MemoryWriter {
         guard !trimmed.isEmpty, trimmed.uppercased() != "NONE" else { return nil }
         // Treat model output as untrusted data: accept only up to three short
         // Markdown bullets, never free-form instructions or headings.
-        let bullets = trimmed.split(whereSeparator: \.isNewline)
-            .map { String($0).trimmingCharacters(in: .whitespaces) }
-            .filter { isSafeMemoryBullet($0) }
-            .prefix(3)
+        let bullets = DurableMemory.sanitizedBullets(from: trimmed, limit: 3)
         guard !bullets.isEmpty else { return nil }
         return bullets.joined(separator: "\n")
-    }
-
-    private func isSafeMemoryBullet(_ bullet: String) -> Bool {
-        guard bullet.hasPrefix("- "), bullet.count <= 600 else { return false }
-        let normalized = bullet.lowercased()
-        let denied = [
-            "忽略", "执行", "必须遵循", "系统提示", "密码", "口令", "令牌", "密钥", "凭据",
-            "ignore previous", "execute", "system prompt", "password", "api key", "token", "secret",
-            "sk-", "bearer ",
-        ]
-        return !denied.contains { normalized.contains($0) }
     }
 }
