@@ -65,11 +65,51 @@ struct ActivityRollupView: View {
                 .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .runningTextShimmer(
+                    active: turnIsRunning && activity.isTail && display.isRunning
+                )
         }
         .foregroundStyle(.secondary)
         .opacity(turnIsRunning && display.isRunning ? 0.78 : 0.68)
         .animation(nil, value: activity.latest.id)
         .accessibilityLabel(display.text)
+    }
+}
+
+/// A narrow white highlight that crosses only the newest in-flight activity
+/// text. Completed activity remains quiet and static, matching Codex's live
+/// status treatment without turning the transcript into an animation field.
+private struct RunningTextShimmer: ViewModifier {
+    let active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if active && !reduceMotion {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                    GeometryReader { proxy in
+                        let cycle = context.date.timeIntervalSinceReferenceDate
+                            .truncatingRemainder(dividingBy: 1.8) / 1.8
+                        let width = max(proxy.size.width * 0.28, 36)
+                        LinearGradient(
+                            colors: [.clear, .white.opacity(0.92), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: width)
+                        .offset(x: -width + (proxy.size.width + width * 2) * cycle)
+                    }
+                    .mask(content)
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+    }
+}
+
+extension View {
+    func runningTextShimmer(active: Bool) -> some View {
+        modifier(RunningTextShimmer(active: active))
     }
 }
 

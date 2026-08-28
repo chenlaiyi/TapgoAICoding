@@ -59,11 +59,18 @@ final class SessionStore: ObservableObject {
     private final class RunContext {
         let runner: CodexHarnessClient
         let turnId: String
+        let worktreeBaseline: WorktreeChangeBaseline?
         var task: Task<Void, Never>?
+        var worktreeStatsTask: Task<Void, Never>?
 
-        init(runner: CodexHarnessClient, turnId: String) {
+        init(
+            runner: CodexHarnessClient,
+            turnId: String,
+            worktreeBaseline: WorktreeChangeBaseline? = nil
+        ) {
             self.runner = runner
             self.turnId = turnId
+            self.worktreeBaseline = worktreeBaseline
         }
     }
 
@@ -87,6 +94,11 @@ final class SessionStore: ObservableObject {
     /// mirroring Codex's message action bar without a remote backend.
     @Published var turnFeedback: [String: Int] = [:]
     @Published var setupError: SetupError?
+
+    /// v0.5.9: codex `account/rateLimits/read` 与
+    /// `account/rateLimits/updated` 通知汇聚出的当前账号套餐用量。
+    /// ChatView 据此渲染输入框下方右侧的"套餐用量"chip。
+    @Published private(set) var accountRateLimits: AccountRateLimits?
 
     /// Approval requests the harness is waiting on, keyed by request id.
     /// `ApprovalRow` watches this and resolves entries by calling
@@ -438,7 +450,21 @@ final class SessionStore: ObservableObject {
         // keyed by the local conversation. Cancellation and approval routing
         // never consult whichever conversation happens to be selected later.
         let newRunner = makeRunner(for: project)
-        let context = RunContext(runner: newRunner, turnId: turnId)
+        let worktreeBaseline: WorktreeChangeBaseline?
+        if project?.isRemote == true {
+            worktreeBaseline = nil
+        } else if let cwd {
+            worktreeBaseline = WorktreeChangeTracker.captureBaseline(
+                cwd: URL(fileURLWithPath: cwd, isDirectory: true)
+            )
+        } else {
+            worktreeBaseline = nil
+        }
+        let context = RunContext(
+            runner: newRunner,
+            turnId: turnId,
+            worktreeBaseline: worktreeBaseline
+        )
         runsByThreadId[threadId] = context
         runnerStatesByThreadId[threadId] = .running(threadId: resumeId)
 
@@ -455,6 +481,11 @@ final class SessionStore: ObservableObject {
                 self?.handle(event: event, threadId: threadId, turnId: turnId)
             }
             self.runnerStatesByThreadId[threadId] = finalState
+            // v0.5.9: 每次新开 run 之后顺便拉一次 codex 套餐用量，
+            // 让输入框下方的 chip 立刻显示 5h / 周真实剩余。
+            if let fresh = await newRunner.fetchAccountRateLimits() {
+                self.accountRateLimits = fresh
+            }
             var completedTurn: TapgoCore.Turn?
             if let currentThreadIdx = self.liveThreads.firstIndex(where: { $0.id == threadId }) {
                 // Always record the thread id the harness actually used for this
@@ -1187,6 +1218,10 @@ final class SessionStore: ObservableObject {
                     status: finished ? .succeeded : .running
                 )))
             }
+        case .rateLimitsUpdated(let limits):
+            // v0.5.9: 主线程上同步刷新输入框下方的"套餐用量"chip。
+            // 不绑到某个 turn，因为这是账号级别的快照。
+            accountRateLimits = limits
         case .error(let message):
             turn.items.append(.error(id: "e-" + UUID().uuidString, message: message))
         }
@@ -1194,6 +1229,45 @@ final class SessionStore: ObservableObject {
         liveThreads[threadIdx].turns[turnIdx] = turn
         liveThreads[threadIdx].updatedAt = Date()
         threads.save(liveThreads[threadIdx])
+        switch event {
+        case .commandCompleted, .fileChange, .planUpdated:
+            scheduleWorktreeStatsRefresh(threadId: threadId, turnId: turnId)
+        default:
+            break
+        }
+    }
+
+    private func scheduleWorktreeStatsRefresh(threadId: String, turnId: String) {
+        guard let context = runsByThreadId[threadId],
+              context.turnId == turnId,
+              let baseline = context.worktreeBaseline else { return }
+        context.worktreeStatsTask?.cancel()
+        context.worktreeStatsTask = Task { [weak self] in
+            let stats = await Task.detached(priority: .utility) {
+                WorktreeChangeTracker.collect(since: baseline)
+            }.value
+            guard !Task.isCancelled, let self, let stats,
+                  let threadIdx = self.liveThreads.firstIndex(where: { $0.id == threadId }),
+                  let turnIdx = self.liveThreads[threadIdx].turns.firstIndex(where: { $0.id == turnId })
+            else { return }
+            var turn = self.liveThreads[threadIdx].turns[turnIdx]
+            let id = "worktree-stats-\(turnId)"
+            let snapshot = ToolCall(
+                id: id,
+                name: "本轮变更统计",
+                arguments: "",
+                result: stats.rendered,
+                status: .running
+            )
+            if let index = turn.items.firstIndex(where: { $0.id == id }) {
+                turn.items[index] = .toolCall(snapshot)
+            } else {
+                turn.items.append(.toolCall(snapshot))
+            }
+            self.liveThreads[threadIdx].turns[turnIdx] = turn
+            self.liveThreads[threadIdx].updatedAt = Date()
+            self.threads.save(self.liveThreads[threadIdx])
+        }
     }
 
     private func appendToStreamingMessage(

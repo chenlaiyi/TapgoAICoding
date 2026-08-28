@@ -111,7 +111,10 @@ public enum TurnPresentation {
             files = []
         }
 
-        for item in items where !item.isAppGeneratedProgress {
+        for item in items where !item.isAppGeneratedProgress
+            && !item.isPlanSnapshot
+            && !item.isTurnDiffSnapshot
+            && !item.isWorktreeStatsSnapshot {
             switch item {
             case .reasoning, .reasoningSummary, .commandExecution, .toolCall:
                 flushFiles()

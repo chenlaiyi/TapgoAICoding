@@ -294,6 +294,19 @@ final class CodexHarnessClient {
     }
 
     /// Cancel the active turn. Sends `turn/interrupt` to the harness.
+    /// v0.5.9: 主动拉一次 codex `account/rateLimits/read`，拿到
+    /// 当前的 5h / 周限速窗口。失败返回 nil，由调用方继续保留
+    /// 旧的 `accountRateLimits`，避免让 UI 闪烁回未知态。
+    func fetchAccountRateLimits() async -> AccountRateLimits? {
+        do {
+            let response = try await request(method: "account/rateLimits/read", params: [:])
+            return AccountRateLimits.fromJSON(response)
+        } catch {
+            TapgoConfig.log("[harness] account/rateLimits/read failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     func cancel() {
         guard !cancelRequested else { return }
         cancelRequested = true

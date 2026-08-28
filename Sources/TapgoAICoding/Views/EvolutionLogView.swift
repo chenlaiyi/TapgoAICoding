@@ -289,6 +289,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.9",
+                    date: "2026-08-29",
+                    commit: "_pending_",
+                    tag: "v0.5.9",
+                    summary: "Codex 式步骤进度、真实变更统计、运行流光与账户限额",
+                    changes: [
+                        "输入区上方新增步骤进度胶囊，显示当前步数、本回合文件数、绿色新增行和红色删除行；点击展开完整步骤清单。",
+                        "优先消费 Harness 的 plan/diff 事件；仅有命令工具时按回合开始前 Git 基线统计，不混入既有脏工作树。",
+                        "最新灰色运行活动加入白色流光并原位更新；历史活动静止，减少动态效果时自动停用。",
+                        "接入 Codex account/rateLimits/read 与实时通知，展示真实 5 小时/周窗口、用量、等级与重置时间。",
+                        "步骤进度 12/12、限额解析 30/30、新套餐展示 16/16、旧展示兼容 30/30；Release build 与安装版原生回归通过。"
+                    ],
+                    why: "让运行过程只呈现用户关心的当前步骤和真实代码变化，同时以账户限额替代会话 token 估算套餐用量。",
+                    next: "补充失败步骤与耗时，并验证远程多工作树 diff 统计。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.8",
                     date: "2026-08-28",
                     commit: "ad339ce",

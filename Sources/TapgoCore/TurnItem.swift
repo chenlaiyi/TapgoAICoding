@@ -126,6 +126,26 @@ public extension TurnItem {
         return id.hasPrefix("app-progress-")
     }
 
+    /// App-server plan and aggregate-diff snapshots feed the dedicated live
+    /// progress UI above the composer. Keeping them out of the transcript
+    /// avoids duplicate tool/file rows while preserving the raw data on disk.
+    var isPlanSnapshot: Bool {
+        guard case .toolCall(let call) = self else { return false }
+        return call.id.hasPrefix("plan-") || call.name == "执行计划"
+    }
+
+    var isTurnDiffSnapshot: Bool {
+        guard case .fileChange(let change) = self else { return false }
+        return change.id.hasPrefix("diff-") || change.path == "本轮聚合变更"
+    }
+
+    /// Fallback statistics collected from the local Git worktree when the
+    /// active Harness exposes exec_command but no native apply_patch tool.
+    var isWorktreeStatsSnapshot: Bool {
+        guard case .toolCall(let call) = self else { return false }
+        return call.id.hasPrefix("worktree-stats-") || call.name == "本轮变更统计"
+    }
+
     /// Flattened text used by the in-conversation search. Includes
     /// everything a user might reasonably want to match against when
     /// looking back through a thread: messages, reasoning, command

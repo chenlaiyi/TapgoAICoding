@@ -4,13 +4,13 @@ import Foundation
 
 @MainActor
 func runSubscriptionUsage(_ t: TestRunner) {
-    // Empty input is not visible
+    // 空数据仍保留稳定的加载态，避免 chip 在请求前后跳动。
     let empty = SubscriptionUsage(usedTokens: 0, contextWindow: 1_000_000)
-    t.expect(!empty.isVisible, "empty: invisible when usedTokens == 0 (regardless of contextWindow)")
+    t.expect(empty.isVisible, "empty: visible while account limits load")
     t.expectEqual(empty.percent, nil, "empty: percent nil when usedTokens == 0")
     t.expectEqual(empty.level, .normal, "empty: level falls back to normal")
-    t.expectEqual(empty.chipLabel, "套餐用量 0 / 1.0M", "empty: chip label still computable")
-    t.expectEqual(empty.detailText, "暂无用量数据", "empty: detail says no data when usedTokens == 0")
+    t.expectEqual(empty.chipLabel, "套餐用量 · 加载中", "empty: chip shows loading label")
+    t.expectEqual(empty.detailText, "正在获取模型订阅套餐用量…", "empty: detail explains loading state")
 
     // Basic percentage math
     let used = 250_000

@@ -902,6 +902,7 @@ struct ChatView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .help(runningActivityLabel(turn))
+                .runningTextShimmer(active: true)
             Spacer(minLength: 0)
         }
         .foregroundStyle(.secondary)
@@ -1126,6 +1127,9 @@ struct ComposerView: View {
     @State private var editingGoalItem: GoalEditItem?
     /// Queued-message edit sheet state.
     @State private var editingQueued: QueuedMessage?
+    /// The compact progress chip stays visible during a planned turn; its
+    /// full checklist opens only when the user asks for it.
+    @State private var showTurnProgressDetails = false
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1209,6 +1213,8 @@ struct ComposerView: View {
             }
 
             goalCard
+
+            turnProgressBadge
 
             VStack(spacing: store.activeQueue.isEmpty ? 0 : -cardOverlap) {
                 queueStatusBar
@@ -1517,6 +1523,7 @@ struct ComposerView: View {
             }
 
             composerMetricsBar
+            subscriptionBadge
         }
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
@@ -1558,6 +1565,10 @@ struct ComposerView: View {
         .onChange(of: store.activeThreadId) { _, _ in
             // Goal mode belongs to the previous thread — reset on switch.
             isGoalMode = false
+            showTurnProgressDetails = false
+        }
+        .onChange(of: isRunning) { _, running in
+            if !running { showTurnProgressDetails = false }
         }
         .onAppear {
             // On launch with a restored thread, put the cursor in the
@@ -1649,6 +1660,89 @@ struct ComposerView: View {
         return store.liveThreads.first(where: { $0.id == id })
     }
 
+    private var activeTurnProgress: TurnProgressSummary? {
+        guard let turn = activeThread?.turns.last,
+              turn.status == .running || turn.status == .awaitingApproval else { return nil }
+        return TurnProgressSummary(turn: turn)
+    }
+
+    /// Persistent Codex-style summary shown immediately above the queue and
+    /// composer while a planned turn is running.
+    @ViewBuilder
+    private var turnProgressBadge: some View {
+        if let progress = activeTurnProgress {
+            Button {
+                showTurnProgressDetails.toggle()
+            } label: {
+                HStack(spacing: 7) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(DSHTheme.brand)
+                    Text("第 \(progress.currentStepNumber) / \(progress.steps.count) 步")
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Text("\(progress.changedFiles) 个文件已更改")
+                    Text("+\(progress.additions)")
+                        .foregroundStyle(DSHTheme.success)
+                    Text("-\(progress.deletions)")
+                        .foregroundStyle(DSHTheme.error)
+                }
+                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(DSHTheme.surfaceRaised, in: Capsule())
+                .overlay(Capsule().stroke(DSHTheme.borderStrong, lineWidth: 1))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .help("查看步骤执行进度")
+            .accessibilityLabel(
+                "第 \(progress.currentStepNumber) / \(progress.steps.count) 步，"
+                + "\(progress.changedFiles) 个文件已更改，增加 \(progress.additions) 行，删除 \(progress.deletions) 行"
+            )
+            .popover(isPresented: $showTurnProgressDetails, arrowEdge: .bottom) {
+                turnProgressChecklist(progress)
+            }
+            .frame(maxWidth: contentWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func turnProgressChecklist(_ progress: TurnProgressSummary) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(progress.steps) { step in
+                HStack(alignment: .top, spacing: 10) {
+                    Group {
+                        switch step.status {
+                        case .completed:
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(DSHTheme.success)
+                        case .inProgress:
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(DSHTheme.brand)
+                        case .pending:
+                            Image(systemName: "circle")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 20, height: 20)
+
+                    Text(step.text)
+                        .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(step.status == .completed ? .secondary : .primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(18)
+        .frame(width: 440)
+        .background(DSHTheme.surface)
+    }
+
     /// DSH-style metrics bar below the input: rounds · steps · LLM time ·
     /// cache hit · input tokens. Context percentage is intentionally omitted:
     /// Harness compacts automatically, so an instantaneous fill meter implies
@@ -1683,10 +1777,6 @@ struct ComposerView: View {
                 if thread.usageTotal > 0 {
                     Text("输入 \(tapgoFormatCount(thread.usageTotal))")
                 }
-                Spacer()
-                if subscription.isVisible {
-                    subscriptionChip(subscription)
-                }
             }
             .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             .foregroundStyle(.secondary)
@@ -1696,18 +1786,34 @@ struct ComposerView: View {
         }
     }
 
-    /// 输入框下方的"套餐用量"摘要。v0.5.6 用本会话累计 token +
-    /// 最近 turn 的模型上下文窗口组合而成；将来 codex 暴露
-    /// `account/rateLimits/read` 后只需扩展 `SubscriptionUsage` 数据源，
-    /// UI 不用改签名。
-    private var subscription: SubscriptionUsage {
-        guard let thread = activeThread else {
-            return SubscriptionUsage(usedTokens: 0, contextWindow: nil)
+    /// v0.5.9+：输入框下方右侧独立的"套餐用量" badge。
+    /// 从 `composerMetricsBar` 中抽出，避免与 rounds/steps/LLM/cache
+    /// 等本会话指标挤在同一行；始终右对齐渲染（即便没有 thread
+    /// 累计 token、没有 codex 套餐用量也保持"套餐用量 · 加载中"
+    /// 占位），让用户任何时候进入会话都能直接看到当前订阅用量。
+    @ViewBuilder
+    private var subscriptionBadge: some View {
+        HStack {
+            Spacer(minLength: 0)
+            subscriptionChip(subscription)
         }
+        .padding(.horizontal, 4)
+        .frame(maxWidth: contentWidth)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    /// 输入框下方的"套餐用量"摘要。v0.5.6 用本会话累计 token +
+    /// 最近 turn 的模型上下文窗口组合而成；v0.5.9 接入 codex
+    /// `account/rateLimits/read` 与 `account/rateLimits/updated` 通知，
+    /// 优先使用 5h / 周两档真实剩余，未拿到时回退到 v0.5.6 语义。
+    private var subscription: SubscriptionUsage {
+        let used = activeThread?.usageTotal ?? 0
+        let latest = activeThread?.turns.last(where: { $0.usage != nil })?.usage
         return SubscriptionUsage.from(
-            turnsTotalTokens: thread.usageTotal,
-            latestUsage: thread.turns.last(where: { $0.usage != nil })?.usage,
-            fallbackWindow: 1_000_000
+            turnsTotalTokens: used,
+            latestUsage: latest,
+            fallbackWindow: 1_000_000,
+            accountRateLimits: store.accountRateLimits
         )
     }
 

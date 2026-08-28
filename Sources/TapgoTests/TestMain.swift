@@ -80,6 +80,8 @@ let allSections: [String] = [
     "MarkdownLite: strikethrough",
     "MobilePairing: protocol + URL round-trip",
     "SubscriptionUsage: chip label + percent + level",
+    "RateLimits: parse codex account/rateLimits JSON",
+    "SubscriptionUsage: rate limits override chip label + level",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -95,6 +97,7 @@ let allSections: [String] = [
     "ConversationRunRegistry: per-thread isolation",
     "TurnSteerPayload: native same-turn steering",
     "TurnPresentation: semantic activity summaries",
+    "TurnProgressSummary: plan + diff statistics",
     "ApprovalTimeoutTracker: arm / disarm basics",
     "ApprovalTimeoutTracker: re-arm resets deadline",
     "ApprovalTimeoutTracker: sweep fires onExpire",
@@ -385,6 +388,9 @@ struct TapgoTestMain {
         await runIfInScope(runner, "TurnPresentation: semantic activity summaries") {
             runTurnPresentationTests(runner)
         }
+        await runIfInScope(runner, "TurnProgressSummary: plan + diff statistics") {
+            runTurnProgressSummaryTests(runner)
+        }
         await runIfInScope(runner, "ApprovalTimeoutTracker: arm / disarm basics") {
             runApprovalTimeoutArmDisarm(runner)
         }
@@ -627,6 +633,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "SubscriptionUsage: chip label + percent + level") {
             runSubscriptionUsage(runner)
+        }
+        await runIfInScope(runner, "RateLimits: parse codex account/rateLimits JSON") {
+            runRateLimits(runner)
+        }
+        await runIfInScope(runner, "SubscriptionUsage: rate limits override chip label + level") {
+            runSubscriptionUsageWithRateLimits(runner)
         }
     }
 }
