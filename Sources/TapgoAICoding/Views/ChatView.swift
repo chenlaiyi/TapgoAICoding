@@ -1798,8 +1798,7 @@ struct ComposerView: View {
             subscriptionChip(subscription)
         }
         .padding(.horizontal, 4)
-        .frame(maxWidth: contentWidth)
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: contentWidth, alignment: .trailing)
     }
 
     /// 输入框下方的"套餐用量"摘要。v0.5.6 用本会话累计 token +

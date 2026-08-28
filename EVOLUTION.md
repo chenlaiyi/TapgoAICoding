@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.10 — 套餐用量固定右对齐
+**Date**: 2026-08-29
+**Commit**: _pending_
+**Tag**: v0.5.10
+**Test status**: — 套餐空态 17/17；macOS Release build + 三机安装回读通过 —
+**Changed**:
+- 输入区下方的套餐用量 chip 改为在内容宽度内固定靠右，不再因外层居中 frame 看起来漂到中间。
+- 保留 v0.5.9 的步骤进度、真实变更统计、最新活动白色流光与账户限额能力。
+**Why**: 共享任务在 v0.5.9 发布后补齐了用户此前明确要求的“输入框下方右侧”对齐；单独发布新版本，避免改写已推送标签。
+**Next**: 继续验证不同窗口宽度和长套餐名称下的右对齐稳定性。
+
 ## v0.5.9 — Codex 式步骤进度、真实变更统计与运行流光
 **Date**: 2026-08-29
 **Commit**: cd5db2d

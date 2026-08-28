@@ -289,6 +289,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.10",
+                    date: "2026-08-29",
+                    commit: "_pending_",
+                    tag: "v0.5.10",
+                    summary: "套餐用量在输入区下方固定右对齐",
+                    changes: [
+                        "套餐用量 chip 在输入区内容宽度内固定靠右，不再被外层居中 frame 拉回中间。",
+                        "套餐空态 17/17 通过；保留 v0.5.9 的步骤进度、变更统计、白色流光与真实账户限额。"
+                    ],
+                    why: "完整落实用户此前明确要求的输入框下方右侧位置，并用新版本保存已发布标签的不可变性。",
+                    next: "验证窄窗口和长套餐名称下的对齐与截断。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.9",
                     date: "2026-08-29",
                     commit: "cd5db2d",
