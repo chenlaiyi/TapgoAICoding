@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.12",
                     date: "2026-08-29",
-                    commit: "待填写",
+                    commit: "b93bed6",
                     tag: "v0.5.12",
                     summary: "输入框上方队列改为 Codex 式同宽单面板",
                     changes: [
@@ -299,9 +299,10 @@ struct EvolutionLogView: View {
                         "每条消息保持紧凑单行；真实图片附件显示圆角缩略图，多图显示数量。",
                         "调整方向、删除与更多操作固定右对齐，统一低强调灰色，更多按钮取消圆形底色。",
                         "队列最多显示五行后内部滚动，原有编辑、删除、关闭排队与 same-turn steer 行为不变。",
-                        "SDK 26.5 App build 与本机原生多条队列视觉、菜单和删除回归通过。"
+                        "套餐用量组件、账户限额请求与事件、状态模型及相关测试已从当前 App 删除。",
+                        "队列与并发核心回归 43/43；SDK 26.5 Release App build 与本机原生多条队列视觉、菜单和删除回归通过。"
                     ],
-                    why: "多条排队消息需要像 Codex 一样形成一块清晰、可扫读且与输入框连续的任务区。",
+                    why: "多条排队消息需要像 Codex 一样清晰可扫读，同时不能让旧发布基线重新带回已经删除的套餐用量。",
                     next: "继续覆盖更多附件和极窄窗口下的截断表现。"
                 ),
                 EvolutionEntry(
