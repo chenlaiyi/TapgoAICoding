@@ -1865,17 +1865,26 @@ struct ComposerView: View {
                 }
             )
             .overlay(
+                // 底部 0.5px hairline 分隔：让卡片看上去是独立 panel，
+                // 不会向下方输入框"塞背景"。品牌色 18% 让上沿更亮。
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [DSHTheme.brand.opacity(0.18), DSHTheme.border.opacity(0.6)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
+                    .stroke(DSHTheme.border.opacity(0.7), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 6)
+            .overlay(alignment: .top) {
+                // 顶部内嵌 1px 高光，替代向下投影的 shadow，
+                // 避免阴影糊到下方输入框造成"塞到背后"的错觉。
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.white.opacity(0.10), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: 14)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .blendMode(.plusLighter)
+            }
             .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityIdentifier("queued-message-card")
         }
