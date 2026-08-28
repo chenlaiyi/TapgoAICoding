@@ -1342,6 +1342,7 @@ struct ComposerView: View {
                             .accessibilityLabel("当前项目 \(p.displayName), 路径 \(p.displayPath), 点击切换")
                         }
                         .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                     } else {
                         Menu {
                             Button {
@@ -1361,12 +1362,12 @@ struct ComposerView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "folder").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
                                 Text("选择项目").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(DSHTheme.surface, in: Capsule())
                         }
                         .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                     }
 
                     environmentChip
@@ -1472,7 +1473,6 @@ struct ComposerView: View {
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                             }
-                            Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier)).foregroundStyle(.tertiary)
                         }
                         .foregroundStyle(DSHTheme.brand)
                         .padding(.horizontal, 8).padding(.vertical, 3)
@@ -1481,6 +1481,7 @@ struct ComposerView: View {
                         .accessibilityLabel("模型 \(store.modelName), 来自独立配置")
                     }
                     .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
 
                     if isRunning {
                         Button(action: { store.cancelActiveTurn() }) {
@@ -1629,14 +1630,12 @@ struct ComposerView: View {
             HStack(spacing: 4) {
                 Image(systemName: currentPermission.icon).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Text(currentPermission.title).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Image(systemName: "chevron.down")
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 8).padding(.vertical, 3)
             .background(DSHTheme.surface, in: Capsule())
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .help("操作权限: \(currentPermission.title)")
         .accessibilityLabel("操作权限")
     }
