@@ -1231,7 +1231,9 @@ struct ComposerView: View {
             // panel — matching Codex: both cards stay full-width, same surface,
             // same radius, separated by a small gap (no overlap, no shared
             // border).
-            VStack(spacing: store.activeQueue.isEmpty ? 0 : -10) {
+            // spacing -25 让 composer 顶部向下压住队列卡片约 25pt，
+            // 形成清晰的「输入框浮在排队卡片上方」层次。
+            VStack(spacing: store.activeQueue.isEmpty ? 0 : -25) {
                 queueStatusBar
 
                 // Centered, max-width rounded dock (mirrors the DSH composer
@@ -1868,7 +1870,10 @@ struct ComposerView: View {
                         .padding(.bottom, 6)
                 }
             }
-            .frame(maxWidth: contentWidth)
+            // 队列卡片宽度比 composer 窄（左右各 24pt），让 composer
+            // 包裹感更强；卡片整体缩进居中显示。
+            .frame(maxWidth: contentWidth - 48)
+            .frame(maxWidth: .infinity, alignment: .center)
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
