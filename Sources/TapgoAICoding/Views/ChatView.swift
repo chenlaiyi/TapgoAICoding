@@ -1797,13 +1797,12 @@ struct ComposerView: View {
     /// Codex-style queue attached directly above the composer. The queue is a
     /// single quiet surface: rows update in place, keep one-line previews, and
     /// leave the primary actions aligned at the trailing edge.
-    /// 队列卡片自适应高度：每行 44pt + 1pt 分隔线，封顶 240pt 后
-    /// 内部滚动；1 条排队时仅占 1 行高度，不会出现 v0.5.12 那
-    /// 永远 240pt 留白的问题。
+    /// 队列卡片自适应高度：顶部小标题 22pt + VStack spacing 6 + 行 41pt/行 + 6pt 底部 padding，封顶 240pt 后内部滚动。
     private var queueAdaptiveHeight: CGFloat {
+        let header: CGFloat = 22
         let perRow: CGFloat = 41 // 32 row content + 8 vertical padding + 1 divider
         let count = CGFloat(store.activeQueue.count)
-        let natural = count * perRow + 6 // VStack spacing/padding
+        let natural = header + 6 + count * perRow + 6 // header + spacing + rows + bottom
         return min(natural, 240)
     }
 
@@ -1811,14 +1810,36 @@ struct ComposerView: View {
     private var queueStatusBar: some View {
         if !store.activeQueue.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "tray.full.fill")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(DSHTheme.brand.opacity(0.85))
+                    Text("排队中 · \(store.activeQueue.count) 条")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                        .tracking(0.4)
+                    Spacer(minLength: 0)
+                    Text("拖动排序 · 右键编辑")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
                             queueRow(q, index: index)
                             if index < store.activeQueue.count - 1 {
-                                Divider()
-                                    .opacity(0.25)
-                                    .padding(.leading, 32)
+                                Rectangle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.clear, DSHTheme.border.opacity(0.55), .clear],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 16)
                             }
                         }
                     }
@@ -1835,11 +1856,26 @@ struct ComposerView: View {
                 }
             }
             .frame(maxWidth: contentWidth)
-            .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(DSHTheme.border, lineWidth: 1)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.regularMaterial)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(DSHTheme.bgLayer1.opacity(0.55))
+                }
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [DSHTheme.brand.opacity(0.18), DSHTheme.border.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 6)
             .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityIdentifier("queued-message-card")
         }
@@ -1859,8 +1895,8 @@ struct ComposerView: View {
         HStack(spacing: 8) {
             Image(systemName: "arrow.turn.down.right")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
-                .frame(width: 16)
+                .foregroundStyle(DSHTheme.brand.opacity(0.45))
+                .frame(width: 18)
 
             if let firstImage = q.images.first {
                 queueThumbnail(for: firstImage, count: q.images.count)
