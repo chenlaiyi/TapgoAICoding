@@ -21,7 +21,7 @@
 
 ## v0.5.10 — 套餐用量固定右对齐
 **Date**: 2026-08-29
-**Commit**: _pending_
+**Commit**: 6cc0517
 **Tag**: v0.5.10
 **Test status**: — 套餐空态 17/17；macOS Release build + 三机安装回读通过 —
 **Changed**:

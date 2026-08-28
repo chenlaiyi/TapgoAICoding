@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.10",
                     date: "2026-08-29",
-                    commit: "_pending_",
+                    commit: "6cc0517",
                     tag: "v0.5.10",
                     summary: "套餐用量在输入区下方固定右对齐",
                     changes: [
