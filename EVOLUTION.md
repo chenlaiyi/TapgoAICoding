@@ -21,7 +21,7 @@
 
 ## v0.5.23 — 手机 H5 助手输出 Markdown 富文本渲染
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 60100a1
 **Tag**: v0.5.23
 **Test status**: 2240 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
