@@ -21,7 +21,7 @@
 
 ## v0.5.17 — 手机 H5『电脑控制』页（截屏/点按/滚动/打字/按键/锁屏）+ 三种接入方式
 **Date**: 2026-08-29
-**Commit**: (待回填)
+**Commit**: 658b9d1
 **Tag**: v0.5.17
 **Test status**: 2062 passed / 0 failed（13 个 SSH 集成测试用 `TAPGO_SKIP_REMOTE_TESTS=1` 跳过）
 **Changed**:

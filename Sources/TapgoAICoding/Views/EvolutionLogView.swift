@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.17",
                     date: "2026-08-29",
-                    commit: "",
+                    commit: "658b9d1",
                     tag: "v0.5.17",
                     summary: "手机 H5 新增『电脑控制』页（截屏/点按/滚动/打字/按键/锁屏）+ 三种接入方式（Wi-Fi/Tailscale/公网中继）",
                     changes: [
