@@ -289,6 +289,36 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.15",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.15",
+                    summary: "Markdown 视觉升级 + composer 底部 metrics 重写 + 真实账户 rateLimits 接入",
+                    changes: [
+                        "Markdown 视觉升级：AppFont 新增 pointSize(for:multiplier:) 公共 helper，MarkdownMessageView 把 Block.para 改为保留原始 MarkdownSegment 后再按 appFontScale 重新拼装；新增 paragraphView(segs:)；ListView 紧凑化（marker footnote + labelTertiary + 2pt 间距 + 2pt leading 缩进）；行内代码字号比正文小 1.5pt + brandStrong 文字 + moduleBg 圆角底色仿 chip；TaskListView checkbox hierarchical + labelTertiary 色调；QuoteView 改吃 MarkdownSegment 让引用内子样式与正文一致。",
+                        "Composer 底部 metrics 重写：删除旧 rounds · steps / LLM 时长 / 缓存命中 / 输入 tokens 五个文本 chip,替换为一个 CircularContextMeter（按实时 rateLimits 压力 → 上下文窗口使用率优先级显示百分比）；详细信息挪进悬停 / 点击弹出的 ModelUsagePopover，含套餐用量 / 5h 与 weekly 窗口剩余与重置时间 / credits 余额 / 输入输出 tokens / 平均缓存命中 / 上下文上限；pinned 状态由点击切换。",
+                        "真实账户 rateLimits 接入：新增 TapgoCore/RateLimits 与 TapgoCore/ModelUsageMetrics；CodexHarnessClient.readRateLimits() 走 JSON-RPC account/rateLimits/read，initialize / initialized 之后幂等调用，失败时返回空 snapshot；ExecEvent 解析 harness 推送的 account/rateLimits/updated 通知（ExecEventParserTests +57 行覆盖）；SessionStore 增加 rateLimits / rateLimitsLoading / rateLimitsError 状态 + refreshRateLimits()，每次 popover 打开时刷新。",
+                        "Composer 清空按钮误显修复：新增 tapgoIsComposerUserContentEmpty(text:attachedImageCount:) helper，过滤 NBSP / 全角空格 / 零宽字符，空 composer 不再误显 xmark.circle.fill。",
+                        "同步把 makeHistory() 里上一轮漏补的 v0.5.14 条目 prepend，避免 App 内『自进化日志』页面落后于实际版本。"
+                    ],
+                    why: "上一轮 v0.5.14 把队列卡片宽度调到 90% 后，本轮集中处理三类遗留：Markdown 段落 / 列表 / 行内代码视觉层次弱；composer 底部五个文本 chip 一直展开，与 chat 内其余位置权重不平衡；v0.5.6 的『套餐用量』chip 一直用 thread 累计 token 做占位，需要接入真实 harness account/rateLimits 数据。三件事都集中在『输入 / 消息内容可读性』这条主线上，因此合并发 v0.5.15。",
+                    next: "真机视觉回归 composer 底部圆环在不同上下文压力下的颜色梯度；为 ModelUsagePopover 增加可点击复制剩余 / 重置时间；评估是否把 5h / weekly 窗口快捷指示器放进 chip 头部避免每次点开。"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.14",
+                    date: "2026-08-29",
+                    commit: "a7ffa45",
+                    tag: "v0.5.14",
+                    summary: "队列卡片宽度 = composer × 0.90",
+                    changes: [
+                        "queueStatusBar 末尾宽度约束从 contentWidth 改为 contentWidth * 0.90：队列卡片固定为输入框卡片的 90% 并整体居中，恢复『排队卡片比输入框略窄』的层次感。",
+                        "同步更新两处注释（queueStatusBar 与队列面板说明），避免后续再被改回同宽。",
+                        "同步把版本号 / EVOLUTION / makeHistory / project.yml / Info.plist / tag 全部对齐到 0.5.14。"
+                    ],
+                    why: "上一版把队列卡片改成与输入框同宽后，用户反馈宽度弄错了，明确要求队列卡片应为输入框卡片宽度的 90%。",
+                    next: "继续优化 Markdown 输出内容（段落 / 列表 / 行内代码）的视觉层次。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.13",
                     date: "2026-08-29",
                     commit: "5ccb271",

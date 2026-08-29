@@ -96,6 +96,16 @@ final class SessionStore: ObservableObject {
     @Published var turnFeedback: [String: Int] = [:]
     @Published var setupError: SetupError?
 
+    /// Latest `account/rateLimits` snapshot from the harness. Drives the
+    /// composer popover (5h + weekly windows + credits balance). Updated
+    /// by the live `account/rateLimits/updated` notification or a manual
+    /// `refreshRateLimits()` call (e.g. when the popover opens).
+    @Published var rateLimits: RateLimitsSnapshot?
+    @Published var rateLimitsLoading: Bool = false
+    /// Last error from `refreshRateLimits()` so the popover can show a
+    /// brief failure caption instead of a misleading "—".
+    @Published var rateLimitsError: String?
+
     /// Approval requests the harness is waiting on, keyed by request id.
     /// `ApprovalRow` watches this and resolves entries by calling
     /// `respondToApproval`.
@@ -105,6 +115,47 @@ final class SessionStore: ObservableObject {
     @Published private(set) var liveThreads: [TapgoCore.Thread] = []
 
     var modelName: String { TapgoConfig.modelName }
+
+    /// Fetch the latest `account/rateLimits` snapshot from any live
+    /// harness and write it to `rateLimits`. Safe to call repeatedly —
+    /// overlapping calls are coalesced via `rateLimitsLoading`. Falls
+    /// back to the active runner, then any other live runner, so the
+    /// popover can populate even before the user starts a turn.
+    func refreshRateLimits() {
+        guard !rateLimitsLoading else { return }
+        guard let runner = firstLiveRunner() else {
+            // No harness running yet (rare — the popover appears with the
+            // composer, which exists before any turn is dispatched). The
+            // next harness to start will fire `account/rateLimits/updated`
+            // automatically once the handshake completes.
+            return
+        }
+        rateLimitsLoading = true
+        Task { @MainActor [weak self] in
+            defer { self?.rateLimitsLoading = false }
+            do {
+                let snap = try await runner.readRateLimits()
+                guard let self else { return }
+                self.rateLimits = snap
+                self.rateLimitsError = nil
+            } catch {
+                guard let self else { return }
+                self.rateLimitsError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Pick the harness that should service a `account/rateLimits/read`
+    /// call: the active thread's runner, else the first live runner.
+    /// Mirrors the picker the harness supervisor uses for ad-hoc requests.
+    private func firstLiveRunner() -> CodexHarnessClient? {
+        if let activeId = activeThreadId,
+           let ctx = runsByThreadId[activeId] {
+            return ctx.runner
+        }
+        return runsByThreadId.values.first?.runner
+    }
+
 
     private static let lastThreadKey = "tapgo.lastThreadId"
 
@@ -1080,6 +1131,12 @@ final class SessionStore: ObservableObject {
             if turn.status == .running || turn.status == .awaitingApproval {
                 turn.usage = usage
             }
+        case .rateLimitsUpdated(let snapshot):
+            // Harness pushed a fresh `account/rateLimits/updated` — push it
+            // onto the shared snapshot so the composer popover (and any
+            // other subscribers) redraw without needing a manual refresh.
+            rateLimits = snapshot
+            rateLimitsError = nil
         case .planUpdated(let turnId, let explanation, let steps):
             let id = "plan-\(turnId)"
             let renderedSteps = steps.map { step -> String in

@@ -367,3 +367,60 @@ func runTokenUsageParsing(_ t: TestRunner) {
     t.expectEqual(TokenUsage(total: 900_000, contextWindow: 1_000_000).contextLevel, .critical, "level: 90% → critical")
     t.expectNil(TokenUsage(total: 100).contextLevel, "level: no contextWindow → nil")
 }
+
+/// Exercises `account/rateLimits/updated` notification parsing. Mirrors the
+/// `codex account/rateLimits/read` response shape.
+@MainActor
+func runExecEventParserRateLimitsUpdated(_ t: TestRunner) {
+    let params: [String: JSONValue] = [
+        "rateLimits": .object([
+            "primary": .object([
+                "usedPercent": .int(11),
+                "windowDurationMins": .int(300),
+                "resetsAt": .int(1_779_752_562),
+            ]),
+            "secondary": .object([
+                "usedPercent": .int(2),
+                "windowDurationMins": .int(10080),
+                "resetsAt": .int(1_780_339_362),
+            ]),
+            "credits": .object([
+                "hasCredits": .bool(false),
+                "unlimited": .bool(true),
+                "balance": .string(""),
+            ]),
+            "planType": .string("pro"),
+        ])
+    ]
+    if case .rateLimitsUpdated(let snap)? =
+        ExecEventParser.parse(method: "account/rateLimits/updated", params: params) {
+        t.expectEqual(snap.primary?.usedPercent ?? -1, 11, "rate-limits event: primary %")
+        t.expectEqual(snap.secondary?.windowDurationMins ?? -1, 10080, "rate-limits event: secondary duration")
+        t.expectEqual(snap.credits?.unlimited ?? false, true, "rate-limits event: credits unlimited")
+        t.expectEqual(snap.planLabel ?? "", "Pro", "rate-limits event: plan label")
+    } else {
+        t.expect(false, "rate-limits event: parsed as rateLimitsUpdated")
+    }
+
+    // snake_case alternative wrapper (defensive).
+    let snake: [String: JSONValue] = [
+        "rate_limits": .object([
+            "primary": .object([
+                "used_percent": .int(50),
+                "window_duration_mins": .int(300),
+            ]),
+        ])
+    ]
+    if case .rateLimitsUpdated(let s2)? =
+        ExecEventParser.parse(method: "account/rateLimits/updated", params: snake) {
+        t.expectEqual(s2.primary?.usedPercent ?? -1, 50, "rate-limits event: snake_case parsed")
+    } else {
+        t.expect(false, "rate-limits event: snake_case parsed")
+    }
+
+    // Empty payload should NOT yield a stray event (the popover handles nil itself).
+    t.expectNil(
+        ExecEventParser.parse(method: "account/rateLimits/updated", params: [:]),
+        "rate-limits event: empty params → nil"
+    )
+}

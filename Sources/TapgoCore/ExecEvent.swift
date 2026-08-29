@@ -56,6 +56,11 @@ public enum ExecEvent: Hashable {
     /// declined so the harness cannot remain wedged in the background.
     case approvalExpired(ApprovalRequest)
 
+    /// `account/rateLimits/updated` notification from the harness.
+    /// Carries the live subscription/quota snapshot used by the
+    /// composer popover (5h + weekly windows + credits balance).
+    case rateLimitsUpdated(snapshot: RateLimitsSnapshot)
+
     case error(message: String)
 
     public struct FileChangeOp: Hashable {
@@ -179,6 +184,15 @@ public enum ExecEventParser {
             let index = params["summary_index"]?.intOrBoolAsInt
                 ?? params["summaryIndex"]?.intOrBoolAsInt
             return .reasoningSummaryDelta(id: id, index: index, delta: delta)
+
+        case "account/rateLimits/updated":
+            // Codex app-server: { "rateLimits": { ... } }
+            if let snap = RateLimitsSnapshot.fromJSON(
+                params["rateLimits"] ?? params["rate_limits"]
+            ) {
+                return .rateLimitsUpdated(snapshot: snap)
+            }
+            return nil
 
         case "error":
             if let msg = params["message"]?.stringValue {

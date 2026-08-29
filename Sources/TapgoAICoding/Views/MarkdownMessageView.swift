@@ -17,14 +17,14 @@ struct MarkdownMessageView: View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
-                case .para(let attr):
-                    Text(attr).textSelection(.enabled)
+                case .para(let segs):
+                    paragraphView(segs: segs)
                 case .code(let code, let lang):
                     CodeBlockView(code: code, lang: lang)
                 case .list(let items, let ordered):
                     ListView(items: items, ordered: ordered)
-                case .quote(let attr):
-                    QuoteView(attr: attr)
+                case .quote(let segs):
+                    QuoteView(segs: segs)
                 case .rule:
                     Divider().padding(.vertical, 2)
                 case .table(let headers, let rows):
@@ -42,10 +42,12 @@ struct MarkdownMessageView: View {
     }
 
     private enum Block {
-        case para(AttributedString)
+        /// 段落 — 暂存原始 segs，渲染时根据 appFontScale 重新构造 AttributedString，
+        /// 以保证 inline / bold / 行内代码的字号、字重、行内代码底色等跟随用户字号偏好。
+        case para([MarkdownSegment])
         case code(code: String, lang: String?)
         case list(items: [[MarkdownSegment]], ordered: Bool)
-        case quote(AttributedString)
+        case quote([MarkdownSegment])
         case rule
         case table(headers: [String], rows: [[String]])
         case task([TaskItem])
@@ -69,7 +71,7 @@ struct MarkdownMessageView: View {
                 out.append(.list(items: items, ordered: true))
             case .blockquote(let segs):
                 appendPara(&out, &acc)
-                out.append(.quote(inlineAttributed(segs)))
+                out.append(.quote(segs))
             case .horizontalRule:
                 appendPara(&out, &acc)
                 out.append(.rule)
@@ -95,37 +97,47 @@ struct MarkdownMessageView: View {
 
     private static func appendPara(_ out: inout [Block], _ acc: inout [MarkdownSegment]) {
         if !acc.isEmpty {
-            out.append(.para(inlineAttributed(acc)))
+            out.append(.para(acc))
             acc = []
         }
     }
 
     /// Convert an inline-level segment run (text / inline / bold) into an
     /// `AttributedString` so a paragraph or a list item can be rendered
-    /// with mixed fonts in one drawing.
-    fileprivate static func inlineAttributed(_ segs: [MarkdownSegment]) -> AttributedString {
+    /// with mixed fonts in one drawing. `baseFontSize` 控制正文 / 行内代码 / 加粗
+    /// 字号；三者皆按 appFontScale 计算，从而跟随用户字号偏好。
+    fileprivate static func inlineAttributed(
+        _ segs: [MarkdownSegment],
+        baseFontSize: CGFloat = AppFont.pointSize(for: .body, multiplier: 1)
+    ) -> AttributedString {
         var a = AttributedString()
+        // 行内代码比正文略小一档，圆角风格通过 moduleBg 底色 + 比正文略深的 brandStrong 文字呈现。
+        let inlineSize = max(baseFontSize - 1.5, 9)
         for seg in segs {
             switch seg {
             case .text(let s):
-                a += AttributedString(s)
+                var r = AttributedString(s)
+                r.font = .system(size: baseFontSize)
+                a += r
             case .inline(let s):
                 var r = AttributedString(s)
-                r.font = .system(.body, design: .monospaced)
-                r.backgroundColor = DSHTheme.codeBlockBanner
+                r.font = .system(size: inlineSize, weight: .medium, design: .monospaced)
+                r.foregroundColor = DSHTheme.brandStrong
+                r.backgroundColor = DSHTheme.moduleBg
                 a += r
             case .bold(let s):
                 var r = AttributedString(s)
-                r.font = .body.bold()
+                r.font = .system(size: baseFontSize, weight: .semibold)
                 a += r
             case .strikethrough(let s):
                 var r = AttributedString(s)
-                r.font = .body
+                r.font = .system(size: baseFontSize)
                 r.strikethroughStyle = .single
                 a += r
             case .link(let title, let url):
                 var r = AttributedString(title)
                 r.link = URL(string: url)
+                r.font = .system(size: baseFontSize)
                 r.foregroundColor = DSHTheme.brand
                 r.underlineStyle = .single
                 a += r
@@ -136,23 +148,45 @@ struct MarkdownMessageView: View {
         return a
     }
 
+
+    /// 段落渲染：字号跟随 appFontScale，行间距放大到 3pt 让长段落在 chat 里更易扫读；
+    /// `fixedSize(horizontal:false, vertical:true)` 确保段落被允许按内容撑开高度（避免某些容器
+    /// 默认 single-line 行为）。
+    @ViewBuilder
+    private func paragraphView(segs: [MarkdownSegment]) -> some View {
+        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
+        Text(Self.inlineAttributed(segs, baseFontSize: bodySize))
+            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+            .lineSpacing(3)
+            .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
     private struct ListView: View {
         @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
         let items: [[MarkdownSegment]]
         let ordered: Bool
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 4) {
+            // 列表项之间紧凑（spacing 2），外层稍微缩进避开 chat 内边距；
+            // marker 用 tertiary 弱化、字号比正文略小、靠右对齐的固定列宽，
+            // 让多行嵌套与不同长度的 marker（`•` vs `12.`）也保持视觉对齐。
+            let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
+            let markerSize = AppFont.pointSize(for: .footnote, multiplier: appFontScale.multiplier)
+            VStack(alignment: .leading, spacing: 2) {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
-                            .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                        Text(MarkdownMessageView.inlineAttributed(item))
+                            .font(.system(size: markerSize, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(DSHTheme.labelTertiary)
+                            .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
+                        Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
                             .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
+            .padding(.leading, 2)
         }
     }
 }
@@ -243,18 +277,20 @@ private struct HeadingView: View {
 
 /// Left-bordered, muted quote block for `> …` lines. Rendered as a Codex-
 /// style info callout card (quote icon + bordered surface) rather than a
-/// bare italic blockquote.
+/// bare italic blockquote. 内部仍走 `inlineAttributed(_, baseFontSize:)`，
+/// 这样引用里的 inline code / bold / link 视觉与正文一致。
 private struct QuoteView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
-    let attr: AttributedString
+    let segs: [MarkdownSegment]
 
     var body: some View {
+        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "quote.opening")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
-            Text(attr)
+            Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
                 .textSelection(.enabled)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -332,21 +368,29 @@ private struct TableView: View {
     }
 }
 
-/// Checklist for `- [ ]` / `- [x]` task lines.
+/// Checklist for `- [ ]` / `- [x]` task lines. checkbox 用 hierarchical 渲染 + 与正文
+/// 同步字号比例；unchecked 时落到 DSHTheme.labelTertiary，整体视觉比纯色二级图标更克制。
 private struct TaskListView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let items: [TaskItem]
 
     var body: some View {
+        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: item.checked ? "checkmark.square.fill" : "square")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(item.checked ? .green : .secondary)
-                    Text(MarkdownMessageView.inlineAttributed(item.content))
+                        .font(.system(size: bodySize, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(item.checked ? DSHTheme.success : DSHTheme.labelTertiary)
+                        .frame(width: bodySize + 2, alignment: .leading)
+                    Text(MarkdownMessageView.inlineAttributed(item.content, baseFontSize: bodySize))
                         .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        // 已勾选项视觉上略暗；SwiftUI Text 自身支持 strikethrough，这里靠
+                        // segment 走 inlineAttributed 的 strikethrough 段，未来若 segment 模型
+                        // 暴露 done 字段，再加整行删除线。
                 }
             }
         }

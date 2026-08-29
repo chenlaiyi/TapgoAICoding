@@ -429,6 +429,38 @@ final class CodexHarnessClient {
     }
 
     /// Runtime policy is re-applied on resume so changing the UI from full
+    /// Read the current `account/rateLimits` snapshot from the harness.
+    /// This is the authoritative source for the composer popover: 5h +
+    /// weekly windows, credits balance, and `rateLimitsByLimitId` for
+    /// per-tool quotas. The harness also pushes `account/rateLimits/updated`
+    /// notifications, which `ExecEventParser` decodes into the same type.
+    ///
+    /// Must be called *after* `initialize` / `initialized`, otherwise the
+    /// harness returns "Not initialized". `run()` establishes the
+    /// handshake before any user-visible request fires, so callers can use
+    /// this while a turn is idle or running.
+    func readRateLimits() async throws -> RateLimitsSnapshot {
+        let response = try await request(method: "account/rateLimits/read", params: [:])
+        if let snap = RateLimitsSnapshot.fromJSON(response) {
+            return snap
+        }
+        // Older harnesses may wrap the payload under `result` instead of
+        // returning the dict directly; accept either shape.
+        if let snap = RateLimitsSnapshot.fromJSON(response.objectValue?["result"]) {
+            return snap
+        }
+        // Nothing useful in the response — surface an empty snapshot so the
+        // UI can still show "等待服务端响应" without crashing.
+        return RateLimitsSnapshot(
+            primary: nil,
+            secondary: nil,
+            credits: nil,
+            planType: nil,
+            byLimitId: [],
+            fetchedAt: Date()
+        )
+    }
+
     /// access to read-only (or vice versa) takes effect on the existing
     /// thread. `serviceName` is accepted only by thread/start.
     private func threadRuntimeParams(

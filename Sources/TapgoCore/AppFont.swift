@@ -107,6 +107,12 @@ public enum AppFont {
         return .system(size: base * multiplier)
     }
 
+    /// 单点像素尺寸 helper（无字体绘制，纯数值），供 markdown 解析等需要
+    /// 按文本样式 + multiplier 计算具体 point size 的场景使用。
+    public static func pointSize(for style: Font.TextStyle, multiplier: CGFloat) -> CGFloat {
+        (baseSizes[style] ?? 13) * multiplier
+    }
+
     /// Monospaced variant for code / paths / timestamps. Caller picks
     /// the base size; this helper applies the supplied multiplier.
     public static func monoScaled(size: CGFloat, weight: Font.Weight = .regular, multiplier: CGFloat) -> Font {

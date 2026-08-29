@@ -5,10 +5,37 @@ import UniformTypeIdentifiers
 
 /// Compact token/byte formatter shared by ChatView and ComposerView:
 /// "1.2M" / "12.3k" / "123".
-fileprivate func tapgoFormatCount(_ n: Int) -> String {
+internal func tapgoFormatCount(_ n: Int) -> String {
     if n >= 1_000_000 { return String(format: "%.1fM", Double(n) / 1_000_000) }
     if n >= 1_000 { return String(format: "%.0fk", Double(n) / 1_000) }
     return "\(n)"
+}
+
+/// True iff the composer holds nothing the user could meaningfully send.
+/// Strips Unicode invisibles (NBSP / 全角空格 / ZW*) before testing, so a
+/// composer that only contains an NBSP or zero-width joiner is treated as
+/// empty. The previous `text.trimmingCharacters(in: .whitespacesAndNewlines)`
+/// check missed these and the inline `xmark.circle.fill` clear button
+/// leaked through in an otherwise empty composer.
+internal func tapgoIsComposerUserContentEmpty(text: String, attachedImageCount: Int) -> Bool {
+    if attachedImageCount > 0 { return false }
+    let invisibles: Set<Character> = [
+        "\u{00A0}", // NBSP
+        "\u{2007}", // FIGURE SPACE
+        "\u{202F}", // NARROW NO-BREAK SPACE
+        "\u{3000}", // IDEOGRAPHIC SPACE (全角空格)
+        "\u{FEFF}", // ZERO WIDTH NO-BREAK SPACE
+        "\u{200B}", // ZERO WIDTH SPACE
+        "\u{200C}", // ZWNJ
+        "\u{200D}", // ZWJ
+        "\u{2060}", // WORD JOINER
+    ]
+    for ch in text {
+        if ch.isWhitespace { continue }
+        if invisibles.contains(ch) { continue }
+        return false
+    }
+    return true
 }
 
 /// Codex-style operation-permission tiers shown in the composer's single
@@ -1141,6 +1168,10 @@ struct ComposerView: View {
     /// The compact progress chip stays visible during a planned turn; its
     /// full checklist opens only when the user asks for it.
     @State private var showTurnProgressDetails = false
+    /// composer 底部圆形进度条 popover。`pinned` 表示用户已点开,鼠标
+    /// 移出不应自动关闭。
+    @State private var showUsagePopover: Bool = false
+    @State private var usagePopoverPinned: Bool = false
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
@@ -1400,7 +1431,7 @@ struct ComposerView: View {
                     .help(editorExpanded ? "收起输入框" : "展开输入框")
                     .accessibilityLabel(editorExpanded ? "收起输入框" : "展开输入框")
 
-                    if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !store.attachedImages.isEmpty {
+                    if !tapgoIsComposerUserContentEmpty(text: text, attachedImageCount: store.attachedImages.count) {
                         Button {
                             text = ""
                             store.clearImages()
@@ -1752,47 +1783,55 @@ struct ComposerView: View {
         .background(DSHTheme.surface)
     }
 
-    /// DSH-style metrics bar below the input: rounds · steps · LLM time ·
-    /// cache hit · input tokens. Context percentage is intentionally omitted:
-    /// Harness compacts automatically, so an instantaneous fill meter implies
-    /// a hard per-conversation limit that does not exist.
+    /// Composer 底部只剩一个圆形上下文进度条;悬停 / 点击弹出
+    /// `ModelUsagePopover` 显示套餐 / 余额明细。原先的"轮 / 步 / LLM /
+    /// 缓存命中 / 输入 tokens"5 个文本 chip 已删除,信息全部进入弹窗。
     @ViewBuilder
     private var composerMetricsBar: some View {
         if let thread = activeThread {
-            let rounds = thread.turns.count
-            let steps = thread.turns.reduce(0) { acc, t in
-                acc + t.items.filter { item in
-                    switch item {
-                    case .toolCall, .commandExecution: return true
-                    default: return false
-                    }
-                }.count
-            }
             let lastUsage = thread.turns.last(where: { $0.usage != nil })?.usage
-            let cacheHit = cacheHitPercent(lastUsage)
-
-            HStack(spacing: 12) {
-                HStack(spacing: 2) {
-                    Text("\(rounds) 轮")
-                    Text("·")
-                    Text("\(steps) 步")
+            let avgCache = averageCacheHitPercent(thread: thread)
+            // Compose the meter's percent: prefer live rate-limit pressure
+            // (most actionable), fall back to context window usage.
+            let meterPercent: Int? = store.rateLimits?.worstUsedPercent
+                ?? lastUsage?.contextPercent
+            CircularContextMeter(percent: meterPercent, isActive: isRunning)
+                .help("查看模型用量与剩余额度")
+                .contentShape(Rectangle())
+                .onAppear { store.refreshRateLimits() }
+                .onHover { hovering in
+                    if hovering {
+                        // Trigger a fresh fetch every time the popover
+                        // opens so the user always sees the latest snapshot.
+                        store.refreshRateLimits()
+                        showUsagePopover = true
+                    } else if !usagePopoverPinned {
+                        showUsagePopover = false
+                    }
                 }
-                if let d = thread.durationTotalText {
-                    Text("LLM \(d)")
+                .onTapGesture {
+                    showUsagePopover.toggle()
+                    usagePopoverPinned.toggle()
+                    if showUsagePopover { store.refreshRateLimits() }
                 }
-                if let c = cacheHit {
-                    Text("缓存命中 \(c)%")
+                .popover(isPresented: $showUsagePopover, arrowEdge: .top) {
+                    ModelUsagePopover(
+                        usage: lastUsage,
+                        averageCacheHitPercent: avgCache,
+                        rateLimits: store.rateLimits,
+                        rateLimitsLoading: store.rateLimitsLoading,
+                        rateLimitsError: store.rateLimitsError,
+                        appFontScale: appFontScale
+                    )
                 }
-                if thread.usageTotal > 0 {
-                    Text("输入 \(tapgoFormatCount(thread.usageTotal))")
-                }
-            }
-            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
-            .frame(maxWidth: contentWidth)
-            .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 4)
+                .frame(maxWidth: contentWidth)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+    }
+
+    private func averageCacheHitPercent(thread: TapgoCore.Thread) -> Int? {
+        ModelUsageMetrics.averageCacheHitPercent(turns: thread.turns)
     }
 
     private func cacheHitPercent(_ usage: TokenUsage?) -> Int? {

@@ -66,6 +66,9 @@ let allSections: [String] = [
     "ExecEvent: turn plan, diff, compaction",
     "ExecEvent: reasoning summary delta",
     "TokenUsage: parsing (camelCase + snake_case)",
+    "ModelUsageMetrics: percentOfWindow + averageCacheHitPercent",
+    "RateLimits: JSON parsing + display helpers",
+    "ExecEvent: account/rateLimits/updated notification",
     "MarkdownLite: fenced code blocks",
     "MarkdownLite: inline code + bold",
     "MarkdownLite: passthrough",
@@ -304,6 +307,15 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "TokenUsage: parsing (camelCase + snake_case)") {
             runTokenUsageParsing(runner)
+        }
+        await runIfInScope(runner, "ModelUsageMetrics: percentOfWindow + averageCacheHitPercent") {
+            runModelUsageMetrics(runner)
+        }
+        await runIfInScope(runner, "RateLimits: JSON parsing + display helpers") {
+            runRateLimitsParsing(runner)
+        }
+        await runIfInScope(runner, "ExecEvent: account/rateLimits/updated notification") {
+            runExecEventParserRateLimitsUpdated(runner)
         }
         await runIfInScope(runner, "MarkdownLite: fenced code blocks") {
             runMarkdownLiteFencedCode(runner)
