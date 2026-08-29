@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.21",
                     date: "2026-08-29",
-                    commit: "PLACEHOLDER",
+                    commit: "9c02040",
                     tag: "v0.5.21",
                     summary: "手机 H5 全面仿 ZCode 输入/输出形态：composer 卡片 + 用户气泡 + 工作区列表徽标",
                     changes: [

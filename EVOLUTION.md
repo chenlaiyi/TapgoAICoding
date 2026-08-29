@@ -21,7 +21,7 @@
 
 ## v0.5.21 — 手机 H5 全面仿 ZCode 输入/输出形态
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 9c02040
 **Tag**: v0.5.21
 **Test status**: 2212 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
