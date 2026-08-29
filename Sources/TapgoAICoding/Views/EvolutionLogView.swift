@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.15",
                     date: "2026-08-29",
-                    commit: "PLACEHOLDER",
+                    commit: "4bf25fe",
                     tag: "v0.5.15",
                     summary: "Markdown 视觉升级 + composer 底部 metrics 重写 + 真实账户 rateLimits 接入",
                     changes: [

@@ -194,7 +194,7 @@
 
 ## v0.5.15 — Markdown 视觉升级 + composer 底部 metrics 重写 + 真实账户 rateLimits 接入
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 4bf25fe
 **Tag**: v0.5.15
 **Test status**: 1290 passed / 8 SSH 集成测试因 RFC 5737 测试地址 203.0.113.10 不可达失败（与本版无关）；Release App 构建通过（SDK 26.5，无 SwiftUI 宏插件问题）
 **Changed**:
