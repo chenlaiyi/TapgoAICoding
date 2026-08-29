@@ -522,6 +522,20 @@ enum TapgoConfig {
         if installedCatalog != desiredCatalog {
             try writeDefaultCatalog(region: defaultRegion)
         }
+
+        // 同样地同步 config.toml: 老版本写出的 config.toml 可能漏掉
+        // `model_auto_compact_token_limit` (v0.3.0 之后才加入模板), 缺了这条
+        // harness 就不会在 800k 自动压缩上下文, 用户会话会一路累积到几十 MB
+        // (实测 24M tokens 仍不 compact, 弹窗里 contextPercent 显示 2524%)。
+        // 这里只 diff 模板期望内容, 不动 auth.json; bearer token 仍是占位符,
+        // 真正的 key 由 harness 启动时从 auth.json 读出。
+        let desiredConfig = renderConfig(region: defaultRegion)
+        let installedConfig = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
+        if installedConfig != desiredConfig {
+            try atomicWrite(Data(desiredConfig.utf8), to: configPath)
+            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
+            Self.log("ensureReady: config.toml 漂移, 已用模板重写 (保留 auth.json 不动)")
+        }
     }
 
     /// Writes config.toml + auth.json + model-catalogs/tapgo-catalog.json

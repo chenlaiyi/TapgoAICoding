@@ -71,6 +71,8 @@ let allSections: [String] = [
     "ExecEvent: account/rateLimits/updated notification",
     "MiniMaxQuota: SnapshotBuilder (remaining → used)",
     "MiniMaxQuota: MiniMaxQuotaClient (transport-injected)",
+    "MiniMaxQuota: lenient match + dual-endpoint fallback",
+    "MiniMaxQuota: timestamp parsing (ms vs s)",
     "MarkdownLite: fenced code blocks",
     "MarkdownLite: inline code + bold",
     "MarkdownLite: passthrough",
@@ -346,6 +348,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "MiniMaxQuota: MiniMaxQuotaClient (transport-injected)") {
             await runMiniMaxQuotaClient(runner)
+        }
+        await runIfInScope(runner, "MiniMaxQuota: lenient match + dual-endpoint fallback") {
+            await runMiniMaxQuotaLenientMatch(runner)
+        }
+        await runIfInScope(runner, "MiniMaxQuota: timestamp parsing (ms vs s)") {
+            runMiniMaxQuotaTimestampParsing(runner)
         }
         await runIfInScope(runner, "MarkdownLite: fenced code blocks") {
             runMarkdownLiteFencedCode(runner)

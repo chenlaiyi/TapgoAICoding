@@ -271,16 +271,20 @@ public enum MiniMaxQuotaSnapshotBuilder {
     /// snapshot's `fetchedAt` so the popover can show "重置于" countdowns
     /// relative to the same instant the data was pulled.
     public static func build(from entry: [String: Any], now: Date) -> RateLimitsSnapshot {
+        // MiniMax 接口除 total / usage 外还直接给 `_remaining_percent`（剩余百分比）。
+        // 当 total=0（账户尚未分配 quota 或 quota 用尽）时这个字段仍然有意义，
+        // 所以我们优先用 `_remaining_percent` 反推 usedPercent。
         let primary = makeWindow(
             total: intValue(entry["current_interval_total_count"]),
             remaining: intValue(entry["current_interval_usage_count"]),
-            // MiniMax-M3 是文本模型，按 5 小时周期渲染。
+            remainingPercent: intValue(entry["current_interval_remaining_percent"]),
             windowDurationMins: 300,
             resetsAt: dateValue(entry["end_time"])
         )
         let secondary = makeWindow(
             total: intValue(entry["current_weekly_total_count"]),
             remaining: intValue(entry["current_weekly_usage_count"]),
+            remainingPercent: intValue(entry["current_weekly_remaining_percent"]),
             windowDurationMins: 10080,
             resetsAt: nil  // 周配额没有具体 reset 时间，弹窗 caption 自动回落
         )
@@ -296,15 +300,34 @@ public enum MiniMaxQuotaSnapshotBuilder {
         )
     }
 
+    /// 把 MiniMax 一个窗口的总/剩/剩余百分比字段归一为弹窗用的 `RateLimitWindow`。
+    /// 优先级：
+    ///   1. `_remaining_percent` (服务器直接给的剩余百分比) → usedPercent = 100 - remaining%
+    ///   2. total + remaining（remaining 在 MiniMax 语义里是「剩余」不是「已用」）
+    ///   3. 仅 total 时按"未使用"展示（0% used）
+    ///   4. 完全无数据 → 返回 nil，弹窗隐藏该窗口
     private static func makeWindow(
         total: Int?,
         remaining: Int?,
+        remainingPercent: Int?,
         windowDurationMins: Int,
         resetsAt: Date?
     ) -> RateLimitWindow? {
+        // 路径 1: 服务端直接给的剩余百分比最可靠
+        if let rp = remainingPercent {
+            let used = max(0, min(100, 100 - rp))
+            // 即使 total == 0 也要返回 —— MiniMax 在没有具体 quota 时仍会给一个
+            // "subscription level" 类的剩余百分比（截图示例 general: total=0, remaining_percent=89）
+            return RateLimitWindow(
+                usedPercent: used,
+                windowDurationMins: windowDurationMins,
+                resetsAt: resetsAt
+            )
+        }
+        // 路径 2: 用 total + remaining 算
         guard let total, total > 0 else { return nil }
         let remaining = remaining ?? 0
-        // used = total - remaining, 但要防御两类服务端异常:
+        // remaining 在 MiniMax 语义里是「剩余」（非「已用」），但要防御两类异常：
         //   - remaining < 0   → 视为 100% 用尽
         //   - remaining > total → 视为 100% 用尽 (与负向越界同样处理)
         // 留 `remaining == total` 走常规路径 (代表未使用, 0% used)。
@@ -332,8 +355,15 @@ public enum MiniMaxQuotaSnapshotBuilder {
         return nil
     }
 
+    /// 把 MiniMax 时间戳字段 (end_time / weekly_end_time) 转 Date。
+    /// MiniMax 接口用的是**毫秒**级 Unix 时间戳 (13 位数字, 如 1788019200000)，
+    /// 而 Codex 协议用秒级 (10 位)。这里按毫秒处理, 再额外兜底一下: 如果拿到
+    /// 的数字 <= 10^10 (秒级量级), 也按毫秒兜底乘 1000, 避免历史接口切换单位
+    /// 时把 resetAt 显示到几千年后。
     private static func dateValue(_ raw: Any?) -> Date? {
         guard let intVal = intValue(raw) else { return nil }
-        return Date(timeIntervalSince1970: TimeInterval(intVal))
+        // MiniMax 是毫秒: 13 位数字, 秒级应是 10 位。
+        let ms = intVal > 10_000_000_000 ? TimeInterval(intVal) : TimeInterval(intVal) * 1000
+        return Date(timeIntervalSince1970: ms / 1000.0)
     }
 }

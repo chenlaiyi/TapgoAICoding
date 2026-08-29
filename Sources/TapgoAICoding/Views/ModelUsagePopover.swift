@@ -45,7 +45,11 @@ struct ModelUsagePopover: View {
                     .foregroundStyle(DSHTheme.label)
                 Spacer(minLength: 8)
                 if let window {
-                    Text("\(tapgoFormatCount(total))/\(tapgoFormatCount(window))（\(percent)%）")
+                    // 当 contextPercent 远超 100% 时 (harness 未按 model_auto_compact_token_limit
+                    // 自动压缩, 或者 contextWindow 报小), 直接显示 100%+ 比 2524% 更易读; 真实
+                    // 数字仍写在「24.0M/950k」上, 用户能看到已经超出多少倍。
+                    let pctText = percent >= 100 ? "≥100%" : "\(percent)%"
+                    Text("\(tapgoFormatCount(total))/\(tapgoFormatCount(window))（\(pctText)）")
                         .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .foregroundStyle(DSHTheme.label)
                 } else {
@@ -65,7 +69,12 @@ struct ModelUsagePopover: View {
     private var breakdownRows: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let usage, let window = usage.contextWindow, window > 0 {
-                row(name: "消息", percent: percentOf(usage.input, window))
+                // 注意: cached 是 input 的子集 (缓存命中的 prompt tokens)。
+                // 如果直接 `input + cached` 算百分比会双重计入, 让六行加起来
+                // 远超 context%; 这里把 cached 从 input 里扣掉, 让消息行的
+                // 百分比代表"新进未命中的提示词", 行间近似不重。
+                let nonCachedInput = max(0, usage.input - usage.cached)
+                row(name: "消息", percent: percentOf(nonCachedInput, window))
                 row(name: "MCP 工具", percent: 0, placeholder: true)
                 row(name: "系统工具", percent: percentOf(usage.output, window))
                 row(name: "系统提示词", percent: percentOf(usage.cached, window))
@@ -88,7 +97,8 @@ struct ModelUsagePopover: View {
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(DSHTheme.label)
             Spacer(minLength: 8)
-            Text(placeholder ? "—" : "\(percent)%")
+            let rowText = placeholder ? "—" : (percent >= 100 ? "≥100%" : "\(percent)%")
+            Text(rowText)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(placeholder ? DSHTheme.labelTertiary : DSHTheme.label)
                 .monospacedDigit()

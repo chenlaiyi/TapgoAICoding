@@ -106,6 +106,27 @@ func runPhoneRemoteLinkRoute(_ t: TestRunner) {
     if case .failure(.badRequest) = route("GET", "/r/\(token)/api/attach") {} else {
         t.expect(false, "route: GET api/attach → badRequest")
     }
+    // v0.5.27 图片服务路由
+    if case .success(.turnImage(let tid, let idx)) = route("GET", "/r/\(token)/img/turn-abc/2") {
+        t.expectEqual(tid, "turn-abc", "route: img 携带 turnId")
+        t.expectEqual(idx, 2, "route: img 携带序号")
+    } else {
+        t.expect(false, "route: GET img/<turnId>/<i> → turnImage")
+    }
+    if case .failure(.badRequest) = route("GET", "/r/\(token)/img/turn-abc/x") {} else {
+        t.expect(false, "route: img 非数字序号 → badRequest")
+    }
+    if case .failure(.badRequest) = route("POST", "/r/\(token)/img/turn-abc/0") {} else {
+        t.expect(false, "route: POST img → badRequest")
+    }
+    if case .success(.pendingImage(let pidx)) = route("GET", "/r/\(token)/pending/0") {
+        t.expectEqual(pidx, 0, "route: pending 序号")
+    } else {
+        t.expect(false, "route: GET pending/<i> → pendingImage")
+    }
+    if case .failure(.badRequest) = route("POST", "/r/\(token)/pending/0") {} else {
+        t.expect(false, "route: POST pending → badRequest")
+    }
     if case .failure(.notFound) = route("GET", "/r/\(token)/api/nope") {} else {
         t.expect(false, "route: 未知 api 路径 → notFound")
     }
@@ -193,7 +214,8 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                 .assistantMessage(id: "app-progress-1", text: "进度提示应被剔除"),
                 .assistantMessage(id: "m1", text: "已修复。"),
              ],
-             status: .completed, startedAt: now),
+             status: .completed, startedAt: now,
+             userImagePaths: ["/tmp/attachments/th1/t1/image-a.png"]),
         Turn(id: "t2", userInput: longText,
              items: [.assistantMessage(id: "m2", text: "好的")],
              status: .running, startedAt: now),
@@ -245,6 +267,7 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     // transcript: app-progress 剔除 + 截断 + running 标记
     t.expectEqual(snap.transcript.count, 2, "snapshot: transcript 条数")
     t.expectEqual(snap.transcript[0].assistant, "已修复。", "snapshot: app-progress- 前缀剔除")
+    t.expectEqual(snap.transcript[0].userImageCount, 1, "snapshot: 会话图片计数")
     t.expectEqual(snap.transcript[1].running, true, "snapshot: running turn 标记")
     t.expectEqual(snap.transcript[1].user.count, PhoneRemote.maxTextLength + "\n…(已截断)".count,
                   "snapshot: 超长文本截断")
@@ -484,6 +507,10 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(html.contains("modelSheet"), "page: 模型选择面板")
     t.expect(html.contains("modelBtn"), "page: 模型选择按钮")
     t.expect(html.contains("正在上传"), "page: 上传进度提示")
+    // v0.5.27 图片可见: 会话气泡图片 + 待发缩略图 (src 必须带 /r/<token> 前缀)
+    t.expect(html.contains("+ \"r/\" + TOKEN + \"/img/\" + encodeURIComponent(t.id)"), "page: 会话图片端点")
+    t.expect(html.contains("+ \"r/\" + TOKEN + \"/pending/\" + i"), "page: 待发缩略图端点")
+    t.expect(html.contains("msgImg"), "page: 气泡图片样式")
 }
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)

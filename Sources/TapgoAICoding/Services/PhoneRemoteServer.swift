@@ -370,6 +370,18 @@ final class PhoneRemoteController: ObservableObject {
             }
             store.addImages([url])
             return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
+        case .success(.turnImage(let turnId, let index)):
+            lastPollAt = Date()
+            let turn = store.liveThreads.flatMap(\.turns).first(where: { $0.id == turnId })
+            guard let path = turn.flatMap({ $0.userImagePaths.indices.contains(index) ? $0.userImagePaths[index] : nil })
+            else { return PhoneRemote.notFoundResponse }
+            return Self.imageResponse(at: path)
+        case .success(.pendingImage(let index)):
+            lastPollAt = Date()
+            guard store.attachedImages.indices.contains(index) else {
+                return PhoneRemote.notFoundResponse
+            }
+            return Self.imageResponse(at: store.attachedImages[index].path)
         case .success(.controlScreen):
             lastPollAt = Date()
             phoneConnected = true
@@ -453,8 +465,7 @@ final class PhoneRemoteController: ObservableObject {
 
     /// 手机上传的图片附件: base64 解码 → 魔数校验 → 写临时文件 → 返回 URL
     /// (交 `store.addImages` 转存)。扩展名取自文件名并限制在图片白名单内。
-    static func writeAttachment(name: String, dataBase64: String) -> URL? {
-        guard let data = Data(base64Encoded: dataBase64, options: [.ignoreUnknownCharacters]),
+    static func writeAttachment(name: String, dataBase64: String) -> URL? {        guard let data = Data(base64Encoded: dataBase64, options: [.ignoreUnknownCharacters]),
               !data.isEmpty, data.count <= 12_000_000
         else { return nil }
         let ext: String
@@ -481,6 +492,32 @@ final class PhoneRemoteController: ObservableObject {
         }
         _ = name // 文件名仅用于展示, 实际落盘名用 UUID 防路径注入。
         return url
+    }
+
+    /// 按扩展名推断 Content-Type 并输出图片 (允许浏览器缓存, URL 含 token)。
+    static func imageResponse(at path: String) -> Data {
+        let ext = (path as NSString).pathExtension.lowercased()
+        let type: String
+        switch ext {
+        case "png": type = "image/png"
+        case "jpg", "jpeg": type = "image/jpeg"
+        case "gif": type = "image/gif"
+        case "webp": type = "image/webp"
+        case "heic": type = "image/heic"
+        default: type = "application/octet-stream"
+        }
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            return PhoneRemote.notFoundResponse
+        }
+        var head = "HTTP/1.1 200 OK\r\n"
+        head += "Content-Type: \(type)\r\n"
+        head += "Content-Length: \(data.count)\r\n"
+        head += "Connection: close\r\n"
+        head += "Cache-Control: private, max-age=3600\r\n"
+        head += "\r\n"
+        var out = Data(head.utf8)
+        out.append(data)
+        return out
     }
 
     static func displayName() -> String {

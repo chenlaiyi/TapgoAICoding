@@ -19,6 +19,27 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.27 — 额度弹窗二轮修复：诊断信息 + 双端点 fallback + 6 行百分比去重 + 模型分桶映射 + 毫秒时间戳
+**Date**: 2026-08-29
+**Commit**: <pending>
+**Tag**: v0.5.27
+**Test status**: 94 passed / 0 failed (MiniMax + 邻近回归段全绿; 本机 App 主目标受限于 SwiftUI 宏插件, 见风险)
+**Changed**:
+- v0.5.25 上线后用户截屏反馈弹窗仍然报错『MiniMax 额度接口未返回模型 MiniMax-M3 的数据』且 6 行百分比加起来的 1612% 远超 context% 的 815%. 这一版**直接 curl 实测** MiniMax 接口 (`coding_plan/remains` 与 `token_plan/remains`), 发现根因 + 4 处隐藏 bug, 一并修复.
+- **根因 1 — model_name 实际是 quota 类别而非模型名**: 接口返回 `model_name="general"` / `"video"` 这样的配额分桶, 不会直接返回 `"MiniMax-M3"`. `pickEntry` 增加『文本/对话模型 → general 桶』『视频模型 → video 桶』的语义映射, 通过 `isTextOrChatModel(name)` / `isVideoModel(name)` 判断; MiniMax-M3 (含 M2.7/abab*/minimax 命名约定) 自动落到 general 桶.
+- **根因 2 — 接口直接给剩余百分比 `_remaining_percent`**, 旧版只在 `total==0` 时丢弃整个 cell. 新版 `makeWindow` 三层 fallback: 优先 `_remaining_percent` → `total - remaining` 反算 → 仅 total 时按 0% 展示. 即使 `total=0` (订阅未分配 quota) 也能继续展示服务端给的『订阅健康度』百分比 (例: `current_interval_remaining_percent=89` → 显示 11% 已用).
+- **修复 3 — 6 行百分比重复计 cached**: `cached` 是 `input` 的子集 (缓存命中), 直接相加会让 6 行加起来 1612% > context% 815%. 改为 `消息 = max(0, input - cached)`, 行间近似不重.
+- **修复 4 — MiniMax 时间戳是毫秒不是秒**: 13 位 `end_time=1788019200000` 表示 2026-08-29 (10 位秒级会是 1788019200000 = 公元 56870 年). `dateValue` 按量级自动检测 (>10^10 → 毫秒, 否则按秒), 兜底乘 1000, 保证『重置于』显示在合理日期.
+- **修复 5 — 诊断信息可读**: `QuotaError` 重构为带 `endpoint` 字段. `noMatchingModel(requested, returned, endpoint)` 把接口实际返回的模型名列表带出来; 新增 `emptyResponse(endpoint)` 区分『真的没订阅』与『字段名对不上』. 弹窗红字可直接回答『接口返回了什么』『我用的端点是什么』『到底哪一步出问题』.
+- **修复 6 — 双端点 fallback**: `fetchRemains` 按顺序试 `/api/openplatform/coding_plan/remains` → `/token_plan/remains`, 命中即返回; 只有『未匹配 / 空响应』触发 fallback, 其它错误 (HTTP 4xx/5xx、business 1008) 立即透传.
+- **附带清理 — v0.5.25 引入的 Swift 6.4 编译错误**: `PhoneRemoteLink.swift` 的 `case ["img", let turnId, let idxStr]:` 在 Swift 6 不能用 `let` 在数组 pattern 中绑定, 改为 `case let arr where arr.count == 3 && arr[0] == "img":` 然后手动取元素; 同上修复 `["pending", let idxStr]:`; `TranscriptTurn` init 漏传 `userImageCount` 也补上.
+- 测试新增 `MiniMaxQuota: lenient match + dual-endpoint fallback` 段 19 断言 (6 种 model_name 写法 + general 桶路由 + wrong model 严格 2 条不命中 + 诊断信息含 returned + endpoint + 双端点空响应), `MiniMaxQuota: timestamp parsing (ms vs s)` 段 2 断言 (13 位毫秒 + 10 位秒兼容), `MiniMaxQuota: SnapshotBuilder` 段 16 → 19 断言 (total=0 + percent 仍展示 / total=0 无 percent 隐藏 / total+percent 同时存在优先 percent); 全量 7 段 94 断言全绿, 既有 RateLimits/ExecEvent/ModelUsageMetrics 无回归.
+- **修复 7 — config.toml 漂移导致 24M tokens 不压缩**: 用户机器上 `~/Library/Application Support/Tapgo AICoding/codex/config.toml` 缺 `model_auto_compact_token_limit = 800000` (v0.3.0 模板新增, 但 `ensureReady` 只校验文件存在 + 含 MiniMax-M3/minimax provider, 从不重生成 config.toml). 后果: harness 不知道该在 800k 自动压缩, 用户会话一路累积到 24M tokens (弹窗进度条飙到 2524%), 仍正常工作但严重浪费. `ensureReady` 现在按模板 diff, 漂移就用 `renderConfig` 重写 (auth.json 不动, bearer token 占位符保持, 真实 key 仍由 harness 启动时读 auth.json).
+- **修复 8 — 弹窗百分比阈值封顶**: 当 `contextPercent >= 100%` 时 (溢出) 文本显示 `≥100%`, 而不是 `2524%` 这种让用户误以为系统失控的离谱数字. `24.0M/950k` 的真实计数仍显示在前面, 用户一眼能看出超出多少倍.
+- **修复 9 — 手机 H5 看不到上传的图片 (用户反馈)**: 此前手机上传/会话里的图片只显示『已附 N 张』计数, 图片本体不可见. 新增两条带 token 的图片路由 `GET /img/<turnId>/<index>` (会话内用户消息图片, 按 turnId 查 `userImagePaths` 取文件) 与 `GET /pending/<index>` (待发附件缩略图); `TranscriptTurn` 增 `userImageCount`, H5 用户气泡内渲染图片、composer 附件行改为缩略图 + 计数; 图片响应带 `Cache-Control: private, max-age=3600` 防轮询闪烁.
+**Why**: v0.5.25 只换了数据源, 没换诊断 UX —— 报错信息不可读; 弹窗 6 行把缓存命中重复计入让用户怀疑数据真实性; curl 实测发现 MiniMax 接口把模型名换成 quota 分桶名 + 直接给百分比 + 时间戳用毫秒, 这是协议级 bug 必须修; 此外 config.toml 漂移让 contextPercent 一路累积到 2524%, 也是协议级 bug 必须修.
+**Next**: `contextWindow` 仍由 harness 报 950k (vs TapgoConfig 配置 1M) —— 怀疑是 harness 对 MiniMax-M3 的实际请求窗口有其它来源; 本版先不动, 等用户真机重启后看到 950k 来源 (MiniMax API 还是 harness 默认值) 后再修.
+
 ## v0.5.26 — 移除手机 composer 下方三个快捷指令 chips
 **Date**: 2026-08-29
 **Commit**: 9287b78

@@ -206,6 +206,10 @@ public enum PhoneRemote {
         /// POST /r/<token>/api/attach — 手机上传图片附件 (base64), 落到
         /// Mac 待发附件, 随下一条消息一起发送。
         case attach(name: String, dataBase64: String)
+        /// GET /r/<token>/img/<turnId>/<index> — 会话内用户消息图片。
+        case turnImage(turnId: String, index: Int)
+        /// GET /r/<token>/pending/<index> — 待发附件缩略图。
+        case pendingImage(index: Int)
         // MARK: 电脑控制 (v0.5.17) — 坐标均为归一化 0...1 (相对主屏截图)。
         /// GET /r/<token>/api/ctrl/screen — 主屏截图 JPEG。
         case controlScreen
@@ -323,6 +327,19 @@ public enum PhoneRemote {
                   let data = jsonStringField(body, "data"), !data.isEmpty
             else { return .failure(.badRequest) }
             return .success(.attach(name: name, dataBase64: data))
+        case let arr where arr.count == 3 && arr[0] == "img":
+            let turnId = arr[1]
+            let idxStr = arr[2]
+            guard method == "GET" || method == "HEAD", let idx = Int(idxStr), idx >= 0 else {
+                return .failure(.badRequest)
+            }
+            return .success(.turnImage(turnId: turnId, index: idx))
+        case let arr where arr.count == 2 && arr[0] == "pending":
+            let idxStr = arr[1]
+            guard method == "GET" || method == "HEAD", let idx = Int(idxStr), idx >= 0 else {
+                return .failure(.badRequest)
+            }
+            return .success(.pendingImage(index: idx))
         case ["api", "ctrl", "screen"]:
             guard method == "GET" else { return .failure(.badRequest) }
             return .success(.controlScreen)
@@ -560,6 +577,8 @@ public enum PhoneRemote {
         public var assistant: String
         /// 助手回复的 Markdown 渲染结果 (已转义的安全 HTML, H5 直接 innerHTML)。
         public var assistantHTML: String
+        /// 用户附带图片张数 (H5 经 /img/<turnId>/<i> 取缩略图)。
+        public var userImageCount: Int
         /// 该 turn 是否触发了命令/文件变更 (H5 上显示 "正在执行" 徽标)。
         public var running: Bool
     }
@@ -628,6 +647,7 @@ public enum PhoneRemote {
                                       status: turn.status.rawValue,
                                       assistant: assistant,
                                       assistantHTML: markdownHTML(assistant),
+                                      userImageCount: turn.userImagePaths.count,
                                       running: turn.status == .running || turn.status == .awaitingApproval)
             }
         }
@@ -953,10 +973,13 @@ public enum PhoneRemote {
         .brainWrap { position:relative; display:flex; align-items:center; justify-content:center;
                      width:28px; height:28px; flex:none; color:var(--muted);
                      background:transparent; border:none; padding:0; cursor:pointer; }
-        #attRow { font-size:12px; color:var(--muted); background:var(--bg);
-                  border:1px dashed var(--line); border-radius:8px; padding:5px 9px;
-                  margin-bottom:6px; }
+        #attRow { display:flex; align-items:center; gap:4px; flex-wrap:wrap; font-size:12px;
+                  color:var(--muted); background:var(--bg); border:1px dashed var(--line);
+                  border-radius:8px; padding:5px 9px; margin-bottom:6px; }
         #attRow.uploading { color:var(--brand); border-color:var(--brand); }
+        .attThumb { width:36px; height:36px; border-radius:8px; object-fit:cover; flex:none; }
+        .msgImg { display:block; max-width:100%; max-height:220px; border-radius:10px;
+                  margin-top:8px; }
         #modelSheet { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.5);
                       display:flex; align-items:flex-end; justify-content:center; }
         .sheetCard { background:var(--card); width:100%; max-width:720px;
@@ -1120,7 +1143,10 @@ public enum PhoneRemote {
         <div id="bar">
           <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
           <div class="composer">
-            <div id="attRow" class="hidden">🖼 已附 <span id="attCount">0</span> 张图片, 随下一条消息一起发送</div>
+            <div id="attRow" class="hidden">
+              <span id="attThumbs"></span>
+              <span id="attMsg"></span>
+            </div>
             <textarea id="input" placeholder="向 Tapgo 提问…" rows="2"></textarea>
             <div class="composerBar">
               <button class="barIcon" id="newBtn" aria-label="上传图片附件">
@@ -1194,6 +1220,15 @@ public enum PhoneRemote {
             const group = document.createElement("div"); group.className = "turnGroup";
             const u = document.createElement("div"); u.className = "msgUser";
             u.textContent = t.user;
+            const imgCount = t.userImageCount || 0;
+            for (let i = 0; i < imgCount; i++) {
+              const im = document.createElement("img");
+              im.className = "msgImg";
+              im.loading = "lazy";
+              im.alt = "附件图片";
+              im.src = BASE + "r/" + TOKEN + "/img/" + encodeURIComponent(t.id) + "/" + i;
+              u.appendChild(im);
+            }
             group.appendChild(u);
             if (t.assistantHTML) {
               const a = document.createElement("div"); a.className = "msgA";
@@ -1214,10 +1249,18 @@ public enum PhoneRemote {
           busy = turns.length > 0 && turns[turns.length - 1].running;
           $("sendBtn").disabled = busy;
           activeProjectId = s.activeProjectId || null;
-          // 待发附件计数 (上传后 >0, 发送后 Mac 端清零)。
+          // 待发附件 (上传后 >0, 发送后 Mac 端清零): 缩略图 + 计数。
           const att = s.attachedCount || 0;
           $("attRow").classList.toggle("hidden", att === 0);
-          $("attCount").textContent = String(att);
+          const thumbs = $("attThumbs");
+          thumbs.textContent = "";
+          for (let i = 0; i < att; i++) {
+            const im = document.createElement("img");
+            im.className = "attThumb";
+            im.src = BASE + "r/" + TOKEN + "/pending/" + i;
+            thumbs.appendChild(im);
+          }
+          $("attMsg").textContent = att > 0 ? " 已附 " + att + " 张图片, 随下一条消息一起发送" : "";
           // composer 底栏状态 (仿 ZCode: 转圈 / 模型名 / 大脑绿点 / 盾牌)
           $("modelName").textContent = s.model || "MiniMax-M3";
           $("busySpin").classList.toggle("hidden", !busy);
@@ -1432,7 +1475,7 @@ public enum PhoneRemote {
           for (let i = 0; i < files.length; i++) {
             row.classList.remove("hidden");
             row.classList.add("uploading");
-            row.textContent = "正在上传 " + (i + 1) + "/" + files.length + ": " + files[i].name;
+            $("attMsg").textContent = "正在上传 " + (i + 1) + "/" + files.length + ": " + files[i].name;
             const dataUrl = await new Promise((resolve) => {
               const fr = new FileReader();
               fr.onload = () => resolve(String(fr.result || ""));
@@ -1448,7 +1491,7 @@ public enum PhoneRemote {
             });
           }
           row.classList.remove("uploading");
-          row.textContent = "";
+          $("attMsg").textContent = "";
           lastJSON = "";
           refresh();
         });

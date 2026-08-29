@@ -289,6 +289,30 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.27",
+                    date: "2026-08-29",
+                    commit: "<pending>",
+                    tag: "v0.5.27",
+                    summary: "额度弹窗二轮修复：诊断 + 双端点 + 6 行去重 + 模型分桶 + 毫秒时间戳",
+                    changes: [
+                        "v0.5.25 上线后用户截屏反馈弹窗仍报错且 6 行百分比 1612% > context% 815%。直接 curl 实测 MiniMax 接口发现根因 + 4 处隐藏 bug。",
+                        "根因 1 — model_name 实际是 quota 类别而非模型名：接口返回 general / video 这样的分桶名，不会直接返回 MiniMax-M3。pickEntry 增加『文本/对话模型 → general 桶』『视频模型 → video 桶』的语义映射。",
+                        "根因 2 — 接口直接给 _remaining_percent（剩余百分比），旧版在 total=0 时丢弃 cell。新版三层 fallback：_remaining_percent 优先 → total - remaining 反算 → 仅 total 时按 0% 展示；即使 total=0 也能展示订阅健康度。",
+                        "修复 3 — 6 行百分比重复计 cached：消息 = max(0, input - cached)，行间近似不重。",
+                        "修复 4 — MiniMax 时间戳是毫秒不是秒：13 位 end_time=1788019200000 表示 2026-08-29。dateValue 按量级自动检测 + 兜底乘 1000。",
+                        "修复 5 — 诊断信息可读：QuotaError 带 endpoint；noMatchingModel 带 returned 列表；新增 emptyResponse 区分两种失败。",
+                        "修复 6 — 双端点 fallback：coding_plan/remains → token_plan/remains，仅未匹配/空响应触发。",
+                        "附带清理 — v0.5.25 引入的 Swift 6.4 编译错误：case [\"img\", let turnId, let idxStr]: 改写为 case let arr where ... 手动取元素；TranscriptTurn 漏传 userImageCount。",
+                        "测试新增 MiniMaxQuota: lenient match + dual-endpoint fallback 19 断言、timestamp parsing 2 断言、SnapshotBuilder 16→19 断言；全量 7 段 94 断言全绿。",
+                        "修复 7 — config.toml 漂移导致 24M tokens 不压缩：用户机器上 config.toml 缺 model_auto_compact_token_limit = 800000（v0.3.0 模板新增，但 ensureReady 从不重生成 config.toml）；后果是 harness 不知道该在 800k 自动压缩，会话累积到 24M tokens（弹窗进度条 2524%）。ensureReady 现在按模板 diff 漂移即用 renderConfig 重写（auth.json 不动）。",
+                        "修复 8 — 弹窗百分比阈值封顶：contextPercent >= 100% 时显示 ≥100% 而不是 2524%；真实计数 24.0M/950k 仍显示在前，用户一眼看出超出多少倍。",
+                        "收编并行会话 WIP（用户反馈『H5 看不到上传的图片』）：新增 GET /img/<turnId>/<index>（按 turnId 查 userImagePaths 出图）与 GET /pending/<index>（待发附件缩略图）两条带 token 的图片路由；TranscriptTurn 增 userImageCount；H5 用户气泡内渲染图片、composer 附件行改缩略图 + 计数；图片响应带私有缓存头防 2s 轮询闪烁。"
+                    ],
+                    why: "v0.5.25 只换了数据源没换诊断 UX，且未实测接口；这一版直接 curl 发现 4 处协议级 bug（分桶命名 / 剩余百分比 / 毫秒时间戳 / 重复计缓存），加上 config.toml 漂移导致 24M 不压缩（弹窗进度条 2524%），一次性全部修复。",
+                    next: "contextWindow 仍由 harness 报 950k（vs TapgoConfig 配置 1M）—— 怀疑是 harness 对 MiniMax-M3 实际请求窗口有其它来源；等用户真机重启后看到 950k 来源后再修。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.26",
                     date: "2026-08-29",
                     commit: "9287b78",
