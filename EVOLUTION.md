@@ -21,7 +21,7 @@
 
 ## v0.5.22 — composer 底栏对齐 ZCode: 模型名/盾牌/大脑/白色圆形↑
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 854b4e5
 **Tag**: v0.5.22
 **Test status**: 2219 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
