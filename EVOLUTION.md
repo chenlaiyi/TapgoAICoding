@@ -19,6 +19,20 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.22 — composer 底栏对齐 ZCode: 模型名/盾牌/大脑/白色圆形↑
+**Date**: 2026-08-29
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.22
+**Test status**: 2219 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
+**Changed**:
+- 用户反馈 v0.5.21 输入框『还是差很远』并给出 ZCode composer 截图。本版按截图重构底栏: 左侧 + (线性 SVG, 当前项目新建会话) 与 橙色盾牌 (电脑控制权限警示态, 点击跳电脑控制 Tab); 右侧 busy 转圈、**模型名选择行『MiniMax-M3 ▾』** (StateSnapshot 增 `model` 字段, App 传 `store.modelName`)、大脑图标 + 状态点 (控制权限齐备变绿)、**白色圆形 ↑ 发送键** (深色箭头, 运行中置灰)。
+- 项目选择挪回 composer 上方独立小条 (📁 项目名 ▾), 与 ZCode 第一屏结构一致; composer 卡内不再有分隔的项目行。
+- 图标全部换内联 SVG 线性风格 (与截图的线性图标一致), 不再用 emoji。
+- 测试: H5 段 29 → 35 断言 (barIcon/modelName/兜底文案/busySpin/brainDot/shieldBtn), 快照段 +1 (model 透传); 全量 2219 passed / 8 failed。
+- 目视回归: 真实浏览器手机视口截图对照用户截图 —— 项目条/composer 底栏排布、模型名、白色↑均已对齐。
+**Why**: 上一版只对了功能与大形, 底栏元素构成 (模型名/状态图标/白色发送键) 与 ZCode 差距仍明显; 逐元素复刻才能达到用户预期。
+**Next**: 模型名 ▾ 接真实模型切换 (config.toml 多模型); 盾牌/大脑点击后的权限引导细化。
+
 ## v0.5.21 — 手机 H5 全面仿 ZCode 输入/输出形态
 **Date**: 2026-08-29
 **Commit**: 9c02040

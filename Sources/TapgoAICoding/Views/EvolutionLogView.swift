@@ -289,6 +289,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.22",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.22",
+                    summary: "composer 底栏对齐 ZCode：模型名/盾牌/大脑/白色圆形↑ + 项目条独立",
+                    changes: [
+                        "按用户 ZCode composer 截图重构底栏：左侧 + (线性 SVG, 当前项目新建会话) 与橙色盾牌 (电脑控制权限警示态, 点击跳电脑控制 Tab)；右侧 busy 转圈、模型名选择行『MiniMax-M3 ▾』、大脑图标 + 状态点 (权限齐备变绿)、白色圆形 ↑ 发送键 (深色箭头, 运行中置灰)。",
+                        "StateSnapshot 增 model 字段 (App 传 store.modelName)，快照段 +1 断言 (model 透传)。",
+                        "项目选择挪回 composer 上方独立小条 (📁 项目名 ▾)，与 ZCode 第一屏结构一致；composer 卡内不再有分隔的项目行。",
+                        "图标全部换内联 SVG 线性风格 (+ / 盾牌 / 大脑 / ↑)，与截图线性图标一致，不再用 emoji。",
+                        "H5 段断言 29 → 35 (barIcon/modelName/兜底文案/busySpin/brainDot/shieldBtn)；目视回归：真实浏览器手机视口截图对照用户截图通过。"
+                    ],
+                    why: "上一版只对了功能与大形，底栏元素构成 (模型名/状态图标/白色发送键) 与 ZCode 差距仍明显；逐元素复刻才能达到用户预期。",
+                    next: "模型名 ▾ 接真实模型切换 (config.toml 多模型)；盾牌/大脑点击后的权限引导细化。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.21",
                     date: "2026-08-29",
                     commit: "9c02040",

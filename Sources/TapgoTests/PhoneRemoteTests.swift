@@ -201,6 +201,7 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                                                                 lastActivityAt: now.addingTimeInterval(-50)),
                                       ],
                                       activeProjectId: "pA",
+                                      model: "MiniMax-M3",
                                       now: now)
     t.expectEqual(snap.rev, 7, "snapshot: rev 透传")
     t.expectEqual(snap.hostname, "Chenlaiyi", "snapshot: hostname 透传")
@@ -221,6 +222,7 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(snap.projects.first?.threadCount, 1, "snapshot: 项目会话计数")
     t.expectEqual(snap.projects.first?.name, "A项目", "snapshot: 项目名透传")
     t.expectEqual(snap.activeProjectId, "pA", "snapshot: activeProjectId 透传")
+    t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
 
     // transcript: app-progress 剔除 + 截断 + running 标记
     t.expectEqual(snap.transcript.count, 2, "snapshot: transcript 条数")
@@ -388,6 +390,13 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(html.contains("本地"), "page: 本地标签")
     t.expect(html.contains("⚡ 运行中"), "page: 列表运行中徽标")
     t.expect(html.contains("✓ 已完成"), "page: 列表已完成徽标")
+    // v0.5.22 composer 底栏 (仿 ZCode: + 盾牌 转圈 模型名 大脑 白色↑)
+    t.expect(html.contains("barIcon"), "page: 底栏线性图标按钮")
+    t.expect(html.contains("modelName"), "page: 模型名展示位")
+    t.expect(html.contains("MiniMax-M3"), "page: 模型名兜底文案")
+    t.expect(html.contains("busySpin"), "page: busy 转圈")
+    t.expect(html.contains("brainDot"), "page: 大脑状态点")
+    t.expect(html.contains("shieldBtn"), "page: 盾牌按钮")
 }
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)

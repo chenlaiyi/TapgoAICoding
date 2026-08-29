@@ -577,6 +577,8 @@ public enum PhoneRemote {
         public var transcript: [TranscriptTurn]
         /// 电脑控制可用性; nil 时 H5 隐藏电脑控制入口。
         public var control: ControlStatus?
+        /// 当前模型名 (composer 底栏展示, 如 "MiniMax-M3")。
+        public var model: String?
         /// 项目列表 (按最近活跃倒序) + 活动项目; v0.5.20 项目切换用。
         public var projects: [ProjectInfo]
         public var activeProjectId: String?
@@ -591,6 +593,7 @@ public enum PhoneRemote {
                                   control: ControlStatus? = nil,
                                   projects: [ProjectSeed] = [],
                                   activeProjectId: String? = nil,
+                                  model: String? = nil,
                                   now: Date = Date()) -> StateSnapshot {
         let sorted = threads.sorted { $0.updatedAt > $1.updatedAt }.prefix(maxThreads)
         let infos = sorted.map { t -> ThreadInfo in
@@ -636,6 +639,7 @@ public enum PhoneRemote {
                              threads: Array(infos),
                              transcript: transcript,
                              control: control,
+                             model: model,
                              projects: projectInfos,
                              activeProjectId: activeProjectId)
     }
@@ -748,26 +752,41 @@ public enum PhoneRemote {
         .hint { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5; }
         #bar { position:fixed; bottom:0; left:0; right:0; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
                background:linear-gradient(transparent, var(--bg) 26%); }
-        /* Composer 卡片 (仿 ZCode 输入区): 项目行 + 大输入区 + 圆形↑发送 */
+        /* 项目条 (composer 上方, 仿 ZCode 独立项目选择条) */
+        #projChip { max-width:720px; margin:0 auto 8px; display:flex; align-items:center; gap:7px;
+                    background:var(--card); border:1px solid var(--line); border-radius:12px;
+                    padding:9px 12px; font-weight:600; font-size:14px; cursor:pointer; }
+        #projChip .cIcon { color:var(--muted); font-size:14px; }
+        #projChip .pChev { color:var(--muted); font-size:11px; margin-left:2px; }
+        /* Composer 卡片 (仿 ZCode 输入区): 大输入区 + 底部工具行 */
         .composer { max-width:720px; margin:0 auto; background:var(--card);
-                    border:1px solid var(--line); border-radius:16px; padding:10px 12px 8px;
+                    border:1px solid var(--line); border-radius:20px; padding:13px 15px 10px;
                     box-shadow:0 4px 18px rgba(0,0,0,.10); }
-        .composerTop { display:flex; align-items:center; gap:7px; font-weight:600; font-size:14px;
-                       padding-bottom:7px; border-bottom:1px solid var(--line); margin-bottom:4px; }
-        .composerTop .cIcon { color:var(--muted); font-size:15px; }
-        #projChip { cursor:pointer; }
-        #projChip .pChev { color:var(--muted); font-size:12px; }
         .composer textarea { width:100%; border:none; background:transparent; resize:none;
-                             font-size:16px; color:var(--fg); min-height:46px; max-height:140px;
-                             padding:5px 2px; outline:none; }
-        .composerBar { display:flex; align-items:center; gap:8px; }
-        .plusBtn { width:31px; height:31px; border-radius:50%; background:var(--bg);
-                   border:1px solid var(--line); color:var(--fg); font-size:19px;
-                   font-weight:400; padding:0; flex:none; }
-        #sendBtn { margin-left:auto; width:34px; height:34px; border-radius:50%;
-                   background:var(--brand); color:#fff; font-size:17px; padding:0;
-                   display:flex; align-items:center; justify-content:center; }
-        #sendBtn:disabled { opacity:.35; }
+                             font-size:16px; color:var(--fg); min-height:52px; max-height:150px;
+                             padding:2px 2px 6px; outline:none; }
+        .composerBar { display:flex; align-items:center; gap:6px; }
+        .barIcon { background:transparent; border:none; color:var(--muted); width:32px; height:32px;
+                   padding:0; display:flex; align-items:center; justify-content:center;
+                   border-radius:9px; flex:none; }
+        .barIcon svg { display:block; }
+        .barIcon.attn { color:#ff9f0a; }
+        .spin { width:15px; height:15px; border:2px solid var(--line); border-top-color:var(--muted);
+                border-radius:50%; animation:rot .9s linear infinite; flex:none; margin:0 3px; }
+        @keyframes rot { to { transform:rotate(360deg); } }
+        .modelSel { display:flex; align-items:center; gap:4px; color:var(--fg); font-size:14px;
+                    font-weight:600; margin-left:auto; white-space:nowrap; }
+        .modelSel .pChev { color:var(--muted); font-size:11px; }
+        .brainWrap { position:relative; display:flex; align-items:center; justify-content:center;
+                     width:28px; height:28px; flex:none; color:var(--muted); }
+        .bdot { position:absolute; right:1px; bottom:3px; width:7px; height:7px; border-radius:50%;
+                background:var(--line); }
+        .bdot.on { background:var(--ok); }
+        #sendBtn { width:42px; height:42px; border-radius:50%; background:#fff; color:#101013;
+                   font-size:18px; padding:0; margin-left:2px; flex:none;
+                   display:flex; align-items:center; justify-content:center;
+                   box-shadow:0 1px 6px rgba(0,0,0,.22); }
+        #sendBtn:disabled { opacity:.4; }
         #chips { display:flex; gap:8px; max-width:720px; margin:8px auto 0;
                  overflow-x:auto; padding:0 2px 2px; }
         .chip { flex:none; background:var(--card); border:1px solid var(--line); color:var(--fg);
@@ -904,16 +923,29 @@ public enum PhoneRemote {
           </div>
         </main>
         <div id="bar">
+          <div id="projChip">
+            <span class="cIcon">📁</span>
+            <span id="projName">…</span>
+            <span class="pChev">▾</span>
+          </div>
           <div class="composer">
-            <div class="composerTop" id="projChip">
-              <span class="cIcon">📁</span>
-              <span id="projName">…</span>
-              <span class="pChev">▾</span>
-            </div>
             <textarea id="input" placeholder="向 Tapgo 提问…" rows="2"></textarea>
             <div class="composerBar">
-              <button class="plusBtn" id="newBtn" aria-label="在当前项目新建会话">+</button>
-              <button id="sendBtn" aria-label="发送">↑</button>
+              <button class="barIcon" id="newBtn" aria-label="在当前项目新建会话">
+                <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button class="barIcon" id="shieldBtn" aria-label="电脑控制状态, 点击查看">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6l7-3z"/><path d="M12 8v4.2"/><circle cx="12" cy="15.4" r="0.9" fill="currentColor" stroke="none"/></svg>
+              </button>
+              <span class="spin hidden" id="busySpin"></span>
+              <span class="modelSel"><span id="modelName">…</span><span class="pChev">▾</span></span>
+              <span class="brainWrap" aria-label="电脑控制就绪状态">
+                <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4a3 3 0 0 0-3 3 3 3 0 0 0-2 2.8c0 .9.4 1.7 1 2.2a3 3 0 0 0 .5 4.6A3 3 0 0 0 9.5 20c1 0 2-.5 2.5-1.4V5.4A3 3 0 0 0 9.5 4z"/><path d="M14.5 4a3 3 0 0 1 3 3 3 3 0 0 1 2 2.8c0 .9-.4 1.7-1 2.2a3 3 0 0 1-.5 4.6A3 3 0 0 1 14.5 20c-1 0-2-.5-2.5-1.4V5.4a3 3 0 0 1 2.5-1.4z"/></svg>
+                <span class="bdot" id="brainDot"></span>
+              </span>
+              <button id="sendBtn" aria-label="发送">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
             </div>
           </div>
           <div id="chips">
@@ -988,6 +1020,13 @@ public enum PhoneRemote {
           $("sendBtn").disabled = busy;
           activeProjectId = s.activeProjectId || null;
           $("newBtn").disabled = !activeProjectId;
+          // composer 底栏状态 (仿 ZCode: 转圈 / 模型名 / 大脑绿点 / 盾牌)
+          $("modelName").textContent = s.model || "MiniMax-M3";
+          $("busySpin").classList.toggle("hidden", !busy);
+          const ctl = s.control;
+          const ctrlReadyAll = !!(ctl && ctl.enabled && ctl.accessibilityAllowed && ctl.screenAllowed);
+          $("brainDot").classList.toggle("on", ctrlReadyAll);
+          $("shieldBtn").classList.toggle("attn", !!(ctl && ctl.enabled && !ctrlReadyAll));
           ctrlState = s;
           applyCtrlState(s);
           $("dot").classList.remove("off");
@@ -1155,6 +1194,7 @@ public enum PhoneRemote {
 
         $("projChip").addEventListener("click", showList);
         $("backBtn").addEventListener("click", showChat);
+        $("shieldBtn").addEventListener("click", () => switchTab(true));
 
         $("input").addEventListener("input", (ev) => {
           ev.target.style.height = "auto";

@@ -333,7 +333,8 @@ final class PhoneRemoteController: ObservableObject {
                                                       screenAllowed: Self.screenCaptureAllowed,
                                                       accessibilityAllowed: Self.accessibilityAllowed),
                                                   projects: seeds,
-                                                  activeProjectId: workspace.state.activeProjectId)
+                                                  activeProjectId: workspace.state.activeProjectId,
+                                                  model: store.modelName)
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
             lastPollAt = Date()
