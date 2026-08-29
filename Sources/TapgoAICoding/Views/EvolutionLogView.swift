@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.26",
                     date: "2026-08-29",
-                    commit: "PLACEHOLDER",
+                    commit: "9287b78",
                     tag: "v0.5.26",
                     summary: "移除手机 composer 下方三个快捷指令 chips",
                     changes: [

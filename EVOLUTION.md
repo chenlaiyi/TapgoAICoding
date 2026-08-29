@@ -21,7 +21,7 @@
 
 ## v0.5.26 — 移除手机 composer 下方三个快捷指令 chips
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 9287b78
 **Tag**: v0.5.26
 **Test status**: 2276 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
