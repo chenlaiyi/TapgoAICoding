@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.27",
                     date: "2026-08-29",
-                    commit: "<pending>",
+                    commit: "cb8e2db",
                     tag: "v0.5.27",
                     summary: "额度弹窗二轮修复：诊断 + 双端点 + 6 行去重 + 模型分桶 + 毫秒时间戳",
                     changes: [
