@@ -289,6 +289,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.23",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.23",
+                    summary: "手机 H5 助手输出 Markdown 富文本渲染（标题/列表/代码块/行内代码芯片）",
+                    changes: [
+                        "用户反馈『输出内容也太乱』：助手回复的 Markdown 源码原样贴在 H5 上。新增 PhoneRemote.markdownHTML：复用 Mac 端同款 MarkdownLite 解析器渲染成安全 HTML —— 标题、有序/无序列表、任务清单 (☑/☐)、代码块 (深底+语言标签+横向滚动)、行内代码 (品牌色芯片)、引用块、表格、分隔线、链接。",
+                        "安全设计：全部原文先转义、标签只由渲染器产出 (innerHTML 无注入面)；escapeText (内容位, 不转引号) 与 escapeHTML (属性位, 全量) 分离；javascript: 等危险 scheme 链接降级纯文本；图片降级为链接 (H5 不外链资源)。",
+                        "TranscriptTurn 增 assistantHTML (原文 assistant 保留)；H5 对话区改 innerHTML 渲染；文本段软换行转 <br>。",
+                        "新增『PhoneRemote: Markdown 输出渲染』测试段 21 断言 (XSS/行内/标题/列表/任务/代码块/表格/引用/快照一致性)；全量 2240 passed / 8 failed。",
+                        "目视回归：真实浏览器手机视口截图 —— 加粗/行内代码芯片/列表全部正确排版，不再出现源码字符。"
+                    ],
+                    why: "助手输出天然是 Markdown，按纯文本渲染等于源码墙；复用同款解析器在 Mac 端服务端渲染成安全 HTML，手机端零依赖、离线可用。",
+                    next: "长回复折叠/展开；代码块一键复制。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.22",
                     date: "2026-08-29",
                     commit: "854b4e5",

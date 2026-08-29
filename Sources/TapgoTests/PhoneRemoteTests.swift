@@ -258,7 +258,68 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(decoded, snap, "snapshot: JSON round-trip 相等")
 }
 
-// MARK: - 接入模式与公网中继 (v0.5.17)
+// MARK: - Markdown 输出渲染 (v0.5.23)
+
+func runPhoneRemoteMarkdown(_ t: TestRunner) {
+    // XSS: 原文 HTML 一律转义, 标签只由渲染器产出
+    let xss = PhoneRemote.markdownHTML("<script>alert(1)</script>")
+    t.expect(!xss.contains("<script"), "md: 原文 script 标签不出现")
+    t.expect(xss.contains("&lt;script&gt;"), "md: 原文 script 已转义")
+
+    // 行内: 加粗 / 行内代码 / 删除线 / 链接
+    let inline = PhoneRemote.markdownHTML("这是 **加粗** 和 `代码` 与 ~~删掉~~ 的 [文档](https://a.b/c)。")
+    t.expect(inline.contains("<strong>加粗</strong>"), "md: 加粗")
+    t.expect(inline.contains("<code>代码</code>"), "md: 行内代码")
+    t.expect(inline.contains("<del>删掉</del>"), "md: 删除线")
+    t.expect(inline.contains("<a href=\"https://a.b/c\""), "md: 链接可点")
+
+    // 危险 scheme 降级为纯文本
+    let evil = PhoneRemote.markdownHTML("[点我](javascript:alert(1))")
+    t.expect(!evil.contains("<a href=\"javascript:"), "md: javascript: 链接降级纯文本")
+
+    // 标题层级: # → h3, ### → h4
+    let heads = PhoneRemote.markdownHTML("# 大标题\n### 小标题")
+    t.expect(heads.contains("<h3>大标题</h3>"), "md: 一级标题 → h3")
+    t.expect(heads.contains("<h4>小标题</h4>"), "md: 三级标题 → h4")
+
+    // 列表 / 任务清单 (混排列表需空行分隔)
+    let list = PhoneRemote.markdownHTML("- 甲\n- 乙\n\n1. 一\n2. 二")
+    t.expect(list.contains("<ul>"), "md: 无序列表")
+    t.expect(list.contains("<li>甲</li>"), "md: 列表项")
+    t.expect(list.contains("<ol>"), "md: 有序列表")
+    let tasks = PhoneRemote.markdownHTML("- [x] 已装\n- [ ] 未装")
+    t.expect(tasks.contains("☑") && tasks.contains("☐"), "md: 任务清单勾选态")
+
+    // 代码块: fenced + 语言标签 + 内部转义
+    let code = PhoneRemote.markdownHTML("```swift\nlet x = \"<b>\"\n```")
+    t.expect(code.contains("codeBlock"), "md: 代码块容器")
+    t.expect(code.contains("codeLang") && code.contains("swift"), "md: 语言标签")
+    t.expect(code.contains("let x = \"&lt;b&gt;\""), "md: 代码内部转义")
+
+    // 表格
+    let table = PhoneRemote.markdownHTML("| 列A | 列B |\n| --- | --- |\n| 1 | 2 |")
+    t.expect(table.contains("<table>") && table.contains("<th>列A</th>"), "md: 表格")
+
+    // 引用 + 分隔线
+    let misc = PhoneRemote.markdownHTML("> 引用一句\n\n---")
+    t.expect(misc.contains("<blockquote>") && misc.contains("引用一句"), "md: 引用块")
+    t.expect(misc.contains("<hr>"), "md: 分隔线")
+
+    // 快照: assistantHTML 与 markdownHTML(assistant) 一致且非空
+    let now = Date(timeIntervalSince1970: 1_788_000_000)
+    let turn = Turn(id: "t1", userInput: "u",
+                    items: [.assistantMessage(id: "m1", text: "# 标\n**粗**")],
+                    status: .completed, startedAt: now)
+    let th = Thread(id: "th", title: "t", createdAt: now, updatedAt: now, turns: [turn])
+    let snap = PhoneRemote.buildState(threads: [th], activeId: "th", rev: 0,
+                                      hostname: "h", appVersion: "v", now: now)
+    t.expect(snap.transcript[0].assistantHTML.contains("<h3>标</h3>"), "md: 快照带渲染 HTML")
+    t.expectEqual(snap.transcript[0].assistantHTML,
+                  PhoneRemote.markdownHTML(snap.transcript[0].assistant),
+                  "md: assistantHTML 与原文渲染一致")
+}
+
+// MARK: - 接入模式与公网中继 (v0.5.17/20)
 
 func runPhoneRemoteAccessModes(_ t: TestRunner) {
     // 主机名 → 中继预设映射 (与服务器 nginx tapgo-remote.conf 一一对应)

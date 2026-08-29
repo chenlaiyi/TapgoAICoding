@@ -88,6 +88,7 @@ let allSections: [String] = [
     "PhoneRemote: 状态快照 JSON",
     "PhoneRemote: H5 页面",
     "PhoneRemote: 接入模式与公网中继",
+    "PhoneRemote: Markdown 输出渲染",
     "PhoneRemote: 电脑控制路由解析",
     "PhoneRemote: 电脑控制按键映射",
     "PhoneRemote: 电脑控制快照与页面",
@@ -682,6 +683,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "PhoneRemote: 接入模式与公网中继") {
             runPhoneRemoteAccessModes(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: Markdown 输出渲染") {
+            runPhoneRemoteMarkdown(runner)
         }
         await runIfInScope(runner, "PhoneRemote: 电脑控制路由解析") {
             runPhoneRemoteControlRoutes(runner)

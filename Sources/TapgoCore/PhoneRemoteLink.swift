@@ -547,7 +547,10 @@ public enum PhoneRemote {
         public var id: String
         public var user: String
         public var status: String
+        /// 助手回复原文 (降级/搜索用)。
         public var assistant: String
+        /// 助手回复的 Markdown 渲染结果 (已转义的安全 HTML, H5 直接 innerHTML)。
+        public var assistantHTML: String
         /// 该 turn 是否触发了命令/文件变更 (H5 上显示 "正在执行" 徽标)。
         public var running: Bool
     }
@@ -607,11 +610,13 @@ public enum PhoneRemote {
         var transcript: [TranscriptTurn] = []
         if let active = threads.first(where: { $0.id == activeId }) ?? threads.first {
             transcript = active.turns.suffix(maxTranscriptTurns).map { turn in
-                TranscriptTurn(id: turn.id,
-                               user: truncate(userText(turn)),
-                               status: turn.status.rawValue,
-                               assistant: truncate(assistantText(turn)),
-                               running: turn.status == .running || turn.status == .awaitingApproval)
+                let assistant = truncate(assistantText(turn))
+                return TranscriptTurn(id: turn.id,
+                                      user: truncate(userText(turn)),
+                                      status: turn.status.rawValue,
+                                      assistant: assistant,
+                                      assistantHTML: markdownHTML(assistant),
+                                      running: turn.status == .running || turn.status == .awaitingApproval)
             }
         }
         // 项目按各自会话的最近活跃时间倒序; 没有会话的项目用项目自身
@@ -677,6 +682,134 @@ public enum PhoneRemote {
         return String(s[..<idx]) + "\n…(已截断)"
     }
 
+    // MARK: - Markdown → 安全 HTML (v0.5.23 输出可读性)
+
+    /// HTML 转义: & < > " '。属性值 (href 等) 用这个全量版。
+    public static func escapeHTML(_ s: String) -> String {
+        var out = s
+        out = out.replacingOccurrences(of: "&", with: "&amp;")
+        out = out.replacingOccurrences(of: "<", with: "&lt;")
+        out = out.replacingOccurrences(of: ">", with: "&gt;")
+        out = out.replacingOccurrences(of: "\"", with: "&quot;")
+        out = out.replacingOccurrences(of: "'", with: "&#39;")
+        return out
+    }
+
+    /// 文本内容转义: 只转 & < >, 保留引号原样 —— 代码块里的
+    /// `let s = "hi"` 才不会变成 `&quot;hi&quot;`。
+    public static func escapeText(_ s: String) -> String {
+        var out = s
+        out = out.replacingOccurrences(of: "&", with: "&amp;")
+        out = out.replacingOccurrences(of: "<", with: "&lt;")
+        out = out.replacingOccurrences(of: ">", with: "&gt;")
+        return out
+    }
+
+    /// 把助手回复渲染成 H5 直接 innerHTML 的 HTML。
+    /// 复用 Mac 端同款 `MarkdownLite` 解析器, 标题/列表/代码块/行内代码/
+    /// 引用/表格/任务清单都有对应排版。
+    public static func markdownHTML(_ text: String) -> String {
+        MarkdownLite.parse(text).map { blockHTML($0) }.joined()
+    }
+
+    private static func blockHTML(_ seg: MarkdownSegment) -> String {
+        switch seg {
+        case .text(let s):
+            return paragraphHTML(s)
+        case .codeFence(let code, let lang):
+            let label = lang.map { "<span class=\"codeLang\">\(escapeHTML($0))</span>" } ?? ""
+            return "<pre class=\"codeBlock\">\(label)<code>\(escapeText(code))</code></pre>"
+        case .heading(let level, let content):
+            let tag = level <= 2 ? "h3" : "h4"
+            return "<\(tag)>\(inlineHTML(content))</\(tag)>"
+        case .blockquote(let content):
+            let inner = content.map { inlineHTML([$0]) }.joined(separator: "<br>")
+            return "<blockquote>\(inner)</blockquote>"
+        case .horizontalRule:
+            return "<hr>"
+        case .bulletList(let items):
+            let lis = items.map { "<li>\(inlineHTML($0))</li>" }.joined()
+            return "<ul>\(lis)</ul>"
+        case .numberedList(let items):
+            let lis = items.map { "<li>\(inlineHTML($0))</li>" }.joined()
+            return "<ol>\(lis)</ol>"
+        case .taskList(let items):
+            let lis = items.map { item -> String in
+                let box = item.checked ? "☑" : "☐"
+                return "<li class=\"task\">\(box)&nbsp;\(inlineHTML(item.content))</li>"
+            }.joined()
+            return "<ul class=\"tasks\">\(lis)</ul>"
+        case .table(let headers, let rows):
+            let ths = headers.map { "<th>\(escapeText($0))</th>" }.joined()
+            let trs = rows.map { row in
+                "<tr>" + row.map { "<td>\(escapeText($0))</td>" }.joined() + "</tr>"
+            }.joined()
+            return "<div class=\"tblWrap\"><table><thead><tr>\(ths)</tr></thead><tbody>\(trs)</tbody></table></div>"
+        case .bold(let s):
+            return paragraphHTML("**\(s)**")
+        case .strikethrough(let s):
+            return paragraphHTML("~~\(s)~~")
+        case .link(let title, let url):
+            return "<p>\(linkHTML(title: title, url: url))</p>"
+        case .image(let alt, let url):
+            // H5 不外链图片 (离线可用), 降级为链接。
+            return "<p>\(linkHTML(title: alt.isEmpty ? "图片" : alt, url: url))</p>"
+        case .inline(let s):
+            return paragraphHTML("`\(s)`")
+        }
+    }
+
+    /// 非空文本段 → <p>; 行内语法 (加粗/行内代码/链接) 一并解析。
+    private static func paragraphHTML(_ s: String) -> String {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return "" }
+        return "<p>\(inlineHTML(MarkdownLite.parseInline(t)))</p>"
+    }
+
+    /// 行内片段 → HTML (全部转义后包标签)。
+    private static func inlineHTML(_ segs: [MarkdownSegment]) -> String {
+        segs.map { seg -> String in
+            switch seg {
+            case .text(let s):
+                return escapeText(s).replacingOccurrences(of: "\n", with: "<br>")
+            case .inline(let s):
+                return "<code>\(escapeText(s))</code>"
+            case .bold(let s):
+                return "<strong>\(escapeText(s))</strong>"
+            case .strikethrough(let s):
+                return "<del>\(escapeText(s))</del>"
+            case .link(let title, let url):
+                return linkHTML(title: title, url: url)
+            case .image(let alt, _):
+                return escapeText(alt)
+            case .heading(let level, let content):
+                return inlineHTML(content) + " "
+            case .blockquote(let content):
+                return content.map { inlineHTML([$0]) }.joined()
+            case .horizontalRule:
+                return ""
+            case .bulletList(let items), .numberedList(let items):
+                return items.map { inlineHTML($0) }.joined(separator: " ")
+            case .taskList(let items):
+                return items.map { inlineHTML($0.content) }.joined(separator: " ")
+            case .codeFence(let code, _):
+                return "<code>\(escapeText(code))</code>"
+            case .table(let headers, let rows):
+                // 表格是块级元素, 行内出现时防御性降级为纯文本。
+                return escapeText((headers + rows.flatMap { $0 }).joined(separator: " "))
+            }
+        }.joined()
+    }
+
+    /// 链接: 仅 http/https 可点, 其它 scheme 降级为纯文本。
+    private static func linkHTML(title: String, url: String) -> String {
+        let lowered = url.lowercased()
+        guard lowered.hasPrefix("http://") || lowered.hasPrefix("https://") else {
+            return escapeText(title)
+        }
+        return "<a href=\"\(escapeHTML(url))\" target=\"_blank\" rel=\"noopener noreferrer\">\(escapeText(title))</a>"
+    }
+
     // MARK: - H5 page
 
     /// 渲染 H5 单页。页面静态、无外链资源, 数据全部经 `/api/state` JSON
@@ -715,8 +848,35 @@ public enum PhoneRemote {
                    background:var(--userBg); border-radius:16px 16px 4px 16px;
                    padding:10px 13px; white-space:pre-wrap; word-break:break-word;
                    font-weight:500; font-size:15.5px; }
-        .msgA { margin-top:10px; white-space:pre-wrap; word-break:break-word;
+        .msgA { margin-top:10px; word-break:break-word;
                 line-height:1.6; font-size:15.5px; }
+        .msgA p { margin:0 0 8px; }
+        .msgA p:last-child { margin-bottom:0; }
+        .msgA h3 { font-size:16px; margin:12px 0 6px; }
+        .msgA h4 { font-size:15px; margin:9px 0 5px; }
+        .msgA ul, .msgA ol { margin:0 0 8px; padding-left:20px; }
+        .msgA li { margin:2px 0; line-height:1.5; }
+        .msgA li.task { list-style:none; margin-left:-18px; }
+        .msgA code { font-family:ui-monospace,Menlo,monospace; font-size:13px;
+                     background:var(--userBg); color:var(--brand); border-radius:5px;
+                     padding:1px 5px; word-break:break-all; }
+        .msgA pre.codeBlock { background:#0b0b0e; color:#e8e8ed; border:1px solid var(--line);
+                              border-radius:10px; padding:24px 12px 10px; overflow-x:auto;
+                              margin:0 0 8px; }
+        .msgA pre.codeBlock code { background:none; color:inherit; padding:0;
+                                   font-size:12.5px; line-height:1.5; white-space:pre; }
+        .msgA .codeLang { position:absolute; top:5px; right:9px; font-size:11px;
+                          color:var(--muted); }
+        .msgA pre.codeBlock { position:relative; }
+        .msgA blockquote { margin:0 0 8px; padding:6px 12px; border-left:3px solid var(--brand);
+                           color:var(--muted); background:var(--card); border-radius:0 8px 8px 0; }
+        .msgA a { color:var(--brand); text-decoration:underline; word-break:break-all; }
+        .msgA hr { border:none; border-top:1px solid var(--line); margin:10px 0; }
+        .msgA .tblWrap { overflow-x:auto; margin:0 0 8px; border:1px solid var(--line);
+                         border-radius:10px; }
+        .msgA table { border-collapse:collapse; width:100%; font-size:13px; }
+        .msgA th, .msgA td { padding:6px 9px; border-bottom:1px solid var(--line); text-align:left; }
+        .msgA th { background:var(--card); font-weight:600; }
         .badge { display:inline-block; font-size:12px; border-radius:99px; padding:3px 10px;
                  margin-top:8px; background:var(--warn); color:#fff; }
         .badge.runPulse { animation:pulse 1.4s ease-in-out infinite; }
@@ -1000,9 +1160,9 @@ public enum PhoneRemote {
             const u = document.createElement("div"); u.className = "msgUser";
             u.textContent = t.user;
             group.appendChild(u);
-            if (t.assistant) {
+            if (t.assistantHTML) {
               const a = document.createElement("div"); a.className = "msgA";
-              a.textContent = t.assistant;
+              a.innerHTML = t.assistantHTML;
               group.appendChild(a);
             }
             if (t.running) {
