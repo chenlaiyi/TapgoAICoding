@@ -28,6 +28,7 @@
 - `EvolutionLogView.swift` 的 `makeHistory()` 数组需要手动 prepend 新版本条目（注释明确：倒序、最新在最上），历史上容易遗漏导致 App 内“自进化日志”页面落后于实际版本
 - 用户偏好简洁输出，希望流式响应中省略无关细节，只保留关键结论
 - 项目背景：App 的 `makeHistory()` 数组缺失 v0.5.4 条目，commit/tag/Info.plist/project.yml/EVOLUTION.md 已对齐，待补全该条目并重建
+- 项目经验（v0.5.25）：composer 弹窗的『查看额度』必须直接调 MiniMax 官方 `GET /v1/api/openplatform/coding_plan/remains`（Authorization: Bearer），切忌复用 Codex app-server 的 `account/rateLimits/read`——后者永远拿不到 MiniMax-M3 的真实订阅。MiniMax 字段 `current_interval_usage_count` / `current_weekly_usage_count` 字面是 usage、实际是『剩余』，需 `used = total - remaining` 反转。
 
 ## 本地落地说明
 

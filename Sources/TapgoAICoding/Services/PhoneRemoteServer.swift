@@ -334,7 +334,8 @@ final class PhoneRemoteController: ObservableObject {
                                                       accessibilityAllowed: Self.accessibilityAllowed),
                                                   projects: seeds,
                                                   activeProjectId: workspace.state.activeProjectId,
-                                                  model: store.modelName)
+                                                  model: store.modelName,
+                                                  attachedCount: store.attachedImages.count)
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
             lastPollAt = Date()
@@ -360,6 +361,14 @@ final class PhoneRemoteController: ObservableObject {
                 store.setActiveProject(projectId)
             }
             store.newThread()
+            return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
+        case .success(.attach(let name, let dataBase64)):
+            lastPollAt = Date()
+            phoneConnected = true
+            guard let url = Self.writeAttachment(name: name, dataBase64: dataBase64) else {
+                return PhoneRemote.badRequestResponse
+            }
+            store.addImages([url])
             return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
         case .success(.controlScreen):
             lastPollAt = Date()
@@ -440,6 +449,38 @@ final class PhoneRemoteController: ObservableObject {
 
     static var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    }
+
+    /// 手机上传的图片附件: base64 解码 → 魔数校验 → 写临时文件 → 返回 URL
+    /// (交 `store.addImages` 转存)。扩展名取自文件名并限制在图片白名单内。
+    static func writeAttachment(name: String, dataBase64: String) -> URL? {
+        guard let data = Data(base64Encoded: dataBase64, options: [.ignoreUnknownCharacters]),
+              !data.isEmpty, data.count <= 12_000_000
+        else { return nil }
+        let ext: String
+        let bytes = [UInt8](data.prefix(12))
+        if bytes.starts(with: [0xFF, 0xD8, 0xFF]) {
+            ext = "jpg"
+        } else if bytes.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
+            ext = "png"
+        } else if bytes.starts(with: [0x47, 0x49, 0x46]) {
+            ext = "gif"
+        } else if bytes.starts(with: [0x52, 0x49, 0x46, 0x46]), data.count > 12 {
+            ext = "webp"
+        } else if data.count > 11, String(decoding: data[4..<8], as: UTF8.self) == "ftyp" {
+            ext = "heic"
+        } else {
+            return nil
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tapgo-attach-\(UUID().uuidString).\(ext)")
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            return nil
+        }
+        _ = name // 文件名仅用于展示, 实际落盘名用 UUID 防路径注入。
+        return url
     }
 
     static func displayName() -> String {

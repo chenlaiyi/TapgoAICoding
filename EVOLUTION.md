@@ -19,6 +19,27 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.25 — composer 弹窗『查看额度』改用 MiniMax 官方接口 + 手机附件上传与模型面板
+**Date**: 2026-08-29
+**Commit**: <pending>
+**Tag**: v0.5.25
+**Test status**: 2276 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
+**Changed**:
+- 用户反馈 composer 圆形上下文 meter 的弹窗里『查看额度』严重错误: 之前走 Codex app-server 的 `account/rateLimits/read`, 但本 App 对话模型是 MiniMax-M3, 该 JSON-RPC 永远返回不到真实订阅数据 —— 弹窗的 5 小时 / 每周 数字一直是不存在的占位。
+- 新增 `TapgoCore/MiniMaxQuotaClient`: 直接读 auth.json 里的 `OPENAI_API_KEY`, 调 MiniMax 官方 `GET /v1/api/openplatform/coding_plan/remains`, `Authorization: Bearer <Token Plan Key>`, 端点随 `TapgoConfig.Region` (默认 `www.minimaxi.com`)。
+- 新增 `TapgoCore/MiniMaxQuotaSnapshotBuilder`: 处理 MiniMax 字段语义陷阱 —— `current_interval_usage_count` / `current_weekly_usage_count` 字面是 usage, 实际是『剩余』; 这里集中做 `used = total - remaining` 反转; 周配额无 reset 时间则不写 `resetsAt`; Token Plan 没有 Credits 概念, credits cell 始终隐藏。
+- `SessionStore.refreshRateLimits()` 改为异步实例化 `MiniMaxQuotaClient(authPath:, modelName:)` 直接拉取, 不再依赖 Codex harness (移除 `firstLiveRunner()` 选 harness 的逻辑)。
+- 弹窗标签 `codex account/rateLimits` → `MiniMax coding_plan/remains`, 调试时一眼看出数据来源; 错误信息直接显示 MiniMax 接口的 HTTP / 业务码。
+- 测试: 新增 `MiniMaxQuota: SnapshotBuilder` 16 断言 (基本反转/100%/0%/服务端 glitch 越界 → 100% 钳位/total=0 隐藏/planLabel 空白隐藏/数值类型 NSNumber+Double 兼容) + `MiniMaxQuota: MiniMaxQuotaClient` 10 断言 (HTTP 200 成功 / 500 透传 / 业务 1008 insufficient_balance 透传 / model 不匹配 / auth.json 缺失 / 单条 wildcard fallback / Bearer header 取自 auth.json); 既有 `RateLimits: JSON parsing + display helpers` (29 断言) 与 `ExecEvent: account/rateLimits/updated notification` (6 断言) 全绿。
+- **收编并行会话 WIP — 手机 composer 按钮查修 (用户反馈『+ 怎么是新对话? 不是上传附件吗? 模型也不能选择, 按钮也不能正常使用』)**:
+  - `+` 改为真正的**图片附件上传**: 点击唤起手机相册/文件选择 (accept=image/* 多选), FileReader 转 base64 POST `api/attach` (新增路由); Mac 端 `writeAttachment` 做魔数校验 (JPEG/PNG/GIF/WEBP/HEIC) 后写临时文件并 `store.addImages` 加入待发附件, 随下一条消息发送; composer 内显示附件计数行与上传进度。
+  - `PhoneRemote.maxBodyBytes` 65KB → 20MB (base64 膨胀 1.33 倍), 快照增 `attachedCount` (发送后 Mac 端清零)。
+  - 模型名『MiniMax-M3 ▾』点击弹出**模型选择面板** (底部卡片式, 列表来自 Mac 端 codex 配置, 当前模型高亮); 大脑图标可点, 跳电脑控制 Tab 查看权限。
+  - `PhoneRemote: 链接构建与路由鉴权` +5 断言 (attach 路由), `状态快照 JSON` +1 (attachedCount), `H5 页面` +7 (fileInput/api/attach/attRow/modelSheet/modelBtn/上传进度); 全量 2276 passed / 8 failed。
+  - 公网链路实测: curl 上传 1x1 PNG → 200, `/api/state` attachedCount=1。
+**Why**: App 用的是 MiniMax-M3 不是 Codex 模型, Codex 那条 JSON-RPC 拿到的是 Codex 自身订阅配额, 跟用户实际订阅完全无关 —— 必须切到 MiniMax 官方 Token Plan 接口才能拿到真实数据; 同时手机端 composer 的 +/模型/状态按钮此前是死的装饰, 用户明确要求做成真功能。
+**Next**: Token Plan 接口在海外端点未联调 (`.overseas` 分支已留好 baseURL); 模型面板在 Mac 端配置多模型后自动生效; 附件支持非图片文件。
+
 ## v0.5.24 — H5 顶部改项目切换器, 移除软件标题
 **Date**: 2026-08-29
 **Commit**: 5af6315

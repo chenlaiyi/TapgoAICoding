@@ -7,9 +7,11 @@ import TapgoCore
 ///   * 6 行占比                → 用 TokenUsage.input/output/cached/reasoning 4 个
 ///     维度填充前 4 行;MCP 工具 / 技能当前无拆分量,占位"—"。
 ///   * 平均缓存命中率           → 由调用方提供
-///   * 剩余额度 (5小时/每周/Credits) → codex account/rateLimits/read
-///     + account/rateLimits/updated,经 CodexHarnessClient.readRateLimits()
-///     拉取,SessionStore.rateLimits 持有,本视图直接渲染。
+///   * 剩余额度 (5小时/每周)    → MiniMax 官方 Token Plan / Coding Plan 接口
+///     `GET /v1/api/openplatform/coding_plan/remains`,由 `MiniMaxQuotaClient`
+///     拉取并把 "remaining" 反算为 "usedPercent",SessionStore.rateLimits
+///     持有,本视图直接渲染。Credits 一栏对 Token Plan 订阅始终隐藏 (按 token
+///     扣费,无余额概念)。
 struct ModelUsagePopover: View {
     let usage: TokenUsage?
     let averageCacheHitPercent: Int?
@@ -126,7 +128,7 @@ struct ModelUsagePopover: View {
                         .foregroundStyle(DSHTheme.brand)
                 }
                 Spacer(minLength: 8)
-                Text(rateLimitsLoading ? "刷新中…" : "codex account/rateLimits")
+                Text(rateLimitsLoading ? "刷新中…" : "MiniMax coding_plan/remains")
                     .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelTertiary)
             }

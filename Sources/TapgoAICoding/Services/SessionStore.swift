@@ -96,15 +96,17 @@ final class SessionStore: ObservableObject {
     @Published var turnFeedback: [String: Int] = [:]
     @Published var setupError: SetupError?
 
-    /// Latest `account/rateLimits` snapshot from the harness. Drives the
-    /// composer popover (5h + weekly windows + credits balance). Updated
-    /// by the live `account/rateLimits/updated` notification or a manual
-    /// `refreshRateLimits()` call (e.g. when the popover opens).
+    /// Latest MiniMax (Token Plan / Coding Plan) 剩余额度快照。驱动 composer 弹窗
+    /// （5 小时 / 每周 / Plan 名）。由 `refreshRateLimits()` 直接打 MiniMax 官方
+    /// HTTP 接口拉取，不再走 Codex app-server —— 那是 Codex 的 JSON-RPC，永远
+    /// 拿不到 MiniMax-M3 的真实订阅数据。
     @Published var rateLimits: RateLimitsSnapshot?
     @Published var rateLimitsLoading: Bool = false
     /// Last error from `refreshRateLimits()` so the popover can show a
     /// brief failure caption instead of a misleading "—".
     @Published var rateLimitsError: String?
+    /// 弹窗标签：标识额度来源，便于排错。永远是 "MiniMax coding_plan/remains"。
+    let rateLimitsSource: String = "MiniMax coding_plan/remains"
 
     /// Approval requests the harness is waiting on, keyed by request id.
     /// `ApprovalRow` watches this and resolves entries by calling
@@ -116,25 +118,21 @@ final class SessionStore: ObservableObject {
 
     var modelName: String { TapgoConfig.modelName }
 
-    /// Fetch the latest `account/rateLimits` snapshot from any live
-    /// harness and write it to `rateLimits`. Safe to call repeatedly —
-    /// overlapping calls are coalesced via `rateLimitsLoading`. Falls
-    /// back to the active runner, then any other live runner, so the
-    /// popover can populate even before the user starts a turn.
+    /// 拉取 MiniMax 官方 Token Plan 剩余额度，写入 `rateLimits`。可重复调用 —
+    /// 重叠请求由 `rateLimitsLoading` 合并。模型由 `TapgoConfig.modelName`
+    /// 决定（当前固定为 MiniMax-M3）。任何错误都会写到 `rateLimitsError`，
+    /// 弹窗会显示为红字 caption。
     func refreshRateLimits() {
         guard !rateLimitsLoading else { return }
-        guard let runner = firstLiveRunner() else {
-            // No harness running yet (rare — the popover appears with the
-            // composer, which exists before any turn is dispatched). The
-            // next harness to start will fire `account/rateLimits/updated`
-            // automatically once the handshake completes.
-            return
-        }
         rateLimitsLoading = true
         Task { @MainActor [weak self] in
             defer { self?.rateLimitsLoading = false }
             do {
-                let snap = try await runner.readRateLimits()
+                let client = MiniMaxQuotaClient(
+                    authPath: TapgoConfig.authPath,
+                    modelName: TapgoConfig.modelName
+                )
+                let snap = try await client.fetchRemains()
                 guard let self else { return }
                 self.rateLimits = snap
                 self.rateLimitsError = nil
@@ -143,17 +141,6 @@ final class SessionStore: ObservableObject {
                 self.rateLimitsError = error.localizedDescription
             }
         }
-    }
-
-    /// Pick the harness that should service a `account/rateLimits/read`
-    /// call: the active thread's runner, else the first live runner.
-    /// Mirrors the picker the harness supervisor uses for ad-hoc requests.
-    private func firstLiveRunner() -> CodexHarnessClient? {
-        if let activeId = activeThreadId,
-           let ctx = runsByThreadId[activeId] {
-            return ctx.runner
-        }
-        return runsByThreadId.values.first?.runner
     }
 
 

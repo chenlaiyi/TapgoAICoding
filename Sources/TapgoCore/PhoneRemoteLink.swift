@@ -203,6 +203,9 @@ public enum PhoneRemote {
         /// POST /r/<token>/api/new `{"projectId": "..."}` — 在指定项目下新建
         /// 会话并切换过去。
         case newSession(projectId: String)
+        /// POST /r/<token>/api/attach — 手机上传图片附件 (base64), 落到
+        /// Mac 待发附件, 随下一条消息一起发送。
+        case attach(name: String, dataBase64: String)
         // MARK: 电脑控制 (v0.5.17) — 坐标均为归一化 0...1 (相对主屏截图)。
         /// GET /r/<token>/api/ctrl/screen — 主屏截图 JPEG。
         case controlScreen
@@ -314,6 +317,12 @@ public enum PhoneRemote {
                 return .failure(.badRequest)
             }
             return .success(.newSession(projectId: pid))
+        case ["api", "attach"]:
+            guard method == "POST",
+                  let name = jsonStringField(body, "name"), !name.isEmpty,
+                  let data = jsonStringField(body, "data"), !data.isEmpty
+            else { return .failure(.badRequest) }
+            return .success(.attach(name: name, dataBase64: data))
         case ["api", "ctrl", "screen"]:
             guard method == "GET" else { return .failure(.badRequest) }
             return .success(.controlScreen)
@@ -403,8 +412,8 @@ public enum PhoneRemote {
 
     /// 请求头最大字节数; 超过视为恶意/损坏, 直接断开。
     public static let maxHeadBytes = 16_384
-    /// 请求 body 最大字节数。
-    public static let maxBodyBytes = 65_536
+    /// 请求 body 最大字节数 (20MB — 手机上传图片附件走 base64, 有 1.33 倍膨胀)。
+    public static let maxBodyBytes = 20_000_000
 
     /// 从字节流里解析一条完整 HTTP/1.1 请求。
     /// 返回 nil 表示数据还没到齐 (调用方继续收); 数据明显超限也返回 nil,
@@ -582,6 +591,8 @@ public enum PhoneRemote {
         public var control: ControlStatus?
         /// 当前模型名 (composer 底栏展示, 如 "MiniMax-M3")。
         public var model: String?
+        /// Mac 端待发附件图片张数 (手机上传后 >0, 发送后清零)。
+        public var attachedCount: Int
         /// 项目列表 (按最近活跃倒序) + 活动项目; v0.5.20 项目切换用。
         public var projects: [ProjectInfo]
         public var activeProjectId: String?
@@ -597,6 +608,7 @@ public enum PhoneRemote {
                                   projects: [ProjectSeed] = [],
                                   activeProjectId: String? = nil,
                                   model: String? = nil,
+                                  attachedCount: Int = 0,
                                   now: Date = Date()) -> StateSnapshot {
         let sorted = threads.sorted { $0.updatedAt > $1.updatedAt }.prefix(maxThreads)
         let infos = sorted.map { t -> ThreadInfo in
@@ -645,6 +657,7 @@ public enum PhoneRemote {
                              transcript: transcript,
                              control: control,
                              model: model,
+                             attachedCount: attachedCount,
                              projects: projectInfos,
                              activeProjectId: activeProjectId)
     }
@@ -935,7 +948,29 @@ public enum PhoneRemote {
                 border-radius:50%; animation:rot .9s linear infinite; flex:none; margin:0 3px; }
         @keyframes rot { to { transform:rotate(360deg); } }
         .modelSel { display:flex; align-items:center; gap:4px; color:var(--fg); font-size:14px;
-                    font-weight:600; margin-left:auto; white-space:nowrap; }
+                    font-weight:600; margin-left:auto; white-space:nowrap;
+                    background:transparent; border:none; padding:4px 2px; }
+        .brainWrap { position:relative; display:flex; align-items:center; justify-content:center;
+                     width:28px; height:28px; flex:none; color:var(--muted);
+                     background:transparent; border:none; padding:0; cursor:pointer; }
+        #attRow { font-size:12px; color:var(--muted); background:var(--bg);
+                  border:1px dashed var(--line); border-radius:8px; padding:5px 9px;
+                  margin-bottom:6px; }
+        #attRow.uploading { color:var(--brand); border-color:var(--brand); }
+        #modelSheet { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.5);
+                      display:flex; align-items:flex-end; justify-content:center; }
+        .sheetCard { background:var(--card); width:100%; max-width:720px;
+                     border-radius:18px 18px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
+        .sheetTitle { font-weight:700; font-size:16px; margin-bottom:10px; }
+        .modelRow { display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+                    background:var(--bg); color:var(--fg); border:1px solid var(--line);
+                    border-radius:10px; padding:11px 13px; font-size:15px; font-weight:600;
+                    margin-bottom:8px; }
+        .modelRow.cur { border-color:var(--brand); color:var(--brand); }
+        .modelRow .curTag { margin-left:auto; font-size:11px; font-weight:600; }
+        .sheetHint { font-size:12px; color:var(--muted); line-height:1.5; margin:2px 0 12px; }
+        .sheetCloseBtn { width:100%; background:var(--bg); color:var(--fg);
+                         border:1px solid var(--line); padding:10px 0; font-weight:600; }
         .modelSel .pChev { color:var(--muted); font-size:11px; }
         .brainWrap { position:relative; display:flex; align-items:center; justify-content:center;
                      width:28px; height:28px; flex:none; color:var(--muted); }
@@ -1087,21 +1122,23 @@ public enum PhoneRemote {
           </div>
         </main>
         <div id="bar">
+          <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
           <div class="composer">
+            <div id="attRow" class="hidden">🖼 已附 <span id="attCount">0</span> 张图片, 随下一条消息一起发送</div>
             <textarea id="input" placeholder="向 Tapgo 提问…" rows="2"></textarea>
             <div class="composerBar">
-              <button class="barIcon" id="newBtn" aria-label="在当前项目新建会话">
+              <button class="barIcon" id="newBtn" aria-label="上传图片附件">
                 <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
               </button>
               <button class="barIcon" id="shieldBtn" aria-label="电脑控制状态, 点击查看">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6l7-3z"/><path d="M12 8v4.2"/><circle cx="12" cy="15.4" r="0.9" fill="currentColor" stroke="none"/></svg>
               </button>
               <span class="spin hidden" id="busySpin"></span>
-              <span class="modelSel"><span id="modelName">…</span><span class="pChev">▾</span></span>
-              <span class="brainWrap" aria-label="电脑控制就绪状态">
+              <button class="modelSel" id="modelBtn" aria-label="选择模型"><span id="modelName">…</span><span class="pChev">▾</span></button>
+              <button class="brainWrap" id="brainBtn" aria-label="电脑控制就绪状态, 点击查看">
                 <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4a3 3 0 0 0-3 3 3 3 0 0 0-2 2.8c0 .9.4 1.7 1 2.2a3 3 0 0 0 .5 4.6A3 3 0 0 0 9.5 20c1 0 2-.5 2.5-1.4V5.4A3 3 0 0 0 9.5 4z"/><path d="M14.5 4a3 3 0 0 1 3 3 3 3 0 0 1 2 2.8c0 .9-.4 1.7-1 2.2a3 3 0 0 1-.5 4.6A3 3 0 0 1 14.5 20c-1 0-2-.5-2.5-1.4V5.4a3 3 0 0 1 2.5-1.4z"/></svg>
                 <span class="bdot" id="brainDot"></span>
-              </span>
+              </button>
               <button id="sendBtn" aria-label="发送">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
               </button>
@@ -1111,6 +1148,14 @@ public enum PhoneRemote {
             <button class="chip" data-fill="跑一遍全量测试, 汇总通过与失败项。">🧪 跑测试</button>
             <button class="chip" data-fill="总结当前工作区未提交的改动。">📝 总结改动</button>
             <button class="chip" data-fill="继续处理上次未完成的任务。">▶ 继续任务</button>
+          </div>
+        </div>
+        <div id="modelSheet" class="hidden">
+          <div class="sheetCard">
+            <div class="sheetTitle">选择模型</div>
+            <div id="modelList"></div>
+            <div class="sheetHint">模型列表来自 Mac 端 codex 配置; 在 Mac 端添加更多模型后会自动出现在这里。</div>
+            <button id="sheetClose" class="sheetCloseBtn">关闭</button>
           </div>
         </div>
         <script>
@@ -1178,7 +1223,10 @@ public enum PhoneRemote {
           busy = turns.length > 0 && turns[turns.length - 1].running;
           $("sendBtn").disabled = busy;
           activeProjectId = s.activeProjectId || null;
-          $("newBtn").disabled = !activeProjectId;
+          // 待发附件计数 (上传后 >0, 发送后 Mac 端清零)。
+          const att = s.attachedCount || 0;
+          $("attRow").classList.toggle("hidden", att === 0);
+          $("attCount").textContent = String(att);
           // composer 底栏状态 (仿 ZCode: 转圈 / 模型名 / 大脑绿点 / 盾牌)
           $("modelName").textContent = s.model || "MiniMax-M3";
           $("busySpin").classList.toggle("hidden", !busy);
@@ -1393,9 +1441,68 @@ public enum PhoneRemote {
         $("input").addEventListener("keydown", (ev) => {
           if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
         });
-        $("newBtn").addEventListener("click", () => {
-          if (activeProjectId) newSession(activeProjectId);
+        // + = 上传图片附件 (选图 → base64 上传 Mac → 加入待发附件)。
+        $("newBtn").addEventListener("click", () => $("fileInput").click());
+        $("fileInput").addEventListener("change", async (ev) => {
+          const files = [...(ev.target.files || [])];
+          ev.target.value = "";
+          if (!files.length) return;
+          const row = $("attRow");
+          for (let i = 0; i < files.length; i++) {
+            row.classList.remove("hidden");
+            row.classList.add("uploading");
+            row.textContent = "正在上传 " + (i + 1) + "/" + files.length + ": " + files[i].name;
+            const dataUrl = await new Promise((resolve) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve(String(fr.result || ""));
+              fr.onerror = () => resolve("");
+              fr.readAsDataURL(files[i]);
+            });
+            const base64 = dataUrl.split(",")[1] || "";
+            if (!base64) continue;
+            await fetch(BASE + "r/" + TOKEN + "/api/attach", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: files[i].name, data: base64 })
+            });
+          }
+          row.classList.remove("uploading");
+          row.textContent = "";
+          lastJSON = "";
+          refresh();
         });
+
+        // 模型选择面板 (列表来自 Mac 端 codex 配置)。
+        function openModelSheet() {
+          const list = $("modelList");
+          list.textContent = "";
+          const models = (lastState && lastState.model) ? [lastState.model] : [];
+          if (!models.length) {
+            const e = document.createElement("div"); e.className = "modelRow";
+            e.textContent = "未获取到模型信息";
+            list.appendChild(e);
+          }
+          for (const m of models) {
+            const b = document.createElement("button");
+            b.className = "modelRow" + (m === (lastState && lastState.model) ? " cur" : "");
+            b.textContent = m;
+            if (m === (lastState && lastState.model)) {
+              const tag = document.createElement("span"); tag.className = "curTag";
+              tag.textContent = "当前";
+              b.appendChild(tag);
+            }
+            b.addEventListener("click", closeModelSheet);
+            list.appendChild(b);
+          }
+          $("modelSheet").classList.remove("hidden");
+        }
+        function closeModelSheet() { $("modelSheet").classList.add("hidden"); }
+        $("modelBtn").addEventListener("click", openModelSheet);
+        $("sheetClose").addEventListener("click", closeModelSheet);
+        $("modelSheet").addEventListener("click", (ev) => {
+          if (ev.target === $("modelSheet")) closeModelSheet();
+        });
+        $("brainBtn").addEventListener("click", () => switchTab(true));
 
         // ---------- 电脑控制 (v0.5.17) ----------
 

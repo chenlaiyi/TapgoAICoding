@@ -289,6 +289,26 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.25",
+                    date: "2026-08-29",
+                    commit: "<pending>",
+                    tag: "v0.5.25",
+                    summary: "composer『查看额度』接 MiniMax 官方接口 + 手机附件上传与模型选择面板",
+                    changes: [
+                        "用户反馈『查看额度』严重错误：之前走 Codex app-server 的 account/rateLimits/read，但本 App 对话模型是 MiniMax-M3，那条 JSON-RPC 永远拿不到真实订阅数据。",
+                        "新增 TapgoCore/MiniMaxQuotaClient：直接读 auth.json 里的 OPENAI_API_KEY，调 MiniMax 官方 GET /v1/api/openplatform/coding_plan/remains，Authorization: Bearer <Token Plan Key>，端点随 TapgoConfig.Region（默认 www.minimaxi.com）。",
+                        "新增 TapgoCore/MiniMaxQuotaSnapshotBuilder：处理 MiniMax 字段语义陷阱——current_interval_usage_count / current_weekly_usage_count 字面是 usage，实际是『剩余』；这里集中做 used = total - remaining 反转；周配额无 reset 时间则不写 resetsAt；Token Plan 没有 Credits 概念，credits cell 始终隐藏。",
+                        "SessionStore.refreshRateLimits() 改为异步实例化 MiniMaxQuotaClient(authPath:, modelName:) 直接拉取，不再依赖 Codex harness（移除 firstLiveRunner() 选 harness 的逻辑）。",
+                        "弹窗标签 codex account/rateLimits → MiniMax coding_plan/remains，调试时一眼看出数据来源；错误信息直接显示 MiniMax 接口的 HTTP / 业务码。",
+                        "测试：新增 MiniMaxQuota: SnapshotBuilder 16 断言（基本反转/100%/0%/服务端 glitch 越界 → 100% 钳位/total=0 隐藏/planLabel 空白隐藏/数值类型 NSNumber+Double 兼容）+ MiniMaxQuota: MiniMaxQuotaClient 10 断言（HTTP 200 成功 / 500 透传 / 业务 1008 insufficient_balance 透传 / model 不匹配 / auth.json 缺失 / 单条 wildcard fallback / Bearer header 取自 auth.json）；既有 RateLimits: JSON parsing + display helpers (29 断言) 与 ExecEvent: account/rateLimits/updated notification (6 断言) 全绿。",
+                        "收编并行会话 WIP（用户反馈『+ 怎么是新对话？模型也不能选择，按钮也不能正常使用』）：composer『+』改为图片附件上传——选图 → base64 POST api/attach → Mac 魔数校验后 store.addImages 加入待发附件，随下一条消息发送；composer 显示附件计数与上传进度；PhoneRemote.maxBodyBytes 65KB → 20MB；快照增 attachedCount。",
+                        "模型名『MiniMax-M3 ▾』点击弹出模型选择面板（列表来自 Mac 端 codex 配置，当前模型高亮）；大脑图标可点跳电脑控制 Tab；测试 +13 断言（attach 路由 5 / attachedCount 1 / 页面 7），公网链路实测上传 1x1 PNG → attachedCount=1。"
+                    ],
+                    why: "App 用的是 MiniMax-M3 不是 Codex 模型，Codex 那条 JSON-RPC 拿到的是 Codex 自身订阅配额，跟用户实际订阅完全无关——必须切到 MiniMax 官方 Token Plan 接口才能拿到真实数据。",
+                    next: "Token Plan 接口在海外端点未联调（.overseas 分支已留好 baseURL）；后续若用户切到海外 region，用同一个 client 即可生效。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.24",
                     date: "2026-08-29",
                     commit: "5af6315",

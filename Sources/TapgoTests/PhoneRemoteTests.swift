@@ -90,6 +90,22 @@ func runPhoneRemoteLinkRoute(_ t: TestRunner) {
     if case .failure(.badRequest) = route("POST", "/r/\(token)/api/new", "{}") {} else {
         t.expect(false, "route: 缺 projectId 的 new → badRequest")
     }
+    // v0.5.25 附件上传路由
+    if case .success(.attach(let n, let d)) =
+        route("POST", "/r/\(token)/api/attach", #"{"name":"p.png","data":"aGVsbG8="}"#) {
+        t.expectEqual(n, "p.png", "route: attach 携带文件名")
+        t.expectEqual(d, "aGVsbG8=", "route: attach 携带 base64 数据")
+    } else {
+        t.expect(false, "route: POST api/attach → attach")
+    }
+    for bad in [#"{"name":"p.png"}"#, #"{"data":"aGk="}"#, "{}"] {
+        if case .failure(.badRequest) = route("POST", "/r/\(token)/api/attach", bad) {} else {
+            t.expect(false, "route: 缺字段 attach → badRequest (\(bad))")
+        }
+    }
+    if case .failure(.badRequest) = route("GET", "/r/\(token)/api/attach") {} else {
+        t.expect(false, "route: GET api/attach → badRequest")
+    }
     if case .failure(.notFound) = route("GET", "/r/\(token)/api/nope") {} else {
         t.expect(false, "route: 未知 api 路径 → notFound")
     }
@@ -202,6 +218,7 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                                       ],
                                       activeProjectId: "pA",
                                       model: "MiniMax-M3",
+                                      attachedCount: 2,
                                       now: now)
     t.expectEqual(snap.rev, 7, "snapshot: rev 透传")
     t.expectEqual(snap.hostname, "Chenlaiyi", "snapshot: hostname 透传")
@@ -223,6 +240,7 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(snap.projects.first?.name, "A项目", "snapshot: 项目名透传")
     t.expectEqual(snap.activeProjectId, "pA", "snapshot: activeProjectId 透传")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
+    t.expectEqual(snap.attachedCount, 2, "snapshot: attachedCount 透传")
 
     // transcript: app-progress 剔除 + 截断 + running 标记
     t.expectEqual(snap.transcript.count, 2, "snapshot: transcript 条数")
@@ -458,6 +476,14 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(html.contains("busySpin"), "page: busy 转圈")
     t.expect(html.contains("brainDot"), "page: 大脑状态点")
     t.expect(html.contains("shieldBtn"), "page: 盾牌按钮")
+    // v0.5.25 附件上传 + 模型选择面板
+    t.expect(html.contains("api/attach"), "page: attach 端点")
+    t.expect(html.contains("fileInput"), "page: 隐藏文件选择器")
+    t.expect(html.contains("accept=\"image/*\""), "page: 仅接受图片")
+    t.expect(html.contains("attRow"), "page: 附件计数行")
+    t.expect(html.contains("modelSheet"), "page: 模型选择面板")
+    t.expect(html.contains("modelBtn"), "page: 模型选择按钮")
+    t.expect(html.contains("正在上传"), "page: 上传进度提示")
 }
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)

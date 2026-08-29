@@ -242,3 +242,98 @@ extension RateLimitsSnapshot {
         return "重置于 \(value)"
     }
 }
+
+// MARK: - MiniMax (Token Plan / Coding Plan) → RateLimitsSnapshot mapper
+//
+// The popover used to read `account/rateLimits/read` off the Codex app-server,
+// but that JSON-RPC endpoint only carries Codex-side quotas — it has no
+// concept of MiniMax-M3's Token Plan subscription. The official MiniMax
+// quota endpoint (`GET /v1/api/openplatform/coding_plan/remains`, auth via
+// `Authorization: Bearer <key>`) instead exposes per-model
+// `model_remains` entries. Each entry looks like:
+//
+//   {
+//     "model_name": "MiniMax-M3",
+//     "current_interval_total_count": 4500,
+//     "current_interval_usage_count": 404,           // ⚠️ this is REMAINING, not used
+//     "current_weekly_total_count": 157500,
+//     "current_weekly_usage_count": 155640,         // ⚠️ REMAINING
+//     "end_time": 1756660800,
+//     "plan_name": "Plus"
+//   }
+//
+// Despite the `_usage_` suffix, both `_count` fields hold **remaining** quota;
+// the "used" count must be derived as `total - remaining`. Centralising that
+// here keeps the SwiftUI layer oblivious to MiniMax's inverted naming.
+public enum MiniMaxQuotaSnapshotBuilder {
+    /// Convert a single `model_remains` entry into a `RateLimitsSnapshot`
+    /// matching the existing popover vocabulary. `now` is propagated as the
+    /// snapshot's `fetchedAt` so the popover can show "重置于" countdowns
+    /// relative to the same instant the data was pulled.
+    public static func build(from entry: [String: Any], now: Date) -> RateLimitsSnapshot {
+        let primary = makeWindow(
+            total: intValue(entry["current_interval_total_count"]),
+            remaining: intValue(entry["current_interval_usage_count"]),
+            // MiniMax-M3 是文本模型，按 5 小时周期渲染。
+            windowDurationMins: 300,
+            resetsAt: dateValue(entry["end_time"])
+        )
+        let secondary = makeWindow(
+            total: intValue(entry["current_weekly_total_count"]),
+            remaining: intValue(entry["current_weekly_usage_count"]),
+            windowDurationMins: 10080,
+            resetsAt: nil  // 周配额没有具体 reset 时间，弹窗 caption 自动回落
+        )
+        let planType = (entry["plan_name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Token Plan 没有 Credits 概念（按 token 扣费），隐藏 credits cell。
+        return RateLimitsSnapshot(
+            primary: primary,
+            secondary: secondary,
+            credits: nil,
+            planType: planType?.isEmpty == false ? planType : nil,
+            byLimitId: [],
+            fetchedAt: now
+        )
+    }
+
+    private static func makeWindow(
+        total: Int?,
+        remaining: Int?,
+        windowDurationMins: Int,
+        resetsAt: Date?
+    ) -> RateLimitWindow? {
+        guard let total, total > 0 else { return nil }
+        let remaining = remaining ?? 0
+        // used = total - remaining, 但要防御两类服务端异常:
+        //   - remaining < 0   → 视为 100% 用尽
+        //   - remaining > total → 视为 100% 用尽 (与负向越界同样处理)
+        // 留 `remaining == total` 走常规路径 (代表未使用, 0% used)。
+        let used: Int
+        if remaining < 0 {
+            used = total            // 负数 → 满
+        } else if remaining > total {
+            used = total            // 超过总额 → 满
+        } else {
+            used = total - remaining
+        }
+        let pct = Int((Double(used) / Double(total) * 100).rounded())
+        return RateLimitWindow(
+            usedPercent: max(0, min(100, pct)),
+            windowDurationMins: windowDurationMins,
+            resetsAt: resetsAt
+        )
+    }
+
+    private static func intValue(_ raw: Any?) -> Int? {
+        if let i = raw as? Int { return i }
+        if let d = raw as? Double { return Int(d) }
+        if let s = raw as? String { return Int(s) }
+        if let n = raw as? NSNumber { return n.intValue }
+        return nil
+    }
+
+    private static func dateValue(_ raw: Any?) -> Date? {
+        guard let intVal = intValue(raw) else { return nil }
+        return Date(timeIntervalSince1970: TimeInterval(intVal))
+    }
+}

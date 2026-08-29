@@ -69,6 +69,8 @@ let allSections: [String] = [
     "ModelUsageMetrics: percentOfWindow + averageCacheHitPercent",
     "RateLimits: JSON parsing + display helpers",
     "ExecEvent: account/rateLimits/updated notification",
+    "MiniMaxQuota: SnapshotBuilder (remaining → used)",
+    "MiniMaxQuota: MiniMaxQuotaClient (transport-injected)",
     "MarkdownLite: fenced code blocks",
     "MarkdownLite: inline code + bold",
     "MarkdownLite: passthrough",
@@ -338,6 +340,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ExecEvent: account/rateLimits/updated notification") {
             runExecEventParserRateLimitsUpdated(runner)
+        }
+        await runIfInScope(runner, "MiniMaxQuota: SnapshotBuilder (remaining → used)") {
+            runMiniMaxQuotaParsing(runner)
+        }
+        await runIfInScope(runner, "MiniMaxQuota: MiniMaxQuotaClient (transport-injected)") {
+            await runMiniMaxQuotaClient(runner)
         }
         await runIfInScope(runner, "MarkdownLite: fenced code blocks") {
             runMarkdownLiteFencedCode(runner)
