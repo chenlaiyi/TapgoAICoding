@@ -289,6 +289,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.24",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.24",
+                    summary: "H5 顶部改项目切换器，移除软件标题",
+                    changes: [
+                        "置顶 header 由『● Tapgo · 机器名』改为『● 📁 当前项目名 ▾』——项目切换器占据标题位，点击进『项目与会话』列表页；原 composer 上方的项目条同步移除，不再重复。",
+                        "页面 h1 标题删除（回归断言：页面无 <h1>）；浏览器标签页标题仍为 document.title = \"Tapgo · 机器名\"（多机辨识在标签页层）。",
+                        "列表页统计行加主机名（『Chenlaiyi · 2 个项目 · 42 个会话』），多机场景下辨识当前设备。",
+                        "真实浏览器截图确认顶部即项目切换器。"
+                    ],
+                    why: "手机小屏上软件名没有信息量，项目才是当前上下文；顶部常驻切换器让『换项目』变成一步操作。",
+                    next: "项目切换器支持直接下拉切换（免进列表页）；会话页补当前会话标题行。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.23",
                     date: "2026-08-29",
                     commit: "60100a1",

@@ -837,8 +837,6 @@ public enum PhoneRemote {
         header { position:sticky; top:0; z-index:10; background:var(--card);
                  border-bottom:1px solid var(--line); padding:12px 16px;
                  display:flex; align-items:center; gap:10px; }
-        header h1 { font-size:17px; margin:0; flex:1; white-space:nowrap; overflow:hidden;
-                    text-overflow:ellipsis; }
         #dot { width:9px; height:9px; border-radius:50%; background:var(--ok); flex:none; }
         #dot.off { background:var(--warn); }
         main { padding:12px 12px 190px; max-width:720px; margin:0 auto; }
@@ -912,12 +910,14 @@ public enum PhoneRemote {
         .hint { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5; }
         #bar { position:fixed; bottom:0; left:0; right:0; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
                background:linear-gradient(transparent, var(--bg) 26%); }
-        /* 项目条 (composer 上方, 仿 ZCode 独立项目选择条) */
-        #projChip { max-width:720px; margin:0 auto 8px; display:flex; align-items:center; gap:7px;
-                    background:var(--card); border:1px solid var(--line); border-radius:12px;
-                    padding:9px 12px; font-weight:600; font-size:14px; cursor:pointer; }
+        /* 顶部项目切换器 (替代软件标题) */
+        #projChip { flex:1; min-width:0; display:flex; align-items:center; gap:7px;
+                    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+                    padding:8px 11px; font-weight:600; font-size:15px; cursor:pointer; }
+        #projChip #projName { flex:1; min-width:0; white-space:nowrap; overflow:hidden;
+                              text-overflow:ellipsis; }
         #projChip .cIcon { color:var(--muted); font-size:14px; }
-        #projChip .pChev { color:var(--muted); font-size:11px; margin-left:2px; }
+        #projChip .pChev { color:var(--muted); font-size:11px; }
         /* Composer 卡片 (仿 ZCode 输入区): 大输入区 + 底部工具行 */
         .composer { max-width:720px; margin:0 auto; background:var(--card);
                     border:1px solid var(--line); border-radius:20px; padding:13px 15px 10px;
@@ -999,7 +999,11 @@ public enum PhoneRemote {
         <body>
         <header>
           <span id="dot" class="off"></span>
-          <h1 id="title">Tapgo AICoding</h1>
+          <div id="projChip" aria-label="切换项目, 查看项目与会话列表">
+            <span class="cIcon">📁</span>
+            <span id="projName">…</span>
+            <span class="pChev">▾</span>
+          </div>
         </header>
         <nav id="tabs">
           <button class="tab active" id="tabChat">会话</button>
@@ -1083,11 +1087,6 @@ public enum PhoneRemote {
           </div>
         </main>
         <div id="bar">
-          <div id="projChip">
-            <span class="cIcon">📁</span>
-            <span id="projName">…</span>
-            <span class="pChev">▾</span>
-          </div>
           <div class="composer">
             <textarea id="input" placeholder="向 Tapgo 提问…" rows="2"></textarea>
             <div class="composerBar">
@@ -1131,7 +1130,7 @@ public enum PhoneRemote {
         let shotURL = null;
 
         function render(s) {
-          $("title").textContent = "Tapgo · " + (s.hostname || "Mac");
+          document.title = "Tapgo · " + (s.hostname || "Mac");
           activeId = s.activeId;
           lastState = s;
 
@@ -1221,7 +1220,7 @@ public enum PhoneRemote {
           if (!s || !$("projects")) return;
           const projs = s.projects || [];
           const threads = s.threads || [];
-          $("projStats").textContent = projs.length + " 个项目 · " + threads.length + " 个会话";
+          $("projStats").textContent = (s.hostname ? s.hostname + " · " : "") + projs.length + " 个项目 · " + threads.length + " 个会话";
           const pc = $("projects");
           pc.textContent = "";
           if (!projs.length) {
