@@ -982,10 +982,6 @@ public enum PhoneRemote {
                    display:flex; align-items:center; justify-content:center;
                    box-shadow:0 1px 6px rgba(0,0,0,.22); }
         #sendBtn:disabled { opacity:.4; }
-        #chips { display:flex; gap:8px; max-width:720px; margin:8px auto 0;
-                 overflow-x:auto; padding:0 2px 2px; }
-        .chip { flex:none; background:var(--card); border:1px solid var(--line); color:var(--fg);
-                border-radius:12px; padding:8px 13px; font-size:13px; font-weight:500; }
         /* 空会话时段问候 (仿 ZCode 首屏) */
         #greet { text-align:center; padding:56px 16px 24px; }
         #greet .gLogo { font-size:46px; line-height:1; opacity:.92; }
@@ -1143,11 +1139,6 @@ public enum PhoneRemote {
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
               </button>
             </div>
-          </div>
-          <div id="chips">
-            <button class="chip" data-fill="跑一遍全量测试, 汇总通过与失败项。">🧪 跑测试</button>
-            <button class="chip" data-fill="总结当前工作区未提交的改动。">📝 总结改动</button>
-            <button class="chip" data-fill="继续处理上次未完成的任务。">▶ 继续任务</button>
           </div>
         </div>
         <div id="modelSheet" class="hidden">
@@ -1406,16 +1397,6 @@ public enum PhoneRemote {
         $("input").addEventListener("input", (ev) => {
           ev.target.style.height = "auto";
           ev.target.style.height = Math.min(140, ev.target.scrollHeight) + "px";
-        });
-
-        // 快捷 chips: 点击填入输入框 (不自动发送)。
-        document.querySelectorAll("#chips .chip").forEach((c) => {
-          c.addEventListener("click", () => {
-            const inp = $("input");
-            inp.value = c.dataset.fill || "";
-            inp.dispatchEvent(new Event("input"));
-            inp.focus();
-          });
         });
 
         async function send() {

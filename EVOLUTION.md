@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.26 — 移除手机 composer 下方三个快捷指令 chips
+**Date**: 2026-08-29
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.26
+**Test status**: 2276 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
+**Changed**:
+- 用户反馈 v0.5.21 仿 ZCode 截图时自作主张加的三个快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 多此一举: 它们只是把固定文案填进输入框, 不是用户要的功能。
+- 删除 #chips HTML/CSS 与对应 JS 接线, composer 下方恢复干净; 无其它行为变化。
+**Why**: 仿造竞品形态时不该连可有可无的装饰一起照搬; 用户明确指出后立即移除。
+**Next**: 无。
+
 ## v0.5.25 — composer 弹窗『查看额度』改用 MiniMax 官方接口 + 手机附件上传与模型面板
 **Date**: 2026-08-29
 **Commit**: 275c78f

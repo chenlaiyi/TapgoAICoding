@@ -289,6 +289,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.26",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.26",
+                    summary: "移除手机 composer 下方三个快捷指令 chips",
+                    changes: [
+                        "用户反馈 v0.5.21 仿 ZCode 截图时自作主张加的三个快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 多此一举：它们只是把固定文案填进输入框，不是用户要的功能。",
+                        "删除 #chips HTML/CSS 与对应 JS 接线，composer 下方恢复干净；无其它行为变化。"
+                    ],
+                    why: "仿造竞品形态时不该连可有可无的装饰一起照搬；用户明确指出后立即移除。",
+                    next: "无。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.25",
                     date: "2026-08-29",
                     commit: "275c78f",
