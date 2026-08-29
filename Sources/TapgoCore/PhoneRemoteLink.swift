@@ -156,6 +156,26 @@ public enum PhoneRemote {
         ]
     }
 
+    /// 本机隧道进程在命令行里的唯一特征串 (pkill -f 用)。App 被强杀时
+    /// ssh 子进程会变孤儿并继续占着服务器转发端口, 新隧道会报
+    /// "remote port forwarding failed"; 拉起新隧道前用它清理残留。
+    public static func tunnelProcessPattern(serverForwardPort: Int, localPort: Int) -> String {
+        "127.0.0.1:\(serverForwardPort):127.0.0.1:\(localPort) \(relaySSHDestination)"
+    }
+
+    /// 清理服务器端僵尸转发会话的参数: 本机 ssh 非正常死亡时, 服务器 sshd
+    /// 可能长时间察觉不到 (半开连接), 转发监听还在但通道已死, 新隧道绑不上
+    /// 端口。端口三机独占, `fuser -k` 只影响自己的端口, 不会误伤他人。
+    public static func remoteCleanupArguments(serverForwardPort: Int) -> [String] {
+        [
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=8",
+            "-o", "StrictHostKeyChecking=accept-new",
+            relaySSHDestination,
+            "fuser -k -n tcp \(serverForwardPort) 2>/dev/null; true",
+        ]
+    }
+
     /// Tailscale CGNAT 段 (100.64.0.0/10) 判定 — utun 网卡上的 100.64-100.127
     /// 即 tailnet 地址。
     public static func isTailnetIPv4(_ ip: String) -> Bool {

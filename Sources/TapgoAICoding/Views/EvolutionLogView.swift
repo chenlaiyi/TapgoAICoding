@@ -289,6 +289,24 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.18",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.18",
+                    summary: "公网中继自愈：清理孤儿隧道进程与服务器僵尸转发，端口冲突 3s 快速重试",
+                    changes: [
+                        "真机异常修复：部署强杀 App 后 ssh 隧道子进程变孤儿，继续占用服务器端口，新实例报『公网中继 · 异常 · remote port forwarding failed for listen port 18723』但公网实际仍经孤儿隧道可达，状态误导。",
+                        "PhoneRelayTunnel.spawn() 前先 pkill -f 清理本机孤儿：PhoneRemote.tunnelProcessPattern 特征串唯一对应本机『ssh -R 127.0.0.1:<port>:… root@139.9.61.199』命令行，不误伤其它 ssh。",
+                        "服务器端僵尸转发自愈：本机 ssh 非正常死亡时 sshd 对半开连接不敏感（fafa 实测：本机无 ssh 进程但端口 LISTEN、公网超时）；新增 PhoneRemote.remoteCleanupArguments，清理阶段在服务器 fuser -k -n tcp <port> 释放本机独占端口（18723-18725 三机一一对应）。",
+                        "端口冲突类失败识别为可自愈：不累计持续失败、3s 快速重试；其它失败维持连续 3 次转 failed + 15s 降频。",
+                        "『PhoneRemote: 接入模式与公网中继』测试段 29 → 34 断言：特征串与真实 ssh argv 逐字匹配、远端清理命令形态。",
+                        "三机部署实测：强杀部署后各机只剩 1 个新隧道进程；fafa 僵尸监听被自动释放，三机公网链接连续 3 轮全部 200。"
+                    ],
+                    why: "部署流程必然强杀 App 而隧道子进程无父进程回收，公网中继必须能从『强杀 / 断网 / 半开连接』中自己恢复，否则弹窗长期挂着误导性异常。",
+                    next: "长周期观察服务器重启与长时间断网恢复；评估服务器 sshd ClientAliveInterval 作为第二道兜底。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.17",
                     date: "2026-08-29",
                     commit: "658b9d1",

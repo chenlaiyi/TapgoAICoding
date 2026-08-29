@@ -19,6 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.18 — 公网中继自愈: 清理孤儿隧道与服务器僵尸转发
+**Date**: 2026-08-29
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.18
+**Test status**: 2107 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关); PhoneRemote 6 段全绿
+**Changed**:
+- 真机异常 (用户截图): 弹窗显示『公网中继 · 异常 · Error: remote port forwarding failed for listen port 18723』。根因: 部署时强杀 App, 其 ssh 隧道子进程变孤儿, 继续占服务器 1872X 端口; 新实例绑不上端口报异常, 但公网实际仍经孤儿隧道 200, 状态误导。
+- `PhoneRelayTunnel.spawn()` 前先 `pkill -f <特征串>` 清理本机孤儿; 特征串 `PhoneRemote.tunnelProcessPattern` 唯一对应本机 `ssh -R ... root@139.9.61.199` 命令行, 不误伤其它 ssh。
+- 服务器端僵尸转发: 本机 ssh 非正常死亡时 sshd 对半开连接不敏感, 转发监听残留但通道已死 (fafa 实测复现, 本机无 ssh 进程但端口 LISTEN、公网超时)。新增 `PhoneRemote.remoteCleanupArguments`, 清理阶段在服务器执行 `fuser -k -n tcp <port>` 释放本机独占端口 (18723-18725 三机一一对应, 不影响其它机器)。
+- 端口冲突类失败识别为可自愈: 不累计持续失败、3s 快速重试; 其它失败维持连续 3 次转 failed + 15s 降频。
+- 新增回归断言: 特征串与真实 ssh argv 逐字匹配、远端清理命令形态; `PhoneRemote: 接入模式与公网中继` 段 29 → 34 断言。
+- 三机部署实测: 部署强杀后各机只剩 1 个新隧道进程; fafa 的僵尸监听被自动释放, 三机公网链接连续 3 轮全部 200。
+**Why**: 部署流程必然强杀 App 而隧道子进程无父进程回收; 公网中继要做到『部署/断网/强杀之后自己恢复』, 否则弹窗长期挂着误导性异常。
+**Next**: 长周期观察 (服务器重启/长时间断网恢复); 评估服务器 sshd `ClientAliveInterval` 作为第二道兜底。
+
 ## v0.5.17 — 手机 H5『电脑控制』页（截屏/点按/滚动/打字/按键/锁屏）+ 三种接入方式
 **Date**: 2026-08-29
 **Commit**: 658b9d1

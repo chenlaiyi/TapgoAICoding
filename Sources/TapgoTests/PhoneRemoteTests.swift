@@ -283,6 +283,22 @@ func runPhoneRemoteAccessModes(_ t: TestRunner) {
     }
     t.expectEqual(args.last ?? "", PhoneRemote.relaySSHDestination, "tunnel: 目的地在末位")
 
+    // 隧道进程特征串 (孤儿清理用): 必须与真实 ssh 命令行尾部逐字匹配
+    t.expectEqual(PhoneRemote.tunnelProcessPattern(serverForwardPort: 18723, localPort: 8723),
+                  "127.0.0.1:18723:127.0.0.1:8723 root@139.9.61.199",
+                  "tunnel: 进程特征串格式")
+    let joinedArgs = PhoneRemote.tunnelArguments(serverForwardPort: 18724, localPort: 8723)
+        .joined(separator: " ")
+    t.expect(joinedArgs.contains(PhoneRemote.tunnelProcessPattern(serverForwardPort: 18724, localPort: 8723)),
+             "tunnel: 特征串能匹配真实 ssh 命令行")
+
+    // 服务器端僵尸转发清理参数
+    let cleanArgs = PhoneRemote.remoteCleanupArguments(serverForwardPort: 18725)
+    t.expect(!cleanArgs.contains("-N"), "cleanup: 不用 -N (需执行远端命令)")
+    t.expectEqual(cleanArgs.last ?? "", "fuser -k -n tcp 18725 2>/dev/null; true",
+                  "cleanup: 远端命令在末位且端口正确")
+    t.expect(cleanArgs.contains("BatchMode=yes"), "cleanup: 仅密钥认证")
+
     // tailnet 地址判定 (100.64.0.0/10)
     t.expect(PhoneRemote.isTailnetIPv4("100.100.191.111"), "tailnet: 本机样例地址")
     t.expect(PhoneRemote.isTailnetIPv4("100.64.0.1"), "tailnet: 段首")

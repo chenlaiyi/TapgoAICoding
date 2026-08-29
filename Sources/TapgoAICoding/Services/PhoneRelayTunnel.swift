@@ -67,6 +67,7 @@ final class PhoneRelayTunnel: ObservableObject {
     private func spawn() {
         guard wantRunning, process == nil else { return }
         state = consecutiveFastFailures >= Self.fastFailureThreshold ? .failed(stderrTail) : .connecting
+        cleanupStaleTunnel()
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
         p.arguments = PhoneRemote.tunnelArguments(serverForwardPort: preset.serverForwardPort,
@@ -121,7 +122,14 @@ final class PhoneRelayTunnel: ObservableObject {
             state = .idle
             return
         }
-        // 非零退出 (端口被占/免密失效/断网) 都计数, 连续过快失败则降频重连。
+        // 端口被本机残留隧道占用 (App 上次被强杀, ssh 子进程变孤儿):
+        // spawn 前的清理已能接手端口, 快速重试且不累计为持续失败。
+        if stderrTail.contains("remote port forwarding failed") {
+            consecutiveFastFailures = 0
+            scheduleRestart(delay: Self.normalRestartDelay)
+            return
+        }
+        // 其他失败 (免密失效/断网) 计数, 连续过快失败则降频重连。
         consecutiveFastFailures += 1
         if consecutiveFastFailures >= Self.fastFailureThreshold {
             state = .failed(stderrTail.isEmpty ? "ssh 退出 (\(status))" : stderrTail)
@@ -129,6 +137,34 @@ final class PhoneRelayTunnel: ObservableObject {
         } else {
             state = .connecting
             scheduleRestart(delay: Self.normalRestartDelay)
+        }
+    }
+
+    /// 清理隧道残留: (1) 本机孤儿 ssh 进程; (2) 服务器上本机端口的僵尸
+    /// 转发监听 (半开连接, sshd 未察觉客户端已死)。完成后下一次 bind 即可
+    /// 成功。特征串/端口都唯一对应本机, 不会影响其它机器或用户的 ssh。
+    private func cleanupStaleTunnel() {
+        runTool("/usr/bin/pkill",
+                ["-f", PhoneRemote.tunnelProcessPattern(
+                    serverForwardPort: preset.serverForwardPort,
+                    localPort: localPortProvider())])
+        runTool("/usr/bin/ssh",
+                PhoneRemote.remoteCleanupArguments(serverForwardPort: preset.serverForwardPort))
+    }
+
+    /// 同步执行一个清理工具, 忽略一切失败 (清理是尽力而为)。
+    private func runTool(_ path: String, _ arguments: [String]) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: path)
+        p.arguments = arguments
+        p.standardOutput = Pipe()
+        p.standardError = Pipe()
+        do {
+            try p.run()
+            p.waitUntilExit()
+        } catch {
+            // 清理失败静默降级: 端口仍被占时走 "remote port forwarding
+            // failed" 快速重试路径。
         }
     }
 
