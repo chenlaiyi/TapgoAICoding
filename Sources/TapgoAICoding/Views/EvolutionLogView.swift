@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.25",
                     date: "2026-08-29",
-                    commit: "<pending>",
+                    commit: "275c78f",
                     tag: "v0.5.25",
                     summary: "composer『查看额度』接 MiniMax 官方接口 + 手机附件上传与模型选择面板",
                     changes: [

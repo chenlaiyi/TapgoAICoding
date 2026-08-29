@@ -21,7 +21,7 @@
 
 ## v0.5.25 — composer 弹窗『查看额度』改用 MiniMax 官方接口 + 手机附件上传与模型面板
 **Date**: 2026-08-29
-**Commit**: <pending>
+**Commit**: 275c78f
 **Tag**: v0.5.25
 **Test status**: 2276 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
