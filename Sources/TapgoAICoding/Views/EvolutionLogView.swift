@@ -289,6 +289,24 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.17",
+                    date: "2026-08-29",
+                    commit: "",
+                    tag: "v0.5.17",
+                    summary: "手机 H5 新增『电脑控制』页（截屏/点按/滚动/打字/按键/锁屏）+ 三种接入方式（Wi-Fi/Tailscale/公网中继）",
+                    changes: [
+                        "电脑控制协议层：PhoneRemoteLink 新增 /api/ctrl/screen|click|scroll|type|key|cmd 六条路由与 ControlKey（14 个普通键 kVK_* + 6 个媒体键 NX_KEYTYPE_*，互斥映射表）、ControlAction（lock/sleep）白名单；StateSnapshot 增加 control 块（enabled/screenAllowed/accessibilityAllowed），H5 据此自适应提示。",
+                        "电脑控制 App 层：PhoneRemoteServer 新增 controlEnabled 总开关（UserDefaults 持久化，默认开）+ TCC 权限预检（CGPreflightScreenCaptureAccess / AXIsProcessTrusted）与弹窗授权入口；CGDisplayCreateImage 主屏截屏（最长边限 1200px JPEG 0.72）；CGEvent 注入鼠标移动/单击/双击（clickState 递增）、行滚动（±20 限幅）、逐字符 Unicode 键盘输入（换行转 Return）、媒体键走 NSEvent systemDefined subtype 8 私有形态；锁屏 = Ctrl+Cmd+Q、睡眠 = pmset sleepnow。控制类请求在开关关闭/权限缺失时返回 403 + 机读 error 码。",
+                        "H5 页面升级：新增『会话 | 电脑控制』Tab。控制页含截屏按钮 + 画面点按（归一化坐标回传，与分辨率无关，点按后 600ms 自动刷新）、双击模式切换、上/下滚、远程打字输入框、常用键（换行/Esc/Tab/空格/⌫/⌦/方向键）、媒体键（音量/亮度/播放暂停）、锁屏与睡眠（confirm 确认）；权限缺失/开关关闭时横幅提示并禁用对应按钮。",
+                        "三种接入方式（v0.5.17 WIP 收编）：AccessMode = lan（局域网 IP 直连）/ tailnet（100.64/10 utun 地址）/ relay（https://pay.itapgo.com/remote/<machine>/ 经 ssh -R 反向隧道 + nginx 加密中继）；三台 Mac 端口 18723-18725 与 nginx tapgo-remote.conf 一一对应；PhoneRelayTunnel 常驻监督（3s 快速重连，连续 3 次失败降频 15s 并转 failed）。",
+                        "ConnectPhoneView 新增『电脑控制』卡片：总开关 + 屏幕录制/辅助功能权限状态行 + 弹窗授权按钮 + 系统设置路径提示。",
+                        "测试：PhoneRemoteTests 新增 3 个 section（电脑控制路由解析 / 按键映射 / 快照与页面）共 40+ 断言；修复 jsonDoubleField/jsonBoolField 在 Darwin 上 Bool 经 NSNumber 桥接混淆为数值的问题（CFBooleanGetTypeID 严格区分）。"
+                    ],
+                    why: "v0.5.16 完成了『扫码即开 H5』，手机只能看到/驱动 AI 会话；用户要求让 App 拥有真正的电脑控制能力——在任意网络下用手机截屏看 Mac 画面、点按操作鼠标、远程打字和控制音量/亮度/锁屏。本次把控制面做进同一个 token 鉴权的 H5 服务，并保留 Mac 端总开关与权限前置检查，泄露 token 的风险面与既有约定一致。",
+                    next: "为截屏增加多显示器选择；评估触屏拖拽映射鼠标按住移动；考虑在控制面加最近剪贴板/文件推送。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.16",
                     date: "2026-08-29",
                     commit: "36cf03b",

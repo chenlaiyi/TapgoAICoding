@@ -19,6 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.17 — 手机 H5『电脑控制』页（截屏/点按/滚动/打字/按键/锁屏）+ 三种接入方式
+**Date**: 2026-08-29
+**Commit**: (待回填)
+**Tag**: v0.5.17
+**Test status**: 2062 passed / 0 failed（13 个 SSH 集成测试用 `TAPGO_SKIP_REMOTE_TESTS=1` 跳过）
+**Changed**:
+- **电脑控制协议层**：`PhoneRemoteLink` 新增 `/api/ctrl/screen|click|scroll|type|key|cmd` 六条路由、`ControlKey`（14 普通键 + 6 媒体键映射表，两类互斥）、`ControlAction`（lock/sleep）白名单；`StateSnapshot` 增加 `control` 块（enabled/screenAllowed/accessibilityAllowed）。
+- **电脑控制 App 层**：`PhoneRemoteServer` 新增 `controlEnabled` 总开关（UserDefaults 持久化，默认开）、TCC 权限预检与弹窗授权、主屏截屏（≤1200px JPEG）、CGEvent 鼠标移动/单击/双击、行滚动（±20 限幅）、逐字符 Unicode 键盘输入、媒体键 systemDefined 事件、锁屏（Ctrl+Cmd+Q）/睡眠（pmset sleepnow）。开关关闭或权限缺失 → 403 + 机读 error 码。
+- **H5 页面**：新增『会话 | 电脑控制』Tab；控制页含截屏 + 画面点按（归一化坐标回传 + 600ms 自动刷新）、双击模式、滚动、远程打字、常用键、媒体键、锁屏/睡眠（confirm 确认）；权限缺失横幅提示并禁用按钮。
+- **三种接入方式**：`AccessMode = lan / tailnet / relay`；relay 经 `ssh -R` 反向隧道 + nginx（三台 Mac 18723-18725 端口对应 `/remote/chenlaiyi|jk|fafa/` 前缀）；`PhoneRelayTunnel` 常驻监督重连。
+- **ConnectPhoneView**：新增『电脑控制』卡片（总开关 + 权限状态 + 弹窗授权按钮）。
+- **测试**：新增 3 个 PhoneRemote 测试 section（路由解析/按键映射/快照与页面）共 40+ 断言；修复 `jsonDoubleField`/`jsonBoolField` 在 Darwin 上 Bool 经 NSNumber 桥接与数值混淆的问题（`CFBooleanGetTypeID` 严格区分）。
+**Why**: v0.5.16 的『扫码即开 H5』只能看/驱动 AI 会话；本版把同一 token 鉴权的服务扩展成真正的电脑控制面，Mac 端保留总开关与权限前置检查。
+**Next**: 多显示器截屏选择；触屏拖拽映射鼠标按住移动；控制面加剪贴板/文件推送。
+
 ## v0.5.16 — Composer 圆形上下文 meter 移到输入框正下方 + 5 chip 恢复 + PhoneRemote 协议层接入
 **Date**: 2026-08-29
 **Commit**: 36cf03b

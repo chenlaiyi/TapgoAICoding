@@ -19,6 +19,7 @@ struct ConnectPhoneView: View {
         VStack(alignment: .leading, spacing: 16) {
             header
             scanCard
+            controlCard
             hintFooter
             doneFooter
         }
@@ -31,6 +32,27 @@ struct ConnectPhoneView: View {
         }
         .onChange(of: remote.linkString) { _ in
             qrImage = remote.makeQRImage()
+        }
+        .onChange(of: remote.activeMode) { _ in
+            qrImage = remote.makeQRImage()
+        }
+    }
+
+    private func tunnelDotColor(_ state: PhoneRelayTunnel.State) -> Color {
+        switch state {
+        case .idle: return .gray
+        case .connecting: return .orange
+        case .connected: return .green
+        case .failed: return .red
+        }
+    }
+
+    private func tunnelStateText(_ state: PhoneRelayTunnel.State) -> String {
+        switch state {
+        case .idle: return "未启用"
+        case .connecting: return "连接中…"
+        case .connected: return "已连接"
+        case .failed(let message): return "异常 · \(message)"
         }
     }
 
@@ -66,6 +88,16 @@ struct ConnectPhoneView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
+            if remote.availableModes.count > 1 {
+                Picker("接入方式", selection: $remote.activeMode) {
+                    ForEach(remote.availableModes, id: \.self) { mode in
+                        Text(Self.modeTitle(mode)).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("接入方式")
+            }
+
             statusCard
 
             HStack(alignment: .center, spacing: 0) {
@@ -93,6 +125,10 @@ struct ConnectPhoneView: View {
             }
 
             qrView
+            Text(Self.modeHint(remote.activeMode))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .background(
@@ -103,6 +139,25 @@ struct ConnectPhoneView: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
         )
+    }
+
+    static func modeTitle(_ mode: PhoneRemote.AccessMode) -> String {
+        switch mode {
+        case .lan: return "同一 Wi-Fi"
+        case .tailnet: return "Tailscale"
+        case .relay: return "公网域名"
+        }
+    }
+
+    static func modeHint(_ mode: PhoneRemote.AccessMode) -> String {
+        switch mode {
+        case .lan:
+            return "手机与 Mac 连接同一 Wi-Fi 时使用, 延迟最低。"
+        case .tailnet:
+            return "手机安装 Tailscale 并登录同一账号后, 任意网络可访问。"
+        case .relay:
+            return "经 pay.itapgo.com 加密中继, 任意网络可访问, 无需安装 App。"
+        }
     }
 
     /// 运行状态卡: 服务状态 + 手机在线状态 + 停止/启动。
@@ -128,6 +183,23 @@ struct ConnectPhoneView: View {
             Text(remote.phoneSubtitle)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            if let tunnel = remote.relayTunnel, remote.isRunning {
+                HStack(spacing: 6) {
+                    Text("公网中继")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Circle()
+                        .fill(tunnelDotColor(tunnel.state))
+                        .frame(width: 7, height: 7)
+                    Text(tunnelStateText(tunnel.state))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("公网中继 \(tunnelStateText(tunnel.state))")
+            }
             if case .failed(let message) = remote.status {
                 Text(message)
                     .font(.footnote)
@@ -209,6 +281,76 @@ struct ConnectPhoneView: View {
         }
     }
 
+    // MARK: - 电脑控制 (v0.5.17)
+
+    /// 电脑控制卡片: 总开关 + 两项 macOS TCC 权限状态与授权入口。
+    private var controlCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "desktopcomputer.and.arrow.down")
+                    .foregroundStyle(.tint)
+                Text("电脑控制").font(.headline)
+                Spacer()
+                Toggle("", isOn: $remote.controlEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityLabel("允许手机控制这台电脑")
+            }
+            Text("开启后, 手机 H5 页面新增「电脑控制」页: 截屏看画面、点按画面移动并单击鼠标、远程打字、音量/亮度/锁屏。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            permissionRow(icon: "eye",
+                          title: "屏幕录制",
+                          detail: "手机上查看 Mac 截屏",
+                          granted: PhoneRemoteController.screenCaptureAllowed)
+            permissionRow(icon: "hand.tap",
+                          title: "辅助功能",
+                          detail: "远程鼠标点击与键盘输入",
+                          granted: PhoneRemoteController.accessibilityAllowed)
+
+            if !PhoneRemoteController.screenCaptureAllowed || !PhoneRemoteController.accessibilityAllowed {
+                Button {
+                    PhoneRemoteController.requestPermissions()
+                } label: {
+                    Label("弹出系统授权窗口", systemImage: "lock.shield")
+                        .font(.footnote)
+                }
+                .buttonStyle(.bordered)
+            }
+            Text("权限在「系统设置 → 隐私与安全性」里授予 Tapgo AICoding; 授权后若未生效, 重启 App 即可。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.secondary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func permissionRow(icon: String, title: String, detail: String, granted: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .frame(width: 16)
+                .foregroundStyle(granted ? Color.green : Color.orange)
+            Text(title).font(.subheadline.weight(.medium))
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(granted ? "已授权" : "未授权")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(granted ? Color.green : Color.orange)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: - Footer
 
     private var hintFooter: some View {
@@ -216,7 +358,7 @@ struct ConnectPhoneView: View {
             Label("手机需与 Mac 在同一 Wi-Fi; 扫码后用 Safari 打开, 无需安装 App。", systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Label("手机端可以: 查看 / 切换会话 · 阅读对话与执行进度 · 发送新指令。", systemImage: "checkmark.seal")
+            Label("手机端可以: 查看 / 切换会话 · 阅读对话与执行进度 · 发送新指令 · 截屏点按远程控制电脑。", systemImage: "checkmark.seal")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

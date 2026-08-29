@@ -70,6 +70,100 @@ public enum PhoneRemote {
         return comps.url
     }
 
+    // MARK: - Access modes (v0.5.17)
+
+    /// 手机访问 Mac 的三种接入方式。三条路最终都落在同一个本地 HTTP 服务
+    /// (`/r/<token>` 路由不变), 区别只在链接的 host 部分。
+    public enum AccessMode: String, CaseIterable, Equatable {
+        /// 同一 Wi-Fi 直连 `http://<局域网IP>:8723`。
+        case lan
+        /// Tailscale 虚拟网内 `http://<100.x IP>:8723` — 手机装 Tailscale
+        /// 登同一 tailnet 后任意网络可达。
+        case tailnet
+        /// `https://pay.itapgo.com/remote/<machine>/r/<token>` — 经 TapgoServer
+        /// 的 SSH 反向隧道 + nginx 加密中继, 任意网络可达, 无需装任何 App。
+        case relay
+    }
+
+    /// 公网中继预设: 服务器上 sshd 转发端口 + nginx 前缀一一对应。
+    /// 端口分配 18723-18725, 前缀与 nginx `extension/pay.itapgo.com/tapgo-remote.conf`
+    /// 保持同步 (改动必须两侧同时进行)。
+    public struct RelayPreset: Equatable {
+        public let serverForwardPort: Int
+        public let pathPrefix: String
+        public let publicBase: String
+
+        public init(serverForwardPort: Int, pathPrefix: String, publicBase: String) {
+            self.serverForwardPort = serverForwardPort
+            self.pathPrefix = pathPrefix
+            self.publicBase = publicBase
+        }
+    }
+
+    /// 隧道 SSH 目的地 (三台 Mac 的 ~/.ssh 均已配置 root 免密)。
+    public static let relaySSHDestination = "root@139.9.61.199"
+
+    /// 按单个主机名 (大小写不敏感包含匹配) 返回公网中继预设。
+    public static func relayPreset(forLocalHostName name: String) -> RelayPreset? {
+        let n = name.lowercased()
+        if n.contains("fafa") {
+            return RelayPreset(serverForwardPort: 18725, pathPrefix: "/remote/fafa/",
+                               publicBase: "https://pay.itapgo.com")
+        }
+        if n.contains("jk") {
+            return RelayPreset(serverForwardPort: 18724, pathPrefix: "/remote/jk/",
+                               publicBase: "https://pay.itapgo.com")
+        }
+        if n.contains("chenlaiyi") {
+            return RelayPreset(serverForwardPort: 18723, pathPrefix: "/remote/chenlaiyi/",
+                               publicBase: "https://pay.itapgo.com")
+        }
+        return nil
+    }
+
+    /// 多来源主机名候选任一匹配即返回预设。Mac 的 ComputerName 可能是
+    /// 完全本地化的名字 (如 "发发的Mac mini", 不含任何机器代号), 因此
+    /// 必须同时尝试 LocalHostName / DNS 主机名等来源。
+    public static func relayPreset(hostCandidates: [String]) -> RelayPreset? {
+        for candidate in hostCandidates where !candidate.isEmpty {
+            if let preset = relayPreset(forLocalHostName: candidate) { return preset }
+        }
+        return nil
+    }
+
+    /// 公网中继链接: `<publicBase><pathPrefix>r/<token>`。
+    public static func relayLinkURL(preset: RelayPreset, token: String) -> URL? {
+        guard isValidToken(token) else { return nil }
+        var comps = URLComponents()
+        comps.scheme = "https"
+        comps.host = preset.publicBase.replacingOccurrences(of: "https://", with: "")
+        comps.path = "\(preset.pathPrefix)r/\(token)"
+        return comps.url
+    }
+
+    /// `ssh -R` 反向隧道参数 (不含 ssh 可执行文件本身)。纯函数方便单测。
+    public static func tunnelArguments(serverForwardPort: Int, localPort: Int) -> [String] {
+        [
+            "-N", "-T",
+            "-o", "BatchMode=yes",
+            "-o", "ExitOnForwardFailure=yes",
+            "-o", "ServerAliveInterval=15",
+            "-o", "ServerAliveCountMax=3",
+            "-o", "ConnectTimeout=10",
+            "-o", "StrictHostKeyChecking=accept-new",
+            "-R", "127.0.0.1:\(serverForwardPort):127.0.0.1:\(localPort)",
+            relaySSHDestination,
+        ]
+    }
+
+    /// Tailscale CGNAT 段 (100.64.0.0/10) 判定 — utun 网卡上的 100.64-100.127
+    /// 即 tailnet 地址。
+    public static func isTailnetIPv4(_ ip: String) -> Bool {
+        let parts = ip.split(separator: ".").compactMap { Int($0) }
+        guard parts.count == 4, parts.allSatisfy({ $0 >= 0 && $0 <= 255 }) else { return false }
+        return parts[0] == 100 && parts[1] >= 64 && parts[1] <= 127
+    }
+
     // MARK: - Routing
 
     /// 一条已鉴权(或明确拒绝)的请求意图。
@@ -82,6 +176,69 @@ public enum PhoneRemote {
         case send(text: String)
         /// POST /r/<token>/api/select `{"threadId": "..."}` — 切换活动会话。
         case select(threadId: String)
+        // MARK: 电脑控制 (v0.5.17) — 坐标均为归一化 0...1 (相对主屏截图)。
+        /// GET /r/<token>/api/ctrl/screen — 主屏截图 JPEG。
+        case controlScreen
+        /// POST /r/<token>/api/ctrl/click `{"x":0.5,"y":0.5,"double":false}`。
+        case controlClick(x: Double, y: Double, double: Bool)
+        /// POST /r/<token>/api/ctrl/scroll `{"dy": 5}` — 行数, 正数向下滚。
+        case controlScroll(deltaY: Double)
+        /// POST /r/<token>/api/ctrl/type `{"text": "..."}` — 当作键盘输入。
+        case controlType(text: String)
+        /// POST /r/<token>/api/ctrl/key `{"key": "return"}` — 单键/媒体键。
+        case controlKey(key: ControlKey)
+        /// POST /r/<token>/api/ctrl/cmd `{"action": "lock"}` — 系统级命令。
+        case controlCommand(action: ControlAction)
+    }
+
+    /// 手机可控的命名按键 (v0.5.17)。普通键走 `kVK_*` 虚拟键码; 媒体键
+    /// (音量/亮度/播放) 走 systemDefined 事件, 两者互斥。
+    public enum ControlKey: String, CaseIterable, Equatable {
+        case `return`, escape, tab, space, delete, forwardDelete
+        case up, down, left, right, home, end, pageUp, pageDown
+        case volumeUp, volumeDown, mute, brightnessUp, brightnessDown, playPause
+
+        /// 普通键的 macOS 虚拟键码 (kVK_*); 媒体键返回 nil。
+        public var virtualKeyCode: Int? {
+            switch self {
+            case .return: return 36
+            case .escape: return 53
+            case .tab: return 48
+            case .space: return 49
+            case .delete: return 51
+            case .forwardDelete: return 117
+            case .up: return 126
+            case .down: return 125
+            case .left: return 123
+            case .right: return 124
+            case .home: return 115
+            case .end: return 119
+            case .pageUp: return 116
+            case .pageDown: return 121
+            default: return nil
+            }
+        }
+
+        /// 媒体键的 NX_KEYTYPE_* 值 (ev_keymap.h); 普通键返回 nil。
+        public var mediaKeyType: Int? {
+            switch self {
+            case .volumeUp: return 0
+            case .volumeDown: return 1
+            case .brightnessUp: return 2
+            case .brightnessDown: return 3
+            case .mute: return 7
+            case .playPause: return 16
+            default: return nil
+            }
+        }
+    }
+
+    /// 系统级控制命令 (v0.5.17)。
+    public enum ControlAction: String, CaseIterable, Equatable {
+        /// Ctrl+Cmd+Q 锁屏。
+        case lock
+        /// pmset sleepnow 睡眠。
+        case sleep
     }
 
     public enum RouteError: Error, Equatable {
@@ -120,6 +277,37 @@ public enum PhoneRemote {
                 return .failure(.badRequest)
             }
             return .success(.select(threadId: id))
+        case ["api", "ctrl", "screen"]:
+            guard method == "GET" else { return .failure(.badRequest) }
+            return .success(.controlScreen)
+        case ["api", "ctrl", "click"]:
+            guard method == "POST",
+                  let x = jsonDoubleField(body, "x"), x >= 0, x <= 1,
+                  let y = jsonDoubleField(body, "y"), y >= 0, y <= 1
+            else { return .failure(.badRequest) }
+            return .success(.controlClick(x: x, y: y, double: jsonBoolField(body, "double") ?? false))
+        case ["api", "ctrl", "scroll"]:
+            guard method == "POST", let dy = jsonDoubleField(body, "dy"), dy != 0 else {
+                return .failure(.badRequest)
+            }
+            return .success(.controlScroll(deltaY: dy))
+        case ["api", "ctrl", "type"]:
+            guard method == "POST", let text = jsonStringField(body, "text"), !text.isEmpty else {
+                return .failure(.badRequest)
+            }
+            return .success(.controlType(text: text))
+        case ["api", "ctrl", "key"]:
+            guard method == "POST",
+                  let raw = jsonStringField(body, "key"),
+                  let key = ControlKey(rawValue: raw)
+            else { return .failure(.badRequest) }
+            return .success(.controlKey(key: key))
+        case ["api", "ctrl", "cmd"]:
+            guard method == "POST",
+                  let raw = jsonStringField(body, "action"),
+                  let action = ControlAction(rawValue: raw)
+            else { return .failure(.badRequest) }
+            return .success(.controlCommand(action: action))
         default:
             return .failure(.notFound)
         }
@@ -142,6 +330,28 @@ public enum PhoneRemote {
               let value = obj[key] as? String
         else { return nil }
         return value
+    }
+
+    /// 从 JSON body 里取一个数值字段 (Int/Double 都接受)。JSONSerialization
+    /// 在 Darwin 上把 true/false 也解析成 NSNumber, 这里用 CFBooleanGetTypeID
+    /// 把真 Bool 排除掉, 避免 `{"dy":true}` 被当成数值 1。
+    static func jsonDoubleField(_ data: Data, _ key: String) -> Double? {
+        guard !data.isEmpty,
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let number = obj[key] as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID()
+        else { return nil }
+        return number.doubleValue
+    }
+
+    /// 从 JSON body 里取一个 Bool 字段 (数值不算 Bool)。
+    static func jsonBoolField(_ data: Data, _ key: String) -> Bool? {
+        guard !data.isEmpty,
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let number = obj[key] as? NSNumber,
+              CFGetTypeID(number) == CFBooleanGetTypeID()
+        else { return nil }
+        return number.boolValue
     }
 
     // MARK: - Minimal HTTP
@@ -237,6 +447,22 @@ public enum PhoneRemote {
                      body: Data("bad request\n".utf8))
     }
 
+    /// 控制类请求被拒 (开关关闭 / 权限缺失) 时的 JSON 响应; H5 靠 `error`
+    /// 字段区分提示语。403 而不是 200, 与鉴权失败同一语义层。
+    public static func controlErrorResponse(_ code: String) -> Data {
+        let body = #"{"ok":false,"error":"\#(code)"}"#
+        return httpResponse(status: 403, reason: "Forbidden",
+                            contentType: "application/json; charset=utf-8",
+                            body: Data(body.utf8))
+    }
+
+    /// 控制动作成功的 JSON 响应。
+    public static var controlOKResponse: Data {
+        httpResponse(status: 200, reason: "OK",
+                     contentType: "application/json; charset=utf-8",
+                     body: Data(#"{"ok":true}"#.utf8))
+    }
+
     // MARK: - State snapshot
 
     public struct ThreadInfo: Codable, Equatable {
@@ -257,6 +483,21 @@ public enum PhoneRemote {
         public var running: Bool
     }
 
+    public struct ControlStatus: Codable, Equatable {
+        /// Mac 端是否允许手机控制电脑 (UI 开关)。
+        public var enabled: Bool
+        /// 本 App 是否已获「屏幕录制」权限 (截屏)。
+        public var screenAllowed: Bool
+        /// 本 App 是否已获「辅助功能」权限 (鼠标/键盘/系统命令)。
+        public var accessibilityAllowed: Bool
+
+        public init(enabled: Bool, screenAllowed: Bool, accessibilityAllowed: Bool) {
+            self.enabled = enabled
+            self.screenAllowed = screenAllowed
+            self.accessibilityAllowed = accessibilityAllowed
+        }
+    }
+
     public struct StateSnapshot: Codable, Equatable {
         public var rev: Int
         public var hostname: String
@@ -265,6 +506,8 @@ public enum PhoneRemote {
         public var activeId: String?
         public var threads: [ThreadInfo]
         public var transcript: [TranscriptTurn]
+        /// 电脑控制可用性; nil 时 H5 隐藏电脑控制入口。
+        public var control: ControlStatus?
     }
 
     /// 从 SessionStore 的数据构建 H5 需要的全量快照。纯函数, 方便单测。
@@ -273,6 +516,7 @@ public enum PhoneRemote {
                                   rev: Int,
                                   hostname: String,
                                   appVersion: String,
+                                  control: ControlStatus? = nil,
                                   now: Date = Date()) -> StateSnapshot {
         let sorted = threads.sorted { $0.updatedAt > $1.updatedAt }.prefix(maxThreads)
         let infos = sorted.map { t -> ThreadInfo in
@@ -298,7 +542,8 @@ public enum PhoneRemote {
                              linkVersion: PhoneRemote.linkVersion,
                              activeId: activeId ?? threads.first?.id,
                              threads: Array(infos),
-                             transcript: transcript)
+                             transcript: transcript,
+                             control: control)
     }
 
     public static func stateJSON(_ snapshot: StateSnapshot) -> Data {
@@ -377,6 +622,34 @@ public enum PhoneRemote {
                  margin-top:8px; background:var(--warn); color:#fff; }
         .badge.done { background:transparent; color:var(--muted); }
         .meta { font-size:12px; color:var(--muted); margin-top:6px; }
+        #tabs { display:flex; gap:8px; padding:10px 12px 0; max-width:720px; margin:0 auto; }
+        .tab { flex:1; background:var(--card); color:var(--muted); border:1px solid var(--line);
+               font-weight:600; font-size:15px; padding:9px 0; border-radius:10px; }
+        .tab.active { color:var(--brand); border-color:var(--brand); }
+        .hidden { display:none !important; }
+        #ctrlPane { padding:12px 12px 24px; max-width:720px; margin:0 auto; }
+        .card { background:var(--card); border:1px solid var(--line); border-radius:14px;
+                padding:12px; margin-bottom:10px; }
+        .card h2 { font-size:14px; margin:0 0 8px; color:var(--muted); font-weight:600; }
+        .row { display:flex; gap:8px; margin-bottom:8px; }
+        .row:last-child { margin-bottom:0; }
+        .k { flex:1; min-width:52px; background:var(--bg); color:var(--fg);
+             border:1px solid var(--line); font-weight:500; font-size:14px; padding:9px 4px; }
+        .k:disabled, #shotBtn:disabled, #typeBtn:disabled { opacity:.4; }
+        .wide { flex:2; }
+        .danger { background:#e5484d; }
+        .banner { border-radius:10px; padding:9px 12px; font-size:13px; margin-bottom:10px;
+                  background:#fff3e0; color:#8a5300; border:1px solid #f0c987; line-height:1.5; }
+        @media (prefers-color-scheme: dark) {
+          .banner { background:#3a2c12; color:#ffcf87; border-color:#6b4e1d; }
+        }
+        #shotWrap { position:relative; border:1px solid var(--line); border-radius:10px;
+                    overflow:hidden; background:var(--bg); min-height:110px; }
+        #shot { display:block; width:100%; }
+        #shotEmpty { position:absolute; inset:0; display:flex; align-items:center;
+                     justify-content:center; color:var(--muted); font-size:14px; text-align:center; }
+        #ctrlText { width:100%; height:70px; margin-bottom:8px; resize:none; }
+        .hint { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5; }
         #bar { position:fixed; bottom:0; left:0; right:0; background:var(--card);
                border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom));
                display:flex; gap:8px; max-width:720px; margin:0 auto; }
@@ -394,9 +667,76 @@ public enum PhoneRemote {
           <span id="dot" class="off"></span>
           <h1 id="title">Tapgo AICoding</h1>
         </header>
-        <main>
+        <nav id="tabs">
+          <button class="tab active" id="tabChat">会话</button>
+          <button class="tab" id="tabCtrl">电脑控制</button>
+        </nav>
+        <main id="chatPane">
           <select id="threads"></select>
           <div id="list"><div id="empty">正在连接 Mac…</div></div>
+        </main>
+        <main id="ctrlPane" class="hidden">
+          <div id="ctrlBanner" class="banner hidden"></div>
+          <div class="card">
+            <h2>屏幕</h2>
+            <div class="row">
+              <button id="shotBtn" class="wide">截屏</button>
+              <button id="dblBtn" class="wide k">双击模式: 关</button>
+            </div>
+            <div id="shotWrap">
+              <img id="shot" alt="Mac 屏幕">
+              <div id="shotEmpty">点「截屏」查看 Mac 当前画面</div>
+            </div>
+            <div class="hint">点按画面任意位置 = 在 Mac 对应位置单击; 打开双击模式后为双击。点按后画面自动刷新。</div>
+          </div>
+          <div class="card">
+            <h2>滚动</h2>
+            <div class="row">
+              <button class="k wide" data-scroll="-5">▲ 上滚</button>
+              <button class="k wide" data-scroll="5">▼ 下滚</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>键盘</h2>
+            <textarea id="ctrlText" class="k" placeholder="在此输入要打到 Mac 上的文字…"></textarea>
+            <div class="row">
+              <button id="typeBtn" class="wide">输入到 Mac</button>
+            </div>
+            <div class="row">
+              <button class="k" data-key="return">换行</button>
+              <button class="k" data-key="escape">Esc</button>
+              <button class="k" data-key="tab">Tab</button>
+              <button class="k" data-key="space">空格</button>
+              <button class="k" data-key="delete">⌫</button>
+              <button class="k" data-key="forwardDelete">⌦</button>
+            </div>
+            <div class="row">
+              <button class="k" data-key="left">←</button>
+              <button class="k" data-key="up">↑</button>
+              <button class="k" data-key="down">↓</button>
+              <button class="k" data-key="right">→</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>媒体</h2>
+            <div class="row">
+              <button class="k" data-key="volumeUp">音量+</button>
+              <button class="k" data-key="volumeDown">音量-</button>
+              <button class="k" data-key="mute">静音</button>
+            </div>
+            <div class="row">
+              <button class="k" data-key="brightnessUp">亮度+</button>
+              <button class="k" data-key="brightnessDown">亮度-</button>
+              <button class="k" data-key="playPause">播放/暂停</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>系统</h2>
+            <div class="row">
+              <button id="lockBtn" class="k wide danger">锁屏</button>
+              <button id="sleepBtn" class="k wide danger">睡眠</button>
+            </div>
+          </div>
         </main>
         <div id="bar">
           <textarea id="input" placeholder="给当前会话发指令…" rows="1"></textarea>
@@ -408,6 +748,9 @@ public enum PhoneRemote {
         let lastJSON = "";
         let activeId = null;
         let busy = false;
+        let ctrlState = null;
+        let dbl = false;
+        let shotURL = null;
 
         function render(s) {
           $("title").textContent = "Tapgo · " + (s.hostname || "Mac");
@@ -451,6 +794,8 @@ public enum PhoneRemote {
             list.appendChild(card);
           }
           busy = turns.length > 0 && turns[turns.length - 1].running;
+          ctrlState = s;
+          applyCtrlState(s);
           $("dot").classList.remove("off");
         }
 
@@ -504,6 +849,133 @@ public enum PhoneRemote {
         $("send").addEventListener("click", send);
         $("input").addEventListener("keydown", (ev) => {
           if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
+        });
+
+        // ---------- 电脑控制 (v0.5.17) ----------
+
+        function ctrlReady() {
+          const c = ctrlState && ctrlState.control;
+          return !!(c && c.enabled && c.accessibilityAllowed);
+        }
+        function screenReady() {
+          const c = ctrlState && ctrlState.control;
+          return !!(c && c.enabled && c.screenAllowed);
+        }
+
+        function applyCtrlState(s) {
+          const c = s.control;
+          const banner = $("ctrlBanner");
+          if (!c) {
+            banner.classList.remove("hidden");
+            banner.textContent = "Mac 端 App 版本较旧, 不支持电脑控制。";
+          } else if (!c.enabled) {
+            banner.classList.remove("hidden");
+            banner.textContent = "Mac 端已关闭电脑控制, 请在 Mac 的「移动端远程控制」窗口打开开关。";
+          } else if (!c.accessibilityAllowed || !c.screenAllowed) {
+            banner.classList.remove("hidden");
+            const missing = [];
+            if (!c.accessibilityAllowed) missing.push("辅助功能 (点击/键盘/系统操作)");
+            if (!c.screenAllowed) missing.push("屏幕录制 (截屏)");
+            banner.textContent = "Mac 未授权: " + missing.join("、") +
+              "。请在 Mac 端「系统设置 → 隐私与安全性」里授权, 或点 Mac 端弹窗授权。";
+          } else {
+            banner.classList.add("hidden");
+          }
+          $("shotBtn").disabled = !screenReady();
+          $("typeBtn").disabled = !ctrlReady();
+          document.querySelectorAll("[data-key],[data-scroll]").forEach((b) => { b.disabled = !ctrlReady(); });
+          $("lockBtn").disabled = !ctrlReady();
+          $("sleepBtn").disabled = !ctrlReady();
+        }
+
+        function switchTab(toCtrl) {
+          $("tabChat").classList.toggle("active", !toCtrl);
+          $("tabCtrl").classList.toggle("active", toCtrl);
+          $("chatPane").classList.toggle("hidden", toCtrl);
+          $("ctrlPane").classList.toggle("hidden", !toCtrl);
+          $("bar").classList.toggle("hidden", toCtrl);
+        }
+        $("tabChat").addEventListener("click", () => switchTab(false));
+        $("tabCtrl").addEventListener("click", () => switchTab(true));
+
+        async function ctrl(endpoint, body) {
+          try {
+            const r = await fetch("/r/" + TOKEN + "/api/ctrl/" + endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            });
+            if (!r.ok) {
+              const j = await r.json().catch(() => ({}));
+              if (j.error === "accessibilityPermission") {
+                applyCtrlState({ control: { enabled: true, screenAllowed: true, accessibilityAllowed: false } });
+              }
+              return false;
+            }
+            return true;
+          } catch (e) { return false; }
+        }
+
+        async function screenshot() {
+          try {
+            const r = await fetch("/r/" + TOKEN + "/api/ctrl/screen", { cache: "no-store" });
+            if (!r.ok) {
+              const j = await r.json().catch(() => ({}));
+              const msg = j.error === "screenPermission" ? "Mac 未授予屏幕录制权限, 截屏不可用。" :
+                          j.error === "controlDisabled" ? "Mac 端已关闭电脑控制。" : "截屏失败。";
+              const empty = $("shotEmpty");
+              empty.textContent = msg;
+              empty.classList.remove("hidden");
+              return;
+            }
+            const blob = await r.blob();
+            if (shotURL) URL.revokeObjectURL(shotURL);
+            shotURL = URL.createObjectURL(blob);
+            const img = $("shot");
+            img.src = shotURL;
+            img.onload = () => $("shotEmpty").classList.add("hidden");
+          } catch (e) {
+            const empty = $("shotEmpty");
+            empty.textContent = "网络异常, 稍后再试。";
+            empty.classList.remove("hidden");
+          }
+        }
+        $("shotBtn").addEventListener("click", screenshot);
+
+        $("dblBtn").addEventListener("click", () => {
+          dbl = !dbl;
+          $("dblBtn").textContent = "双击模式: " + (dbl ? "开" : "关");
+        });
+
+        $("shot").addEventListener("click", async (ev) => {
+          if (!ctrlReady()) return;
+          const r = ev.target.getBoundingClientRect();
+          const x = (ev.clientX - r.left) / r.width;
+          const y = (ev.clientY - r.top) / r.height;
+          if (x < 0 || x > 1 || y < 0 || y > 1) return;
+          await ctrl("click", { x: x, y: y, double: dbl });
+          setTimeout(screenshot, 600);
+        });
+
+        document.querySelectorAll("[data-scroll]").forEach((b) => {
+          b.addEventListener("click", () => ctrl("scroll", { dy: parseFloat(b.dataset.scroll) }));
+        });
+        document.querySelectorAll("[data-key]").forEach((b) => {
+          b.addEventListener("click", () => ctrl("key", { key: b.dataset.key }));
+        });
+
+        $("typeBtn").addEventListener("click", async () => {
+          const v = $("ctrlText").value;
+          if (!v || !ctrlReady()) return;
+          await ctrl("type", { text: v });
+          $("ctrlText").value = "";
+        });
+
+        $("lockBtn").addEventListener("click", async () => {
+          if (confirm("确定要锁屏 Mac?") && ctrlReady()) await ctrl("cmd", { action: "lock" });
+        });
+        $("sleepBtn").addEventListener("click", async () => {
+          if (confirm("确定要让 Mac 睡眠?") && ctrlReady()) await ctrl("cmd", { action: "sleep" });
         });
 
         setInterval(refresh, 2000);

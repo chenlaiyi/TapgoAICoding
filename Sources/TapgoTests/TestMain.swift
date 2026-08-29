@@ -87,6 +87,10 @@ let allSections: [String] = [
     "PhoneRemote: HTTP 解析与响应序列化",
     "PhoneRemote: 状态快照 JSON",
     "PhoneRemote: H5 页面",
+    "PhoneRemote: 接入模式与公网中继",
+    "PhoneRemote: 电脑控制路由解析",
+    "PhoneRemote: 电脑控制按键映射",
+    "PhoneRemote: 电脑控制快照与页面",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -673,6 +677,18 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "PhoneRemote: H5 页面") {
             runPhoneRemotePage(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: 接入模式与公网中继") {
+            runPhoneRemoteAccessModes(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: 电脑控制路由解析") {
+            runPhoneRemoteControlRoutes(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: 电脑控制按键映射") {
+            runPhoneRemoteControlKeys(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: 电脑控制快照与页面") {
+            runPhoneRemoteControlSnapshot(runner)
         }
     }
 }
