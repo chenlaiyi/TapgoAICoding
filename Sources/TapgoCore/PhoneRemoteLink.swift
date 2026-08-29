@@ -196,6 +196,13 @@ public enum PhoneRemote {
         case send(text: String)
         /// POST /r/<token>/api/select `{"threadId": "..."}` — 切换活动会话。
         case select(threadId: String)
+        // MARK: 项目切换 (v0.5.20) — 对齐 ZCode 工作区/任务形态。
+        /// POST /r/<token>/api/project `{"projectId": "..."}` — 切换活动项目,
+        /// Mac 端会自动选中该项目最近的会话。
+        case project(id: String)
+        /// POST /r/<token>/api/new `{"projectId": "..."}` — 在指定项目下新建
+        /// 会话并切换过去。
+        case newSession(projectId: String)
         // MARK: 电脑控制 (v0.5.17) — 坐标均为归一化 0...1 (相对主屏截图)。
         /// GET /r/<token>/api/ctrl/screen — 主屏截图 JPEG。
         case controlScreen
@@ -297,6 +304,16 @@ public enum PhoneRemote {
                 return .failure(.badRequest)
             }
             return .success(.select(threadId: id))
+        case ["api", "project"]:
+            guard method == "POST", let id = jsonStringField(body, "projectId"), !id.isEmpty else {
+                return .failure(.badRequest)
+            }
+            return .success(.project(id: id))
+        case ["api", "new"]:
+            guard method == "POST", let pid = jsonStringField(body, "projectId"), !pid.isEmpty else {
+                return .failure(.badRequest)
+            }
+            return .success(.newSession(projectId: pid))
         case ["api", "ctrl", "screen"]:
             guard method == "GET" else { return .failure(.badRequest) }
             return .success(.controlScreen)
@@ -485,6 +502,29 @@ public enum PhoneRemote {
 
     // MARK: - State snapshot
 
+    public struct ProjectInfo: Codable, Equatable {
+        public var id: String
+        public var name: String
+        /// 项目根目录 (H5 上以截断路径展示)。
+        public var path: String
+        public var threadCount: Int
+    }
+
+    /// App 层喂给 buildState 的项目种子 (Core 不依赖 WorkspaceStore 类型)。
+    public struct ProjectSeed: Equatable {
+        public let id: String
+        public let name: String
+        public let path: String
+        public let lastActivityAt: Date
+
+        public init(id: String, name: String, path: String, lastActivityAt: Date) {
+            self.id = id
+            self.name = name
+            self.path = path
+            self.lastActivityAt = lastActivityAt
+        }
+    }
+
     public struct ThreadInfo: Codable, Equatable {
         public var id: String
         public var title: String
@@ -492,6 +532,8 @@ public enum PhoneRemote {
         public var turnCount: Int
         /// 最近一个 turn 正在运行或等待确认。
         public var busy: Bool
+        /// 所属项目 (未分类会话为 nil)。
+        public var projectId: String?
     }
 
     public struct TranscriptTurn: Codable, Equatable {
@@ -528,6 +570,9 @@ public enum PhoneRemote {
         public var transcript: [TranscriptTurn]
         /// 电脑控制可用性; nil 时 H5 隐藏电脑控制入口。
         public var control: ControlStatus?
+        /// 项目列表 (按最近活跃倒序) + 活动项目; v0.5.20 项目切换用。
+        public var projects: [ProjectInfo]
+        public var activeProjectId: String?
     }
 
     /// 从 SessionStore 的数据构建 H5 需要的全量快照。纯函数, 方便单测。
@@ -537,6 +582,8 @@ public enum PhoneRemote {
                                   hostname: String,
                                   appVersion: String,
                                   control: ControlStatus? = nil,
+                                  projects: [ProjectSeed] = [],
+                                  activeProjectId: String? = nil,
                                   now: Date = Date()) -> StateSnapshot {
         let sorted = threads.sorted { $0.updatedAt > $1.updatedAt }.prefix(maxThreads)
         let infos = sorted.map { t -> ThreadInfo in
@@ -544,7 +591,8 @@ public enum PhoneRemote {
                        title: truncate(t.title.isEmpty ? "未命名会话" : t.title),
                        updatedAt: t.updatedAt,
                        turnCount: t.turns.count,
-                       busy: t.turns.last.map { $0.status == .running || $0.status == .awaitingApproval } ?? false)
+                       busy: t.turns.last.map { $0.status == .running || $0.status == .awaitingApproval } ?? false,
+                       projectId: t.projectId)
         }
         var transcript: [TranscriptTurn] = []
         if let active = threads.first(where: { $0.id == activeId }) ?? threads.first {
@@ -556,6 +604,21 @@ public enum PhoneRemote {
                                running: turn.status == .running || turn.status == .awaitingApproval)
             }
         }
+        // 项目按各自会话的最近活跃时间倒序; 没有会话的项目用项目自身
+        // lastActivityAt 兜底, 保证新建项目也能排进来。
+        let lastActiveByProject = Dictionary(grouping: threads, by: \.projectId)
+            .compactMapValues { $0.map(\.updatedAt).max() }
+        let projectInfos = projects
+            .map { seed -> (ProjectSeed, Date) in
+                (seed, max(seed.lastActivityAt, lastActiveByProject[seed.id] ?? .distantPast))
+            }
+            .sorted { $0.1 > $1.1 }
+            .map { seed, _ in
+                ProjectInfo(id: seed.id,
+                            name: seed.name,
+                            path: seed.path,
+                            threadCount: threads.filter { $0.projectId == seed.id }.count)
+            }
         return StateSnapshot(rev: rev,
                              hostname: hostname,
                              appVersion: appVersion,
@@ -563,7 +626,9 @@ public enum PhoneRemote {
                              activeId: activeId ?? threads.first?.id,
                              threads: Array(infos),
                              transcript: transcript,
-                             control: control)
+                             control: control,
+                             projects: projectInfos,
+                             activeProjectId: activeProjectId)
     }
 
     public static func stateJSON(_ snapshot: StateSnapshot) -> Data {
@@ -680,6 +745,40 @@ public enum PhoneRemote {
                  font-size:16px; padding:0 18px; font-weight:600; }
         button:disabled { opacity:.5; }
         #empty { color:var(--muted); text-align:center; padding:40px 0; }
+        /* 项目 chip (仿 ZCode 输入框上方项目切换) + 项目/会话列表 */
+        #projChip { display:flex; align-items:center; gap:8px; background:var(--card);
+                    border:1px solid var(--line); border-radius:12px; padding:11px 14px;
+                    margin-bottom:10px; font-weight:600; font-size:15px; }
+        #projChip .pChev { margin-left:auto; color:var(--muted); }
+        .projCard { background:var(--card); border:1px solid var(--line); border-radius:14px;
+                    margin-bottom:10px; overflow:hidden; }
+        .projHead { display:flex; align-items:center; gap:10px; padding:12px 14px; }
+        .projHead .pIcon { font-size:20px; flex:none; }
+        .projName { font-weight:700; font-size:16px; }
+        .projPath { font-size:12px; color:var(--muted); margin-top:2px;
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .projInfo { flex:1; min-width:0; }
+        .projMeta { margin-left:auto; text-align:right; color:var(--muted); font-size:12px; flex:none; }
+        .plus { width:36px; height:34px; border-radius:10px; background:var(--bg); color:var(--fg);
+                border:1px solid var(--line); font-size:20px; font-weight:500; padding:0; flex:none; }
+        .chev { color:var(--muted); font-size:13px; flex:none; width:16px; text-align:center; }
+        .sessRows { border-top:1px solid var(--line); }
+        .sessRow { display:flex; align-items:center; gap:8px; padding:11px 14px;
+                   border-bottom:1px solid var(--line); }
+        .sessRow:last-child { border-bottom:none; }
+        .sessRow.cur { background:var(--userBg); }
+        .sessTitle { flex:1; min-width:0; white-space:nowrap; overflow:hidden;
+                     text-overflow:ellipsis; font-size:15px; }
+        .sessTime { color:var(--muted); font-size:12px; flex:none; }
+        .sbadge { flex:none; font-size:11px; border-radius:99px; padding:2px 8px; }
+        .sbadge.run { background:var(--warn); color:#fff; }
+        .sbadge.done { background:transparent; color:var(--muted); border:1px solid var(--line); }
+        .listHead { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .ghost { background:var(--card); color:var(--fg); border:1px solid var(--line);
+                 width:38px; height:38px; padding:0; font-size:18px; flex:none; }
+        .lt1 { font-weight:700; font-size:17px; }
+        .lt2 { font-size:12px; color:var(--muted); margin-top:2px; }
+        .pEmpty { color:var(--muted); text-align:center; padding:40px 0; }
         </style>
         </head>
         <body>
@@ -692,8 +791,22 @@ public enum PhoneRemote {
           <button class="tab" id="tabCtrl">电脑控制</button>
         </nav>
         <main id="chatPane">
-          <select id="threads"></select>
+          <div id="projChip">
+            <span class="pIcon">📁</span>
+            <span id="projName">…</span>
+            <span class="pChev">▾</span>
+          </div>
           <div id="list"><div id="empty">正在连接 Mac…</div></div>
+        </main>
+        <main id="listPane" class="hidden">
+          <div class="listHead">
+            <button id="backBtn" class="ghost">←</button>
+            <div style="flex:1; min-width:0;">
+              <div class="lt1">项目与会话</div>
+              <div class="lt2" id="projStats">…</div>
+            </div>
+          </div>
+          <div id="projects"><div class="pEmpty">正在加载项目…</div></div>
         </main>
         <main id="ctrlPane" class="hidden">
           <div id="ctrlBanner" class="banner hidden"></div>
@@ -780,17 +893,12 @@ public enum PhoneRemote {
         function render(s) {
           $("title").textContent = "Tapgo · " + (s.hostname || "Mac");
           activeId = s.activeId;
-          const sel = $("threads");
-          const keep = sel.value;
-          sel.textContent = "";
-          for (const t of (s.threads || [])) {
-            const opt = document.createElement("option");
-            opt.value = t.id;
-            opt.textContent = (t.busy ? "▶ " : "") + t.title;
-            sel.appendChild(opt);
-          }
-          if (keep) sel.value = keep;
-          if (s.activeId) sel.value = s.activeId;
+          lastState = s;
+
+          // 项目 chip: 当前活动项目名 (仿 ZCode 输入框上方)。
+          const activeProj = (s.projects || []).find((p) => p.id === s.activeProjectId);
+          $("projName").textContent = activeProj ? activeProj.name : "未分类会话";
+          renderProjects(s);
 
           const list = $("list");
           list.textContent = "";
@@ -837,6 +945,120 @@ public enum PhoneRemote {
             : "无法连接 Mac, 请检查手机网络后稍候…";
         }
 
+        let lastState = null;
+        const expanded = {};
+        let inList = false;
+
+        function ago(ms) {
+          const d = Date.now() - ms;
+          if (d < 60000) return "刚刚";
+          if (d < 3600000) return Math.floor(d / 60000) + " 分钟";
+          if (d < 86400000) return Math.floor(d / 3600000) + " 小时";
+          return Math.floor(d / 86400000) + " 天";
+        }
+
+        function renderProjects(s) {
+          if (!s || !$("projects")) return;
+          const projs = s.projects || [];
+          const threads = s.threads || [];
+          $("projStats").textContent = projs.length + " 个项目 · " + threads.length + " 个会话";
+          const pc = $("projects");
+          pc.textContent = "";
+          if (!projs.length) {
+            const e = document.createElement("div"); e.className = "pEmpty";
+            e.textContent = "还没有项目, 在 Mac 端添加后再来。";
+            pc.appendChild(e);
+            return;
+          }
+          for (const p of projs) {
+            const isOpen = expanded[p.id] !== undefined
+              ? expanded[p.id] : (p.id === s.activeProjectId);
+            const card = document.createElement("div"); card.className = "projCard";
+            const head = document.createElement("div"); head.className = "projHead";
+            const ic = document.createElement("span"); ic.className = "pIcon"; ic.textContent = "📁";
+            const info = document.createElement("div"); info.className = "projInfo";
+            const n1 = document.createElement("div"); n1.className = "projName"; n1.textContent = p.name;
+            const n2 = document.createElement("div"); n2.className = "projPath"; n2.textContent = p.path;
+            info.append(n1, n2);
+            const meta = document.createElement("div"); meta.className = "projMeta";
+            meta.textContent = p.threadCount + " 个会话";
+            const plus = document.createElement("button"); plus.className = "plus";
+            plus.textContent = "+"; plus.setAttribute("aria-label", "在 " + p.name + " 新建会话");
+            plus.addEventListener("click", (ev) => { ev.stopPropagation(); newSession(p.id); });
+            const chev = document.createElement("span"); chev.className = "chev";
+            chev.textContent = isOpen ? "▾" : "▸";
+            head.append(ic, info, meta, plus, chev);
+            head.addEventListener("click", () => {
+              expanded[p.id] = !(expanded[p.id] !== undefined ? expanded[p.id] : p.id === s.activeProjectId);
+              renderProjects(lastState);
+            });
+            card.appendChild(head);
+            if (isOpen) {
+              const rows = document.createElement("div"); rows.className = "sessRows";
+              const sess = threads.filter((t) => t.projectId === p.id);
+              if (!sess.length) {
+                const er = document.createElement("div"); er.className = "sessRow";
+                const et = document.createElement("div"); et.className = "sessTitle";
+                et.style.color = "var(--muted)";
+                et.textContent = "暂无会话, 点 + 新建";
+                er.appendChild(et); rows.appendChild(er);
+              }
+              for (const t of sess) {
+                const row = document.createElement("div");
+                row.className = "sessRow" + (t.id === s.activeId ? " cur" : "");
+                const tt = document.createElement("div"); tt.className = "sessTitle";
+                tt.textContent = t.title;
+                const tm = document.createElement("div"); tm.className = "sessTime";
+                tm.textContent = ago(t.updatedAt);
+                const bd = document.createElement("span");
+                bd.className = "sbadge " + (t.busy ? "run" : "done");
+                bd.textContent = t.busy ? "运行中" : "已完成";
+                row.append(tt, tm, bd);
+                row.addEventListener("click", () => selectThread(t.id));
+                rows.appendChild(row);
+              }
+              card.appendChild(rows);
+            }
+            pc.appendChild(card);
+          }
+        }
+
+        async function selectThread(id) {
+          await fetch(BASE + "r/" + TOKEN + "/api/select", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ threadId: id })
+          });
+          lastJSON = "";
+          showChat();
+          refresh();
+        }
+
+        async function newSession(projectId) {
+          await fetch(BASE + "r/" + TOKEN + "/api/new", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectId: projectId })
+          });
+          lastJSON = "";
+          showChat();
+          refresh();
+        }
+
+        function showChat() {
+          inList = false;
+          $("listPane").classList.add("hidden");
+          $("chatPane").classList.remove("hidden");
+        }
+
+        function showList() {
+          inList = true;
+          $("chatPane").classList.add("hidden");
+          $("listPane").classList.remove("hidden");
+          renderProjects(lastState);
+          window.scrollTo(0, 0);
+        }
+
         async function refresh() {
           try {
             const r = await fetch(BASE + "r/" + TOKEN + "/api/state", { cache: "no-store" });
@@ -859,15 +1081,8 @@ public enum PhoneRemote {
           }
         }
 
-        $("threads").addEventListener("change", async (ev) => {
-          await fetch(BASE + "r/" + TOKEN + "/api/select", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ threadId: ev.target.value })
-          });
-          lastJSON = "";
-          refresh();
-        });
+        $("projChip").addEventListener("click", showList);
+        $("backBtn").addEventListener("click", showChat);
 
         $("input").addEventListener("input", (ev) => {
           ev.target.style.height = "44px";
@@ -938,7 +1153,8 @@ public enum PhoneRemote {
         function switchTab(toCtrl) {
           $("tabChat").classList.toggle("active", !toCtrl);
           $("tabCtrl").classList.toggle("active", toCtrl);
-          $("chatPane").classList.toggle("hidden", toCtrl);
+          $("chatPane").classList.toggle("hidden", toCtrl || inList);
+          $("listPane").classList.toggle("hidden", toCtrl || !inList);
           $("ctrlPane").classList.toggle("hidden", !toCtrl);
           $("bar").classList.toggle("hidden", toCtrl);
         }

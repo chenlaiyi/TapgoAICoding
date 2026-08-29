@@ -289,6 +289,24 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.20",
+                    date: "2026-08-29",
+                    commit: "",
+                    tag: "v0.5.20",
+                    summary: "模型可调用的电脑控制 (Computer Use)：内置 MCP server 让 AI 自动化桌面工作流",
+                    changes: [
+                        "新增 TapgoComputerUseMCP 可执行目标：电脑控制 MCP stdio server（MCP 2025-06-18 协议），向模型暴露 8 个工具：screenshot / get_screen_size / left_click / double_click / type_text / press_key（14 普通键 + 6 媒体键 + command/control/option/shift 组合）/ scroll / open_application；坐标一律归一化 0...1 与分辨率无关；权限缺失时返回带系统设置指引的 isError 文本。",
+                        "新增 TapgoComputerUse 库：截屏（CGDisplayCreateImage → ≤1280px JPEG）/ 鼠标单击双击（CGEvent clickState 递增）/ 滚轮（±20 行限幅）/ 逐字符 Unicode 键盘输入 / 媒体键 systemDefined 事件 / 锁屏（Ctrl+Cmd+Q）/ 睡眠（pmset）/ open -a 启动应用，从 PhoneRemoteServer 抽出为 App 手机控制与 MCP server 共用的单一实现。",
+                        "新增 TapgoCore/ComputerUseMCP 纯 Foundation 协议层：JSON-RPC 分发（initialize/tools/list/tools/call/ping，通知不回包）、工具注册表 inputSchema、参数解析助手（CFBooleanGetTypeID 严格区分 Bool 与数值）、config.toml [mcp_servers.tapgo_computer_use] 段幂等写入（新增/路径变更只换 command 行/缺 command 补插），协议分发 + TOML 写入共 76 项单测。",
+                        "自动注册链路：build-app.sh 把 MCP 二进制嵌入 .app 的 Contents/MacOS/；App 启动幂等把随包路径写进隔离 Codex home 的 config.toml；codex 拉起后模型即可调用，无需任何手工配置。",
+                        "真实轮验证：经手机 H5 /api/send 发起真实 MiniMax-M3 轮『用电脑控制工具截屏』——模型成功发起 MCP screenshot 调用并如实转述结果（本机未授予屏幕录制权限时返回权限指引），模型→工具→回包全链路打通。",
+                        "收编并行会话 WIP：H5 项目列表（StateSnapshot 增 projects 块 + ProjectSeed/ProjectInfo、页面项目选择区）、PhoneRemoteController init 增 workspace 参数；补 WorkspaceStore.projects 只读视图使两端共用。"
+                    ],
+                    why: "用户要求 Computer Use 风格的能力——让 App 里的模型自己调用截屏/鼠标/键盘工具协助完成桌面自动化工作流，而不是只有手机端人工遥控。MCP 是 codex 的标准工具扩展面，注册进隔离 Codex home 即对所有会话生效；权限闸（屏幕录制/辅助功能 TCC）与错误指引内建在工具返回里。",
+                    next: "TCC 授权后回归真实点击/打字链路；评估窗口枚举工具（list_windows）；H5 项目切换完善后单独发版。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.19",
                     date: "2026-08-29",
                     commit: "PLACEHOLDER",

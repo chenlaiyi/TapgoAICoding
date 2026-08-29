@@ -18,6 +18,9 @@ public final class WorkspaceStore: ObservableObject {
         didSet { UserDefaults.standard.set(Array(pinnedProjectIds), forKey: "tapgo.pinnedProjects") }
     }
 
+    /// 项目列表只读视图 (H5 状态快照等外部消费者; v0.5.20)。
+    public var projects: [Project] { state.projects }
+
     private let fileManager = FileManager.default
 
     public init() {

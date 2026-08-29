@@ -422,6 +422,46 @@ enum TapgoConfig {
         codexHome.appendingPathComponent("model-catalogs/tapgo-catalog.json", isDirectory: false)
     }
 
+    // MARK: 电脑控制 MCP 注册 (v0.5.20)
+
+    /// 计算随包分发的 `TapgoComputerUseMCP` 二进制路径: 已安装 App 取
+    /// `Contents/MacOS/` 同级; `swift run` 开发态取 `.build/<cfg>/` 同级。
+    static func computerUseMCPBinaryPath(bundle: Bundle = .main) -> String? {
+        guard let exe = bundle.executableURL else { return nil }
+        let sibling = exe.deletingLastPathComponent()
+            .appendingPathComponent("TapgoComputerUseMCP")
+        guard FileManager.default.isExecutableFile(atPath: sibling.path) else { return nil }
+        return sibling.path
+    }
+
+    /// 把 `[mcp_servers.tapgo_computer_use]` 幂等写入隔离 Codex home 的
+    /// config.toml, 让模型获得电脑控制工具。二进制不存在 (尚未随包部署)
+    /// 时不动配置, 返回 false。App 每次启动调用一次, harness 下次拉起生效。
+    @discardableResult
+    static func ensureComputerUseMCPSection(binaryPath: String? = nil) -> Bool {
+        let resolved = binaryPath ?? computerUseMCPBinaryPath()
+        guard let mcpBinary = resolved else {
+            log("ensureComputerUseMCPSection: 未找到 TapgoComputerUseMCP 二进制, 跳过注册")
+            return false
+        }
+        let fm = FileManager.default
+        guard let current = try? String(contentsOf: configPath, encoding: .utf8) else {
+            log("ensureComputerUseMCPSection: config.toml 不存在 (尚未完成初始化), 跳过注册")
+            return false
+        }
+        let updated = ComputerUseMCP.upsertSection(inConfig: current, commandPath: mcpBinary)
+        guard updated != current else { return true }
+        do {
+            try atomicWrite(Data(updated.utf8), to: configPath)
+            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
+            log("ensureComputerUseMCPSection: 已注册电脑控制 MCP server → \(mcpBinary)")
+            return true
+        } catch {
+            log("ensureComputerUseMCPSection: 写入 config.toml 失败 \(error)")
+            return false
+        }
+    }
+
     /// Logs land next to the system-wide Logs directory so the user can
     /// `tail -f` from Terminal.
     static var logFileURL: URL {

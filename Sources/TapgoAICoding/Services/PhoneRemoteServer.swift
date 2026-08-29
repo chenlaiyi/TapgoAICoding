@@ -7,6 +7,7 @@ import SystemConfiguration
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import TapgoCore
+import TapgoComputerUse
 
 /// Mac 端"扫码即开 H5"远程控制服务 (v0.5.16, 对标 ZCode 移动端远程控制)。
 ///
@@ -85,6 +86,8 @@ final class PhoneRemoteController: ObservableObject {
     // MARK: Internals
 
     private let store: SessionStore
+    /// 项目列表 / 活动项目来源 (v0.5.20 手机端项目切换)。
+    private let workspace: WorkspaceStore
     private var listener: NWListener?
     private var token: String
     private var rev = 0
@@ -101,8 +104,9 @@ final class PhoneRemoteController: ObservableObject {
 
     // MARK: Init
 
-    init(store: SessionStore) {
+    init(store: SessionStore, workspace: WorkspaceStore) {
         self.store = store
+        self.workspace = workspace
         let defaults = UserDefaults.standard
         let saved = defaults.string(forKey: Self.tokenKey) ?? ""
         let initial = PhoneRemote.isValidToken(saved) ? saved : PhoneRemote.makeToken()
@@ -312,6 +316,12 @@ final class PhoneRemoteController: ObservableObject {
         case .success(.state):
             lastPollAt = Date()
             phoneConnected = true
+            let seeds = workspace.projects.map {
+                PhoneRemote.ProjectSeed(id: $0.id,
+                                        name: $0.displayName,
+                                        path: $0.worktreeRoot.path,
+                                        lastActivityAt: $0.lastUsedAt)
+            }
             let snapshot = PhoneRemote.buildState(threads: store.liveThreads,
                                                   activeId: store.activeThreadId,
                                                   rev: rev,
@@ -320,7 +330,9 @@ final class PhoneRemoteController: ObservableObject {
                                                   control: PhoneRemote.ControlStatus(
                                                       enabled: controlEnabled,
                                                       screenAllowed: Self.screenCaptureAllowed,
-                                                      accessibilityAllowed: Self.accessibilityAllowed))
+                                                      accessibilityAllowed: Self.accessibilityAllowed),
+                                                  projects: seeds,
+                                                  activeProjectId: workspace.state.activeProjectId)
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
             lastPollAt = Date()
@@ -332,6 +344,21 @@ final class PhoneRemoteController: ObservableObject {
             phoneConnected = true
             store.selectThread(threadId)
             return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
+        case .success(.project(let id)):
+            lastPollAt = Date()
+            phoneConnected = true
+            // setActiveProject 会自动选中该项目最近的会话, H5 下一轮轮询
+            // 即拿到新项目上下文。
+            store.setActiveProject(id)
+            return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
+        case .success(.newSession(let projectId)):
+            lastPollAt = Date()
+            phoneConnected = true
+            if workspace.state.activeProjectId != projectId {
+                store.setActiveProject(projectId)
+            }
+            store.newThread()
+            return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
         case .success(.controlScreen):
             lastPollAt = Date()
             phoneConnected = true
@@ -341,15 +368,15 @@ final class PhoneRemoteController: ObservableObject {
             return PhoneRemote.httpResponse(status: 200, reason: "OK",
                                             contentType: "image/jpeg", body: jpeg)
         case .success(.controlClick(let x, let y, let double)):
-            return controlGuard { performClick(nx: x, ny: y, doubleClick: double) }
+            return controlGuard { ComputerUse.click(nx: x, ny: y, doubleClick: double) }
         case .success(.controlScroll(let deltaY)):
-            return controlGuard { performScroll(lines: deltaY) }
+            return controlGuard { ComputerUse.scroll(lines: deltaY) }
         case .success(.controlType(let text)):
-            return controlGuard { performType(text: text) }
+            return controlGuard { ComputerUse.typeText(text) }
         case .success(.controlKey(let key)):
-            return controlGuard { performKey(key) }
+            return controlGuard { ComputerUse.pressKey(name: key.rawValue) }
         case .success(.controlCommand(let action)):
-            return controlGuard { performCommand(action) }
+            return controlGuard { ComputerUse.performCommand(action) }
         }
     }
 
@@ -363,158 +390,22 @@ final class PhoneRemoteController: ObservableObject {
         return PhoneRemote.controlOKResponse
     }
 
-    // MARK: 电脑控制 (v0.5.17) — 权限 / 截屏 / CGEvent 注入
+    // MARK: 电脑控制 — 实现统一走 TapgoComputerUse 库 (v0.5.20 起 MCP
+    // server 共用同一套原语); 这里只保留薄转发与权限透传。
 
-    /// 「屏幕录制」TCC 权限预检 (不弹窗)。
-    static var screenCaptureAllowed: Bool {
-        CGPreflightScreenCaptureAccess()
-    }
+    /// 「屏幕录制」TCC 权限预检 (ConnectPhoneView 权限行读取)。
+    static var screenCaptureAllowed: Bool { ComputerUse.screenCaptureAllowed }
 
-    /// 「辅助功能」TCC 权限预检 (不弹窗)。
-    static var accessibilityAllowed: Bool {
-        AXIsProcessTrusted()
-    }
+    /// 「辅助功能」TCC 权限预检。
+    static var accessibilityAllowed: Bool { ComputerUse.accessibilityAllowed }
 
     /// 弹出系统授权弹窗 (ConnectPhoneView 的「申请授权」按钮调用)。
     nonisolated static func requestPermissions() {
-        _ = CGRequestScreenCaptureAccess()
-        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(opts)
+        ComputerUse.requestPermissions()
     }
 
-    /// 主屏截图 → JPEG。限制最长边到 ~1200px (手机上足够看清, 轮询体量小),
-    /// 点击坐标在 H5 端以归一化形式回传, 与分辨率无关。
-    func takeScreenshotJPEG() -> Data? {
-        let displayID = CGMainDisplayID()
-        guard let image = CGDisplayCreateImage(displayID) else { return nil }
-        let maxSide: CGFloat = 1200
-        let longest = CGFloat(max(image.width, image.height))
-        let scaled = Self.scaledImage(image, maxSide: longest > maxSide ? maxSide : longest)
-        let rep = NSBitmapImageRep(cgImage: scaled ?? image)
-        return rep.representation(using: .jpeg,
-                                  properties: [.compressionFactor: 0.72])
-    }
-
-    /// 等比缩放 CGImage 到最长边 `maxSide` (若已小于则返回 nil 让调用方用原图)。
-    static func scaledImage(_ image: CGImage, maxSide: CGFloat) -> CGImage? {
-        let w = CGFloat(image.width), h = CGFloat(image.height)
-        guard maxSide > 0, max(w, h) > maxSide else { return nil }
-        let scale = maxSide / max(w, h)
-        let tw = max(1, Int(w * scale)), th = max(1, Int(h * scale))
-        guard let ctx = CGContext(data: nil, width: tw, height: th,
-                                  bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        ctx.interpolationQuality = .medium
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: tw, height: th))
-        return ctx.makeImage()
-    }
-
-    /// 归一化坐标 (0...1, 相对主屏截图、原点左上) → 全局 CG 坐标 (原点左下)。
-    static func displayPoint(nx: Double, ny: Double) -> CGPoint {
-        let bounds = CGDisplayBounds(CGMainDisplayID())
-        return CGPoint(x: bounds.minX + CGFloat(nx) * bounds.width,
-                       y: bounds.minY + (1 - CGFloat(ny)) * bounds.height)
-    }
-
-    /// 在归一化坐标处单击 / 双击 (先移动光标再按抬)。
-    func performClick(nx: Double, ny: Double, doubleClick: Bool) {
-        let pt = Self.displayPoint(nx: nx, ny: ny)
-        let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                           mouseCursorPosition: pt, mouseButton: .left)
-        move?.post(tap: .cghidEventTap)
-        usleep(20_000)
-        let clicks = doubleClick ? 2 : 1
-        for state in 1...clicks {
-            let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
-                               mouseCursorPosition: pt, mouseButton: .left)
-            down?.setIntegerValueField(.mouseEventClickState, value: Int64(state))
-            down?.post(tap: .cghidEventTap)
-            let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
-                             mouseCursorPosition: pt, mouseButton: .left)
-            up?.setIntegerValueField(.mouseEventClickState, value: Int64(state))
-            up?.post(tap: .cghidEventTap)
-            if state < clicks { usleep(120_000) }
-        }
-    }
-
-    /// 滚轮: `lines` 行, 正数向下。限幅 ±20 行防误操作把页面滚飞。
-    func performScroll(lines: Double) {
-        let clamped = max(-20, min(20, lines))
-        let ev = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1,
-                         wheel1: Int32(-clamped), wheel2: 0, wheel3: 0)
-        ev?.post(tap: .cghidEventTap)
-    }
-
-    /// 逐字符注入键盘输入。`kCGKeyboardEventKeycode=0` + UnicodeString 的
-    /// 形态对绝大多数 App 生效; 换行转成 Return 键。
-    func performType(text: String) {
-        guard let src = CGEventSource(stateID: .combinedSessionState) else { return }
-        for ch in text {
-            if ch == "\n" || ch == "\r" {
-                postKey(36, source: src)
-                continue
-            }
-            let units = Array(String(ch).utf16)
-            for keyDown in [true, false] {
-                let ev = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: keyDown)
-                ev?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
-                ev?.post(tap: .cghidEventTap)
-            }
-            usleep(2_000)
-        }
-    }
-
-    /// 单键: 普通键走虚拟键码, 媒体键走 systemDefined 事件。
-    func performKey(_ key: PhoneRemote.ControlKey) {
-        guard let src = CGEventSource(stateID: .combinedSessionState) else { return }
-        if let code = key.virtualKeyCode {
-            postKey(CGKeyCode(code), source: src)
-        } else if let media = key.mediaKeyType {
-            postMediaKey(media, source: src)
-        }
-    }
-
-    private func postKey(_ code: CGKeyCode, source: CGEventSource?) {
-        let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true)
-        down?.post(tap: .cghidEventTap)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
-        up?.post(tap: .cghidEventTap)
-    }
-
-    /// 媒体键 (音量/亮度/播放): `NX_KEYTYPE_*` 打包进 NSEvent systemDefined
-    /// subtype 8 的 data1 (高 16 位是按下 0x0A / 抬起 0x0B, 低 16 位是键型),
-    /// 再取 CGEvent 投递 —— 这是苹果未文档化但长期稳定的公开接口形态。
-    private func postMediaKey(_ type: Int, source: CGEventSource?) {
-        for flag in [0x0a, 0x0b] {   // 0x0a = 按下, 0x0b = 抬起
-            let data1 = (type << 16) | (flag << 8)
-            let ev = NSEvent.otherEvent(with: .systemDefined, location: .zero,
-                                        modifierFlags: NSEvent.ModifierFlags(rawValue: 0xa00),
-                                        timestamp: 0, windowNumber: 0, context: nil,
-                                        subtype: 8, data1: data1, data2: -1)
-            ev?.cgEvent?.post(tap: .cghidEventTap)
-        }
-    }
-
-    /// 系统级命令。
-    func performCommand(_ action: PhoneRemote.ControlAction) {
-        switch action {
-        case .lock:
-            // Ctrl+Cmd+Q = 立即锁屏 (系统级快捷键)。
-            guard let src = CGEventSource(stateID: .combinedSessionState) else { return }
-            for keyDown in [true, false] {
-                let ev = CGEvent(keyboardEventSource: src, virtualKey: 53, keyDown: keyDown)
-                ev?.flags = [.maskControl, .maskCommand]
-                ev?.post(tap: .cghidEventTap)
-            }
-        case .sleep:
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
-            p.arguments = ["sleepnow"]
-            p.standardOutput = Pipe()
-            p.standardError = Pipe()
-            try? p.run()
-        }
+    private func takeScreenshotJPEG() -> Data? {
+        ComputerUse.screenshotJPEG(maxSide: 1200)
     }
 
     // MARK: Link & identity

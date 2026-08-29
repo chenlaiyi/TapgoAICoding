@@ -19,6 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.20 — 模型可调用的电脑控制 (Computer Use): 内置 MCP server 让 AI 自动化桌面工作流
+**Date**: 2026-08-29
+**Commit**: (待回填)
+**Tag**: v0.5.20
+**Test status**: 2147 passed / 0 failed（SSH 集成测试按惯例跳过）
+**Changed**:
+- **TapgoComputerUseMCP**: 新增电脑控制 MCP stdio server（SwiftPM 可执行目标），实现 MCP 2025-06-18 协议握手，向模型暴露 8 个工具：screenshot / get_screen_size / left_click / double_click / type_text / press_key（14 普通键 + 6 媒体键 + 修饰键组合）/ scroll / open_application，坐标一律归一化 0...1 与分辨率无关。权限缺失时返回带指引的 isError 文本，模型可转述给用户。
+- **TapgoComputerUse 库**: 截屏/CGEvent 注入/系统命令原语从 PhoneRemoteServer 抽出成共用库，App 端手机控制与 MCP server 单一实现。
+- **ComputerUseMCP (Core)**: 纯 Foundation 协议层 —— JSON-RPC 分发、工具注册表（inputSchema）、参数解析助手、config.toml `[mcp_servers.tapgo_computer_use]` 段幂等写入（新增/路径变更替换/缺 command 补插），76 项单测覆盖。
+- **自动注册**: App 启动幂等把 MCP server（随包嵌入 `Contents/MacOS/TapgoComputerUseMCP`）写进隔离 Codex home 的 config.toml；codex 拉起后模型即可调用。build-app.sh 嵌入二进制。
+- **真实轮验证**: 经 /api/send 发起真实 MiniMax-M3 轮，模型成功调用 screenshot 工具（未授权时正确转述屏幕录制权限指引）。
+- **收编并行会话 WIP**: H5 项目列表（StateSnapshot 增 projects 块 + ProjectSeed/ProjectInfo、页面项目选择区）、PhoneRemoteController init 增 workspace 参数；补 `WorkspaceStore.projects` 只读视图。
+**Why**: 用户要求 Computer Use 风格的能力——让 App 里的模型自己调用截屏/鼠标/键盘工具完成桌面自动化工作流，而不是只有手机人工遥控。MCP 是 codex 的标准工具扩展面，注册即对所有会话生效。
+**Next**: TCC 授权后回归真实点击/打字链路；评估 window 枚举工具；H5 项目切换完善后单独发版。
+
 ## v0.5.19 — 修复公网模式 H5 永远停在『正在连接 Mac』: fetch 前缀自适应
 **Date**: 2026-08-29
 **Commit**: PLACEHOLDER

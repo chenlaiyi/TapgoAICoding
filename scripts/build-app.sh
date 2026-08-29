@@ -66,8 +66,19 @@ echo "==> Building ${BIN_NAME} (release)"
 # rejects in a release build (only enabled for debug/testing).
 "${SWIFT[@]}" build -c release --product TapgoAICoding
 
+# Computer-use MCP server (v0.5.18): embedded next to the app binary so
+# the isolated Codex home config.toml can point at a stable path.
+MCP_NAME="TapgoComputerUseMCP"
+MCP_SRC="${ROOT}/.build/release/${MCP_NAME}"
+echo "==> Building ${MCP_NAME} (release)"
+"${SWIFT[@]}" build -c release --product "${MCP_NAME}"
+
 if [[ ! -f "$BIN_SRC" ]]; then
   echo "ERROR: built binary not found at $BIN_SRC" >&2
+  exit 1
+fi
+if [[ ! -f "$MCP_SRC" ]]; then
+  echo "ERROR: built MCP binary not found at $MCP_SRC" >&2
   exit 1
 fi
 
@@ -85,6 +96,10 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 cp "$BIN_SRC" "$MACOS_DIR/${BIN_NAME}"
 chmod +x "$MACOS_DIR/${BIN_NAME}"
+
+cp "$MCP_SRC" "$MACOS_DIR/${MCP_NAME}"
+chmod +x "$MACOS_DIR/${MCP_NAME}"
+echo "  embedded MCP server: ${MCP_NAME}"
 
 cp "$PLIST_SRC" "$CONTENTS_DIR/Info.plist"
 cp "$PKGINFO_SRC" "$CONTENTS_DIR/PkgInfo"

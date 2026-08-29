@@ -21,7 +21,7 @@ struct TapgoAICodingApp: App {
         _store = StateObject(wrappedValue: sessionStore)
         // 扫码即开 H5 的移动端远程控制 (v0.5.16)。登录成功后在 body 的
         // .task 里 startIfNeeded()。
-        _remote = StateObject(wrappedValue: PhoneRemoteController(store: sessionStore))
+        _remote = StateObject(wrappedValue: PhoneRemoteController(store: sessionStore, workspace: workspace))
         _authStore = StateObject(wrappedValue: AdminAuthStore())
         // Cross-device durable memory: pull any newer memory files from the
         // iCloud Drive mirror at startup so the user sees what they wrote on
@@ -29,6 +29,12 @@ struct TapgoAICodingApp: App {
         // slow filesystem never blocks the App init path.
         Task.detached(priority: .utility) {
             TapgoConfig.syncMemoryPullAll()
+        }
+        // 电脑控制 MCP server (v0.5.20): 幂等注册进隔离 Codex home 的
+        // config.toml, harness 拉起 TapgoComputerUseMCP 后模型获得截屏 /
+        // 鼠标 / 键盘工具。文件 I/O, 放 detached 避免阻塞启动。
+        Task.detached(priority: .utility) {
+            TapgoConfig.ensureComputerUseMCPSection()
         }
         // Run a deterministic Phase 2 consolidation pass on each memory
         // layer to dedup / enforce the per-file byte cap. Idempotent.

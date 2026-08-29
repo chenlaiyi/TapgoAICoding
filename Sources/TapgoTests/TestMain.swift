@@ -91,6 +91,8 @@ let allSections: [String] = [
     "PhoneRemote: 电脑控制路由解析",
     "PhoneRemote: 电脑控制按键映射",
     "PhoneRemote: 电脑控制快照与页面",
+    "ComputerUseMCP: 协议分发",
+    "ComputerUseMCP: config.toml 段写入",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -689,6 +691,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "PhoneRemote: 电脑控制快照与页面") {
             runPhoneRemoteControlSnapshot(runner)
+        }
+        await runIfInScope(runner, "ComputerUseMCP: 协议分发") {
+            runComputerUseMCPProtocol(runner)
+        }
+        await runIfInScope(runner, "ComputerUseMCP: config.toml 段写入") {
+            runComputerUseMCPConfigSection(runner)
         }
     }
 }

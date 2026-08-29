@@ -1,6 +1,6 @@
 import Foundation
 
-/// 电脑控制 MCP server 的协议层 (v0.5.18) — 纯 Foundation, 不依赖
+/// 电脑控制 MCP server 的协议层 (v0.5.20) — 纯 Foundation, 不依赖
 /// AppKit/CoreGraphics, 方便单测覆盖。
 ///
 /// 让 App 里的模型 (经 Codex harness) 能调用电脑操作工具, 完成
@@ -193,7 +193,7 @@ public enum ComputerUseMCP {
     public static func configSection(commandPath: String) -> String {
         """
         
-        # 电脑控制 MCP server —— 让模型调用截屏/鼠标/键盘工具 (v0.5.18+)。
+        # 电脑控制 MCP server —— 让模型调用截屏/鼠标/键盘工具 (v0.5.20+)。
         [mcp_servers.\(configServerKey)]
         command = "\(commandPath)"
         """

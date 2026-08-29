@@ -73,6 +73,23 @@ func runPhoneRemoteLinkRoute(_ t: TestRunner) {
     } else {
         t.expect(false, "route: POST api/select → select")
     }
+    // v0.5.20 项目切换路由
+    if case .success(.project(let pid)) = route("POST", "/r/\(token)/api/project", #"{"projectId":"p1"}"#) {
+        t.expectEqual(pid, "p1", "route: project 携带 projectId")
+    } else {
+        t.expect(false, "route: POST api/project → project")
+    }
+    if case .failure(.badRequest) = route("GET", "/r/\(token)/api/project") {} else {
+        t.expect(false, "route: GET api/project → badRequest")
+    }
+    if case .success(.newSession(let npid)) = route("POST", "/r/\(token)/api/new", #"{"projectId":"p2"}"#) {
+        t.expectEqual(npid, "p2", "route: new 携带 projectId")
+    } else {
+        t.expect(false, "route: POST api/new → newSession")
+    }
+    if case .failure(.badRequest) = route("POST", "/r/\(token)/api/new", "{}") {} else {
+        t.expect(false, "route: 缺 projectId 的 new → badRequest")
+    }
     if case .failure(.notFound) = route("GET", "/r/\(token)/api/nope") {} else {
         t.expect(false, "route: 未知 api 路径 → notFound")
     }
@@ -165,7 +182,8 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
              items: [.assistantMessage(id: "m2", text: "好的")],
              status: .running, startedAt: now),
     ]
-    let active = Thread(id: "th1", title: "修复构建", createdAt: now, updatedAt: now, turns: turns)
+    let active = Thread(id: "th1", title: "修复构建", createdAt: now, updatedAt: now,
+                        projectId: "pA", turns: turns)
     let other = Thread(id: "th2", title: "另一个会话",
                        createdAt: now, updatedAt: now.addingTimeInterval(-600), turns: [])
 
@@ -173,7 +191,16 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                                       activeId: "th1",
                                       rev: 7,
                                       hostname: "Chenlaiyi",
-                                      appVersion: "0.5.16",
+                                      appVersion: "0.5.19",
+                                      projects: [
+                                        PhoneRemote.ProjectSeed(id: "pB", name: "B项目",
+                                                                path: "/tmp/b",
+                                                                lastActivityAt: now.addingTimeInterval(-100)),
+                                        PhoneRemote.ProjectSeed(id: "pA", name: "A项目",
+                                                                path: "/tmp/a",
+                                                                lastActivityAt: now.addingTimeInterval(-50)),
+                                      ],
+                                      activeProjectId: "pA",
                                       now: now)
     t.expectEqual(snap.rev, 7, "snapshot: rev 透传")
     t.expectEqual(snap.hostname, "Chenlaiyi", "snapshot: hostname 透传")
@@ -184,6 +211,16 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(snap.threads.first?.busy, true, "snapshot: 最近 turn 运行中 → busy")
     t.expectEqual(snap.threads.last?.busy, false, "snapshot: 空会话不 busy")
     t.expectEqual(snap.activeId, "th1", "snapshot: activeId 透传")
+
+    // v0.5.20 项目维度: 会话归属 + 项目按最近活跃排序 + 计数
+    t.expectEqual(snap.threads.first?.projectId, "pA", "snapshot: 会话携带 projectId")
+    t.expectEqual(snap.threads.last?.projectId, nil, "snapshot: 未分类会话 projectId 为空")
+    t.expectEqual(snap.projects.count, 2, "snapshot: 项目数")
+    t.expectEqual(snap.projects.first?.id, "pA", "snapshot: 项目按最近活跃排前 (th1 更新于 now)")
+    t.expectEqual(snap.projects.last?.id, "pB", "snapshot: 冷项目排后")
+    t.expectEqual(snap.projects.first?.threadCount, 1, "snapshot: 项目会话计数")
+    t.expectEqual(snap.projects.first?.name, "A项目", "snapshot: 项目名透传")
+    t.expectEqual(snap.activeProjectId, "pA", "snapshot: activeProjectId 透传")
 
     // transcript: app-progress 剔除 + 截断 + running 标记
     t.expectEqual(snap.transcript.count, 2, "snapshot: transcript 条数")
@@ -333,6 +370,13 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(!html.contains("fetch(\"/r/"), "page: 不允许绝对路径 fetch")
     t.expect(html.contains("fetch(BASE + \"r/\" + TOKEN + \"/api/state\""), "page: state 走 BASE")
     t.expect(html.contains("showStuck"), "page: 首屏失败有可读诊断")
+
+    // v0.5.20 项目切换 UI: chip 打开列表页, 切换经 api/select、新建经 api/new
+    t.expect(html.contains("api/new"), "page: new 端点")
+    t.expect(html.contains("api/select"), "page: select 端点")
+    t.expect(html.contains("projChip"), "page: 项目 chip")
+    t.expect(html.contains("项目与会话"), "page: 项目会话列表标题")
+    t.expect(html.contains("renderProjects"), "page: 项目列表渲染")
 }
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)
