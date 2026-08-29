@@ -21,7 +21,7 @@
 
 ## v0.5.18 — 公网中继自愈: 清理孤儿隧道与服务器僵尸转发
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 939a2bc
 **Tag**: v0.5.18
 **Test status**: 2107 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关); PhoneRemote 6 段全绿
 **Changed**:
