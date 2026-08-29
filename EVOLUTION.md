@@ -21,7 +21,7 @@
 
 ## v0.5.20 — 模型可调用的电脑控制 (Computer Use): 内置 MCP server 让 AI 自动化桌面工作流
 **Date**: 2026-08-29
-**Commit**: (待回填)
+**Commit**: d65f57e
 **Tag**: v0.5.20
 **Test status**: 2147 passed / 0 failed（SSH 集成测试按惯例跳过）
 **Changed**:

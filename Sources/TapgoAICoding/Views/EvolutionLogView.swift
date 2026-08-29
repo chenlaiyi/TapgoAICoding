@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.20",
                     date: "2026-08-29",
-                    commit: "",
+                    commit: "d65f57e",
                     tag: "v0.5.20",
                     summary: "模型可调用的电脑控制 (Computer Use)：内置 MCP server 让 AI 自动化桌面工作流",
                     changes: [
