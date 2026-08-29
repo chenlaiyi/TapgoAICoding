@@ -377,6 +377,17 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(html.contains("projChip"), "page: 项目 chip")
     t.expect(html.contains("项目与会话"), "page: 项目会话列表标题")
     t.expect(html.contains("renderProjects"), "page: 项目列表渲染")
+    // v0.5.21 全面仿 ZCode 输入/输出形态
+    t.expect(html.contains("composer"), "page: composer 卡片")
+    t.expect(html.contains("向 Tapgo 提问"), "page: 输入占位")
+    t.expect(html.contains("sendBtn"), "page: 圆形发送键")
+    t.expect(html.contains("中午好呀"), "page: 时段问候")
+    t.expect(html.contains("msgUser"), "page: 用户气泡")
+    t.expect(html.contains("runPulse"), "page: 运行中脉冲徽标")
+    t.expect(html.contains("更新于 "), "page: 列表『更新于』")
+    t.expect(html.contains("本地"), "page: 本地标签")
+    t.expect(html.contains("⚡ 运行中"), "page: 列表运行中徽标")
+    t.expect(html.contains("✓ 已完成"), "page: 列表已完成徽标")
 }
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)

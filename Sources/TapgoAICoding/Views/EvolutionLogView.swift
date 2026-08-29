@@ -289,6 +289,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.21",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.21",
+                    summary: "手机 H5 全面仿 ZCode 输入/输出形态：composer 卡片 + 用户气泡 + 工作区列表徽标",
+                    changes: [
+                        "输入区 (composer 卡片)：卡内首行项目选择行 (📁 项目名 + ▾, 点击进『项目与会话』列表页)、中部大输入区『向 Tapgo 提问…』自动增高至 140px、底行 + 新建会话 + 圆形 ↑ 发送键 (运行中置灰)；卡片下方快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 点击填入不自动发送。",
+                        "输出区 (对话形态)：用户消息右对齐品牌色圆角气泡 (max-width 86%)、助手通栏正文、运行中脉冲『正在运行…』徽标；空会话首屏时段问候 (早上好呀/中午好呀/下午好呀/晚上好呀)。",
+                        "列表页 (仿 ZCode 工作区与任务)：信息横幅；项目卡『本地/远程』标签 (ProjectSeed/ProjectInfo 增 isLocal + lastActivityAt, App 传 kind)、『更新于 刚刚/N 小时/N 天』；会话行徽标『⚡ 运行中』橙实底 /『✓ 已完成』绿浅底, 当前会话蓝点 + 品牌浅底。",
+                        "H5 段回归断言 19 → 29：composer/占位/发送键/问候/气泡/脉冲/更新于/本地/双徽标。",
+                        "目视回归：真实浏览器手机视口截图两张 (会话页 + 列表页), 与 ZCode 截图逐项对照通过。"
+                    ],
+                    why: "用户要求输入输出全面仿造 ZCode 截图；v0.5.20 只做了功能可达 (能切换), 本版补齐形态一致性, 让手机端观感与 ZCode 对齐。",
+                    next: "按 ZCode 任务页补会话标题头部；评估快捷 chips 可配置；电脑控制 Tab 与新 composer 的视觉统一。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.20",
                     date: "2026-08-29",
                     commit: "d65f57e",

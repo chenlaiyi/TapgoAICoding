@@ -320,7 +320,8 @@ final class PhoneRemoteController: ObservableObject {
                 PhoneRemote.ProjectSeed(id: $0.id,
                                         name: $0.displayName,
                                         path: $0.worktreeRoot.path,
-                                        lastActivityAt: $0.lastUsedAt)
+                                        lastActivityAt: $0.lastUsedAt,
+                                        isLocal: $0.kind == .local)
             }
             let snapshot = PhoneRemote.buildState(threads: store.liveThreads,
                                                   activeId: store.activeThreadId,

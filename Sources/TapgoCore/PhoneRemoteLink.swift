@@ -508,6 +508,10 @@ public enum PhoneRemote {
         /// 项目根目录 (H5 上以截断路径展示)。
         public var path: String
         public var threadCount: Int
+        /// 本地项目 (H5 显示「本地」标签)。
+        public var isLocal: Bool
+        /// 项目最近活跃时间 (H5 显示「更新于 …」)。
+        public var lastActivityAt: Date
     }
 
     /// App 层喂给 buildState 的项目种子 (Core 不依赖 WorkspaceStore 类型)。
@@ -516,12 +520,15 @@ public enum PhoneRemote {
         public let name: String
         public let path: String
         public let lastActivityAt: Date
+        public let isLocal: Bool
 
-        public init(id: String, name: String, path: String, lastActivityAt: Date) {
+        public init(id: String, name: String, path: String,
+                    lastActivityAt: Date, isLocal: Bool = true) {
             self.id = id
             self.name = name
             self.path = path
             self.lastActivityAt = lastActivityAt
+            self.isLocal = isLocal
         }
     }
 
@@ -613,11 +620,13 @@ public enum PhoneRemote {
                 (seed, max(seed.lastActivityAt, lastActiveByProject[seed.id] ?? .distantPast))
             }
             .sorted { $0.1 > $1.1 }
-            .map { seed, _ in
+            .map { seed, activity in
                 ProjectInfo(id: seed.id,
                             name: seed.name,
                             path: seed.path,
-                            threadCount: threads.filter { $0.projectId == seed.id }.count)
+                            threadCount: threads.filter { $0.projectId == seed.id }.count,
+                            isLocal: seed.isLocal,
+                            lastActivityAt: activity)
             }
         return StateSnapshot(rev: rev,
                              hostname: hostname,
@@ -695,17 +704,19 @@ public enum PhoneRemote {
                     text-overflow:ellipsis; }
         #dot { width:9px; height:9px; border-radius:50%; background:var(--ok); flex:none; }
         #dot.off { background:var(--warn); }
-        main { padding:12px 12px 140px; max-width:720px; margin:0 auto; }
-        select { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
-                 background:var(--card); color:var(--fg); font-size:15px; margin-bottom:10px; }
-        .turn { background:var(--card); border:1px solid var(--line); border-radius:14px;
-                padding:12px 14px; margin-bottom:10px; }
-        .turn .u { white-space:pre-wrap; word-break:break-word; font-weight:600; }
-        .turn .a { white-space:pre-wrap; word-break:break-word; margin-top:8px; line-height:1.55; }
-        .turn .a:empty { display:none; }
-        .badge { display:inline-block; font-size:12px; border-radius:99px; padding:2px 9px;
+        main { padding:12px 12px 190px; max-width:720px; margin:0 auto; }
+        /* 对话输出: 用户右侧气泡 + 助手正文 (仿 ZCode 输出形态) */
+        .turnGroup { margin-bottom:18px; }
+        .msgUser { margin-left:auto; max-width:86%; width:fit-content;
+                   background:var(--userBg); border-radius:16px 16px 4px 16px;
+                   padding:10px 13px; white-space:pre-wrap; word-break:break-word;
+                   font-weight:500; font-size:15.5px; }
+        .msgA { margin-top:10px; white-space:pre-wrap; word-break:break-word;
+                line-height:1.6; font-size:15.5px; }
+        .badge { display:inline-block; font-size:12px; border-radius:99px; padding:3px 10px;
                  margin-top:8px; background:var(--warn); color:#fff; }
-        .badge.done { background:transparent; color:var(--muted); }
+        .badge.runPulse { animation:pulse 1.4s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.45; } }
         .meta { font-size:12px; color:var(--muted); margin-top:6px; }
         #tabs { display:flex; gap:8px; padding:10px 12px 0; max-width:720px; margin:0 auto; }
         .tab { flex:1; background:var(--card); color:var(--muted); border:1px solid var(--line);
@@ -735,28 +746,53 @@ public enum PhoneRemote {
                      justify-content:center; color:var(--muted); font-size:14px; text-align:center; }
         #ctrlText { width:100%; height:70px; margin-bottom:8px; resize:none; }
         .hint { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.5; }
-        #bar { position:fixed; bottom:0; left:0; right:0; background:var(--card);
-               border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom));
-               display:flex; gap:8px; max-width:720px; margin:0 auto; }
-        textarea { flex:1; resize:none; border:1px solid var(--line); border-radius:12px;
-                   padding:10px 12px; font-size:16px; background:var(--bg); color:var(--fg);
-                   height:44px; max-height:120px; outline:none; }
+        #bar { position:fixed; bottom:0; left:0; right:0; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+               background:linear-gradient(transparent, var(--bg) 26%); }
+        /* Composer 卡片 (仿 ZCode 输入区): 项目行 + 大输入区 + 圆形↑发送 */
+        .composer { max-width:720px; margin:0 auto; background:var(--card);
+                    border:1px solid var(--line); border-radius:16px; padding:10px 12px 8px;
+                    box-shadow:0 4px 18px rgba(0,0,0,.10); }
+        .composerTop { display:flex; align-items:center; gap:7px; font-weight:600; font-size:14px;
+                       padding-bottom:7px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+        .composerTop .cIcon { color:var(--muted); font-size:15px; }
+        #projChip { cursor:pointer; }
+        #projChip .pChev { color:var(--muted); font-size:12px; }
+        .composer textarea { width:100%; border:none; background:transparent; resize:none;
+                             font-size:16px; color:var(--fg); min-height:46px; max-height:140px;
+                             padding:5px 2px; outline:none; }
+        .composerBar { display:flex; align-items:center; gap:8px; }
+        .plusBtn { width:31px; height:31px; border-radius:50%; background:var(--bg);
+                   border:1px solid var(--line); color:var(--fg); font-size:19px;
+                   font-weight:400; padding:0; flex:none; }
+        #sendBtn { margin-left:auto; width:34px; height:34px; border-radius:50%;
+                   background:var(--brand); color:#fff; font-size:17px; padding:0;
+                   display:flex; align-items:center; justify-content:center; }
+        #sendBtn:disabled { opacity:.35; }
+        #chips { display:flex; gap:8px; max-width:720px; margin:8px auto 0;
+                 overflow-x:auto; padding:0 2px 2px; }
+        .chip { flex:none; background:var(--card); border:1px solid var(--line); color:var(--fg);
+                border-radius:12px; padding:8px 13px; font-size:13px; font-weight:500; }
+        /* 空会话时段问候 (仿 ZCode 首屏) */
+        #greet { text-align:center; padding:56px 16px 24px; }
+        #greet .gLogo { font-size:46px; line-height:1; opacity:.92; }
+        #greet .gText { font-size:22px; font-weight:700; margin-top:18px; }
+        #greet .gSub { font-size:13px; color:var(--muted); margin-top:8px; }
         button { border:none; border-radius:12px; background:var(--brand); color:#fff;
                  font-size:16px; padding:0 18px; font-weight:600; }
         button:disabled { opacity:.5; }
         #empty { color:var(--muted); text-align:center; padding:40px 0; }
-        /* 项目 chip (仿 ZCode 输入框上方项目切换) + 项目/会话列表 */
-        #projChip { display:flex; align-items:center; gap:8px; background:var(--card);
-                    border:1px solid var(--line); border-radius:12px; padding:11px 14px;
-                    margin-bottom:10px; font-weight:600; font-size:15px; }
-        #projChip .pChev { margin-left:auto; color:var(--muted); }
+        /* 项目/会话列表页 (仿 ZCode 工作区与任务) */
+        .bannerInfo { background:var(--card); color:var(--muted); border:1px solid var(--line); }
         .projCard { background:var(--card); border:1px solid var(--line); border-radius:14px;
                     margin-bottom:10px; overflow:hidden; }
         .projHead { display:flex; align-items:center; gap:10px; padding:12px 14px; }
         .projHead .pIcon { font-size:20px; flex:none; }
-        .projName { font-weight:700; font-size:16px; }
+        .projName { font-weight:700; font-size:16px; display:flex; align-items:center; gap:6px; }
+        .tagLocal { font-size:11px; color:var(--muted); border:1px solid var(--line);
+                    border-radius:99px; padding:1px 7px; font-weight:500; }
         .projPath { font-size:12px; color:var(--muted); margin-top:2px;
                     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .upd { font-size:12px; color:var(--muted); margin-top:2px; }
         .projInfo { flex:1; min-width:0; }
         .projMeta { margin-left:auto; text-align:right; color:var(--muted); font-size:12px; flex:none; }
         .plus { width:36px; height:34px; border-radius:10px; background:var(--bg); color:var(--fg);
@@ -766,13 +802,13 @@ public enum PhoneRemote {
         .sessRow { display:flex; align-items:center; gap:8px; padding:11px 14px;
                    border-bottom:1px solid var(--line); }
         .sessRow:last-child { border-bottom:none; }
-        .sessRow.cur { background:var(--userBg); }
         .sessTitle { flex:1; min-width:0; white-space:nowrap; overflow:hidden;
                      text-overflow:ellipsis; font-size:15px; }
-        .sessTime { color:var(--muted); font-size:12px; flex:none; }
-        .sbadge { flex:none; font-size:11px; border-radius:99px; padding:2px 8px; }
+        .sessTime { color:var(--muted); font-size:12px; flex:none; width:44px; text-align:right; }
+        .sbadge { flex:none; font-size:11px; border-radius:99px; padding:2px 9px; font-weight:600; }
         .sbadge.run { background:var(--warn); color:#fff; }
-        .sbadge.done { background:transparent; color:var(--muted); border:1px solid var(--line); }
+        .sbadge.done { background:rgba(52,199,89,.16); color:var(--ok); }
+        .dotCur { width:7px; height:7px; border-radius:50%; background:var(--brand); flex:none; }
         .listHead { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
         .ghost { background:var(--card); color:var(--fg); border:1px solid var(--line);
                  width:38px; height:38px; padding:0; font-size:18px; flex:none; }
@@ -791,14 +827,10 @@ public enum PhoneRemote {
           <button class="tab" id="tabCtrl">电脑控制</button>
         </nav>
         <main id="chatPane">
-          <div id="projChip">
-            <span class="pIcon">📁</span>
-            <span id="projName">…</span>
-            <span class="pChev">▾</span>
-          </div>
           <div id="list"><div id="empty">正在连接 Mac…</div></div>
         </main>
         <main id="listPane" class="hidden">
+          <div class="banner bannerInfo">本次连接可以查看当前设备上的项目、任务和会话; 二维码失效后需要回到 Mac 端重新连接。</div>
           <div class="listHead">
             <button id="backBtn" class="ghost">←</button>
             <div style="flex:1; min-width:0;">
@@ -872,8 +904,23 @@ public enum PhoneRemote {
           </div>
         </main>
         <div id="bar">
-          <textarea id="input" placeholder="给当前会话发指令…" rows="1"></textarea>
-          <button id="send">发送</button>
+          <div class="composer">
+            <div class="composerTop" id="projChip">
+              <span class="cIcon">📁</span>
+              <span id="projName">…</span>
+              <span class="pChev">▾</span>
+            </div>
+            <textarea id="input" placeholder="向 Tapgo 提问…" rows="2"></textarea>
+            <div class="composerBar">
+              <button class="plusBtn" id="newBtn" aria-label="在当前项目新建会话">+</button>
+              <button id="sendBtn" aria-label="发送">↑</button>
+            </div>
+          </div>
+          <div id="chips">
+            <button class="chip" data-fill="跑一遍全量测试, 汇总通过与失败项。">🧪 跑测试</button>
+            <button class="chip" data-fill="总结当前工作区未提交的改动。">📝 总结改动</button>
+            <button class="chip" data-fill="继续处理上次未完成的任务。">▶ 继续任务</button>
+          </div>
         </div>
         <script>
         const TOKEN = \(JSONEncoder.tokenLiteral(token));
@@ -885,6 +932,7 @@ public enum PhoneRemote {
         const $ = (id) => document.getElementById(id);
         let lastJSON = "";
         let activeId = null;
+        let activeProjectId = null;
         let busy = false;
         let ctrlState = null;
         let dbl = false;
@@ -904,29 +952,42 @@ public enum PhoneRemote {
           list.textContent = "";
           const turns = s.transcript || [];
           if (!turns.length) {
-            const e = document.createElement("div"); e.id = "empty";
-            e.textContent = "这个会话还没有对话, 在下方发第一条指令。";
-            list.appendChild(e);
+            const g = document.createElement("div"); g.id = "greet";
+            const logo = document.createElement("div"); logo.className = "gLogo";
+            logo.textContent = "}";
+            const gt = document.createElement("div"); gt.className = "gText";
+            const h = new Date().getHours();
+            gt.textContent = h < 11 ? "早上好呀" : h < 13 ? "中午好呀" : h < 18 ? "下午好呀" : "晚上好呀";
+            const gs = document.createElement("div"); gs.className = "gSub";
+            gs.textContent = "在下方输入任务, 我在 Mac 上帮你完成。";
+            g.append(logo, gt, gs);
+            list.appendChild(g);
           }
           for (const t of turns) {
-            const card = document.createElement("div"); card.className = "turn";
-            const u = document.createElement("div"); u.className = "u";
-            u.textContent = t.user; card.appendChild(u);
-            const a = document.createElement("div"); a.className = "a";
-            a.textContent = t.assistant; card.appendChild(a);
-            if (t.running) {
-              const b = document.createElement("span"); b.className = "badge";
-              b.textContent = t.status === "awaitingApproval" ? "等待 Mac 上确认" : "正在运行…";
-              card.appendChild(b);
-            } else {
-              const m = document.createElement("div"); m.className = "meta";
-              m.textContent = t.status === "failed" ? "已失败" :
-                              t.status === "interrupted" ? "已中断" : "已完成";
-              card.appendChild(m);
+            const group = document.createElement("div"); group.className = "turnGroup";
+            const u = document.createElement("div"); u.className = "msgUser";
+            u.textContent = t.user;
+            group.appendChild(u);
+            if (t.assistant) {
+              const a = document.createElement("div"); a.className = "msgA";
+              a.textContent = t.assistant;
+              group.appendChild(a);
             }
-            list.appendChild(card);
+            if (t.running) {
+              const b = document.createElement("span"); b.className = "badge runPulse";
+              b.textContent = t.status === "awaitingApproval" ? "等待 Mac 上确认" : "正在运行…";
+              group.appendChild(b);
+            } else if (t.status === "failed" || t.status === "interrupted") {
+              const m = document.createElement("div"); m.className = "meta";
+              m.textContent = t.status === "failed" ? "已失败" : "已中断";
+              group.appendChild(m);
+            }
+            list.appendChild(group);
           }
           busy = turns.length > 0 && turns[turns.length - 1].running;
+          $("sendBtn").disabled = busy;
+          activeProjectId = s.activeProjectId || null;
+          $("newBtn").disabled = !activeProjectId;
           ctrlState = s;
           applyCtrlState(s);
           $("dot").classList.remove("off");
@@ -977,9 +1038,15 @@ public enum PhoneRemote {
             const head = document.createElement("div"); head.className = "projHead";
             const ic = document.createElement("span"); ic.className = "pIcon"; ic.textContent = "📁";
             const info = document.createElement("div"); info.className = "projInfo";
-            const n1 = document.createElement("div"); n1.className = "projName"; n1.textContent = p.name;
+            const n1 = document.createElement("div"); n1.className = "projName";
+            n1.textContent = p.name;
+            const tag = document.createElement("span"); tag.className = "tagLocal";
+            tag.textContent = p.isLocal ? "本地" : "远程";
+            n1.appendChild(tag);
             const n2 = document.createElement("div"); n2.className = "projPath"; n2.textContent = p.path;
-            info.append(n1, n2);
+            const upd = document.createElement("div"); upd.className = "upd";
+            upd.textContent = "更新于 " + ago(p.lastActivityAt);
+            info.append(n1, n2, upd);
             const meta = document.createElement("div"); meta.className = "projMeta";
             meta.textContent = p.threadCount + " 个会话";
             const plus = document.createElement("button"); plus.className = "plus";
@@ -1005,14 +1072,19 @@ public enum PhoneRemote {
               }
               for (const t of sess) {
                 const row = document.createElement("div");
-                row.className = "sessRow" + (t.id === s.activeId ? " cur" : "");
+                row.className = "sessRow";
+                if (t.id === s.activeId) {
+                  const d = document.createElement("span"); d.className = "dotCur";
+                  row.appendChild(d);
+                  row.style.background = "var(--userBg)";
+                }
                 const tt = document.createElement("div"); tt.className = "sessTitle";
                 tt.textContent = t.title;
                 const tm = document.createElement("div"); tm.className = "sessTime";
                 tm.textContent = ago(t.updatedAt);
                 const bd = document.createElement("span");
                 bd.className = "sbadge " + (t.busy ? "run" : "done");
-                bd.textContent = t.busy ? "运行中" : "已完成";
+                bd.textContent = t.busy ? "⚡ 运行中" : "✓ 已完成";
                 row.append(tt, tm, bd);
                 row.addEventListener("click", () => selectThread(t.id));
                 rows.appendChild(row);
@@ -1085,15 +1157,25 @@ public enum PhoneRemote {
         $("backBtn").addEventListener("click", showChat);
 
         $("input").addEventListener("input", (ev) => {
-          ev.target.style.height = "44px";
-          ev.target.style.height = Math.min(120, ev.target.scrollHeight) + "px";
+          ev.target.style.height = "auto";
+          ev.target.style.height = Math.min(140, ev.target.scrollHeight) + "px";
+        });
+
+        // 快捷 chips: 点击填入输入框 (不自动发送)。
+        document.querySelectorAll("#chips .chip").forEach((c) => {
+          c.addEventListener("click", () => {
+            const inp = $("input");
+            inp.value = c.dataset.fill || "";
+            inp.dispatchEvent(new Event("input"));
+            inp.focus();
+          });
         });
 
         async function send() {
           const input = $("input");
           const text = input.value.trim();
           if (!text || busy) return;
-          $("send").disabled = true;
+          $("sendBtn").disabled = true;
           try {
             await fetch(BASE + "r/" + TOKEN + "/api/send", {
               method: "POST",
@@ -1101,16 +1183,19 @@ public enum PhoneRemote {
               body: JSON.stringify({ text: text })
             });
             input.value = "";
-            input.style.height = "44px";
+            input.style.height = "46px";
             lastJSON = "";
             await refresh();
           } finally {
-            $("send").disabled = false;
+            $("sendBtn").disabled = busy;
           }
         }
-        $("send").addEventListener("click", send);
+        $("sendBtn").addEventListener("click", send);
         $("input").addEventListener("keydown", (ev) => {
           if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
+        });
+        $("newBtn").addEventListener("click", () => {
+          if (activeProjectId) newSession(activeProjectId);
         });
 
         // ---------- 电脑控制 (v0.5.17) ----------
