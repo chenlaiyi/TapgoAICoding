@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.16",
                     date: "2026-08-29",
-                    commit: "PLACEHOLDER",
+                    commit: "36cf03b",
                     tag: "v0.5.16",
                     summary: "Composer 圆形上下文 meter 移到输入框正下方 + 底部 5 chip 恢复 + PhoneRemote 协议层",
                     changes: [

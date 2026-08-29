@@ -21,7 +21,7 @@
 
 ## v0.5.16 — Composer 圆形上下文 meter 移到输入框正下方 + 5 chip 恢复 + PhoneRemote 协议层接入
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 36cf03b
 **Tag**: v0.5.16
 **Test status**: 1907 passed / 0 failed（13 个 SSH 集成测试用 `TAPGO_SKIP_REMOTE_TESTS=1` 跳过；release build 干净）
 **Changed**:
