@@ -21,7 +21,7 @@
 
 ## v0.5.27 — 额度弹窗二轮修复：诊断信息 + 双端点 fallback + 6 行百分比去重 + 模型分桶映射 + 毫秒时间戳
 **Date**: 2026-08-29
-**Commit**: <pending>
+**Commit**: cb8e2db
 **Tag**: v0.5.27
 **Test status**: 94 passed / 0 failed (MiniMax + 邻近回归段全绿; 本机 App 主目标受限于 SwiftUI 宏插件, 见风险)
 **Changed**:
