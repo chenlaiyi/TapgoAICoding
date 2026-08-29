@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.19 — 修复公网模式 H5 永远停在『正在连接 Mac』: fetch 前缀自适应
+**Date**: 2026-08-29
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.19
+**Test status**: 2111 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
+**Changed**:
+- 用户真机反馈: 手机扫码 (公网域名模式) 后页面停在『正在连接 Mac…』。定位: H5 页面能打开 (200), 但页面 JS 用绝对路径 `/r/<token>/api/state` 拉数据 — nginx 只转发 `/remote/<machine>/` 前缀, `/r/*` 落到 Laravel 返回 404, 首屏永远渲染不出来 (curl 三路径实测 200/404/200 坐实)。
+- `PhoneRemoteLink.pageHTML` 全部 5 处 fetch (state/select/send/ctrl/ctrl-screen) 改为 `BASE + "r/" + TOKEN + ...`; `BASE = location.pathname.replace(/\/r\/[^\/]+\/?$/, "/")` — 直连时为 `/`, 公网中继时为 `/remote/<machine>/`, 两种模式同一份页面。
+- 首屏连续 2 次失败时占位区给出可读诊断 (403=二维码已轮换请重扫 / 404=请更新 Mac 端 App / 网络不通), 已加载成功后瞬断仍只熄状态点。
+- 回归断言: 页面含 BASE 自适应、禁止绝对路径 fetch; 真实浏览器 (390×844 手机视口) 打开公网链接端到端验证 — 标题/项目下拉 48 个会话/对话渲染/发送框全部就位, 不再卡『正在连接 Mac』。
+**Why**: 公网中继把页面挂在 `/remote/<machine>/` 子路径下, 页面内绝对路径 fetch 在反代后必然断链; 这是公网模式上线的最后一公里, 必须真浏览器端到端验证而不只是 curl 接口。
+**Next**: 手机端项目切换 (对齐 ZCode 工作区/任务列表形态), 见 v0.5.20。
+
 ## v0.5.18 — 公网中继自愈: 清理孤儿隧道与服务器僵尸转发
 **Date**: 2026-08-29
 **Commit**: 939a2bc

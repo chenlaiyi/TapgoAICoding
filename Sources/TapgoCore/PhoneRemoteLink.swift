@@ -764,6 +764,11 @@ public enum PhoneRemote {
         </div>
         <script>
         const TOKEN = \(JSONEncoder.tokenLiteral(token));
+        // API 前缀自适应: 直连时页面在 /r/<token>/, BASE = "/";
+        // 公网中继时页面在 /remote/<machine>/r/<token>/, BASE =
+        // "/remote/<machine>/" — 必须带上, 否则 /r/* 会被域名根的
+        // 反代吞掉返回 404, 页面永远停在"正在连接 Mac…"。
+        const BASE = location.pathname.replace(/\\/r\\/[^\\/]+\\/?$/, "/");
         const $ = (id) => document.getElementById(id);
         let lastJSON = "";
         let activeId = null;
@@ -819,21 +824,43 @@ public enum PhoneRemote {
           $("dot").classList.remove("off");
         }
 
+        let failuresCount = 0;
+
+        function showStuck(status) {
+          // 首屏还没成功渲染过才提示, 避免轮询瞬断抹掉已加载的对话。
+          if (lastJSON !== "") return;
+          const e = $("empty"); if (!e) return;
+          e.textContent = status === 403
+            ? "链接已失效 (403): 二维码可能已轮换, 请在 Mac 上刷新二维码后重扫。"
+            : status === 404
+            ? "服务路径不通 (404): 请确认 Mac 端 App 已更新。"
+            : "无法连接 Mac, 请检查手机网络后稍候…";
+        }
+
         async function refresh() {
           try {
-            const r = await fetch("/r/" + TOKEN + "/api/state", { cache: "no-store" });
-            if (!r.ok) throw new Error(r.status);
+            const r = await fetch(BASE + "r/" + TOKEN + "/api/state", { cache: "no-store" });
+            if (!r.ok) {
+              failuresCount += 1;
+              if (failuresCount >= 2) showStuck(r.status);
+              throw new Error(r.status);
+            }
+            failuresCount = 0;
             const text = await r.text();
             if (text === lastJSON) { $("dot").classList.remove("off"); return; }
             lastJSON = text;
             render(JSON.parse(text));
           } catch (e) {
             $("dot").classList.add("off");
+            if (e instanceof TypeError) {
+              failuresCount += 1;
+              if (failuresCount >= 2) showStuck(0);
+            }
           }
         }
 
         $("threads").addEventListener("change", async (ev) => {
-          await fetch("/r/" + TOKEN + "/api/select", {
+          await fetch(BASE + "r/" + TOKEN + "/api/select", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ threadId: ev.target.value })
@@ -853,7 +880,7 @@ public enum PhoneRemote {
           if (!text || busy) return;
           $("send").disabled = true;
           try {
-            await fetch("/r/" + TOKEN + "/api/send", {
+            await fetch(BASE + "r/" + TOKEN + "/api/send", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ text: text })
@@ -920,7 +947,7 @@ public enum PhoneRemote {
 
         async function ctrl(endpoint, body) {
           try {
-            const r = await fetch("/r/" + TOKEN + "/api/ctrl/" + endpoint, {
+            const r = await fetch(BASE + "r/" + TOKEN + "/api/ctrl/" + endpoint, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body)
@@ -938,7 +965,7 @@ public enum PhoneRemote {
 
         async function screenshot() {
           try {
-            const r = await fetch("/r/" + TOKEN + "/api/ctrl/screen", { cache: "no-store" });
+            const r = await fetch(BASE + "r/" + TOKEN + "/api/ctrl/screen", { cache: "no-store" });
             if (!r.ok) {
               const j = await r.json().catch(() => ({}));
               const msg = j.error === "screenPermission" ? "Mac 未授予屏幕录制权限, 截屏不可用。" :

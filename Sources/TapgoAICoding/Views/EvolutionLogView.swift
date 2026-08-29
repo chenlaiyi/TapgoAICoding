@@ -289,6 +289,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.19",
+                    date: "2026-08-29",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.19",
+                    summary: "修复公网模式 H5 永远停在『正在连接 Mac』：fetch 前缀自适应 + 首屏失败可读诊断",
+                    changes: [
+                        "用户真机反馈：公网域名模式扫码后页面停在『正在连接 Mac…』。定位：页面 200 可打开，但 JS 用绝对路径 /r/<token>/api/state 拉数据，nginx 只转发 /remote/<machine>/ 前缀，/r/* 落到 Laravel 404，首屏永远渲染不出（curl 三路径 200/404/200 坐实）。",
+                        "pageHTML 全部 5 处 fetch（state/select/send/ctrl/ctrl-screen）改为 BASE + \"r/\" + TOKEN 前缀自适应：BASE = location.pathname 剥掉 /r/<token> 尾巴，直连为 /，公网中继为 /remote/<machine>/，两种模式同一份页面。",
+                        "首屏连续 2 次失败时占位区给出可读诊断（403=二维码已轮换请重扫 / 404=请更新 Mac 端 App / 网络不通）；已加载成功后瞬断仍只熄状态点。",
+                        "『PhoneRemote: H5 页面』测试段新增 4 条回归断言：含 BASE 自适应、禁止绝对路径 fetch。",
+                        "真实浏览器（390×844 手机视口）打开公网链接端到端验证：标题/项目下拉 48 个会话/对话渲染/发送框全部就位，不再卡『正在连接 Mac』。"
+                    ],
+                    why: "公网中继把页面挂在 /remote/<machine>/ 子路径下，页面内绝对路径 fetch 在反代后必然断链；这是公网模式上线的最后一公里，必须真浏览器端到端验证而不只是 curl 接口。",
+                    next: "手机端项目切换（对齐 ZCode 工作区/任务列表形态），见 v0.5.20。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.18",
                     date: "2026-08-29",
                     commit: "939a2bc",

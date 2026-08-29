@@ -325,6 +325,14 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(!html.contains("<script src="), "page: 无外部 script")
     t.expect(!html.lowercased().contains("<link "), "page: 无外部 stylesheet")
     t.expect(!html.contains("https://"), "page: 无外网引用")
+
+    // v0.5.19 回归: 公网中继模式下页面挂在 /remote/<machine>/r/<token>/,
+    // fetch 必须走 BASE 前缀自适应, 绝对路径 /r/* 会被域名根反代吞掉 404,
+    // 页面永远停在"正在连接 Mac…"。
+    t.expect(html.contains("const BASE = location.pathname.replace"), "page: BASE 前缀自适应")
+    t.expect(!html.contains("fetch(\"/r/"), "page: 不允许绝对路径 fetch")
+    t.expect(html.contains("fetch(BASE + \"r/\" + TOKEN + \"/api/state\""), "page: state 走 BASE")
+    t.expect(html.contains("showStuck"), "page: 首屏失败有可读诊断")
 }
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)
