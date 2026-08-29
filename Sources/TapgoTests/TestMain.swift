@@ -82,6 +82,11 @@ let allSections: [String] = [
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
     "MobilePairing: protocol + URL round-trip",
+    "PhoneRemote: token 生成与校验",
+    "PhoneRemote: 链接构建与路由鉴权",
+    "PhoneRemote: HTTP 解析与响应序列化",
+    "PhoneRemote: 状态快照 JSON",
+    "PhoneRemote: H5 页面",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -175,6 +180,16 @@ let allSections: [String] = [
 func runIfInScope(_ runner: TestRunner, _ name: String, _ body: @escaping @MainActor () async -> Void) async {
     if runner.filter != nil && runner.filter != "all" && runner.filter != name {
         return
+    }
+    // Honour TAPGO_SKIP_REMOTE_TESTS=1 to skip SSH/protocol integration
+    // sections that connect to the RFC 5737 fixture address and would
+    // otherwise hang on the default connect timeout. Used by local CI
+    // runs and quick dev iterations.
+    if ProcessInfo.processInfo.environment["TAPGO_SKIP_REMOTE_TESTS"] == "1" {
+        if name.hasPrefix("protocol-") || name.hasPrefix("RemoteSSH:") || name.hasPrefix("RemoteCodexHomeSync:") || name.hasPrefix("RemoteDirectoryLister:") || name.hasPrefix("e2e:") {
+            print("[skip-remote] \(name)")
+            return
+        }
     }
     runner.section(name)
     await body()
@@ -643,6 +658,21 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "MobilePairing: protocol + URL round-trip") {
             runMobilePairing(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: token 生成与校验") {
+            runPhoneRemoteToken(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: 链接构建与路由鉴权") {
+            runPhoneRemoteLinkRoute(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: HTTP 解析与响应序列化") {
+            runPhoneRemoteHTTP(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: 状态快照 JSON") {
+            runPhoneRemoteSnapshot(runner)
+        }
+        await runIfInScope(runner, "PhoneRemote: H5 页面") {
+            runPhoneRemotePage(runner)
         }
     }
 }

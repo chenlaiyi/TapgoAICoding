@@ -1418,6 +1418,8 @@ struct ComposerView: View {
 
                     environmentChip
 
+                    contextMeterChip
+
                     Spacer()
 
                     Button {
@@ -1783,55 +1785,96 @@ struct ComposerView: View {
         .background(DSHTheme.surface)
     }
 
-    /// Composer 底部只剩一个圆形上下文进度条;悬停 / 点击弹出
-    /// `ModelUsagePopover` 显示套餐 / 余额明细。原先的"轮 / 步 / LLM /
-    /// 缓存命中 / 输入 tokens"5 个文本 chip 已删除,信息全部进入弹窗。
+    /// Composer 底部的文本指标条：rounds · steps / LLM 时长 / 缓存命中 /
+    /// 输入 tokens。圆形上下文进度条已经从这里迁出,改成输入框正下方
+    /// 紧贴『完全访问权限』chip 的 `contextMeterChip`(悬停/点击弹
+    /// `ModelUsagePopover`)。
     @ViewBuilder
     private var composerMetricsBar: some View {
         if let thread = activeThread {
-            let lastUsage = thread.turns.last(where: { $0.usage != nil })?.usage
-            let avgCache = averageCacheHitPercent(thread: thread)
-            // Compose the meter's percent: prefer live rate-limit pressure
-            // (most actionable), fall back to context window usage.
-            let meterPercent: Int? = store.rateLimits?.worstUsedPercent
-                ?? lastUsage?.contextPercent
-            CircularContextMeter(percent: meterPercent, isActive: isRunning)
-                .help("查看模型用量与剩余额度")
-                .contentShape(Rectangle())
-                .onAppear { store.refreshRateLimits() }
-                .onHover { hovering in
-                    if hovering {
-                        // Trigger a fresh fetch every time the popover
-                        // opens so the user always sees the latest snapshot.
-                        store.refreshRateLimits()
-                        showUsagePopover = true
-                    } else if !usagePopoverPinned {
-                        showUsagePopover = false
+            let rounds = thread.turns.count
+            let steps = thread.turns.reduce(0) { acc, t in
+                acc + t.items.filter { item in
+                    switch item {
+                    case .toolCall, .commandExecution: return true
+                    default: return false
                     }
+                }.count
+            }
+            let lastUsage = thread.turns.last(where: { $0.usage != nil })?.usage
+            let cacheHit = cacheHitPercent(lastUsage)
+
+            HStack(spacing: 12) {
+                HStack(spacing: 2) {
+                    Text("\(rounds) 轮")
+                    Text("·")
+                    Text("\(steps) 步")
                 }
-                .onTapGesture {
-                    showUsagePopover.toggle()
-                    usagePopoverPinned.toggle()
-                    if showUsagePopover { store.refreshRateLimits() }
+                if let d = thread.durationTotalText {
+                    Text("LLM \(d)")
                 }
-                .popover(isPresented: $showUsagePopover, arrowEdge: .top) {
-                    ModelUsagePopover(
-                        usage: lastUsage,
-                        averageCacheHitPercent: avgCache,
-                        rateLimits: store.rateLimits,
-                        rateLimitsLoading: store.rateLimitsLoading,
-                        rateLimitsError: store.rateLimitsError,
-                        appFontScale: appFontScale
-                    )
+                if let c = cacheHit {
+                    Text("缓存命中 \(c)%")
                 }
-                .padding(.vertical, 4)
-                .frame(maxWidth: contentWidth)
-                .frame(maxWidth: .infinity, alignment: .center)
+                if thread.usageTotal > 0 {
+                    Text("输入 \(tapgoFormatCount(thread.usageTotal))")
+                }
+            }
+            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: contentWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
-    private func averageCacheHitPercent(thread: TapgoCore.Thread) -> Int? {
-        ModelUsageMetrics.averageCacheHitPercent(turns: thread.turns)
+    /// 输入框正下方 toolbar 中的圆形上下文进度条 chip。位置紧贴
+    /// 『完全访问权限』chip 后,模仿 chip 外观(capsule + caption 字号);
+    /// 内部仍然是 `CircularContextMeter`,hover/click 触发
+    /// `ModelUsagePopover` 显示套餐 / 余额明细。
+    @ViewBuilder
+    private var contextMeterChip: some View {
+        let lastUsage = activeThread?.turns.last(where: { $0.usage != nil })?.usage
+        let avgCache = averageCacheHitPercent(thread: activeThread)
+        let meterPercent: Int? = store.rateLimits?.worstUsedPercent
+            ?? lastUsage?.contextPercent
+        HStack(spacing: 4) {
+            CircularContextMeter(percent: meterPercent, isActive: isRunning)
+        }
+        .padding(.horizontal, 6).padding(.vertical, 3)
+        .background(DSHTheme.surface, in: Capsule())
+        .help("查看模型用量与剩余额度")
+        .contentShape(Rectangle())
+        .onAppear { store.refreshRateLimits() }
+        .onHover { hovering in
+            if hovering {
+                store.refreshRateLimits()
+                showUsagePopover = true
+            } else if !usagePopoverPinned {
+                showUsagePopover = false
+            }
+        }
+        .onTapGesture {
+            showUsagePopover.toggle()
+            usagePopoverPinned.toggle()
+            if showUsagePopover { store.refreshRateLimits() }
+        }
+        .popover(isPresented: $showUsagePopover, arrowEdge: .bottom) {
+            ModelUsagePopover(
+                usage: lastUsage,
+                averageCacheHitPercent: avgCache,
+                rateLimits: store.rateLimits,
+                rateLimitsLoading: store.rateLimitsLoading,
+                rateLimitsError: store.rateLimitsError,
+                appFontScale: appFontScale
+            )
+        }
+        .accessibilityLabel("上下文用量 \(meterPercent.map(String.init) ?? "未知")%")
+    }
+
+    private func averageCacheHitPercent(thread: TapgoCore.Thread?) -> Int? {
+        guard let thread else { return nil }
+        return ModelUsageMetrics.averageCacheHitPercent(turns: thread.turns)
     }
 
     private func cacheHitPercent(_ usage: TokenUsage?) -> Int? {

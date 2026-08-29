@@ -6,6 +6,7 @@ struct TapgoAICodingApp: App {
     @StateObject private var workspace = WorkspaceStore()
     @StateObject private var threadStore: ThreadStore
     @StateObject private var store: SessionStore
+    @StateObject private var remote: PhoneRemoteController
     @StateObject private var authStore: AdminAuthStore
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
@@ -16,9 +17,11 @@ struct TapgoAICodingApp: App {
         let threads = ThreadStore()
         _workspace = StateObject(wrappedValue: workspace)
         _threadStore = StateObject(wrappedValue: threads)
-        _store = StateObject(
-            wrappedValue: SessionStore(workspace: workspace, threads: threads)
-        )
+        let sessionStore = SessionStore(workspace: workspace, threads: threads)
+        _store = StateObject(wrappedValue: sessionStore)
+        // 扫码即开 H5 的移动端远程控制 (v0.5.16)。登录成功后在 body 的
+        // .task 里 startIfNeeded()。
+        _remote = StateObject(wrappedValue: PhoneRemoteController(store: sessionStore))
         _authStore = StateObject(wrappedValue: AdminAuthStore())
         // Cross-device durable memory: pull any newer memory files from the
         // iCloud Drive mirror at startup so the user sees what they wrote on
@@ -55,6 +58,8 @@ struct TapgoAICodingApp: App {
                     ContentView()
                         .environmentObject(store)
                         .environmentObject(workspace)
+                        .environmentObject(remote)
+                        .task { remote.startIfNeeded() }
                 } else {
                     AdminLoginView(onComplete: {})
                         .task { await authStore.bootstrap() }

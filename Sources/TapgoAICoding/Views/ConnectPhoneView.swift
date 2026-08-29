@@ -4,35 +4,48 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import AppKit
 
-/// Mac 端"连接手机"弹窗。
+/// Mac 端"移动端远程控制"弹窗 (v0.5.16 重写)。
 ///
-/// 显示当前 6 位配对码、QR、倒计时进度与上次配对状态。
-/// 真实 Bonjour 长链接在 v0.5.6 接入; v0.5.5 只生成 URL, QR 用 CoreImage 渲染。
+/// 对标 ZCode 的扫码体验: Mac 内置 HTTP 服务, QR 直接编码
+/// `http://<局域网IP>:<端口>/r/<token>`, iPhone 相机扫码立刻在 Safari 打开
+/// H5 控制页, 不再依赖原生 iOS App 与 6 位配对码 (`MobilePairing` 保留为
+/// 协议层历史, UI 不再使用)。
 struct ConnectPhoneView: View {
-    @StateObject private var pairing = MobilePairingStore()
+    @EnvironmentObject private var remote: PhoneRemoteController
     @Environment(\.dismiss) private var dismiss
+    @State private var qrImage: NSImage? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             header
-            codeBlock
-            qrBlock
-            statusBlock
-            footer
+            scanCard
+            hintFooter
+            doneFooter
         }
         .padding(24)
-        .frame(width: 460)
+        .frame(width: 480)
         .background(Color(.windowBackgroundColor))
+        .onAppear {
+            remote.startIfNeeded()
+            qrImage = remote.makeQRImage()
+        }
+        .onChange(of: remote.linkString) { _ in
+            qrImage = remote.makeQRImage()
+        }
     }
+
+    // MARK: - Header
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                .font(.system(size: 28))
+            Image(systemName: "rectangle.landscape.rotate")
+                .font(.system(size: 26))
                 .foregroundStyle(.tint)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Color.accentColor.opacity(0.12)))
             VStack(alignment: .leading, spacing: 2) {
-                Text("连接手机 · 点点够终端").font(.title3.weight(.semibold))
-                Text("用 iPhone 扫码或手动输入配对码, 即可在手机端继续会话。")
+                Text("移动端远程控制").font(.title3.weight(.semibold))
+                Text("扫码或在手机上打开链接, 即可远程控制当前工作区。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -40,264 +53,210 @@ struct ConnectPhoneView: View {
         }
     }
 
-    private var codeBlock: some View {
-        VStack(spacing: 10) {
-            Text(pairing.code.value)
-                .font(.system(size: 40, weight: .bold, design: .monospaced))
-                .tracking(4)
-                .foregroundStyle(.primary)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.secondary.opacity(0.08))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-                )
-            HStack(spacing: 12) {
-                Image(systemName: "timer")
-                    .foregroundStyle(.secondary)
-                Text("\(pairing.code.remainingSeconds()) 秒后自动轮换")
+    // MARK: - 扫码卡片
+
+    private var scanCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "iphone")
+                    .foregroundStyle(.tint)
+                Text("手机扫码连接").font(.headline)
+            }
+            Text("用 iPhone 相机扫码, 在手机上打开这个工作区。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            statusCard
+
+            HStack(alignment: .center, spacing: 0) {
+                Text("无法扫码? 可以在手机上打开链接。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Spacer()
-                ProgressView(value: pairing.progressFraction)
-                    .progressViewStyle(.linear)
-                    .frame(width: 120)
-            }
-        }
-    }
-
-    private var qrBlock: some View {
-        HStack(alignment: .center, spacing: 16) {
-            Group {
-                if let img = pairing.qrImage {
-                    Image(nsImage: img)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.secondary.opacity(0.15))
-                        .overlay(Text("QR 生成中").font(.footnote).foregroundStyle(.secondary))
-                }
-            }
-            .frame(width: 140, height: 140)
-            .background(Color.white)
-            .cornerRadius(8)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("扫码配对").font(.subheadline.weight(.semibold))
-                Text(pairing.pairURLString)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
-                    .truncationMode(.middle)
                 Button {
-                    pairing.copyURLToPasteboard()
+                    remote.rotateToken()
+                } label: {
+                    Label("刷新二维码", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.footnote)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!remote.isRunning)
+                .accessibilityLabel("刷新二维码并轮换链接")
+                Button {
+                    remote.copyLink()
                 } label: {
                     Label("复制链接", systemImage: "doc.on.doc")
                         .font(.footnote)
                 }
                 .buttonStyle(.bordered)
+                .disabled(!remote.isRunning)
             }
+
+            qrView
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.secondary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
     }
 
-    private var statusBlock: some View {
-        HStack(spacing: 8) {
-            statusDot
-            Text(statusText).font(.footnote).foregroundStyle(.secondary)
-            Spacer()
-            if pairing.state.isPaired {
-                Button("解除配对", role: .destructive) {
-                    pairing.unpair()
+    /// 运行状态卡: 服务状态 + 手机在线状态 + 停止/启动。
+    private var statusCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(remote.phoneTitle).font(.subheadline.weight(.semibold))
+                if remote.isRunning {
+                    Circle()
+                        .fill(remote.phoneConnected ? Color.green : Color.orange)
+                        .frame(width: 8, height: 8)
+                    if remote.phoneConnected {
+                        Text("iPhone")
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                    }
                 }
-                .buttonStyle(.borderless)
+                Spacer()
+                toggleButton
             }
+            Text(remote.phoneSubtitle)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if case .failed(let message) = remote.status {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var toggleButton: some View {
+        if remote.isRunning {
+            Button {
+                remote.stop()
+            } label: {
+                Label("停止", systemImage: "link.badge.plus")
+                    .font(.footnote)
+            }
+            .buttonStyle(.bordered)
+        } else if remote.status == .stopped || isFailed {
+            Button("启动服务") { remote.startIfNeeded() }
+                .buttonStyle(.borderedProminent)
+                .font(.footnote)
+        } else {
+            ProgressView()
+                .controlSize(.small)
         }
     }
 
-    private var footer: some View {
+    private var isFailed: Bool {
+        if case .failed = remote.status { return true }
+        return false
+    }
+
+    // MARK: - QR
+
+    @ViewBuilder
+    private var qrView: some View {
+        HStack(alignment: .center, spacing: 16) {
+            Group {
+                if let img = qrImage {
+                    Image(nsImage: img)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Text(remote.isRunning ? "QR 生成中" : "服务未开启")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(width: 172, height: 172)
+            .background(Color.white)
+            .cornerRadius(10)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("手机打开的链接").font(.subheadline.weight(.semibold))
+                Text(remote.linkString.isEmpty ? "—" : remote.linkString)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                Label("本机局域网地址 \(remote.lanAddress ?? "不可用")",
+                      systemImage: "wifi")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    // MARK: - Footer
+
+    private var hintFooter: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("手机需与 Mac 在同一 Wi-Fi; 扫码后用 Safari 打开, 无需安装 App。", systemImage: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Label("手机端可以: 查看 / 切换会话 · 阅读对话与执行进度 · 发送新指令。", systemImage: "checkmark.seal")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var doneFooter: some View {
         HStack {
-            Button("刷新配对码") { pairing.regenerate() }
-                .buttonStyle(.bordered)
             Spacer()
             Button("完成") { dismiss() }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
         }
     }
-
-    private var statusDot: some View {
-        Circle()
-            .fill(statusColor)
-            .frame(width: 8, height: 8)
-    }
-
-    private var statusColor: Color {
-        switch pairing.state {
-        case .unpaired: return .gray
-        case .paired(_, let connected): return connected ? .green : .orange
-        }
-    }
-
-    private var statusText: String {
-        switch pairing.state {
-        case .unpaired:
-            return "未配对"
-        case .paired(let mac, let connected):
-            if connected {
-                return "已连接 · \(mac.hostname)"
-            } else {
-                return "已配对 · 等待 iOS 端建立链接 (\(mac.hostname))"
-            }
-        }
-    }
 }
 
-/// Mac 端配对状态机。封装 PairCode 倒计时、QR 渲染与 UserDefaults 持久化。
-/// Bonjour 监听 / 真实 TCP 握手在 v0.5.6 接入, 当前 UI 主要展示协议层面。
-@MainActor
-final class MobilePairingStore: ObservableObject {
+/// `PhoneRemoteController` 上给 UI 用的小推导, 收在这里避免控制器堆 UI 字符串。
+extension PhoneRemoteController {
+    var isRunning: Bool { status == .running }
 
-    @Published private(set) var code: MobilePairing.PairCode
-    @Published private(set) var state: MobilePairing.State
-    @Published private(set) var qrImage: NSImage? = nil
-    @Published private(set) var pairURLString: String = ""
-
-    private var timer: Timer? = nil
-    private static let macDeviceIdKey = MobilePairing.StorageKeys.userDefaultsMacDeviceIdKey
-    private static let lastPairedMacKey = MobilePairing.StorageKeys.userDefaultsLastPairedMacKey
-
-    init() {
-        let defaults = UserDefaults.standard
-        if let data = defaults.data(forKey: Self.lastPairedMacKey),
-           let mac = try? JSONDecoder().decode(MobilePairing.PairedMac.self, from: data) {
-            self.state = .paired(mac, connected: false)
-        } else {
-            self.state = .unpaired
-        }
-        self.code = MobilePairing.generateCode()
-        rebuildArtifacts()
-        startTimer()
-    }
-
-    deinit {
-        timer?.invalidate()
-    }
-
-    /// 距过期还剩多少 (0–1), 给 ProgressView 用。
-    var progressFraction: Double {
-        let total = code.expiresAt.timeIntervalSince(code.issuedAt)
-        guard total > 0 else { return 0 }
-        let remaining = max(0, code.expiresAt.timeIntervalSinceNow)
-        return min(1, max(0, remaining / total))
-    }
-
-    func regenerate() {
-        code = MobilePairing.generateCode()
-        rebuildArtifacts()
-    }
-
-    func unpair() {
-        state = .unpaired
-        UserDefaults.standard.removeObject(forKey: Self.lastPairedMacKey)
-    }
-
-    func copyURLToPasteboard() {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(pairURLString, forType: .string)
-    }
-
-    private func startTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if !self.code.isValid() {
-                    self.regenerate()
-                }
-                // 触发 ProgressView 刷新
-                self.objectWillChange.send()
-            }
+    var phoneTitle: String {
+        switch status {
+        case .stopped: return "服务已停止"
+        case .starting: return "服务启动中…"
+        case .running: return phoneConnected ? "手机已连接" : "等待手机连接…"
+        case .failed: return "服务启动失败"
         }
     }
 
-    private func rebuildArtifacts() {
-        let host = Host.current().localizedName ?? "mac"
-        let addr = Self.primaryIPv4Address() ?? "127.0.0.1"
-        let deviceId = Self.macDeviceId()
-        guard let url = MobilePairing.pairingURL(macDeviceId: deviceId,
-                                                  hostname: host,
-                                                  host: addr,
-                                                  code: code) else {
-            pairURLString = ""
-            qrImage = nil
-            return
+    var phoneSubtitle: String {
+        switch status {
+        case .stopped:
+            return "手机暂时无法控制当前工作区。"
+        case .starting:
+            return "正在监听端口…"
+        case .running:
+            return phoneConnected
+                ? "手机可以控制当前工作区。"
+                : "打开链接后手机会自动出现在这里。"
+        case .failed:
+            return "请点击『启动服务』重试。"
         }
-        pairURLString = url.absoluteString
-        qrImage = Self.makeQRImage(string: pairURLString)
-    }
-
-    private static func macDeviceId() -> String {
-        let defaults = UserDefaults.standard
-        if let existing = defaults.string(forKey: macDeviceIdKey), !existing.isEmpty {
-            return existing
-        }
-        // 用 hostname + 4 位随机后缀生成稳定设备 ID
-        let host = Host.current().localizedName ?? "mac"
-        let suffix = String(MobilePairing.generateCode(rng: { UInt64.random(in: 0...UInt64.max) }).value.prefix(4))
-        let id = host
-            .lowercased()
-            .replacingOccurrences(of: " ", with: "-")
-            .appending("-\(suffix)")
-        defaults.set(id, forKey: macDeviceIdKey)
-        return id
-    }
-
-    /// 简单 IPv4 地址提取, 失败回落到 127.0.0.1。
-    private static func primaryIPv4Address() -> String? {
-        var address: String? = nil
-        var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
-        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }
-        defer { freeifaddrs(ifaddr) }
-        var ptr: UnsafeMutablePointer<ifaddrs>? = first
-        while let p = ptr {
-            defer { ptr = p.pointee.ifa_next }
-            let flags = Int32(p.pointee.ifa_flags)
-            let family = p.pointee.ifa_addr.pointee.sa_family
-            guard (flags & IFF_UP) == IFF_UP, family == UInt8(AF_INET) else { continue }
-            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-            let r = getnameinfo(p.pointee.ifa_addr,
-                                socklen_t(p.pointee.ifa_addr.pointee.sa_len),
-                                &host,
-                                socklen_t(host.count),
-                                nil, 0, NI_NUMERICHOST)
-            guard r == 0 else { continue }
-            let name = String(cString: p.pointee.ifa_name)
-            // 优先 en0/en1; 其它网卡 (utun, lo) 跳过
-            if name.hasPrefix("en") {
-                address = String(cString: host)
-                break
-            }
-        }
-        return address
-    }
-
-    /// CoreImage QR 生成。失败返回 nil, UI 占位。
-    private static func makeQRImage(string: String) -> NSImage? {
-        guard let data = string.data(using: .utf8) else { return nil }
-        let filter = CIFilter.qrCodeGenerator()
-        filter.message = data
-        filter.correctionLevel = "M"
-        guard let output = filter.outputImage else { return nil }
-        let scaled = output.transformed(by: CGAffineTransform(scaleX: 8, y: 8))
-        let rep = NSCIImageRep(ciImage: scaled)
-        let img = NSImage(size: rep.size)
-        img.addRepresentation(rep)
-        return img
     }
 }

@@ -1,8 +1,8 @@
 # Evolution Log
 
-> Append-only changelog for self-evolution iterations of **Tapgo AICoding**.
-> Each entry corresponds to one git tag (one full build → test → commit → push cycle).
-> Rollback to any version: `git checkout vX.Y.Z && ./scripts/build-app.sh`.
+> 最新条目在最上方（latest first）。每个版本对应一个 git tag（一个完整
+> build → test → commit → push 闭环）。回滚到任意版本：
+> `git checkout vX.Y.Z && ./scripts/build-app.sh`。
 
 ## Format
 
@@ -18,6 +18,21 @@
 **Why**: 1–2 sentences on the motivation / problem solved.
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
+
+## v0.5.16 — Composer 圆形上下文 meter 移到输入框正下方 + 5 chip 恢复 + PhoneRemote 协议层接入
+**Date**: 2026-08-29
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.16
+**Test status**: 1907 passed / 0 failed（13 个 SSH 集成测试用 `TAPGO_SKIP_REMOTE_TESTS=1` 跳过；release build 干净）
+**Changed**:
+- **Composer 圆形上下文 meter 迁移到输入框正下方**：v0.5.15 把 5 chip 整行删除换成 meter，但用户期望是『圆形 meter 放在输入框正下方 chip 区 + 底部 5 chip 保留』。v0.5.16 把 `CircularContextMeter` + `ModelUsagePopover` 抽成独立 `contextMeterChip` 视图，插到 `environmentChip`（完全访问权限）之后、`Spacer` 之前的左侧 chip 区，chip 风格一致（capsule 背景 + caption 字号）；hover / 点击 / pinned 行为与 v0.5.15 相同，popover arrow 改 `.bottom`（从 meter 弹出向下指向输入框）。
+- **Composer 底部 5 chip 文本恢复**：`composerMetricsBar` 回到 v0.5.14 风格，rounds · steps / LLM 时长 / 缓存命中 / 输入 tokens；与左侧 `contextMeterChip` 不再冲突。
+- **PhoneRemote 协议层（v2 扫码即开 H5）**：新增 `Sources/TapgoCore/PhoneRemoteLink.swift`（528 行）。对标 ZCode 移动端体验：Mac 端内置带 token 鉴权的 HTTP 服务，QR 码直接编码 `http://<局域网IP>:<端口>/r/<token>`，iPhone 相机扫码即可在 Safari 打开 H5 控制页（无需安装原生 App）。本文件只放纯 Foundation 协议层：token 生成与校验、链接与路由解析、极简 HTTP 报文解析/序列化、状态快照 JSON、H5 页面渲染。真实 `NWListener` 装配在 App 层 `PhoneRemoteServer.swift`。
+- **PhoneRemote 测试套件**：新增 35 项断言（token 鉴权、链接解析、HTTP 请求解析/序列化、H5 页面渲染、状态快照 JSON）。补 `constantTimeEquals` 的 UInt8/Int 类型推断修复和 `RouteError: Error` 缺 conformance 修复，让 TapgoCore 能 release build。
+- **测试 runner 提速**：`Sources/TapgoTests/TestMain.swift` 新增 `TAPGO_SKIP_REMOTE_TESTS=1` 环境变量：跳过 `protocol-1..4` / `RemoteSSH:` / `RemoteCodexHomeSync:` / `RemoteDirectoryLister:` / `e2e:` 共 13 个连接 RFC 5737 fixture 地址的 SSH 集成测试，避免默认 connect timeout 把本地 `swift run TapgoTests` 卡 60–120s。
+- **EVOLUTION.md 顺序修正 + 顶部注释更新**：v0.5.15 的 EVOLUTION 条目在文件里被误 append 到末尾（line 195），v0.5.16 commit 同步把它移到 Format 块之后；顶部描述从『Append-only changelog』改为『最新条目在最上方』，避免下次再被误导。
+**Why**: v0.5.15 把 composer 底部 5 chip 整行删除换成 meter 的方向被推翻——chip 区是用户长期使用的位置，meter 应该附加在输入框 chip 区里而不是替换掉。用户先前已在本地为 v0.5.16 准备了 PhoneRemote 协议层 WIP，本次 hotfix 顺手把它也接入主线并补齐测试，同时把 TapgoTests 提速让本地 TDD 循环不再被 SSH fixture timeout 阻塞。
+**Next**: 把 PhoneRemoteLink 的 `NWListener` 装配层 (App 端 `PhoneRemoteServer.swift`) 完成并接入设置页；为 `contextMeterChip` 增加 mini 显示模式（22×22 圆环可隐藏文字 + badge）；评估是否给 5 chip 加 hover 详情。
 
 ## v0.5.15 — Markdown 视觉升级 + composer 底部 metrics 重写 + 真实账户 rateLimits 接入
 **Date**: 2026-08-29
