@@ -21,7 +21,7 @@
 
 ## v0.5.24 — H5 顶部改项目切换器, 移除软件标题
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: 5af6315
 **Tag**: v0.5.24
 **Test status**: 2240 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:

@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.24",
                     date: "2026-08-29",
-                    commit: "PLACEHOLDER",
+                    commit: "5af6315",
                     tag: "v0.5.24",
                     summary: "H5 顶部改项目切换器，移除软件标题",
                     changes: [
