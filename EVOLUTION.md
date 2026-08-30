@@ -21,7 +21,7 @@
 
 ## v0.5.33 — 自进化日志模块重构：分段导航 + 紧凑折叠条目 + 当前版本数据源修复
 **Date**: 2026-08-30
-**Commit**: PENDING
+**Commit**: 5ed7ead
 **Tag**: v0.5.33
 **Changed**:
 - 用户反馈日志页很乱: hero 卡显示 8/28 的陈旧 evolution_state.json (v0.5.3) 却标着「本次进化」; v0.5.32 条目 commit 是未回填的 PLACEHOLDER; 理念卡与全部明细平铺, 信息密度过低。
