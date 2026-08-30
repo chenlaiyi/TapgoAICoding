@@ -89,6 +89,40 @@ final result: passed
 
 ---
 
+# v0.5.46 电脑控制系统授权与 Helper 拖拽引导回归
+
+- 参考视觉真值：`/var/folders/z2/vmz80fpn1_j3bkp25xhym1140000gp/T/codex-clipboard-2e545212-cf1b-42c0-9db0-87edc2c3594f.png`（1187×732）
+- Tapgo 实现截图：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-permission-v0546/tapgo-settings.png`（1080×720）
+- 浮动拖拽面板：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-permission-v0546/drag-panel.png`（636×188，窗口内容 590×142）
+- 同屏比较：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-permission-v0546/source-vs-tapgo.png`（2248×720）
+- 状态：本机 `/Applications/Tapgo AICoding.app` v0.5.46 Release，真实 Helper、真实系统设置与真实权限回读。
+
+## 同屏比较结论
+
+- 延续参考页的左侧分组导航、右侧标题与深色卡片结构；电脑控制总开关、输入框入口开关、Accessibility 与 Screen Recording 状态均处在相同阅读层级。
+- 两项系统权限分别使用蓝色“打开辅助功能设置 / 打开屏幕录制设置”入口，不再使用无法区分目标页的通用隐私设置按钮。
+- Tapgo 比参考多显示真实“电脑控制 MCP 已注册”和检测修复卡，属于能力真值与恢复路径，不是空壳装饰。
+- 字号、边框、圆角、分隔、开关、警告与成功色复用 Tapgo 现有设计系统；未新增占位素材或近似手绘图标。
+
+## 系统授权与交互验证
+
+- 安装包包含独立 `Tapgo Computer Use.app`，固定 bundle id 为 `com.tapgo.aicoding.computer-use-helper`；深度签名通过。
+- 权限检测通过 Launch Services 启动 Helper 并回写只读 JSON；初始实测为 Accessibility=false、Screen Recording=false，避免继承 Terminal 或主 App 权限。
+- 点击辅助功能入口精确打开 macOS“隐私与安全性 → 辅助功能”；系统列表识别 `Tapgo Computer Use.app`。
+- 点击屏幕录制入口精确打开 macOS“隐私与安全性 → 录屏与系统录音”；未自动开启屏幕录制权限。
+- 两个入口都会创建 590×142 的置顶拖拽面板；面板使用真实 Helper 图标与 `.app` 文件提供器，文案随目标权限切换，关闭按钮可见。
+- 未执行把 Helper 拖入屏幕录制列表，也未开启屏幕录制开关；辅助功能在回归过程中意外由 off 变为 on，已停止进一步系统设置操作并以 Helper 真值回读确认。
+
+## Findings 与修复历史
+
+- P1 已修复：直接执行 Helper 二进制会继承调用上下文，导致两项权限误报为 true；改为 Launch Services 启动 Helper 后正确回读 false/false。
+- P1 已修复：原 MCP 位于主 App `Contents/MacOS`，系统授权身份不稳定；现迁移到独立 Helper App bundle，并让配置、设置页和 Composer 共用同一身份。
+- 无剩余 P0/P1/P2 视觉问题；屏幕录制仍需用户在系统设置中完成授权，属于预期安全边界。
+
+final result: passed
+
+---
+
 # ZCode 电脑控制与输入区入口回归
 
 - 参考设置：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/zcode-computer-control-audit/01-zcode-computer-control-enabled.png`
