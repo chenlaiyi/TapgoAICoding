@@ -352,19 +352,73 @@ public enum ComputerUse {
         }
     }
 
-    /// 按名字启动一个 macOS 应用 (等价 `open -a <name>`)。
+    /// 按名字启动一个 macOS 应用。先走 `open -a`（英文 bundle 名、路径
+    /// 与 bundle id），失败后用 Spotlight 的本地化显示名索引兜底，例如
+    /// 中文系统里的“计算器”可解析到 `Calculator.app`。
     @discardableResult
     public static func openApplication(named name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
+        if runOpen(arguments: ["-a", trimmed]) {
+            return true
+        }
+        if let bundleURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: trimmed),
+           runOpen(arguments: [bundleURL.path]) {
+            return true
+        }
+        guard let localizedURL = localizedApplicationURL(named: trimmed) else {
+            return false
+        }
+        return runOpen(arguments: [localizedURL.path])
+    }
+
+    private static func runOpen(arguments: [String]) -> Bool {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        p.arguments = ["-a", name]
-        p.standardOutput = Pipe()
-        p.standardError = Pipe()
+        p.arguments = arguments
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
         do {
             try p.run()
-            return true
+            p.waitUntilExit()
+            return p.terminationStatus == 0
         } catch {
             return false
+        }
+    }
+
+    private static func localizedApplicationURL(named name: String) -> URL? {
+        let displayName = name.lowercased().hasSuffix(".app")
+            ? String(name.dropLast(4))
+            : name
+        let escapedName = displayName
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+        let query = "kMDItemContentType == 'com.apple.application-bundle' && "
+            + "kMDItemDisplayName == '\(escapedName).app'cd"
+
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+        process.arguments = [query]
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            guard let text = String(data: data, encoding: .utf8) else { return nil }
+            return text.split(whereSeparator: \.isNewline)
+                .map(String.init)
+                .map(URL.init(fileURLWithPath:))
+                .first(where: {
+                    $0.pathExtension.lowercased() == "app"
+                        && FileManager.default.fileExists(atPath: $0.path)
+                })
+        } catch {
+            return nil
         }
     }
 }
