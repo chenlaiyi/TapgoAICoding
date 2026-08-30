@@ -21,7 +21,7 @@
 
 ## v0.5.30 — 侧栏用户信息灰色行改为「供应商·套餐名·周余量」
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: 60294f6
 **Tag**: v0.5.30
 **Test status**: 2323 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:

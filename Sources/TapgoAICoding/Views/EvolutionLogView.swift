@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.30",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "60294f6",
                     tag: "v0.5.30",
                     summary: "侧栏用户信息灰色行改为「供应商·套餐名·周余量」",
                     changes: [
