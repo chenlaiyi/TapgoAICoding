@@ -786,13 +786,24 @@ struct SidebarView: View {
     // MARK: - Footer
 
     /// 左下角灰色行: 当前模型供应商 / 套餐名 / 周余量百分比。
+    /// 供应商跟随当前选中的模型 (v0.5.31): GLM 无额度查询通道,
+    /// rateLimits 恒为 nil, 只显示「GLM·Coding Plan」不带周余量。
     private var modelQuotaSummary: String {
-        var parts = ["MiniMax"]
-        let snapshot = store.rateLimits
-        // MiniMax coding_plan 端点不返回套餐名字段, 套餐名用端点语义。
-        parts.append(snapshot?.planLabel ?? "Coding Plan")
-        if let weekly = snapshot?.secondary, weekly.windowDurationMins == 10080 {
-            parts.append("周余量 \(max(0, 100 - weekly.usedPercent))%")
+        let isMinimax = TapgoConfig.selectedModel == .minimaxM3
+        var parts = [isMinimax ? "MiniMax" : "GLM"]
+        // 套餐名以实际订阅为准 (Ultra); MiniMax 接口不返回套餐名字段。
+        // 配额只显示数值不带文字: 「5小时余量%/周余量%」。
+        if isMinimax {
+            parts.append(TapgoConfig.planDisplayName)
+            let snapshot = store.rateLimits
+            var quota: [String] = []
+            if let primary = snapshot?.primary {
+                quota.append("\(max(0, 100 - primary.usedPercent))%")
+            }
+            if let weekly = snapshot?.secondary, weekly.windowDurationMins == 10080 {
+                quota.append("\(max(0, 100 - weekly.usedPercent))%")
+            }
+            if !quota.isEmpty { parts.append(quota.joined(separator: "/")) }
         }
         return parts.joined(separator: "·")
     }

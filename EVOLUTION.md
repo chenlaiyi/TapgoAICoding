@@ -19,6 +19,22 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.31 — 模型切换：composer 弹窗可选 GLM-5.3-Flash（BigModel Coding Plan）
+**Date**: 2026-08-30
+**Commit**: pending-backfill
+**Tag**: v0.5.31
+**Test status**: 2335 passed / 8 failed（均为既有需要真实 SSH 远端的环境失败，与本版无关）
+**Changed**:
+- 说明：模型切换功能代码随 60294f6（v0.5.30）提前入库（并行会话合并提交所致），本版补齐版本对齐、文档记录、侧栏适配与真机回归。
+- `TapgoCore` 新增 `TapgoModel` 模型目录：MiniMax-M3 与 GLM-5.3-Flash，各自绑定 provider 与端点；wire 一律 `responses`（本机 harness codex 0.149.1 已移除 `chat` wire，二进制内有明确报错文案）。
+- GLM 走智谱官方给 Codex 的 OpenAI Responses 协议专属端点 `https://open.bigmodel.cn/api/v1`（docs.bigmodel.cn/cn/coding-plan/tool/codex），鉴权来自独立 `auth-glm.json`（0600；缺失时 GLM 新会话报 401，不留无替换机制的占位符——v0.5.28 教训）。Coding Plan 套餐 key 实测该端点可用且不按量计费；按量 key 余额不足（1113）不可用。
+- config.toml 模板常驻双 provider（minimax + glm）；`thread/start` 按选中模型显式下发 `model`/`modelProvider`，切换对新建会话生效，进行中的会话保持原模型。
+- composer 模型弹窗的「模型」行由"复制模型名"升级为**切换子菜单**（当前模型勾选），端点/诊断信息跟随所选模型。
+- 额度查询按模型门控：选 GLM 时清空 MiniMax 快照并注明"暂不支持在 App 内查询额度"；侧栏左下角灰色行供应商跟随所选模型（GLM·Coding Plan）。
+- 测试新增 `TapgoModel: catalog & provider mapping` 段 +12 断言。
+**Why**: 用户要求在模型弹窗里能选 GLM-5.3-Flash（套餐内不额外计费），并反馈弹窗冗杂、找不到模型切换入口；把模型行变成真正的切换器同时精简语义。
+**Next**: 手机 H5 模型面板目前只显示当前模型，改为列出全部可选模型并支持切换；远程项目（SSH）远端 config 仍是 MiniMax 单 provider，选 GLM 需向远端同步 auth-glm.json 与 glm provider 段。
+
 ## v0.5.30 — 侧栏用户信息灰色行改为「供应商·套餐名·周余量」
 **Date**: 2026-08-30
 **Commit**: 60294f6

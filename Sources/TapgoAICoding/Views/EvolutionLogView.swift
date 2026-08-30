@@ -289,6 +289,25 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.31",
+                    date: "2026-08-30",
+                    commit: "pending-backfill",
+                    tag: "v0.5.31",
+                    summary: "模型切换：composer 弹窗可选 GLM-5.3-Flash（BigModel Coding Plan）",
+                    changes: [
+                        "功能代码随 v0.5.30 (60294f6) 提前入库（并行会话合并提交），本版补齐版本对齐、文档、侧栏适配与真机回归。",
+                        "TapgoCore 新增 TapgoModel 目录：MiniMax-M3 与 GLM-5.3-Flash 各自绑定 provider 与端点；wire 一律 responses（本机 harness codex 0.149.1 已移除 chat wire）。",
+                        "GLM 走智谱给 Codex 的 OpenAI Responses 专属端点 https://open.bigmodel.cn/api/v1，鉴权用独立 auth-glm.json（0600，缺失时报 401）；Coding Plan 套餐 key 实测可用且不按量计费。",
+                        "config.toml 常驻双 provider；thread/start 按选中模型下发 model/modelProvider，切换对新建会话生效。",
+                        "composer 模型弹窗「模型」行升级为切换子菜单（当前模型勾选）；端点/诊断跟随所选模型。",
+                        "额度查询按模型门控：选 GLM 清空 MiniMax 快照并注明暂不支持查询；侧栏灰色行供应商跟随所选模型。",
+                        "测试 +12：TapgoModel catalog & provider mapping（2335 passed / 8 既有 SSH 环境失败）。"
+                    ],
+                    why: "用户要求模型弹窗能选 GLM-5.3-Flash（套餐内不额外计费），并反馈弹窗冗杂、找不到切换入口；把模型行变成真正的切换器。",
+                    next: "手机 H5 模型面板列出全部可选模型并支持切换；远程项目远端 config 仍是 MiniMax 单 provider，选 GLM 需同步 auth-glm.json 与 glm 段。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.30",
                     date: "2026-08-30",
                     commit: "60294f6",
