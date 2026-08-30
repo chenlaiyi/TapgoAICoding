@@ -24,6 +24,8 @@ struct SettingsView: View {
         TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage("tapgo.baseURL") private var baseURL = ""
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
+    @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
+        TapgoModel.minimaxM3.rawValue
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
     @AppStorage(TapgoConfig.memoryEnabledKey) private var memoryEnabled = true
@@ -36,6 +38,7 @@ struct SettingsView: View {
         case account = "账户"
         case projects = "项目"
         case remote = "远程主机"
+        case model = "模型"
         case runtime = "运行"
         case appearance = "外观"
         case about = "关于"
@@ -64,6 +67,7 @@ struct SettingsView: View {
                     case .account:    accountTab
                     case .projects:   projectsTab
                     case .remote:     remoteTab
+                    case .model:      modelTab
                     case .runtime:    runtimeTab
                     case .appearance: appearanceTab
                     case .about:      aboutTab
@@ -308,6 +312,99 @@ struct SettingsView: View {
         testingHostId = nil
     }
 
+    // MARK: - Model tab (v0.5.41)
+
+    /// 各模型凭据文件是否已配置（key 非空）。
+    private func credentialConfigured(for model: TapgoModel) -> Bool {
+        switch model {
+        case .minimaxM3:
+            return credentialKey(at: TapgoConfig.authPath) != nil
+        case .glm53Flash:
+            return credentialKey(at: TapgoConfig.glmAuthPath) != nil
+        case .deepSeekV4Flash, .deepSeekV4Pro:
+            return credentialKey(at: TapgoConfig.deepSeekAuthPath) != nil
+        }
+    }
+
+    private func credentialKey(at path: URL) -> String? {
+        guard let data = try? Data(contentsOf: path),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let key = json["OPENAI_API_KEY"] as? String,
+              !key.isEmpty
+        else { return nil }
+        return key
+    }
+
+    @ViewBuilder
+    private var modelTab: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("模型配置").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+            Form {
+                Picker("新会话模型", selection: $selectedModelRaw) {
+                    ForEach(TapgoModel.allCases) { m in
+                        Text(m.displayName).tag(m.rawValue)
+                    }
+                }
+                Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
+                    Text("默认 (模型定)").tag("")
+                    Text("无 (none)").tag("none")
+                    Text("高 (high)").tag("high")
+                }
+            }
+            .formStyle(.grouped)
+            Text("切换模型对新建会话生效；进行中的会话保持创建时的模型。")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+
+            Text("模型明细").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+                .padding(.top, 8)
+            ForEach(TapgoModel.allCases) { m in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack {
+                        Text(m.displayName)
+                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.label)
+                        Spacer()
+                        Text(credentialConfigured(for: m) ? "凭据已配置" : "凭据缺失")
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(credentialConfigured(for: m) ? DSHTheme.labelTertiary : DSHTheme.error)
+                    }
+                    Text(TapgoConfig.effectiveBaseURL(for: m))
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.tertiary)
+                        .textSelection(.enabled)
+                }
+                .padding(.vertical, 2)
+            }
+            .padding(.horizontal, 20)
+
+            Text("MiniMax 端点覆盖（高级）").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+                .padding(.top, 8)
+            Form {
+                TextField("Endpoint (Base URL)", text: $baseURL)
+                    .textFieldStyle(.roundedBorder)
+                    .disableAutocorrection(true)
+                HStack {
+                    Button(L10n.apply) {
+                        try? TapgoConfig.applyBaseURL(baseURL)
+                    }
+                    Button(L10n.resetDefault) {
+                        baseURL = ""
+                        try? TapgoConfig.applyBaseURL("")
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            Text("留空则使用默认端点：\(TapgoConfig.defaultRegion.baseURL)；仅影响 MiniMax，GLM / DeepSeek 固定官方端点。")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 20)
+            Spacer()
+        }
+        .padding(.top, 20)
+    }
+
     // MARK: - Runtime tab
 
     @ViewBuilder
@@ -325,32 +422,11 @@ struct SettingsView: View {
                         Text(m.displayName).tag(m.rawValue)
                     }
                 }
-                Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
-                    Text("默认 (模型定)").tag("")
-                    Text("无 (none)").tag("none")
-                    Text("高 (high)").tag("high")
-                }
-                TextField("Endpoint (Base URL)", text: $baseURL)
-                    .textFieldStyle(.roundedBorder)
-                    .disableAutocorrection(true)
-                HStack {
-                    Button(L10n.apply) {
-                        try? TapgoConfig.applyBaseURL(baseURL)
-                    }
-                    Button(L10n.resetDefault) {
-                        baseURL = ""
-                        try? TapgoConfig.applyBaseURL("")
-                    }
-                }
             }
             .formStyle(.grouped)
             Text(L10n.approvalPolicyHint)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
-            Text("留空则使用默认端点：\(TapgoConfig.defaultRegion.baseURL)")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
                 .padding(.horizontal, 20)
             Spacer()
         }

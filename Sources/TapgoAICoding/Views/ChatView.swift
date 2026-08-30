@@ -1502,79 +1502,19 @@ struct ComposerView: View {
                     }
 
                     Menu {
-                        // v0.5.31: 模型行从"复制模型名"升级为切换子菜单。
-                        // 选择立即持久化, 对新建会话生效; 进行中的会话
-                        // 保持创建时的模型不变。
-                        Menu {
-                            ForEach(TapgoModel.allCases) { m in
-                                Button {
-                                    TapgoConfig.selectedModel = m
-                                } label: {
-                                    if m.rawValue == selectedModelRaw {
-                                        Label(m.displayName, systemImage: "checkmark")
-                                    } else {
-                                        Text(m.displayName)
-                                    }
+                        // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
+                        // 点开即选、对新建会话生效。端点/上下文信息看圆环弹窗，
+                        // 思考深度在「运行设置」，新建会话有 ⌘N。
+                        ForEach(TapgoModel.allCases) { m in
+                            Button {
+                                TapgoConfig.selectedModel = m
+                            } label: {
+                                if m.rawValue == selectedModelRaw {
+                                    Label(m.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(m.displayName)
                                 }
                             }
-                        } label: {
-                            Label("切换模型（新会话生效）", systemImage: "cpu")
-                        }
-                        Button {
-                            copyGlobal(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))
-                        } label: {
-                            Label("端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))", systemImage: "network")
-                        }
-                        if let pct = composerContextPercent {
-                            Button {} label: {
-                                Label("上下文: \(pct)%", systemImage: "gauge.medium")
-                            }
-                            .disabled(true)
-                        }
-                        if let cw = store.liveThreads
-                            .first(where: { $0.id == store.activeThreadId })?
-                            .turns.last?.usage?.contextWindow {
-                            Button {} label: {
-                                Label("上下文上限: \(formatCount(cw))", systemImage: "rectangle.3.group")
-                            }
-                            .disabled(true)
-                        }
-                        Divider()
-                        Menu {
-                            ForEach(["", "none", "low", "medium", "high"], id: \.self) { e in
-                                Button { reasoningEffort = e } label: {
-                                    if e == reasoningEffort {
-                                        Label(effortName(e), systemImage: "checkmark")
-                                    } else {
-                                        Text(effortName(e))
-                                    }
-                                }
-                            }
-                        } label: {
-                            Label("思考深度: \(effortLabel)", systemImage: "brain")
-                        }
-                        let nearFull = (composerContextPercent ?? 0) >= 90
-                        Divider()
-                        Button {
-                            store.newThread()
-                        } label: {
-                            if nearFull {
-                                Label("新建会话（清空上下文）", systemImage: "arrow.clockwise.circle")
-                            } else {
-                                Label("新建会话（清空上下文）", systemImage: "plus.message")
-                            }
-                        }
-                        .foregroundStyle(nearFull ? DSHTheme.warn : .primary)
-                        Divider()
-                        Button {
-                            copyGlobal(runInfoText)
-                        } label: {
-                            Label("复制运行信息", systemImage: "doc.on.doc")
-                        }
-                        Button {
-                            NotificationCenter.default.post(name: .tapgoRequestOpenSettings, object: nil)
-                        } label: {
-                            Label("打开运行设置…", systemImage: "gear")
                         }
                     } label: {
                         HStack(spacing: 4) {

@@ -19,9 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.41 — 模型弹窗极简化：只保留模型列表，点开即选
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.41
+**Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
+**Changed**:
+- 用户两次反馈模型弹窗太复杂。目视确认后大刀阔斧：弹窗只保留 4 个模型项（品牌 + 模型名 + 勾选当前），扁平化不再有二级子菜单。
+- 移除弹窗内的端点、上下文、思考深度、新建会话、复制运行信息、打开运行设置等行——各自已有归属：端点/运行信息在环境面板与设置页，上下文在圆环弹窗，思考深度在「运行设置」（SettingsView Picker，v0.5.31 起就有），新建会话有 ⌘N。
+- 数据与切换逻辑不变：选择即持久化、对新建会话生效。
+**Why**: 用户要的是"点开芯片 → 看到 4 个模型 → 点一下"的最短路径，其余信息全是噪音。
+**Next**: 真机用几天，若需要再把「思考深度」快捷入口以轻量形式回归。
+
 ## v0.5.40 — 手机 H5 端模型名统一为 displayName：底栏与模型面板不再显示技术 slug
 **Date**: 2026-08-30
-**Commit**: PENDING
+**Commit**: 206cb9b
 **Tag**: v0.5.40
 **Test status**: 2340 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过 13 项 SSH 集成段）
 **Changed**:

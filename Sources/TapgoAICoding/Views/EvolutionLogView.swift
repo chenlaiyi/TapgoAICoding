@@ -252,9 +252,24 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.41",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.41",
+                    summary: "模型弹窗极简化：只保留模型列表，点开即选",
+                    changes: [
+                        "用户两次反馈模型弹窗太复杂。目视确认后扁平化：弹窗只保留 4 个模型项（品牌 + 模型名 + 勾选当前）。",
+                        "移除端点、上下文、思考深度、新建会话、复制运行信息、打开运行设置等行——各有归属（环境面板/设置页/圆环弹窗/⌘N）。",
+                        "数据与切换逻辑不变：选择即持久化、对新建会话生效。"
+                    ],
+                    why: "用户要的是点开芯片看到 4 个模型点一下的最短路径，其余信息全是噪音。",
+                    next: "真机用几天，若需要再把思考深度快捷入口以轻量形式回归。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.40",
                     date: "2026-08-30",
-                    commit: "PENDING",
+                    commit: "206cb9b",
                     tag: "v0.5.40",
                     summary: "手机 H5 端模型名统一为 displayName：底栏与模型面板不再显示技术 slug",
                     changes: [
