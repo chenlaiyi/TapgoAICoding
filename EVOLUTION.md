@@ -21,7 +21,7 @@
 
 ## v0.5.41 — 模型弹窗极简化：只保留模型列表，点开即选
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: c8104fb
 **Tag**: v0.5.41
 **Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
 **Changed**:
