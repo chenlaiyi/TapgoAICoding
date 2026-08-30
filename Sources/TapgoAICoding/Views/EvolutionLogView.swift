@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.38",
                     date: "2026-08-30",
-                    commit: "PENDING2",
+                    commit: "902ce8c",
                     tag: "v0.5.38",
                     summary: "自进化会话 composer 专属化：占位文案与项目条不再误导为当前项目",
                     changes: [
