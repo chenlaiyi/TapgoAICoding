@@ -21,7 +21,7 @@
 
 ## v0.5.31 — 模型切换：composer 弹窗可选 GLM-5.3-Flash（BigModel Coding Plan）
 **Date**: 2026-08-30
-**Commit**: pending-backfill
+**Commit**: f81cf47
 **Tag**: v0.5.31
 **Test status**: 2335 passed / 8 failed（均为既有需要真实 SSH 远端的环境失败，与本版无关）
 **Changed**:

@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.31",
                     date: "2026-08-30",
-                    commit: "pending-backfill",
+                    commit: "f81cf47",
                     tag: "v0.5.31",
                     summary: "模型切换：composer 弹窗可选 GLM-5.3-Flash（BigModel Coding Plan）",
                     changes: [
