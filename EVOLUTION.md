@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.49 — 正式签名 Helper 桥接打通真实电脑控制
+**Date**: 2026-08-30
+**Commit**: 535ae92
+**Tag**: v0.5.49
+**Test status**: 2397 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过远程环境段）
+**Changed**:
+- MCP stdio 进程把每次 `tools/call` 通过 Launch Services 交给独立 `Tapgo Computer Use.app` 一次性执行，使 macOS TCC 始终按 Helper 的稳定 bundle 身份判断权限，不再错误归因给 Codex Harness 父进程。
+- 桥接请求与响应限定在所有者专用的临时目录，校验目录所有者、0700 权限、固定文件名、常规文件、无符号链接和 1 MiB 请求上限，避免任意路径读写。
+- 构建脚本优先使用 Tapgo Developer ID 正式签名并带时间戳；无证书环境才显式回退 ad-hoc，也支持 `TAPGO_SIGNING_IDENTITY` 覆盖。
+- JKMac mini 已完成辅助功能与屏幕录制双授权；底层 MCP 和真实 Tapgo 会话均通过截图、启动 Calculator、读取界面树、按元素点击数字 7、再次读取与截图的完整验收，显示值从 `7` 变为 `77`。
+**Why**: v0.5.48 的设置探测由 Launch Services 启动 Helper，所以页面显示已授权；真实会话却由 Harness 直接执行 Helper 内二进制，TCC 看到的是错误的父进程链，导致截图和 Accessibility 操作仍全部失败。
+**Next**: 将同一份正式签名构建同步到另外两台 Mac；各机首次使用时分别完成本机 TCC 授权并做相同的真实会话回归。
+
 ## v0.5.48 — 独立安装电脑控制 Helper 并修复真实拖拽入口
 **Date**: 2026-08-30
 **Commit**: 083a560

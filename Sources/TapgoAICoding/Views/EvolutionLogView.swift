@@ -252,6 +252,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.49",
+                    date: "2026-08-30",
+                    commit: "535ae92",
+                    tag: "v0.5.49",
+                    summary: "正式签名 Helper 桥接打通真实电脑控制",
+                    changes: [
+                        "MCP stdio 将每次 tools/call 通过 Launch Services 交给独立 Helper 一次性执行，让 TCC 始终按稳定 bundle 身份判断权限。",
+                        "桥接临时文件增加所有者、0700 权限、固定路径、无符号链接和请求大小校验，避免任意路径读写。",
+                        "构建脚本优先使用 Tapgo Developer ID 正式签名并加时间戳，无证书环境才显式回退 ad-hoc。",
+                        "JKMac mini 已完成双权限授权；底层 MCP 与真实 Tapgo 会话均完成截图、启动 Calculator、读树、点击数字 7、再次读树和截图，显示值 7 → 77；完整回归 2397/2397。"
+                    ],
+                    why: "设置探测由 Launch Services 启动 Helper，真实 MCP 却由 Harness 直接执行 bundle 内二进制，TCC 归因身份不同，造成界面显示已授权但截图和元素操作仍失败。",
+                    next: "同步同一份正式签名构建到另外两台 Mac；各机首次使用时完成本机 TCC 授权并做相同回归。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.48",
                     date: "2026-08-30",
                     commit: "083a560",
