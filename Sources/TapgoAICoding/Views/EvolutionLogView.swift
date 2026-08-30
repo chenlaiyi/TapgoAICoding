@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.37",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "ceb6e5b",
                     tag: "v0.5.37",
                     summary: "圆形额度表改显「剩余量」：侧栏 / 弹窗 / 圆环三处口径完全统一",
                     changes: [

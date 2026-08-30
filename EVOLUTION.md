@@ -21,7 +21,7 @@
 
 ## v0.5.37 — 圆形额度表改显「剩余量」：侧栏 / 弹窗 / 圆环三处口径完全统一
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: ceb6e5b
 **Tag**: v0.5.37
 **Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
 **Changed**:
