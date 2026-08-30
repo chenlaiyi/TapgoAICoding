@@ -19,9 +19,22 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.33 — 自进化日志模块重构：分段导航 + 紧凑折叠条目 + 当前版本数据源修复
+**Date**: 2026-08-30
+**Commit**: PENDING
+**Tag**: v0.5.33
+**Changed**:
+- 用户反馈日志页很乱: hero 卡显示 8/28 的陈旧 evolution_state.json (v0.5.3) 却标着「本次进化」; v0.5.32 条目 commit 是未回填的 PLACEHOLDER; 理念卡与全部明细平铺, 信息密度过低。
+- 数据源修复: 当前版本条只信源码内置 makeHistory() 最新条目; evolution_state.json 不再作为版本数据源 (evolve.sh 快照, 曾滞后 4 天)。
+- 布局重构: hero 大卡压成单行版本条 (版本·日期·SHA·摘要 + 本次进化胶囊); 「历史版本 / 使用指南」分段切换, 不再全部堆叠。
+- 条目紧凑化: 收起态 = 版本 + SHA + 单行摘要; 点击展开完整改动明细与 Why/Next, 默认只展开最新一条; 理念说明压缩为一行 caption。
+- 数据回填: v0.5.32 commit 55b1f72、v0.5.19 commit c486d44 (源码与 EVOLUTION.md 同步, PLACEHOLDER 清零)。
+**Why**: 日志页是 AI 的对外广播, 陈旧数据 + 未回填字段 + 低密度排版让用户无法快速回答「现在到哪了、每次改了什么」; 重构后当前版本一眼可见, 历史按下钻展开。
+**Next**: 条目按版本号搜索/过滤; 确认 evolve.sh 是否还落盘 evolution_state.json, 已废弃则删文件避免误导。
+
 ## v0.5.32 — 侧栏额度行按用户反馈改版: 套餐名 Ultra + 纯数字余量
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: 55b1f72
 **Tag**: v0.5.32
 **Test status**: 2335 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
@@ -216,7 +229,7 @@
 
 ## v0.5.19 — 修复公网模式 H5 永远停在『正在连接 Mac』: fetch 前缀自适应
 **Date**: 2026-08-29
-**Commit**: PLACEHOLDER
+**Commit**: c486d44
 **Tag**: v0.5.19
 **Test status**: 2111 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:

@@ -25,25 +25,60 @@ struct EvolutionLogView: View {
     /// 使用指南条目（按场景分组）。
     private let playbook: [PlaybookSection] = EvolutionLogView.makePlaybook()
 
+    private enum Tab { case history, playbook }
+    @State private var tab: Tab = .history
+    /// 展开显示完整 changes/why/next 的条目（按 version 定位，源码内置
+    /// 数据重载后仍然稳定）。默认只展开最新一条。
+    @State private var expandedVersions: Set<String> = []
+
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
+            currentVersionBar
+            Divider()
+            picker
+            Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    heroCard
-                    philosophyCard
-                    historySection
-                    playbookSection
-                    footer
+                VStack(alignment: .leading, spacing: 8) {
+                    switch tab {
+                    case .history:
+                        historyIntro
+                        ForEach(history) { entry in
+                            EvolutionEntryRow(
+                                entry: entry,
+                                isLatest: entry.version == history.first?.version,
+                                isExpanded: expandedVersions.contains(entry.version)
+                            ) {
+                                toggleExpanded(entry.version)
+                            }
+                        }
+                    case .playbook:
+                        playbookSection
+                    }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 18)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
         }
         .frame(width: 640, height: 720)
         .background(DSHTheme.bg)
-        .onAppear(perform: loadLiveState)
+        .onAppear(perform: initialExpansion)
+    }
+
+    private func toggleExpanded(_ version: String) {
+        if expandedVersions.contains(version) {
+            expandedVersions.remove(version)
+        } else {
+            expandedVersions.insert(version)
+        }
+    }
+
+    /// 默认展开最新一条，其余收起——用户看到的是"当前 + 可下钻的历史"。
+    private func initialExpansion() {
+        loadLiveState()
+        guard expandedVersions.isEmpty, let latest = history.first?.version else { return }
+        expandedVersions = [latest]
     }
 
     // MARK: - Header
@@ -53,15 +88,15 @@ struct EvolutionLogView: View {
             ZStack {
                 Circle()
                     .fill(DSHTheme.brand.opacity(0.15))
-                    .frame(width: 28, height: 28)
+                    .frame(width: 26, height: 26)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(DSHTheme.brand)
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text("自进化日志")
                     .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-                Text("Tapgo AICoding · Self-Evolution Log")
+                Text("\(history.count) 次进化 · 测试全绿才发布 · 每版一个 tag")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
@@ -76,136 +111,101 @@ struct EvolutionLogView: View {
             .buttonStyle(.borderless)
             .accessibilityLabel("关闭")
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
-    // MARK: - Hero card (current version)
+    // MARK: - Current version bar (compact, source-of-truth = built-in history)
 
-    private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Text(currentVersionTag())
-                    .font(.system(.subheadline, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(DSHTheme.brand)
-                Text("·")
+    /// 当前版本条。**只信源码内置的 history.first**——它随发版更新；
+    /// evolution_state.json 是 evolve.sh 落盘的快照，经常滞后（曾停在
+    /// v0.5.3 四天），不能再作为"当前版本"的数据源。
+    private var currentVersionBar: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(latest.tag ?? latest.version)
+                .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                .foregroundStyle(DSHTheme.brand)
+            Text(latest.date)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+            if let sha = latest.commit {
+                Text(shortCommit(sha))
+                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
-                Text(currentDate())
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("本次进化")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(DSHTheme.brandSoft, in: Capsule())
-                    .foregroundStyle(DSHTheme.brand)
             }
-
-            Text(liveState?.evolutionNote ?? latestHistoryEntry.summary)
-                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+            Text(latest.summary)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let sha = liveState?.commitSha ?? latestHistoryEntry.commit {
-                HStack(spacing: 6) {
-                    Image(systemName: "number")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    Text(shortCommit(sha))
-                        .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                }
-                .foregroundStyle(.tertiary)
-            }
-
-            if let err = loadError {
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    Text("实时状态: \(err)")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                }
-                .foregroundStyle(.tertiary)
-            }
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("本次进化")
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(DSHTheme.brandSoft, in: Capsule())
+                .foregroundStyle(DSHTheme.brand)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(
-            RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
-                .stroke(DSHTheme.border, lineWidth: 1)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(DSHTheme.bgLayer1)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("当前版本 \(latest.tag ?? latest.version)：\(latest.summary)")
     }
 
-    // MARK: - Philosophy
+    private var latest: EvolutionEntry {
+        history.first ?? EvolutionLogView.placeholderEntry
+    }
 
-    private var philosophyCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("什么是自进化？", systemImage: "arrow.triangle.2.circlepath")
-                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
-                .foregroundStyle(DSHTheme.label)
+    // MARK: - Tab picker
 
-            Text("每次发布我都会让 AI 跑一遍 `evolve.sh`：自动改代码 → 跑全量核心回归测试 → 打 tag → 推 git。"
-                 + "这一页就是这条流水线的对外广播，测试数会随每个版本自动变化。")
-                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.seal.fill")
-                    .foregroundStyle(DSHTheme.success)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Text("测试全绿才发布")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                Spacer().frame(width: 12)
-                Image(systemName: "tag.fill")
-                    .foregroundStyle(DSHTheme.brand)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Text("每个版本都打 git tag，可一键回滚")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-            }
+    private var picker: some View {
+        HStack(spacing: 4) {
+            tabButton("历史版本", count: history.count, tab: .history)
+            tabButton("使用指南", count: nil, tab: .playbook)
+            Spacer()
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(
-            RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
-                .stroke(DSHTheme.border, lineWidth: 1)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+    }
+
+    private func tabButton(_ title: String, count: Int?, tab target: Tab) -> some View {
+        Button {
+            self.tab = target
+        } label: {
+            HStack(spacing: 4) {
+                Text(title)
+                if let count {
+                    Text("\(count)")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).monospacedDigit())
+                }
+            }
+            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(self.tab == target ? .semibold : .regular))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(self.tab == target ? DSHTheme.brandSoft : Color.clear, in: Capsule())
+            .foregroundStyle(self.tab == target ? DSHTheme.brand : Color.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title)\(count.map { "，\($0) 条" } ?? "")")
     }
 
     // MARK: - History
 
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("历史版本", systemImage: "clock.arrow.circlepath")
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
-                Spacer()
-                Text("\(history.count) 次进化")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
-            }
-
-            ForEach(history) { entry in
-                EvolutionEntryRow(entry: entry, isLatest: entry.id == history.first?.id)
-            }
-        }
+    /// 理念压缩成一行——完整说明移到 README/使用指南，不再占一整张卡。
+    private var historyIntro: some View {
+        Text("每次发布：AI 改代码 → 全量核心回归 → tag → push。点任意版本展开改动明细。")
+            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+            .foregroundStyle(.tertiary)
+            .padding(.bottom, 2)
     }
 
     // MARK: - Playbook (how to use me better)
 
     private var playbookSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("怎么用我更好", systemImage: "lightbulb.fill")
-                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
-                .foregroundStyle(DSHTheme.warn)
-
-            Text("下面这些是我**亲测能让你事半功倍**的用法。按场景挑你常用的看就行。")
+        VStack(alignment: .leading, spacing: 8) {
+            Text("亲测能让你事半功倍的用法，按场景挑。")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-
+                .foregroundStyle(.tertiary)
             VStack(spacing: 8) {
                 ForEach(playbook) { section in
                     PlaybookRow(section: section)
@@ -214,44 +214,7 @@ struct EvolutionLogView: View {
         }
     }
 
-    // MARK: - Footer
-
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Divider()
-            HStack(spacing: 6) {
-                Image(systemName: "heart.text.square.fill")
-                    .foregroundStyle(DSHTheme.brand)
-                Text("每一行代码背后都有一份测试、一个 tag、一段反思。")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
-            }
-            if let actions = liveState?.nextActions, !actions.isEmpty {
-                Text("下一步：\(actions.prefix(2).joined(separator: " / "))")
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.top, 4)
-    }
-
     // MARK: - Helpers
-
-    private func currentVersionTag() -> String {
-        if let tag = liveState?.tag { return tag }
-        return latestHistoryEntry.tag ?? latestHistoryEntry.version
-    }
-
-    private func currentDate() -> String {
-        if let builtAt = liveState?.builtAt {
-            return formatDate(builtAt)
-        }
-        return latestHistoryEntry.date
-    }
-
-    private var latestHistoryEntry: EvolutionEntry {
-        history.first ?? EvolutionLogView.placeholderEntry
-    }
 
     private func shortCommit(_ sha: String) -> String {
         String(sha.prefix(7))
@@ -289,9 +252,26 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.33",
+                    date: "2026-08-30",
+                    commit: "PENDING",
+                    tag: "v0.5.33",
+                    summary: "自进化日志模块重构：分段导航 + 紧凑折叠条目 + 当前版本数据源修复",
+                    changes: [
+                        "用户反馈页面很乱：hero 卡显示 8/28 的陈旧 evolution_state.json（v0.5.3）却标着「本次进化」，v0.5.32 条目 commit 是没回填的 PLACEHOLDER，理念卡与全部明细平铺导致信息密度过低。",
+                        "数据源修复：当前版本条只信源码内置 makeHistory() 最新条目（随发版更新）；evolution_state.json 不再作为版本数据源（它是 evolve.sh 快照，曾滞后 4 天）。",
+                        "布局重构：hero 大卡压成单行版本条（版本·日期·SHA·摘要 + 本次进化胶囊）；「历史版本 / 使用指南」改为分段切换，不再全部堆叠。",
+                        "条目紧凑化：收起态 = 版本 + SHA + 单行摘要；点击展开完整改动明细与 Why/Next，默认只展开最新一条；理念说明压缩为一行 caption。",
+                        "数据回填：v0.5.32 commit 55b1f72、v0.5.19 commit c486d44（源码与 EVOLUTION.md 同步，PLACEHOLDER 清零）。"
+                    ],
+                    why: "自进化日志是 AI 的对外广播页，陈旧数据 + 未回填字段 + 低密度排版让用户无法快速回答「现在到哪了、每次改了什么」；重构后当前版本一眼可见，历史按下钻展开。",
+                    next: "评估条目按版本号搜索/过滤；evolve.sh 落盘 evolution_state.json 的步骤若已废弃应删除该文件避免误导。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.32",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "55b1f72",
                     tag: "v0.5.32",
                     summary: "侧栏额度行按用户反馈改版：套餐名 Ultra + 纯数字余量",
                     changes: [
@@ -519,7 +499,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.19",
                     date: "2026-08-29",
-                    commit: "PLACEHOLDER",
+                    commit: "c486d44",
                     tag: "v0.5.19",
                     summary: "修复公网模式 H5 永远停在『正在连接 Mac』：fetch 前缀自适应 + 首屏失败可读诊断",
                     changes: [
@@ -1007,37 +987,49 @@ struct EvolutionLogView: View {
 
 // MARK: - Subviews
 
+/// 历史条目行：收起 = 版本行 + 摘要（两行内）；点击展开完整改动明细、
+/// Why 与 Next。最新一条有品牌色描边，展开态背景微亮。
 private struct EvolutionEntryRow: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let entry: EvolutionEntry
     let isLatest: Bool
+    let isExpanded: Bool
+    let onToggle: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text(entry.tag ?? entry.version)
-                    .font(.system(.subheadline, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(isLatest ? DSHTheme.brand : .primary)
-                if let commit = entry.commit {
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text(String(commit.prefix(7)))
-                        .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
+        VStack(alignment: .leading, spacing: 6) {
+            Button(action: onToggle) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
+                        .foregroundStyle(isLatest ? DSHTheme.brand : Color.secondary)
+                        .frame(width: 10)
+                    Text(entry.tag ?? entry.version)
+                        .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(isLatest ? DSHTheme.brand : .primary)
+                    if let commit = entry.commit {
+                        Text(String(commit.prefix(7)))
+                            .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(entry.summary)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.primary)
+                        .lineLimit(isExpanded ? 3 : 1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(entry.date)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                 }
-                Spacer()
-                Text(entry.date)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
+                .contentShape(Rectangle())
             }
-            Text(entry.summary)
-                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-            if !entry.changes.isEmpty {
-                VStack(alignment: .leading, spacing: 3) {
-                    ForEach(entry.changes.prefix(3), id: \.self) { line in
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(entry.tag ?? entry.version)，\(entry.summary)\(isExpanded ? "，已展开" : "，点击展开")")
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(entry.changes, id: \.self) { line in
                         HStack(alignment: .top, spacing: 6) {
                             Text("·")
                                 .foregroundStyle(.tertiary)
@@ -1047,50 +1039,44 @@ private struct EvolutionEntryRow: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    if entry.changes.count > 3 {
-                        Text("…还有 \(entry.changes.count - 3) 条")
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
+                    if !entry.why.isEmpty {
+                        row(tag: "Why", color: DSHTheme.brand, text: entry.why)
+                    }
+                    if !entry.next.isEmpty {
+                        row(tag: "Next", color: .secondary, text: entry.next)
                     }
                 }
-            }
-            if !entry.why.isEmpty {
-                HStack(alignment: .top, spacing: 6) {
-                    Text("Why")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(DSHTheme.brandSoft, in: Capsule())
-                        .foregroundStyle(DSHTheme.brand)
-                    Text(entry.why)
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            if !entry.next.isEmpty {
-                HStack(alignment: .top, spacing: 6) {
-                    Text("Next")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(Color.gray.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.secondary)
-                    Text(entry.next)
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                .padding(.leading, 16)
+                .padding(.trailing, 4)
+                .padding(.bottom, 4)
+                .transition(.opacity)
             }
         }
-        .padding(14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 10))
         .overlay(
-            RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+            RoundedRectangle(cornerRadius: 10)
                 .stroke(isLatest ? DSHTheme.brand.opacity(0.5) : DSHTheme.border,
                         lineWidth: isLatest ? 1.5 : 1)
         )
+        .animation(.easeOut(duration: 0.15), value: isExpanded)
+    }
+
+    private func row(tag: String, color: Color, text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(tag)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(color.opacity(0.12), in: Capsule())
+                .foregroundStyle(color)
+            Text(text)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
