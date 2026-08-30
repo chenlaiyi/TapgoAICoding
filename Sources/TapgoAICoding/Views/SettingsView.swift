@@ -886,6 +886,7 @@ struct SettingsView: View {
                     ) {
                         Toggle("启用电脑控制", isOn: $computerUseEnabled)
                             .labelsHidden()
+                            .toggleStyle(.switch)
                     }
                     Divider()
                     settingsControlRow(
@@ -894,6 +895,7 @@ struct SettingsView: View {
                     ) {
                         Toggle("显示电脑操作入口", isOn: $computerUseShowInComposer)
                             .labelsHidden()
+                            .toggleStyle(.switch)
                     }
                 }
             }
