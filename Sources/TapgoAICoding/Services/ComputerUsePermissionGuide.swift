@@ -237,9 +237,11 @@ private struct ComputerUsePermissionGuideView: View {
                         .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
                 }
                 .contentShape(Rectangle())
-                .onDrag {
-                    NSItemProvider(contentsOf: helperAppURL)
-                        ?? NSItemProvider(object: helperAppURL as NSURL)
+                .overlay {
+                    HelperAppNativeDragSource(
+                        helperAppURL: helperAppURL,
+                        helperIcon: helperIcon
+                    )
                 }
                 .help("拖动到系统设置的\(permission.title)允许列表")
             }
@@ -270,5 +272,92 @@ private struct ComputerUsePermissionGuideView: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.7), lineWidth: 1)
         }
+    }
+}
+
+/// System Settings' privacy lists accept the same native local-file drag
+/// session as Finder/Electron `startDrag(file:)`. SwiftUI's `NSItemProvider`
+/// path advertises similar UTTypes but does not create that AppKit file drag,
+/// so the drop can animate without adding the application to the list.
+private struct HelperAppNativeDragSource: NSViewRepresentable {
+    let helperAppURL: URL
+    let helperIcon: NSImage
+
+    func makeNSView(context: Context) -> HelperAppNativeDragSourceView {
+        HelperAppNativeDragSourceView(
+            helperAppURL: helperAppURL,
+            helperIcon: helperIcon
+        )
+    }
+
+    func updateNSView(_ nsView: HelperAppNativeDragSourceView, context: Context) {
+        nsView.helperAppURL = helperAppURL
+        nsView.helperIcon = helperIcon
+    }
+}
+
+private final class HelperAppNativeDragSourceView: NSView, NSDraggingSource {
+    var helperAppURL: URL
+    var helperIcon: NSImage
+    private var hasStartedDrag = false
+
+    init(helperAppURL: URL, helperIcon: NSImage) {
+        self.helperAppURL = helperAppURL
+        self.helperIcon = helperIcon
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        hasStartedDrag = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard !hasStartedDrag,
+              FileManager.default.fileExists(atPath: helperAppURL.path) else { return }
+        hasStartedDrag = true
+
+        let pasteboardItem = NSPasteboardItem()
+        pasteboardItem.setString(
+            helperAppURL.absoluteString,
+            forType: .fileURL
+        )
+        pasteboardItem.setPropertyList(
+            [helperAppURL.path],
+            forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")
+        )
+
+        let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
+        let imageSize = NSSize(width: 48, height: 48)
+        let point = convert(event.locationInWindow, from: nil)
+        draggingItem.setDraggingFrame(
+            NSRect(
+                x: point.x - imageSize.width / 2,
+                y: point.y - imageSize.height / 2,
+                width: imageSize.width,
+                height: imageSize.height
+            ),
+            contents: helperIcon
+        )
+        beginDraggingSession(with: [draggingItem], event: event, source: self)
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession,
+        sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        .copy
+    }
+
+    func ignoreModifierKeys(for session: NSDraggingSession) -> Bool {
+        true
     }
 }
