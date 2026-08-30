@@ -19,17 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
-## v0.5.48 — 使用原生文件拖拽向系统权限列表添加 Helper
+## v0.5.48 — 独立安装电脑控制 Helper 并修复真实拖拽入口
 **Date**: 2026-08-30
-**Commit**: bd57e49
+**Commit**: 083a560
 **Tag**: v0.5.48
-**Test status**: 2394 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Test status**: 2397 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过远程环境段）
 **Changed**:
-- 将 SwiftUI `NSItemProvider` 拖放替换为 AppKit `NSDraggingSession`，对齐 Finder 与 ZCode/Electron `startDrag(file:)` 的本地文件拖拽语义。
-- 以原生 `NSURL` 作为 `NSPasteboardWriting` 载荷，由 AppKit 生成 `public.file-url` 及系统兼容类型；本地文件 URL 往返读取与真实 Helper 路径完全一致，操作类型固定为 copy。
-- 原生拖拽视图支持非激活浮窗的第一次鼠标事件，并使用 Helper 图标作为拖拽预览。
-**Why**: SwiftUI 数据拖放虽然显示了 App 图标，但 macOS 隐私权限列表不把它当作 Finder 式本地应用文件，松手后不会新增条目。
-**Next**: 获得用户动作前确认后，在系统辅助功能与屏幕录制列表各完成一次真实投放并回读 Helper 权限。
+- 参照 ZCode 的实际安装流程，先把内嵌 Helper 原子复制到 `~/Library/Application Support/Tapgo AICoding/computer-use/Tapgo Computer Use.app`，权限授权、状态探测与 MCP 注册统一使用这一个稳定的独立 App。
+- 将 SwiftUI `NSItemProvider` 替换为 AppKit `NSDraggingSession` 与原生 `NSURL` 文件载荷；授权浮窗可成为 key window，拖拽视图完整命中并回显按下、开始及结束状态。
+- JKMac mini 已验证独立 Helper 可被系统“屏幕录制”列表接收且探测为已授权；同时发现旧版 ad-hoc 签名残留会让“辅助功能”列表显示开启但当前 Helper 自检仍为未授权。
+- 测试入口兼容当前 `Codex Desktop` 大小写形式，完整离线回归 2397/2397。
+**Why**: 之前拖动的是主 App Resources 内的嵌套 bundle，既不等同于 ZCode 的独立 Helper 安装流程，也会让 TCC 授权对象、MCP 进程和升级后的签名身份发生偏离。
+**Next**: 经用户确认后移除 JKMac mini 上失效的旧辅助功能记录，重新添加当前 0.5.48 独立 Helper 并回读两项权限；正式签名证书到位后改用稳定 Developer ID，避免 ad-hoc CDHash 随版本变化。
 
 ## v0.5.47 — 修复授权浮窗抢占 Helper 拖拽
 **Date**: 2026-08-30

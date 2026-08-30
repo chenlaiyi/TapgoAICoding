@@ -254,16 +254,16 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.48",
                     date: "2026-08-30",
-                    commit: "bd57e49",
+                    commit: "083a560",
                     tag: "v0.5.48",
-                    summary: "使用原生文件拖拽向系统权限列表添加 Helper",
+                    summary: "独立安装电脑控制 Helper 并修复真实拖拽入口",
                     changes: [
-                        "以 AppKit NSDraggingSession 替换 SwiftUI NSItemProvider，生成 Finder 式本地文件拖拽。",
-                        "以原生 NSURL 交给 AppKit 生成 public.file-url 及系统兼容类型，精确指向真实 Tapgo Computer Use.app。",
-                        "拖拽操作固定为 copy，并支持非激活浮窗的第一次鼠标事件；完整离线回归 2394/2394。"
+                        "参照 ZCode 将内嵌 Helper 原子安装到用户 Application Support，权限、探测和 MCP 共用稳定的独立 App。",
+                        "以 AppKit NSDraggingSession 和原生 NSURL 生成 Finder 式文件拖拽；授权浮窗可获得焦点并回显拖拽状态。",
+                        "JKMac mini 已验证当前 Helper 可加入屏幕录制列表并取得授权；完整离线回归 2397/2397。"
                     ],
-                    why: "SwiftUI 数据拖放能显示图标，但系统隐私列表不把它识别为可添加的本地应用文件，松手后不会新增条目。",
-                    next: "经用户确认后在两个系统权限列表完成真实投放与权限回读。"
+                    why: "旧流程拖动主 App Resources 内的嵌套 bundle，授权对象、MCP 进程和升级后的 TCC 身份不一致；ZCode 实际先安装独立 Helper 再拖动。",
+                    next: "经确认后清理 JKMac mini 的失效辅助功能旧记录并重新授权；正式发布签名改用稳定 Developer ID。"
                 ),
 
                 EvolutionEntry(
