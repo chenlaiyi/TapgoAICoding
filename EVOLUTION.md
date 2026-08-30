@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.47 — 修复授权浮窗抢占 Helper 拖拽
+**Date**: 2026-08-30
+**Commit**: f361cfd
+**Tag**: v0.5.47
+**Test status**: 2394 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Changed**:
+- 禁止电脑控制授权浮窗整体移动，关闭 `isMovable` 与 `isMovableByWindowBackground`。
+- 保留 `Tapgo Computer Use` 卡片的文件拖拽提供器，拖动卡片时导出真实 Helper `.app`，不再带着整个浮窗移动。
+**Why**: 浮窗允许背景拖动时，AppKit 会先于 SwiftUI `.onDrag` 消费手势，用户拖动 Helper 卡片实际移动了整个授权面板。
+**Next**: 在辅助功能和屏幕录制两个系统页面分别完成一次真实拖入授权回归。
+
 ## v0.5.46 — 电脑控制独立 Helper 与系统授权拖拽引导
 **Date**: 2026-08-30
 **Commit**: 309e3c2

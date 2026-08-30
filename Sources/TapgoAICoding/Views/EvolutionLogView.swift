@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.47",
+                    date: "2026-08-30",
+                    commit: "f361cfd",
+                    tag: "v0.5.47",
+                    summary: "修复授权浮窗抢占 Helper 拖拽",
+                    changes: [
+                        "禁止授权浮窗整体移动，关闭 AppKit 的窗口背景拖动。",
+                        "保留 Tapgo Computer Use 卡片的真实 .app 文件拖拽提供器。",
+                        "拖动卡片时不再带着整个浮窗移动；完整离线回归 2394/2394。"
+                    ],
+                    why: "AppKit 的窗口背景拖动先于 SwiftUI onDrag 消费手势，导致用户拖的是浮窗而不是 Helper App。",
+                    next: "在两个系统权限页面分别完成真实拖入授权回归。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.46",
                     date: "2026-08-30",
                     commit: "309e3c2",
