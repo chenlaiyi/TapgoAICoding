@@ -792,7 +792,8 @@ struct SidebarView: View {
     private var modelQuotaSummary: String {
         var parts: [String]
         let snapshot = store.rateLimits
-        switch TapgoConfig.selectedModel {
+        let selected = TapgoConfig.resolveSelected()
+        switch selected.builtIn {
         case .minimaxM3:
             // MiniMax 接口不返回套餐名, 用本地常量 (实际订阅 Ultra)。
             parts = ["MiniMax", TapgoConfig.planDisplayName]
@@ -804,6 +805,8 @@ struct SidebarView: View {
                 parts.append("余额 \(credits.balance)")
             }
             return parts.joined(separator: "·")
+        case nil:
+            return "\(selected.displayName)·自定义"
         }
         var quota: [String] = []
         if let primary = snapshot?.primary {

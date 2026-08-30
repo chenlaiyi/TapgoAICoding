@@ -26,6 +26,12 @@ struct SettingsView: View {
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
         TapgoModel.minimaxM3.rawValue
+    private var selectedModelID: String { ModelRegistry.normalizedID(selectedModelRaw) }
+    @State private var modelRows: [TapgoConfig.ResolvedModel] = []
+    @State private var customModelSheet: CustomModel?
+    @State private var customSheetIsNew = false
+    @State private var builtinKeySheet: TapgoModel?
+    @State private var deleteCandidate: TapgoConfig.ResolvedModel?
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
     @AppStorage(TapgoConfig.memoryEnabledKey) private var memoryEnabled = true
@@ -82,6 +88,33 @@ struct SettingsView: View {
             AddRemoteHostSheet { host in
                 workspace.addRemoteHost(host)
             }
+        }
+        .sheet(item: $customModelSheet) { draft in
+            ModelFormSheet(
+                model: draft,
+                isNew: customSheetIsNew
+            ) { saved in
+                saveCustomModel(saved)
+            }
+        }
+        .sheet(item: $builtinKeySheet) { model in
+            BuiltinKeySheet(model: model) { key in
+                saveBuiltinKey(model, key: key)
+            }
+        }
+        .confirmationDialog(
+            "删除模型 \(deleteCandidate?.displayName ?? "")？",
+            isPresented: .init(get: { deleteCandidate != nil },
+                               set: { if !$0 { deleteCandidate = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                if let row = deleteCandidate { deleteModel(row) }
+                deleteCandidate = nil
+            }
+            Button("取消", role: .cancel) { deleteCandidate = nil }
+        } message: {
+            Text("仅删除 App 内的模型配置，不影响上游账号。")
         }
     }
 
@@ -314,6 +347,75 @@ struct SettingsView: View {
 
     // MARK: - Model tab (v0.5.41)
 
+    // MARK: 模型 CRUD (v0.5.42)
+
+    private func reloadModelRows() {
+        modelRows = TapgoConfig.allModels()
+    }
+
+    private func editModel(_ row: TapgoConfig.ResolvedModel) {
+        if let builtIn = row.builtIn {
+            builtinKeySheet = builtIn
+        } else if let custom = TapgoConfig.modelRegistry().customModel(id: row.id) {
+            customModelSheet = custom
+            customSheetIsNew = false
+        }
+    }
+
+    private func saveCustomModel(_ model: CustomModel) {
+        let normalized = model.normalizedForStorage()
+        guard normalized.validationError == nil else { return }
+        let registry = TapgoConfig.modelRegistry()
+        if registry.customModel(id: normalized.id) != nil {
+            registry.update(normalized)
+        } else {
+            registry.add(normalized)
+        }
+        TapgoConfig.syncModelConfigFiles()
+        reloadModelRows()
+    }
+
+    private func saveBuiltinKey(_ model: TapgoModel, key: String) {
+        guard !key.isEmpty else { return }
+        let path: URL
+        switch model {
+        case .minimaxM3: path = TapgoConfig.authPath
+        case .glm53Flash: path = TapgoConfig.glmAuthPath
+        case .deepSeekV4Flash, .deepSeekV4Pro: path = TapgoConfig.deepSeekAuthPath
+        }
+        if let data = try? JSONSerialization.data(
+            withJSONObject: ["OPENAI_API_KEY": key],
+            options: [.prettyPrinted, .sortedKeys]) {
+            try? data.write(to: path, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path.path)
+        }
+        TapgoConfig.syncModelConfigFiles()
+        reloadModelRows()
+    }
+
+    private func deleteModel(_ row: TapgoConfig.ResolvedModel) {
+        TapgoConfig.modelRegistry().remove(id: row.id)
+        if ModelRegistry.normalizedID(
+            UserDefaults.standard.string(forKey: TapgoConfig.selectedModelKey) ?? ""
+        ) == row.id {
+            TapgoConfig.setSelectedModel(id: "builtin:\(TapgoModel.minimaxM3.rawValue)")
+            selectedModelRaw = "builtin:\(TapgoModel.minimaxM3.rawValue)"
+        }
+        TapgoConfig.syncModelConfigFiles()
+        reloadModelRows()
+    }
+
+    private func credentialOK(for row: TapgoConfig.ResolvedModel) -> Bool {
+        if let builtIn = row.builtIn {
+            return credentialConfigured(for: builtIn)
+        }
+        return TapgoConfig.modelRegistry().customModel(id: row.id)?.apiKey.isEmpty == false
+    }
+
+    private func credentialStatusText(for row: TapgoConfig.ResolvedModel) -> String {
+        credentialOK(for: row) ? "Key 已配置" : "Key 缺失"
+    }
+
     /// 各模型凭据文件是否已配置（key 非空）。
     private func credentialConfigured(for model: TapgoModel) -> Bool {
         switch model {
@@ -341,9 +443,15 @@ struct SettingsView: View {
             Text("模型配置").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             Form {
                 Picker("新会话模型", selection: $selectedModelRaw) {
-                    ForEach(TapgoModel.allCases) { m in
-                        Text(m.displayName).tag(m.rawValue)
+                    ForEach(modelRows) { model in
+                        Text(model.displayName).tag(model.id)
                     }
+                }
+                .onChange(of: selectedModelRaw) { _, raw in
+                    let normalized = ModelRegistry.normalizedID(raw)
+                    guard modelRows.contains(where: { $0.id == normalized }) else { return }
+                    TapgoConfig.setSelectedModel(id: normalized)
+                    if selectedModelRaw != normalized { selectedModelRaw = normalized }
                 }
                 Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
                     Text("默认 (模型定)").tag("")
@@ -357,27 +465,61 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)
 
-            Text("模型明细").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-                .padding(.top, 8)
-            ForEach(TapgoModel.allCases) { m in
+            HStack {
+                Text("模型列表").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+                Spacer()
+                Button {
+                    customModelSheet = CustomModel(displayName: "", apiModel: "", brand: "", baseURL: "https://", apiKey: "")
+                    customSheetIsNew = true
+                } label: {
+                    Label("新增模型", systemImage: "plus")
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            ForEach(modelRows) { row in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack {
-                        Text(m.displayName)
+                        Text(row.displayName)
                             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .foregroundStyle(DSHTheme.label)
+                        if row.id == selectedModelID {
+                            Text("当前")
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(DSHTheme.brand.opacity(0.12), in: Capsule())
+                                .foregroundStyle(DSHTheme.brand)
+                        }
                         Spacer()
-                        Text(credentialConfigured(for: m) ? "凭据已配置" : "凭据缺失")
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(credentialConfigured(for: m) ? DSHTheme.labelTertiary : DSHTheme.error)
+                        Button("编辑") { editModel(row) }
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        if row.builtIn == nil {
+                            Button("删除", role: .destructive) { deleteCandidate = row }
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        }
                     }
-                    Text(TapgoConfig.effectiveBaseURL(for: m))
+                    HStack {
+                        Text(credentialStatusText(for: row))
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(credentialOK(for: row) ? DSHTheme.labelTertiary : DSHTheme.error)
+                        Spacer()
+                        Text(row.builtIn == nil ? "自定义" : "内置")
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(row.baseURL)
                         .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                         .textSelection(.enabled)
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, 4)
             }
             .padding(.horizontal, 20)
+            .onAppear {
+                reloadModelRows()
+                let resolved = TapgoConfig.resolveSelected()
+                if selectedModelRaw != resolved.id { selectedModelRaw = resolved.id }
+            }
 
             Text("MiniMax 端点覆盖（高级）").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
                 .padding(.top, 8)
@@ -535,7 +677,7 @@ struct SettingsView: View {
             Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0")")
                 .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 .textSelection(.enabled)
-            Text("当前模型: \(TapgoConfig.selectedModel.displayName)（composer 弹窗可切换，新会话生效）")
+            Text("当前模型: \(TapgoConfig.resolveSelected().displayName)（composer 弹窗可切换，新会话生效）")
                 .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .textSelection(.enabled)
             Text("独立 Codex home: \(TapgoConfig.codexHome.path)")
@@ -817,9 +959,9 @@ struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0"
         let text = [
             "Tapgo AICoding \(version)",
-            "模型: \(TapgoConfig.selectedModel.displayName)",
+            "模型: \(TapgoConfig.resolveSelected().displayName)",
             "区域: \(TapgoConfig.defaultRegion.displayName)",
-            "端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))",
+            "端点: \(TapgoConfig.resolveSelected().baseURL)",
             "Codex home: \(TapgoConfig.codexHome.path)",
             "日志: \(TapgoConfig.logFileURL.path)",
         ].joined(separator: "\n")
@@ -886,5 +1028,89 @@ private struct AddRemoteHostSheet: View {
         )
         onCommit(h)
         dismiss()
+    }
+}
+
+// MARK: - 模型表单 sheet (v0.5.42)
+
+/// 自定义模型新增 / 编辑表单。
+struct ModelFormSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State var model: CustomModel
+    let isNew: Bool
+    let onSave: (CustomModel) -> Void
+
+    private var validationError: String? { model.validationError }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(isNew ? "新增模型" : "编辑模型")
+                .font(AppFont.scaled(.headline, multiplier: 1)).bold()
+            Form {
+                TextField("显示名（如 DeepSeek V4 Pro）", text: $model.displayName)
+                TextField("品牌（如 DeepSeek）", text: $model.brand)
+                TextField("API 模型 ID（如 deepseek-v4-pro）", text: $model.apiModel)
+                    .disableAutocorrection(true)
+                TextField("端点 Base URL", text: $model.baseURL)
+                    .disableAutocorrection(true)
+                SecureField("API Key", text: $model.apiKey)
+                    .disableAutocorrection(true)
+                Picker("上下文窗口", selection: $model.contextWindow) {
+                    Text("1M").tag(1_000_000)
+                    Text("256K").tag(256_000)
+                    Text("128K").tag(128_000)
+                }
+            }
+            .formStyle(.grouped)
+            if let validationError {
+                Text(validationError)
+                    .font(AppFont.scaled(.caption, multiplier: 1))
+                    .foregroundStyle(DSHTheme.error)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }
+                Button("保存") {
+                    onSave(model.normalizedForStorage())
+                    dismiss()
+                }
+                .disabled(validationError != nil)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+}
+
+/// 内置模型的 API Key 配置 sheet（写入对应 auth 文件，0600）。
+struct BuiltinKeySheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let model: TapgoModel
+    let onSave: (String) -> Void
+    @State private var key = ""
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("配置 \(model.displayName) 的 API Key")
+                .font(AppFont.scaled(.headline, multiplier: 1)).bold()
+            Text("Key 会写入隔离 Codex home 的凭据文件（0600），不会上传。留空保存则不做修改。")
+                .font(AppFont.scaled(.caption, multiplier: 1))
+                .foregroundStyle(.secondary)
+            SecureField("sk-...", text: $key)
+                .textFieldStyle(.roundedBorder)
+                .disableAutocorrection(true)
+            HStack {
+                Spacer()
+                Button("取消") { dismiss() }
+                Button("保存") {
+                    if !key.isEmpty { onSave(key) }
+                    dismiss()
+                }
+                .disabled(key.isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
     }
 }

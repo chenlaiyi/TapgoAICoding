@@ -20,6 +20,7 @@ struct EnvironmentPanel: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
+        let selected = TapgoConfig.resolveSelected()
         DisclosureGroup(isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: 6) {
                 if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }) {
@@ -45,10 +46,10 @@ struct EnvironmentPanel: View {
                     row(icon: "arrow.triangle.branch.circle", label: "分支", value: branch ?? "—")
                     changesRow
                 }
-                row(icon: "cpu", label: "模型", value: TapgoConfig.selectedModel.displayName)
+                row(icon: "cpu", label: "模型", value: selected.displayName)
                 row(icon: "globe.asia.australia", label: "区域", value: TapgoConfig.defaultRegion.displayName)
                 // Endpoint → open run settings.
-                buttonRow(icon: "network", label: "端点", value: TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel)) {
+                buttonRow(icon: "network", label: "端点", value: selected.baseURL) {
                     NotificationCenter.default.post(name: .tapgoRequestOpenSettings, object: nil)
                 }
                 buttonRow(icon: "doc.text", label: "配置", value: "config.toml") {
@@ -254,8 +255,9 @@ struct EnvironmentPanel: View {
             lines.append("路径: \(cwd)")
             lines.append("来源: 本地")
         }
-        lines.append("模型: \(TapgoConfig.selectedModel.displayName)")
-        lines.append("端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))")
+        let selected = TapgoConfig.resolveSelected()
+        lines.append("模型: \(selected.displayName)")
+        lines.append("端点: \(selected.baseURL)")
         lines.append("沙箱: \(TapgoConfig.SandboxMode(rawValue: sandboxRaw)?.displayName ?? "")")
         lines.append("批准: \(TapgoConfig.ApprovalPolicy(rawValue: approvalPolicyRaw)?.displayName ?? "")")
         lines.append("思考: \(effortLabel)")

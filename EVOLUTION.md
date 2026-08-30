@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.42 — 自定义模型增删改查与端到端选择
+**Date**: 2026-08-30
+**Commit**: 待提交
+**Tag**: v0.5.42
+**Test status**: 2366 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过 13 个远程环境段）
+**Changed**:
+- 设置「模型」页支持新增、查看、编辑、删除任意 OpenAI Responses 兼容模型，保存显示名、品牌、API 模型 ID、Base URL、API Key 与上下文窗口。
+- 自定义模型贯通 composer 选择、thread/start 的 model/modelProvider、config.toml provider、模型目录、环境面板、侧栏、额度弹窗、诊断信息和模型身份提示；删除当前模型时安全回落 MiniMax M3。
+- 注册表与生成配置保持 0600 权限；输入统一校验/去空白，TOML 与 JSON 做安全转义，空 Key 不再残留占位符；新增注册表与目录回归测试。
+- 全量测试入口兼容既有 TAPGO_SKIP_REMOTE_INTEGRATION 环境变量，避免开发跑测卡在 RFC 5737 示例远程地址。
+**Why**: 内置模型列表无法覆盖用户自己的兼容端点；此前半成品只接通了部分选择链路，其他界面仍会误报为 MiniMax，并且缺少输入与配置安全边界。
+**Next**: 用真实自定义 Responses 端点创建新会话，核对上游返回与额度展示；再评估把凭据迁移到 macOS Keychain。
+
 ## v0.5.41 — 模型弹窗极简化：只保留模型列表，点开即选
 **Date**: 2026-08-30
 **Commit**: c8104fb
@@ -588,4 +601,3 @@
 - 新增 21 项 `AgentOutputPolicy` 回归测试；总测试数 685 → 706。
 **Why**: v0.5.1 只包含一句宽泛提示；仅加强 Prompt 的首次原生回归中，模型仍把三个工具并行执行后集中总结，因此增加 App 事件层保证。
 **Next**: 继续用安装版长任务验证模型在多次工具调用之间真实产生用户可见进度，并跟进 Harness 的原生进度事件能力。
-

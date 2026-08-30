@@ -144,9 +144,6 @@ struct ChatView: View {
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
-    /// 当前选中的模型（composer 弹窗切换，对新建会话生效）。
-    @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
-        TapgoModel.minimaxM3.rawValue
     @FocusState private var searchFieldFocused: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
@@ -1175,7 +1172,9 @@ struct ComposerView: View {
     var contentWidth: CGFloat = 760
     /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
-        TapgoModel.minimaxM3.rawValue
+        "builtin:\(TapgoModel.minimaxM3.rawValue)"
+    /// 归一化后的选中 ID（旧裸 slug → builtin: 前缀），用于菜单勾选判断。
+    private var selectedModelID: String { ModelRegistry.normalizedID(selectedModelRaw) }
     /// How much of the "任务" status card's bottom is tucked behind the
     /// composer card (the "peeking tab" overlap). Keep small so the task
     /// Keep live editing local. The persisted draft is written by the
@@ -1505,11 +1504,13 @@ struct ComposerView: View {
                         // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
                         // 点开即选、对新建会话生效。端点/上下文信息看圆环弹窗，
                         // 思考深度在「运行设置」，新建会话有 ⌘N。
-                        ForEach(TapgoModel.allCases) { m in
+                        ForEach(TapgoConfig.allModels()) { m in
                             Button {
-                                TapgoConfig.selectedModel = m
+                                TapgoConfig.setSelectedModel(id: m.id)
+                                selectedModelRaw = m.id
+                                store.refreshRateLimits()
                             } label: {
-                                if m.rawValue == selectedModelRaw {
+                                if m.id == selectedModelID {
                                     Label(m.displayName, systemImage: "checkmark")
                                 } else {
                                     Text(m.displayName)

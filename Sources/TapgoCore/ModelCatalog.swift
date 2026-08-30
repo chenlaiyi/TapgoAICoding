@@ -106,12 +106,41 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
 
     /// 整份 harness 模型目录 JSON。上层（TapgoConfig.renderCatalog）
     /// 直接把它落盘到 `model-catalogs/tapgo-catalog.json`。
-    public static func catalogJSON() -> String {
-        let entries = allCases.enumerated().map { index, model in
+    /// `customs` 为用户自定义模型（v0.5.42），slug 用其 API 模型 ID。
+    public static func catalogJSON(customs: [CustomModel] = []) -> String {
+        var entries = allCases.enumerated().map { index, model in
             model.catalogEntryJSON(
                 baseInstructions: model.baseInstructions,
                 priority: index
             )
+        }
+        for (offset, c) in customs.enumerated() {
+            let instructions = "You are Tapgo AICoding, an autonomous coding agent powered by \(c.displayName). "
+                + Self.sharedBaseInstructionsSuffix
+            entries.append("""
+                {
+                  "slug": \(jsonString(c.apiModel)),
+                  "display_name": \(jsonString(c.displayName)),
+                  "description": \(jsonString("自定义模型（\(c.brand.isEmpty ? "自定义" : c.brand)）。")),
+                  "default_reasoning_level": "high",
+                  "supported_reasoning_levels": [
+                    { "effort": "none", "description": "Think-Off" },
+                    { "effort": "high", "description": "Deep" }
+                  ],
+                  "shell_type": "shell_command",
+                  "visibility": "list",
+                  "supported_in_api": true,
+                  "priority": \(100 + offset),
+                  "base_instructions": \(jsonString(instructions)),
+                  "supports_reasoning_summaries": true,
+                  "default_reasoning_summary": "none",
+                  "support_verbosity": false,
+                  "truncation_policy": { "mode": "bytes", "limit": 10000 },
+                  "supports_parallel_tool_calls": false,
+                  "experimental_supported_tools": [],
+                  "input_modalities": ["text"]
+                }
+            """)
         }
         return """
         {
@@ -120,6 +149,18 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
           ]
         }
         """
+    }
+
+    /// 自定义模型字段来自用户输入，必须先做 JSON 字符串编码；直接插值会被
+    /// 引号、反斜杠或换行破坏目录文件，甚至注入额外字段。
+    private static func jsonString(_ value: String) -> String {
+        guard let data = try? JSONSerialization.data(
+            withJSONObject: value,
+            options: [.fragmentsAllowed, .withoutEscapingSlashes]
+        ), let encoded = String(data: data, encoding: .utf8) else {
+            return "\"\""
+        }
+        return encoded
     }
 
     /// 所有模型共享的行为约束（原 MiniMax 单模型目录里的固定尾巴）。

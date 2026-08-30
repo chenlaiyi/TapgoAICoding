@@ -118,10 +118,14 @@ final class SessionStore: ObservableObject {
 
     /// composer 底栏与状态快照展示的模型 = 当前选中的模型
     /// （切模型对新建会话生效，进行中的会话保持创建时的模型）。
-    var modelName: String { TapgoConfig.selectedModel.rawValue }
+    /// 当前模型 API slug（额度查询、快照等按它路由）。
+    var modelName: String { TapgoConfig.resolveSelected().apiModel }
 
-    /// UI 展示用的当前模型名（品牌 + 模型名）；`modelName` 保持 API slug。
-    var modelDisplayName: String { TapgoConfig.selectedModel.displayName }
+    /// UI 展示用的当前模型名（品牌 + 模型名）。
+    var modelDisplayName: String { TapgoConfig.resolveSelected().displayName }
+
+    /// 内置模型非空；自定义模型为 nil（无额度通道）。
+    var selectedBuiltInModel: TapgoModel? { TapgoConfig.resolveSelected().builtIn }
 
     /// 拉取当前所选模型的官方套餐余量/余额，写入 `rateLimits`。可重复调用 —
     /// 重叠请求由 `rateLimitsLoading` 合并。三条通道：MiniMax 走
@@ -135,7 +139,7 @@ final class SessionStore: ObservableObject {
             defer { self?.rateLimitsLoading = false }
             do {
                 let snapshot: RateLimitsSnapshot
-                switch TapgoConfig.selectedModel {
+                switch self?.selectedBuiltInModel {
                 case .minimaxM3:
                     snapshot = try await MiniMaxQuotaClient(
                         authPath: TapgoConfig.authPath,
@@ -149,6 +153,11 @@ final class SessionStore: ObservableObject {
                     snapshot = try await DeepSeekQuotaClient(
                         authPath: TapgoConfig.deepSeekAuthPath
                     ).fetchBalance()
+                case nil:
+                    // 自定义模型暂无额度通道：清空旧快照即可，弹窗按口径提示。
+                    self?.rateLimits = nil
+                    self?.rateLimitsError = nil
+                    return
                 }
                 guard let self else { return }
                 self.rateLimits = snapshot
@@ -832,7 +841,7 @@ final class SessionStore: ObservableObject {
     static func baseInstructions(for project: Project?) -> String? {
         var parts: [String] = [AgentOutputPolicy.threadInstructions, """
         【核心职责·始终有效】
-        你是 Tapgo AICoding 编码代理，不是只复述上下文的聊天机器人。当前底层模型是 \(TapgoConfig.selectedModel.rawValue)；被问到自己的身份或模型时以此为准，不要根据工作区文件或长期记忆猜测。
+        你是 Tapgo AICoding 编码代理，不是只复述上下文的聊天机器人。当前底层模型是 \(TapgoConfig.resolveSelected().displayName)；被问到自己的身份或模型时以此为准，不要根据工作区文件或长期记忆猜测。
         - 用户给出可执行任务后，主动检查当前工作区，使用实际可用工具完成修改并验证；不要停在复述、规划或追问“下一步”。
         - 只有当前回合中的具体工具调用真实失败，才能说该工具不可用；不得根据旧记忆或猜测宣布工具不可用。
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。

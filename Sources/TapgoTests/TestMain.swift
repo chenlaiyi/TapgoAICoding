@@ -65,6 +65,7 @@ let allSections: [String] = [
     "TapgoModel: catalog & provider mapping",
     "GLMQuota: quota/limit 解析与映射",
     "DeepSeekQuota: balance 解析与映射",
+    "ModelRegistry: 自定义模型增删改查",
     "DeepSeekQuota: DeepSeekQuotaClient transport & auth",
     "GLMQuota: GLMQuotaClient transport & auth",
     "ExecEvent: approval request parsing",
@@ -202,7 +203,9 @@ func runIfInScope(_ runner: TestRunner, _ name: String, _ body: @escaping @MainA
     // sections that connect to the RFC 5737 fixture address and would
     // otherwise hang on the default connect timeout. Used by local CI
     // runs and quick dev iterations.
-    if ProcessInfo.processInfo.environment["TAPGO_SKIP_REMOTE_TESTS"] == "1" {
+    let environment = ProcessInfo.processInfo.environment
+    if environment["TAPGO_SKIP_REMOTE_TESTS"] == "1"
+        || environment["TAPGO_SKIP_REMOTE_INTEGRATION"] == "1" {
         if name.hasPrefix("protocol-") || name.hasPrefix("RemoteSSH:") || name.hasPrefix("RemoteCodexHomeSync:") || name.hasPrefix("RemoteDirectoryLister:") || name.hasPrefix("e2e:") {
             print("[skip-remote] \(name)")
             return
@@ -342,6 +345,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "DeepSeekQuota: DeepSeekQuotaClient transport & auth") {
             await runDeepSeekQuotaClient(runner)
+        }
+        await runIfInScope(runner, "ModelRegistry: 自定义模型增删改查") {
+            runModelRegistry(runner)
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)

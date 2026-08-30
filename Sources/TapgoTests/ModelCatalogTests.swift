@@ -68,4 +68,29 @@ func runModelCatalog(_ t: TestRunner) {
              "catalog: GLM base_instructions self-describes GLM-5.3-Flash")
     t.expect(catalog.contains("input_modalities"),
              "catalog: entries declare input modalities")
+
+    // 自定义字段来自用户输入：引号、反斜杠和换行必须安全编码，且 Key 绝不
+    // 进入公开模型目录。
+    let custom = CustomModel(
+        id: "custom-JSON", displayName: "My \"Model\"\\Beta",
+        apiModel: "vendor/model\npreview", brand: "Acme \"AI\"",
+        baseURL: "https://example.com/v1", apiKey: "sk-never-in-catalog",
+        contextWindow: 128_000)
+    let customCatalog = TapgoModel.catalogJSON(customs: [custom])
+    guard let customParsed = try? JSONSerialization.jsonObject(
+        with: Data(customCatalog.utf8)) as? [String: Any],
+          let customModels = customParsed["models"] as? [[String: Any]],
+          let customEntry = customModels.last
+    else {
+        t.expect(false, "catalog: custom fields remain valid JSON")
+        return
+    }
+    t.expectEqual(customModels.count, TapgoModel.allCases.count + 1,
+                  "catalog: appends one custom model")
+    t.expectEqual(customEntry["display_name"] as? String, custom.displayName,
+                  "catalog: custom display name round-trips escaped characters")
+    t.expectEqual(customEntry["slug"] as? String, custom.apiModel,
+                  "catalog: custom API slug round-trips escaped characters")
+    t.expect(!customCatalog.contains(custom.apiKey),
+             "catalog: never includes custom API key")
 }

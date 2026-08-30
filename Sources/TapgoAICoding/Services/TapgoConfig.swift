@@ -414,7 +414,100 @@ enum TapgoConfig {
         log("Applied base URL: \(effectiveBaseURL)")
     }
 
-    // MARK: - 模型切换 (v0.5.31)
+    // MARK: - 模型切换 (v0.5.31; v0.5.42 起支持自定义模型增删改查)
+
+    /// 解析后的可执行模型描述：thread/start 与 UI 都以它为准。
+    struct ResolvedModel: Identifiable, Equatable {
+        let id: String            // "builtin:<slug>" 或自定义 "custom-XXXXXXXX"
+        let displayName: String
+        let apiModel: String      // 发给上游 API 的模型 ID
+        let providerId: String    // config.toml [model_providers.<id>] 段名
+        let baseURL: String
+        let contextWindow: Int
+        let builtIn: TapgoModel?  // 内置模型非空；自定义模型 nil
+    }
+
+    /// 自定义模型注册表文件（0600）。
+    static var modelRegistryFileURL: URL {
+        codexHome.appendingPathComponent("model-registry.json")
+    }
+
+    static func modelRegistry() -> ModelRegistry {
+        ModelRegistry(fileURL: modelRegistryFileURL)
+    }
+
+    /// 全部可选模型：内置 4 个 + 用户自定义，内置在前。
+    static func allModels() -> [ResolvedModel] {
+        var out: [ResolvedModel] = TapgoModel.allCases.map { m in
+            ResolvedModel(
+                id: "builtin:\(m.rawValue)",
+                displayName: m.displayName,
+                apiModel: m.rawValue,
+                providerId: m.providerId,
+                baseURL: effectiveBaseURL(for: m),
+                contextWindow: m.contextWindow,
+                builtIn: m
+            )
+        }
+        let registry = modelRegistry()
+        out.append(contentsOf: registry.customModels.map { c in
+            ResolvedModel(
+                id: c.id,
+                displayName: c.displayName,
+                apiModel: c.apiModel,
+                providerId: c.providerId,
+                baseURL: c.baseURL,
+                contextWindow: c.contextWindow,
+                builtIn: nil
+            )
+        })
+        return out
+    }
+
+    /// 当前选中的模型。`tapgo.model` 存选中 ID（旧版本是裸 slug，
+    /// `ModelRegistry.normalizedID` 会自动补 `builtin:` 前缀）；
+    /// 找不到（如自定义模型被删）时回落 MiniMax-M3。
+    static func resolveSelected() -> ResolvedModel {
+        let raw = UserDefaults.standard.string(forKey: selectedModelKey) ?? ""
+        let id = ModelRegistry.normalizedID(raw)
+        let models = allModels()
+        if let hit = models.first(where: { $0.id == id }) { return hit }
+        return models[0]
+    }
+
+    /// 选择模型：写 UserDefaults + 注册表，并重写 config.toml / 目录，
+    /// 让 harness 热加载到（可能刚新增的）provider。
+    static func setSelectedModel(id: String) {
+        let normalized = ModelRegistry.normalizedID(id)
+        let models = allModels()
+        let selected = models.first(where: { $0.id == normalized }) ?? models[0]
+        UserDefaults.standard.set(selected.id, forKey: selectedModelKey)
+        let registry = modelRegistry()
+        registry.setSelected(selected.id)
+        syncModelConfigFiles()
+    }
+
+    /// 增删改自定义模型 / 切换选择后调用：按最新注册表重写
+    /// config.toml（含自定义 provider 段与 bearer）与模型目录。
+    /// harness 实测支持热加载 provider（无需重启）。
+    static func syncModelConfigFiles() {
+        guard let key = (try? Data(contentsOf: authPath))
+            .flatMap({ (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] })
+            .flatMap({ $0["OPENAI_API_KEY"] as? String }), !key.isEmpty
+        else {
+            // auth.json 缺失/为空时仍重写目录与配置（占位安全替换成空串）。
+            let config = renderedConfigWithKey(region: defaultRegion, authKey: "")
+            try? atomicWrite(Data(config.utf8), to: configPath)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
+            try? writeDefaultCatalog(region: defaultRegion)
+            return
+        }
+        let config = renderedConfigWithKey(region: defaultRegion, authKey: key)
+        try? atomicWrite(Data(config.utf8), to: configPath)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
+        try? writeDefaultCatalog(region: defaultRegion)
+        log("syncModelConfigFiles: config.toml + catalog 已按模型注册表重写")
+    }
 
     /// 当前选中的模型（composer 弹窗切换）。只影响**新会话**——进行中的
     /// 会话沿用创建时的模型；记忆整理与额度查询等后台任务固定 MiniMax。
@@ -422,10 +515,14 @@ enum TapgoConfig {
 
     static var selectedModel: TapgoModel {
         get {
-            TapgoModel(rawValue: UserDefaults.standard.string(forKey: selectedModelKey) ?? "")
+            let id = ModelRegistry.normalizedID(
+                UserDefaults.standard.string(forKey: selectedModelKey) ?? ""
+            )
+            let slug = id.hasPrefix("builtin:") ? String(id.dropFirst("builtin:".count)) : id
+            return TapgoModel(rawValue: slug)
                 ?? .minimaxM3
         }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: selectedModelKey) }
+        set { UserDefaults.standard.set("builtin:\(newValue.rawValue)", forKey: selectedModelKey) }
     }
 
     /// 选中模型的实际端点：MiniMax 尊重用户在运行设置里的覆盖，GLM 固定。
@@ -666,13 +763,45 @@ enum TapgoConfig {
         glmKey: String? = nil,
         deepSeekKey: String? = nil
     ) -> String {
-        renderConfig(region: region)
-            .replacingOccurrences(of: "__FROM_AUTH_GLM_JSON__", with: glmKey ?? glmAuthKey())
-            .replacingOccurrences(of: "__FROM_AUTH_DEEPSEEK_JSON__", with: deepSeekKey ?? deepSeekAuthKey())
-            .replacingOccurrences(of: "__FROM_AUTH_JSON__", with: authKey)
+        var config = renderConfig(region: region)
+            .replacingOccurrences(
+                of: "__FROM_AUTH_GLM_JSON__",
+                with: tomlBasicStringContent(glmKey ?? glmAuthKey()))
+            .replacingOccurrences(
+                of: "__FROM_AUTH_DEEPSEEK_JSON__",
+                with: tomlBasicStringContent(deepSeekKey ?? deepSeekAuthKey()))
+            .replacingOccurrences(
+                of: "__FROM_AUTH_JSON__",
+                with: tomlBasicStringContent(authKey))
+        // 自定义模型 bearer: 占位符 __CUSTOM_<id>__ 以注册表中的 key 替换。
+        // Key 为空也必须替换为空串，不能把占位符本身误当成凭据发给上游。
+        for c in modelRegistry().customModels {
+            config = config.replacingOccurrences(
+                of: "__CUSTOM_\(c.id)__", with: tomlBasicStringContent(c.apiKey))
+        }
+        return config
     }
 
     static func renderConfig(region: Region) -> String {
+        let customSections = modelRegistry().customModels.map { c -> String in
+            """
+            [model_providers.\(c.providerId)]
+            name = "\(tomlBasicStringContent(c.brand.isEmpty ? "Custom" : c.brand))"
+            base_url = "\(tomlBasicStringContent(c.baseURL))"
+            wire_api = "responses"
+            experimental_bearer_token = "__CUSTOM_\(c.id)__"
+            """
+        }.joined(separator: "\n\n")
+        let customBlock = customSections.isEmpty ? "" : "\n" + customSections + "\n"
+        var base = renderConfigBody(region: region)
+        // 自定义段插在 [projects.] 之前, 保持内置段顺序稳定。
+        if let range = base.range(of: "[projects.") {
+            base.insert(contentsOf: customBlock, at: range.lowerBound)
+        }
+        return base
+    }
+
+    private static func renderConfigBody(region: Region) -> String {
         """
         # Tapgo AICoding — isolated Codex home.
         # This file is owned by Tapgo AICoding and is independent from ~/.codex/.
@@ -710,6 +839,9 @@ enum TapgoConfig {
         wire_api = "responses"
         experimental_bearer_token = "__FROM_AUTH_DEEPSEEK_JSON__"
 
+        # v0.5.42: 用户自定义模型（设置 → 模型 里增删改查）。每个模型
+        # 独立 provider 段 + bearer，随注册表 (model-registry.json) 动态生成。
+
         [projects."/Users/Shared"]
         trust_level = "untrusted"
 
@@ -720,11 +852,33 @@ enum TapgoConfig {
     }
 
     static func renderCatalog() -> String {
-        TapgoModel.catalogJSON()
+        TapgoModel.catalogJSON(customs: modelRegistry().customModels)
     }
 
     private static func writeDefaultCatalog(region: Region) throws {
         try atomicWrite(Data(renderCatalog().utf8), to: modelCatalogPath)
+    }
+
+    /// TOML basic string（双引号）内部的安全编码。模型字段与 Key 都可能来自
+    /// 粘贴输入，必须防止引号、反斜杠或换行破坏 config.toml。
+    private static func tomlBasicStringContent(_ value: String) -> String {
+        var out = ""
+        for scalar in value.unicodeScalars {
+            switch scalar.value {
+            case 0x08: out += "\\b"
+            case 0x09: out += "\\t"
+            case 0x0A: out += "\\n"
+            case 0x0C: out += "\\f"
+            case 0x0D: out += "\\r"
+            case 0x22: out += "\\\""
+            case 0x5C: out += "\\\\"
+            case 0x00...0x1F, 0x7F:
+                out += String(format: "\\u%04X", scalar.value)
+            default:
+                out.unicodeScalars.append(scalar)
+            }
+        }
+        return out
     }
 
     private static func atomicWrite(_ data: Data, to url: URL) throws {

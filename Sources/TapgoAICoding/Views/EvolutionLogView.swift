@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.42",
+                    date: "2026-08-30",
+                    commit: "待提交",
+                    tag: "v0.5.42",
+                    summary: "自定义模型增删改查与端到端选择",
+                    changes: [
+                        "设置「模型」页支持新增、查看、编辑、删除任意 OpenAI Responses 兼容模型及其独立 API Key。",
+                        "自定义模型贯通 composer、thread/start、config.toml、模型目录及全部模型展示位置；删除当前项时回落 MiniMax M3。",
+                        "输入校验、TOML/JSON 安全转义、0600 权限与空 Key 处理补齐；全量离线测试 2366/2366。"
+                    ],
+                    why: "内置列表无法覆盖用户自己的兼容端点；半成品又只接通了部分调用链，导致运行模型与界面展示可能分裂。",
+                    next: "用真实自定义 Responses 端点创建新会话并核对上游返回；评估迁移凭据到 macOS Keychain。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.41",
                     date: "2026-08-30",
                     commit: "c8104fb",
