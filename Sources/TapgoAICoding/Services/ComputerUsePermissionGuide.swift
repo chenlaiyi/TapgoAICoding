@@ -325,17 +325,12 @@ private final class HelperAppNativeDragSourceView: NSView, NSDraggingSource {
               FileManager.default.fileExists(atPath: helperAppURL.path) else { return }
         hasStartedDrag = true
 
-        let pasteboardItem = NSPasteboardItem()
-        pasteboardItem.setString(
-            helperAppURL.absoluteString,
-            forType: .fileURL
-        )
-        pasteboardItem.setPropertyList(
-            [helperAppURL.path],
-            forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")
-        )
-
-        let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
+        // Let AppKit serialize the file URL exactly as Finder does. `NSURL`
+        // is the native `NSPasteboardWriting` object for a local file and
+        // advertises the valid public.file-url/public.url representations.
+        // Avoid the removed `NSFilenamesPboardType`: constructing that name
+        // manually is rejected as an invalid UTI on current macOS releases.
+        let draggingItem = NSDraggingItem(pasteboardWriter: helperAppURL as NSURL)
         let imageSize = NSSize(width: 48, height: 48)
         let point = convert(event.locationInWindow, from: nil)
         draggingItem.setDraggingFrame(
