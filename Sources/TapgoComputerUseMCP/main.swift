@@ -28,6 +28,38 @@ let invalidCoordHint = "参数错误: x/y 必须是 0...1 的归一化坐标 (�
 /// 工具执行器: MCP 协议层 → ComputerUse 原语。
 let executor: ComputerUseMCP.Executor = { tool, args in
     switch tool {
+    case "list_applications":
+        return ComputerUseMCP.ToolOutcome(
+            isError: false,
+            text: ComputerUse.runningApplicationsDescription())
+
+    case "get_app_state":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args) else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: 需要非空 app（应用名或 bundle id）。")
+        }
+        guard let state = ComputerUse.appStateDescription(appName: app) else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "无法读取 \(app) 的辅助功能界面树。请先调用 list_applications，并确认辅助功能权限。")
+        }
+        return ComputerUseMCP.ToolOutcome(isError: false, text: state)
+
+    case "click_element":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let index = ComputerUseMCP.elementIndex(args) else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: 需要非空 app 与非负整数 element_index。请先调用 get_app_state。")
+        }
+        let result = ComputerUse.pressElement(appName: app, index: index)
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
     case "screenshot":
         guard ComputerUse.screenCaptureAllowed else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: screenPermissionHint)

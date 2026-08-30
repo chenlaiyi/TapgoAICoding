@@ -2,6 +2,8 @@ import SwiftUI
 import Combine
 import TapgoCore
 import UniformTypeIdentifiers
+import ApplicationServices
+import CoreGraphics
 
 /// Compact token/byte formatter shared by ChatView and ComposerView:
 /// "1.2M" / "12.3k" / "123".
@@ -1204,6 +1206,9 @@ struct ComposerView: View {
     @AppStorage(TapgoConfig.sandboxKey) private var sandboxRaw = TapgoConfig.SandboxMode.dangerFullAccess.rawValue
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw = TapgoConfig.ApprovalPolicy.never.rawValue
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
+    @AppStorage(TapgoConfig.computerUseEnabledKey) private var computerUseEnabled = true
+    @AppStorage(TapgoConfig.computerUseShowInComposerKey) private var computerUseShowInComposer = true
+    @State private var computerPermissionRefresh = 0
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
@@ -1471,6 +1476,10 @@ struct ComposerView: View {
 
                     environmentChip
 
+                    if computerUseShowInComposer {
+                        computerControlChip
+                    }
+
                     contextMeterChip
 
                     Spacer()
@@ -1612,6 +1621,9 @@ struct ComposerView: View {
                 focused = true
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            computerPermissionRefresh += 1
+        }
         .onChange(of: workspace.state.activeProjectId) { _, _ in
             // A draft typed for one project shouldn't be sent to another.
             text = ""
@@ -1700,6 +1712,63 @@ struct ComposerView: View {
     private var currentPermission: PermissionChoice {
         PermissionChoice.all.first { $0.matches(sandboxRaw: sandboxRaw, approvalRaw: approvalPolicyRaw) }
             ?? PermissionChoice.full
+    }
+
+    /// ZCode-style composer shortcut: visibility is a separate preference;
+    /// the dot reports the actual enablement + permission + MCP state.
+    private var computerControlChip: some View {
+        let _ = computerPermissionRefresh
+        return Button {
+            NotificationCenter.default.post(
+                name: .tapgoRequestOpenSettings,
+                object: SettingsView.Tab.computer.rawValue
+            )
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "display")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Text("电脑操作")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Circle()
+                    .fill(computerControlStatusColor)
+                    .frame(width: 6, height: 6)
+            }
+            .foregroundStyle(computerUseEnabled ? DSHTheme.labelDim : DSHTheme.labelTertiary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(DSHTheme.surface, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(computerControlStatusText + "；点击打开电脑控制设置")
+        .accessibilityLabel("电脑操作，\(computerControlStatusText)")
+    }
+
+    private var computerControlStatusColor: Color {
+        guard computerUseEnabled else { return DSHTheme.labelTertiary }
+        return computerControlReady ? DSHTheme.success : DSHTheme.warn
+    }
+
+    private var computerControlReady: Bool {
+        computerUseEnabled
+            && AXIsProcessTrusted()
+            && CGPreflightScreenCaptureAccess()
+            && computerUseConfigRegistered
+    }
+
+    private var computerUseConfigRegistered: Bool {
+        guard let config = try? String(contentsOf: TapgoConfig.configPath, encoding: .utf8) else {
+            return false
+        }
+        return config.contains("[mcp_servers.\(ComputerUseMCP.configServerKey)]")
+    }
+
+    private var computerControlStatusText: String {
+        guard computerUseEnabled else { return "电脑控制已关闭" }
+        var missing: [String] = []
+        if !AXIsProcessTrusted() { missing.append("辅助功能未授权") }
+        if !CGPreflightScreenCaptureAccess() { missing.append("屏幕录制未授权") }
+        if !computerUseConfigRegistered { missing.append("MCP 未注册") }
+        return missing.isEmpty ? "电脑控制已就绪" : missing.joined(separator: "、")
     }
 
     private var isRunning: Bool { store.isRunning }

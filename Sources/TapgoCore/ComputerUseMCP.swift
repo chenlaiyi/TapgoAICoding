@@ -12,7 +12,7 @@ import Foundation
 /// * 工具注册表 (名称 / 描述 / inputSchema)
 /// * JSON-RPC 2.0 分发 (initialize / tools/list / tools/call / ping)
 /// * 工具调用结果的 MCP content 封装
-/// * config.toml 里 `[mcp_servers.tapgo_computer_use]` 段的幂等写入
+/// * config.toml 里 `[mcp_servers.tapgo_computer_use]` 段的幂等写入/移除
 public enum ComputerUseMCP {
 
     /// MCP 服务器握手时声明的协议版本 (codex 兼容 2025-06-18)。
@@ -49,6 +49,7 @@ public enum ComputerUseMCP {
     /// 工具全集。press_key 的 key 参数枚举复用 PhoneRemote.ControlKey
     /// (H5 电脑控制与 MCP 共用同一套键名)。
     public static let toolNames: [String] = [
+        "list_applications", "get_app_state", "click_element",
         "screenshot", "get_screen_size", "left_click", "double_click",
         "type_text", "press_key", "scroll", "open_application",
     ]
@@ -58,6 +59,16 @@ public enum ComputerUseMCP {
     public static func toolsListResult() -> [String: Any] {
         let keyEnum = PhoneRemote.ControlKey.allCases.map(\.rawValue).sorted()
         let tools: [[String: Any]] = [
+            tool("list_applications",
+                 "列出当前运行的用户应用、bundle id 与前台状态。需要语义读取/按元素操作时先用它确认 app 参数。",
+                 ["type": "object", "properties": [:], "additionalProperties": false]),
+            tool("get_app_state",
+                 "读取目标应用的 macOS Accessibility 元素树并给每个元素临时编号。导航或界面变化后编号会失效，操作前必须重新读取。",
+                 object(["app": str()], required: ["app"])),
+            tool("click_element",
+                 "按下 get_app_state 最近一次状态中的元素编号。适合按钮、菜单项、复选框等语义控件；操作后重新读取状态核对。",
+                 object(["app": str(), "element_index": integer(minimum: 0, maximum: 999)],
+                        required: ["app", "element_index"])),
             tool("screenshot",
                  "截取 Mac 主屏画面, 返回 JPEG 图像与屏幕尺寸。完成 GUI 任务前先截屏确认当前状态; 点击后应再次截屏核对结果。",
                  ["type": "object", "properties": [:], "additionalProperties": false]),
@@ -102,6 +113,9 @@ public enum ComputerUseMCP {
         return schema
     }
     private static func num() -> [String: Any] { ["type": "number", "minimum": 0, "maximum": 1] }
+    private static func integer(minimum: Int, maximum: Int) -> [String: Any] {
+        ["type": "integer", "minimum": minimum, "maximum": maximum]
+    }
     private static func str() -> [String: Any] { ["type": "string"] }
 
     // MARK: - Typed argument accessors (执行器与单测共用)
@@ -122,6 +136,20 @@ public enum ComputerUseMCP {
 
     public static func textArg(_ args: [String: Any]) -> String? {
         (args["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    public static func appNameArg(_ args: [String: Any]) -> String? {
+        guard let raw = args["app"] as? String else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    public static func elementIndex(_ args: [String: Any]) -> Int? {
+        guard let number = args["element_index"] as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
+        let value = number.doubleValue
+        guard value >= 0, value <= 999, value.rounded(.towardZero) == value else { return nil }
+        return Int(exactly: value)
     }
 
     public static func keyArg(_ args: [String: Any]) -> PhoneRemote.ControlKey? {
@@ -222,6 +250,40 @@ public enum ComputerUseMCP {
         return config.hasSuffix("\n") || config.isEmpty
             ? config + configSection(commandPath: commandPath) + "\n"
             : config + "\n" + configSection(commandPath: commandPath) + "\n"
+    }
+
+    /// 从 config 文本中移除电脑控制 MCP table。只删除本工具自己的
+    /// header、字段与紧邻的生成注释，不触碰前后其它 provider/MCP 配置。
+    /// section 不存在时原样返回，便于设置开关幂等调用。
+    public static func removeSection(fromConfig config: String) -> String {
+        let header = "[mcp_servers.\(configServerKey)]"
+        var lines = config.components(separatedBy: "\n")
+        guard let headerIndex = lines.firstIndex(of: header) else { return config }
+
+        var endIndex = headerIndex + 1
+        while endIndex < lines.count {
+            let trimmed = lines[endIndex].trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") { break }
+            endIndex += 1
+        }
+
+        var startIndex = headerIndex
+        if startIndex > 0,
+           lines[startIndex - 1].trimmingCharacters(in: .whitespaces)
+            .hasPrefix("# 电脑控制 MCP server") {
+            startIndex -= 1
+        }
+        if startIndex > 0,
+           lines[startIndex - 1].trimmingCharacters(in: .whitespaces).isEmpty {
+            startIndex -= 1
+        }
+
+        lines.removeSubrange(startIndex..<endIndex)
+        var result = lines.joined(separator: "\n")
+        while result.contains("\n\n\n") {
+            result = result.replacingOccurrences(of: "\n\n\n", with: "\n\n")
+        }
+        return result
     }
 
     // MARK: - Response shaping

@@ -37,7 +37,7 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
        let result = obj["result"] as? [String: Any],
        let tools = result["tools"] as? [[String: Any]] {
         t.expectEqual(tools.count, ComputerUseMCP.toolNames.count, "mcp: 工具数与注册表一致")
-        t.expectEqual(tools.count, 8, "mcp: 工具全集 8 个")
+        t.expectEqual(tools.count, 11, "mcp: 工具全集 11 个")
         let names = tools.compactMap { $0["name"] as? String }
         for required in ComputerUseMCP.toolNames {
             t.expect(names.contains(required), "mcp: 工具 \(required) 已注册")
@@ -152,6 +152,19 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
     t.expect(ComputerUseMCP.lineDelta(["dy": 0]) == nil, "coord: dy=0 拒绝")
     t.expectEqual(ComputerUseMCP.textArg(["text": "你好 world"]), "你好 world", "text: UTF-8")
     t.expect(ComputerUseMCP.textArg(["text": ""]) == nil, "text: 空串拒绝")
+    t.expectEqual(ComputerUseMCP.appNameArg(["app": " com.apple.Safari "]), "com.apple.Safari",
+                  "app: 去除首尾空白")
+    t.expect(ComputerUseMCP.appNameArg(["app": "  "]) == nil, "app: 空串拒绝")
+    t.expectEqual(ComputerUseMCP.elementIndex(["element_index": 42]), 42,
+                  "element: 非负整数合法")
+    t.expect(ComputerUseMCP.elementIndex(["element_index": -1]) == nil,
+             "element: 负数拒绝")
+    t.expect(ComputerUseMCP.elementIndex(["element_index": 2.5]) == nil,
+             "element: 小数拒绝")
+    t.expect(ComputerUseMCP.elementIndex(["element_index": 1000]) == nil,
+             "element: 超过扫描上限拒绝")
+    t.expect(ComputerUseMCP.elementIndex(["element_index": true]) == nil,
+             "element: Bool 不算整数")
     t.expectEqual(ComputerUseMCP.keyArg(["key": "volumeUp"]), .volumeUp, "key: 媒体键名")
     t.expect(ComputerUseMCP.keyArg(["key": "nope"]) == nil, "key: 未知键名拒绝")
     t.expectEqual(ComputerUseMCP.modifierFlags(["modifiers": ["command", "bad", "shift"]]),
@@ -203,4 +216,28 @@ func runComputerUseMCPConfigSection(_ t: TestRunner) {
     let section = ComputerUseMCP.configSection(commandPath: cmd)
     t.expect(section.hasPrefix("\n"), "toml: section 前有空行分隔")
     t.expect(section.contains("command = \"\(cmd)\""), "toml: section 含 command")
+
+    // 总开关关闭时只移除电脑控制 table，不损坏其它配置；重复关闭幂等。
+    let configWithProvider = ComputerUseMCP.upsertSection(
+        inConfig: "model = \"MiniMax-M3\"\n\n[model_providers.minimax]\nbase_url = \"https://example.test\"\n",
+        commandPath: cmd
+    )
+    let removed = ComputerUseMCP.removeSection(fromConfig: configWithProvider)
+    t.expect(!removed.contains("[mcp_servers.\(ComputerUseMCP.configServerKey)]"),
+             "toml: 关闭后移除电脑控制段头")
+    t.expect(!removed.contains("# 电脑控制 MCP server"),
+             "toml: 关闭后移除生成注释")
+    t.expect(removed.contains("model = \"MiniMax-M3\""),
+             "toml: 关闭后保留模型配置")
+    t.expect(removed.contains("[model_providers.minimax]"),
+             "toml: 关闭后保留后续 provider")
+    t.expectEqual(ComputerUseMCP.removeSection(fromConfig: removed), removed,
+                  "toml: 重复关闭保持幂等")
+
+    let followedByOtherMCP = up6 + "[mcp_servers.keep_me]\ncommand = \"/bin/true\"\n"
+    let removedMiddle = ComputerUseMCP.removeSection(fromConfig: followedByOtherMCP)
+    t.expect(removedMiddle.contains("[mcp_servers.keep_me]"),
+             "toml: 移除电脑控制时保留相邻 MCP")
+    t.expect(removedMiddle.contains("command = \"/bin/true\""),
+             "toml: 相邻 MCP command 不被误删")
 }

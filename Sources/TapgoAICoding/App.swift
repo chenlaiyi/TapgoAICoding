@@ -30,11 +30,11 @@ struct TapgoAICodingApp: App {
         Task.detached(priority: .utility) {
             TapgoConfig.syncMemoryPullAll()
         }
-        // 电脑控制 MCP server (v0.5.20): 幂等注册进隔离 Codex home 的
-        // config.toml, harness 拉起 TapgoComputerUseMCP 后模型获得截屏 /
-        // 鼠标 / 键盘工具。文件 I/O, 放 detached 避免阻塞启动。
+        // 电脑控制 MCP server: 按设置总开关同步隔离 Codex home。
+        // 开启时幂等注册，关闭时移除；新 harness/会话读取最新状态。
+        // 文件 I/O 放 detached，避免阻塞启动。
         Task.detached(priority: .utility) {
-            TapgoConfig.ensureComputerUseMCPSection()
+            TapgoConfig.syncComputerUseMCPPreference()
         }
         // Run a deterministic Phase 2 consolidation pass on each memory
         // layer to dedup / enforce the per-file byte cap. Idempotent.

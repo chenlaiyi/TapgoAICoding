@@ -2,6 +2,7 @@ import SwiftUI
 import TapgoCore
 import ApplicationServices
 import CoreGraphics
+import AppKit
 
 /// ZCode-style settings workspace: grouped navigation on the left and a
 /// task-focused, scrollable settings page on the right.  Each control still
@@ -42,7 +43,13 @@ struct SettingsView: View {
     @AppStorage(TapgoConfig.memoryReadEnabledKey) private var memoryReadEnabled = true
     @AppStorage(TapgoConfig.memoryWriteEnabledKey) private var memoryWriteEnabled = true
     @AppStorage("tapgo.memory.cloudSync") private var cloudSyncEnabled = true
+    @AppStorage(TapgoConfig.computerUseEnabledKey) private var computerUseEnabled = true
+    @AppStorage(TapgoConfig.computerUseShowInComposerKey) private var computerUseShowInComposer = true
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    init(initialTab: Tab = .general) {
+        _tab = State(initialValue: initialTab)
+    }
 
     enum Tab: String, CaseIterable, Identifiable {
         case general = "常规"
@@ -868,66 +875,121 @@ struct SettingsView: View {
         let _ = computerPermissionRefresh
         VStack(alignment: .leading, spacing: 18) {
             SettingsCard(
-                title: "电脑控制状态",
-                description: "Tapgo AICoding 通过随 App 分发的 MCP 工具执行截屏、鼠标和键盘操作。",
-                icon: "display.and.arrow.down"
+                title: "电脑控制",
+                description: "控制 Agent 是否获得截屏、鼠标、键盘与启动应用等本机操作能力。",
+                icon: "display"
             ) {
                 VStack(spacing: 0) {
-                    computerStatusRow(
-                        title: "辅助功能 (Accessibility)",
-                        description: "读取与驱动界面元素、合成键盘和鼠标输入。",
-                        ready: AXIsProcessTrusted()
-                    )
+                    settingsControlRow(
+                        title: "启用电脑控制",
+                        description: "开启后注册电脑控制 MCP；新会话或重启 Harness 后生效。"
+                    ) {
+                        Toggle("启用电脑控制", isOn: $computerUseEnabled)
+                            .labelsHidden()
+                    }
                     Divider()
-                    computerStatusRow(
-                        title: "屏幕录制 (Screen Recording)",
-                        description: "让 Agent 在操作前读取当前屏幕。",
-                        ready: CGPreflightScreenCaptureAccess()
-                    )
-                    Divider()
-                    computerStatusRow(
-                        title: "电脑控制 MCP",
-                        description: computerUseConfigRegistered
-                            ? "已写入隔离 Codex home；新会话或重启 Harness 后生效。"
-                            : "尚未在隔离 Codex home 中找到注册段。",
-                        ready: computerUseConfigRegistered
-                    )
+                    settingsControlRow(
+                        title: "在输入框底部显示电脑操作",
+                        description: "关闭后仅隐藏快捷入口，不改变电脑控制的启用状态。"
+                    ) {
+                        Toggle("显示电脑操作入口", isOn: $computerUseShowInComposer)
+                            .labelsHidden()
+                    }
                 }
             }
 
-            SettingsCard(
-                title: "工具注册",
-                description: "重新检测不会申请权限；重新注册只更新 Tapgo AICoding 自己的隔离配置。",
-                icon: "wrench.and.screwdriver"
-            ) {
-                HStack(spacing: 12) {
-                    Button {
-                        computerPermissionRefresh += 1
-                        computerUseMessage = "已重新读取当前权限与配置状态。"
-                    } label: {
-                        Label("重新检测", systemImage: "arrow.clockwise")
+            if computerUseEnabled {
+                SettingsCard(
+                    title: "可用状态",
+                    description: "三项全部授权并注册后，Agent 才能可靠地观察和操作这台 Mac。",
+                    icon: "checkmark.shield"
+                ) {
+                    VStack(spacing: 0) {
+                        computerStatusRow(
+                            title: "辅助功能 (Accessibility)",
+                            description: "读取与驱动界面元素、合成键盘和鼠标输入。",
+                            ready: AXIsProcessTrusted(),
+                            readyText: "已授权",
+                            notReadyText: "未授权"
+                        )
+                        Divider()
+                        computerStatusRow(
+                            title: "屏幕录制 (Screen Recording)",
+                            description: "让 Agent 在操作前读取当前屏幕。",
+                            ready: CGPreflightScreenCaptureAccess(),
+                            readyText: "已授权",
+                            notReadyText: "未授权"
+                        )
+                        Divider()
+                        computerStatusRow(
+                            title: "电脑控制 MCP",
+                            description: computerUseConfigRegistered
+                                ? "已写入隔离 Codex home；新会话或重启 Harness 后生效。"
+                                : "尚未在隔离 Codex home 中找到注册段。",
+                            ready: computerUseConfigRegistered,
+                            readyText: "已注册",
+                            notReadyText: "未注册"
+                        )
                     }
-                    Button {
-                        let ok = TapgoConfig.ensureComputerUseMCPSection()
-                        computerPermissionRefresh += 1
-                        computerUseMessage = ok
-                            ? "电脑控制 MCP 已注册；请新建会话或重启 Harness。"
-                            : "未找到随 App 分发的电脑控制二进制，未修改配置。"
-                    } label: {
-                        Label("重新注册 MCP", systemImage: "terminal")
-                    }
-                    if let computerUseMessage {
-                        Text(computerUseMessage)
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 0)
                 }
+
+                SettingsCard(
+                    title: "检测与修复",
+                    description: "重新检测不会申请权限；重新注册只更新 Tapgo AICoding 自己的隔离配置。",
+                    icon: "wrench.and.screwdriver"
+                ) {
+                    HStack(spacing: 12) {
+                        Button {
+                            computerPermissionRefresh += 1
+                            computerUseMessage = "已重新读取当前权限与配置状态。"
+                        } label: {
+                            Label("重新检测", systemImage: "arrow.clockwise")
+                        }
+                        Button {
+                            let ok = TapgoConfig.ensureComputerUseMCPSection()
+                            computerPermissionRefresh += 1
+                            computerUseMessage = ok
+                                ? "电脑控制 MCP 已注册；请新建会话或重启 Harness。"
+                                : "未找到随 App 分发的电脑控制二进制，未修改配置。"
+                        } label: {
+                            Label("重新注册 MCP", systemImage: "terminal")
+                        }
+                        Button {
+                            openPrivacySettings()
+                        } label: {
+                            Label("打开隐私与安全性", systemImage: "gear")
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+
+                Text("若系统权限显示“未授权”，请在 macOS“系统设置 → 隐私与安全性”中授权 Tapgo AICoding，然后重新启动 App。")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+            } else {
+                Label("电脑控制已关闭。输入框快捷入口仍可按你的显示偏好保留，并以灰色状态显示。",
+                      systemImage: "pause.circle")
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .padding(.horizontal, 2)
             }
 
-            Text("如果系统权限仍显示“未授权”，请到 macOS“系统设置 → 隐私与安全性”中授权 Tapgo AICoding，然后重新启动 App。")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
+            if let computerUseMessage {
+                Label(computerUseMessage, systemImage: "info.circle")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .onChange(of: computerUseEnabled) { _, enabled in
+            let ok = TapgoConfig.syncComputerUseMCPPreference()
+            computerPermissionRefresh += 1
+            if ok {
+                computerUseMessage = enabled
+                    ? "电脑控制已启用；请新建会话或重启 Harness。"
+                    : "电脑控制已关闭；新会话不再加载相关工具。"
+            } else {
+                computerUseMessage = "设置已保存，但 MCP 配置更新失败；请检查隔离配置目录权限。"
+            }
         }
     }
 
@@ -935,10 +997,16 @@ struct SettingsView: View {
         guard let config = try? String(contentsOf: TapgoConfig.configPath, encoding: .utf8) else {
             return false
         }
-        return config.contains("[mcp_servers.tapgo_computer_use]")
+        return config.contains("[mcp_servers.\(ComputerUseMCP.configServerKey)]")
     }
 
-    private func computerStatusRow(title: String, description: String, ready: Bool) -> some View {
+    private func computerStatusRow(
+        title: String,
+        description: String,
+        ready: Bool,
+        readyText: String = "已就绪",
+        notReadyText: String = "未就绪"
+    ) -> some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -949,11 +1017,16 @@ struct SettingsView: View {
                     .foregroundStyle(DSHTheme.labelDim)
             }
             Spacer(minLength: 24)
-            Label(ready ? "已就绪" : "未就绪", systemImage: ready ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+            Label(ready ? readyText : notReadyText, systemImage: ready ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
                 .foregroundStyle(ready ? DSHTheme.success : DSHTheme.warn)
         }
         .padding(.vertical, 14)
+    }
+
+    private func openPrivacySettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func settingsControlRow<Control: View>(

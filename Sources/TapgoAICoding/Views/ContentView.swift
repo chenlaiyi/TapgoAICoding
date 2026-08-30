@@ -6,6 +6,7 @@ struct ContentView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     @State private var showSettings = false
+    @State private var settingsInitialTab: SettingsView.Tab = .general
     @State private var showNewTask = false
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
     @State private var showShortcuts = false
@@ -26,7 +27,13 @@ struct ContentView: View {
         }
         .dynamicTypeSize(.xLarge)
         .frame(minWidth: 1100, minHeight: 720)
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenSettings)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenSettings)) { note in
+            if let raw = note.object as? String,
+               let requested = SettingsView.Tab(rawValue: raw) {
+                settingsInitialTab = requested
+            } else {
+                settingsInitialTab = .general
+            }
             showSettings = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenNewTask)) { _ in
@@ -42,7 +49,7 @@ struct ContentView: View {
             showCommandPalette = true
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            SettingsView(initialTab: settingsInitialTab)
                 .environmentObject(workspace)
                 .environmentObject(store)
         }
@@ -60,7 +67,10 @@ struct ContentView: View {
         .sheet(isPresented: $showCommandPalette) {
             CommandPaletteView(
                 onNewTask: { showNewTask = true },
-                onSettings: { showSettings = true },
+                onSettings: {
+                    settingsInitialTab = .general
+                    showSettings = true
+                },
                 onToggleTrajectory: { showTrajectory.toggle() }
             )
             .environmentObject(workspace)
@@ -120,7 +130,10 @@ struct ContentView: View {
             NavigationSplitView {
                 SidebarView(
                     showNewTask: { showNewTask = true },
-                    showSettings: { showSettings = true }
+                    showSettings: {
+                        settingsInitialTab = .general
+                        showSettings = true
+                    }
                 )
             } content: {
                 ChatView()
@@ -135,7 +148,10 @@ struct ContentView: View {
             NavigationSplitView {
                 SidebarView(
                     showNewTask: { showNewTask = true },
-                    showSettings: { showSettings = true }
+                    showSettings: {
+                        settingsInitialTab = .general
+                        showSettings = true
+                    }
                 )
             } detail: {
                 adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)

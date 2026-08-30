@@ -322,12 +322,33 @@ enum TapgoConfig {
     private enum Keys {
         static let approvalPolicy = "tapgo.approvalPolicy"
         static let sandbox = "tapgo.sandboxMode"
+        static let computerUseEnabled = "tapgo.computerUse.enabled"
+        static let computerUseShowInComposer = "tapgo.computerUse.showInComposer"
     }
 
     /// Public keys so `SettingsView` can bind via `@AppStorage` and stay
     /// in sync with the persisted enum values above.
     static let approvalPolicyKey = Keys.approvalPolicy
     static let sandboxKey = Keys.sandbox
+    static let computerUseEnabledKey = Keys.computerUseEnabled
+    static let computerUseShowInComposerKey = Keys.computerUseShowInComposer
+
+    /// Existing installations already had the bundled MCP registered before
+    /// switches existed, so an absent preference intentionally means enabled.
+    static var computerUseEnabled: Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: Keys.computerUseEnabled) != nil else { return true }
+        return defaults.bool(forKey: Keys.computerUseEnabled)
+    }
+
+    /// The composer shortcut is independent from capability enablement. This
+    /// mirrors ZCode: users may keep a visible grey shortcut while disabled so
+    /// they always have a direct path back to the setting.
+    static var computerUseShowInComposer: Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: Keys.computerUseShowInComposer) != nil else { return true }
+        return defaults.bool(forKey: Keys.computerUseShowInComposer)
+    }
 
     static var approvalPolicy: ApprovalPolicy {
         get {
@@ -502,14 +523,14 @@ enum TapgoConfig {
             try? writeDefaultCatalog(region: defaultRegion)
             // Rewriting the generated model config must not silently remove
             // the bundled computer-control tool registered at app startup.
-            ensureComputerUseMCPSection()
+            syncComputerUseMCPPreference()
             return
         }
         let config = renderedConfigWithKey(region: defaultRegion, authKey: key)
         try? atomicWrite(Data(config.utf8), to: configPath)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
         try? writeDefaultCatalog(region: defaultRegion)
-        ensureComputerUseMCPSection()
+        syncComputerUseMCPPreference()
         log("syncModelConfigFiles: config.toml + catalog 已按模型注册表重写")
     }
 
@@ -615,6 +636,38 @@ enum TapgoConfig {
             log("ensureComputerUseMCPSection: 写入 config.toml 失败 \(error)")
             return false
         }
+    }
+
+    /// Remove the bundled computer-control MCP table from the isolated Codex
+    /// config. Existing harness processes may retain already-loaded tools;
+    /// new sessions/harnesses use the updated state.
+    @discardableResult
+    static func removeComputerUseMCPSection() -> Bool {
+        let fm = FileManager.default
+        guard let current = try? String(contentsOf: configPath, encoding: .utf8) else {
+            log("removeComputerUseMCPSection: config.toml 不存在，无需移除")
+            return true
+        }
+        let updated = ComputerUseMCP.removeSection(fromConfig: current)
+        guard updated != current else { return true }
+        do {
+            try atomicWrite(Data(updated.utf8), to: configPath)
+            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
+            log("removeComputerUseMCPSection: 已停用电脑控制 MCP server")
+            return true
+        } catch {
+            log("removeComputerUseMCPSection: 写入 config.toml 失败 \(error)")
+            return false
+        }
+    }
+
+    /// Apply the persisted master switch to the real MCP config. Enabling
+    /// upserts the bundled executable; disabling removes the server table.
+    @discardableResult
+    static func syncComputerUseMCPPreference() -> Bool {
+        computerUseEnabled
+            ? ensureComputerUseMCPSection()
+            : removeComputerUseMCPSection()
     }
 
     /// Logs land next to the system-wide Logs directory so the user can
