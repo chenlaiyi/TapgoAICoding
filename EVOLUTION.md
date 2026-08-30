@@ -21,7 +21,7 @@
 
 ## v0.5.35 — 接入 DeepSeek V4 系列（v4-flash / v4-pro，原生 Responses API）
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: 17d8923
 **Tag**: v0.5.35
 **Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
 **Changed**:

@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.35",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "17d8923",
                     tag: "v0.5.35",
                     summary: "接入 DeepSeek V4 系列（v4-flash / v4-pro，原生 Responses API）",
                     changes: [
