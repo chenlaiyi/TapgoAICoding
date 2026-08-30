@@ -1173,6 +1173,9 @@ struct ComposerView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     var contentWidth: CGFloat = 760
+    /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
+    @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
+        TapgoModel.minimaxM3.rawValue
     /// How much of the "任务" status card's bottom is tucked behind the
     /// composer card (the "peeking tab" overlap). Keep small so the task
     /// Keep live editing local. The persisted draft is written by the
