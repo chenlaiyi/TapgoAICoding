@@ -289,6 +289,24 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.29",
+                    date: "2026-08-30",
+                    commit: "PENDING",
+                    tag: "v0.5.29",
+                    summary: "自进化升级为独立入口：独立对话、独立开发专属会话",
+                    changes: [
+                        "侧边栏「自进化」从只读日志弹窗升级为独立入口：点击直接进入自进化专属会话（新建或选中最新一条），菜单命令注册 ⌘⌥E 快捷键。",
+                        "独立对话：Thread 新增 mode 字段（\"evolution\" 标记，向后兼容），自进化会话在侧边栏独立分组置顶（sparkles 图标），不与普通项目会话混排。",
+                        "独立开发：会话 cwd 固定为本项目根（探测 ~/TapgoAICoding 需同时含 Package.swift 与 AGENTS.md），找不到时弹窗提示而不建空壳会话。",
+                        "新增 EvolutionPanel 引导横幅：「开始自进化」一键发出内置指令（核对仓库 → 选定改进点 → 实现 → 全量回归 → 版本对齐，运行中禁用），「自进化日志」按钮保留只读历史入口。",
+                        "进入自进化会话不再清空 composer 的当前项目；窗口标题/副标题特判显示真实仓库名与路径。",
+                        "测试新增 Thread: evolution mode + workspace 段 16 断言；全量 2283 passed / 0 failed（跳过远程集成段）。"
+                    ],
+                    why: "自进化此前只是静态日志页，用户想让它真正“自己开发自己”——必须是一个独立入口下的独立会话，有专属指令与固定工作目录，与日常对话互不干扰。",
+                    next: "自进化回合结束后自动生成 EVOLUTION 草稿条目；评估多轮自进化会话列表与每轮独立 harness 上下文。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.28",
                     date: "2026-08-30",
                     commit: "ca7da89",

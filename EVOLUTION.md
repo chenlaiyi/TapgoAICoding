@@ -19,6 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.29 — 自进化升级为独立入口：独立对话、独立开发专属会话
+**Date**: 2026-08-30
+**Commit**: PENDING
+**Tag**: v0.5.29
+**Test status**: 2283 passed / 0 failed (跳过远程集成段; 全量含远程 2323 passed / 8 failed 均为既有 203.0.113.10 环境失败)
+**Changed**:
+- 侧边栏「自进化」从只读日志弹窗升级为独立入口: 点击直接进入自进化专属会话 (新建或选中最新一条), 菜单命令「进入自进化会话」注册 ⌘⌥E 快捷键 (⌘⇧E 已被复制会话占用)。
+- 独立对话: `Thread` 新增 `mode` 字段 (`"evolution"` 标记, 向后兼容缺省 nil), 自进化会话在侧边栏独立分组置顶 (sparkles 图标), 不与普通项目会话混排; 点击分组头同样进入/创建。
+- 独立开发: 自进化会话 cwd 固定为本项目根 (纯逻辑 `EvolutionWorkspace.locateProjectRoot` 探测 `~/TapgoAICoding` 需同时含 Package.swift 与 AGENTS.md, 找不到时弹窗提示而不建空壳会话)。
+- 新增 `EvolutionPanel` 引导横幅 (对话区顶部): 显示会话性质/工作目录/轮次, 「开始自进化」一键发出内置指令 (核对仓库 → 选定改进点 → 实现 → `swift run TapgoTests` 全量回归 → 版本同步点对齐, 运行中禁用), 「自进化日志」按钮保留只读历史入口; 窗口标题/副标题特判显示真实仓库名与路径。
+- 进入自进化会话不再清空 composer 的当前项目 (`selectThread` 对 evolution 线程跳过 `setActiveProject`), 从自进化切回普通会话项目状态不受影响。
+- 测试新增 `Thread: evolution mode + workspace` 段 16 断言: mode 持久化往返、legacy 文件缺 mode 解码、固定标题不被 auto-title 覆盖、项目根双标记探测、kickoff 指令关键锚点。
+**Why**: 自进化此前只是静态日志页, 用户想让它真正"自己开发自己"——必须是一个独立入口下的独立会话, 有专属指令与固定工作目录, 与日常对话互不干扰。
+**Next**: 自进化回合结束后自动生成 EVOLUTION 草稿条目; 评估多轮自进化会话列表与每轮独立 harness 上下文。
+
 ## v0.5.28 — 紧急修复 config.toml 漂移重写抹掉真实鉴权导致 401
 **Date**: 2026-08-30
 **Commit**: ca7da89

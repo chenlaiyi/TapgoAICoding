@@ -140,6 +140,7 @@ struct ChatView: View {
     @State private var searchActive = false
     @State private var searchQuery = ""
     @State private var jumpToTurnId: String? = nil
+    @State private var showEvolutionLog = false
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
@@ -208,6 +209,9 @@ struct ChatView: View {
             if let project = workspace.state.activeProject {
                 NSWorkspace.shared.open(project.worktreeRoot)
             }
+        }
+        .sheet(isPresented: $showEvolutionLog) {
+            EvolutionLogView()
         }
     }
 
@@ -320,6 +324,12 @@ struct ChatView: View {
     private var currentTitle: String {
         if let id = store.activeThreadId,
            let t = store.liveThreads.first(where: { $0.id == id }) {
+            if t.isEvolution {
+                // 自进化会话独立于项目分组，标题固定，后缀显示真实
+                // 工作目录名让用户一眼确认改的是哪个仓库。
+                let repo = t.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Tapgo AICoding"
+                return "自进化 — \(repo)"
+            }
             if let project = t.projectId.flatMap({ workspace.project(byId: $0) }) {
                 return "\(t.title) — \(project.displayName)"
             }
@@ -343,9 +353,13 @@ struct ChatView: View {
     /// the titlebar always shows which workspace the conversation is in.
     private var currentSubtitle: String {
         if let id = store.activeThreadId,
-           let t = store.liveThreads.first(where: { $0.id == id }),
-           let project = t.projectId.flatMap({ workspace.project(byId: $0) }) {
-            return project.isRemote ? project.displayName : project.displayPath
+           let t = store.liveThreads.first(where: { $0.id == id }) {
+            if t.isEvolution {
+                return t.cwd ?? "自进化 · 独立开发会话"
+            }
+            if let project = t.projectId.flatMap({ workspace.project(byId: $0) }) {
+                return project.isRemote ? project.displayName : project.displayPath
+            }
         }
         return "独立会话"
     }
@@ -362,6 +376,9 @@ struct ChatView: View {
             if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }),
                project.isRemote {
                 RemoteBanner(project: project, host: workspace.remoteHost(byId: project.remoteHostId ?? ""))
+            }
+            if thread.isEvolution {
+                EvolutionPanel(thread: thread) { showEvolutionLog = true }
             }
             ScrollViewReader { proxy in
                 ScrollView {

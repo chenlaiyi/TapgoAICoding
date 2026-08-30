@@ -21,6 +21,7 @@ struct SidebarView: View {
     @FocusState private var searchFocused: Bool
     @State private var searchScope = false
     @State private var showEvolutionLog = false
+    @State private var showEvolutionRootMissing = false
     @State private var showConnectPhone = false
     @State private var showPluginManager = false
     @State private var hoveredThreadId: String? = nil
@@ -108,6 +109,11 @@ struct SidebarView: View {
         .sheet(isPresented: $showEvolutionLog) {
             EvolutionLogView()
         }
+        .alert("未找到自进化项目目录", isPresented: $showEvolutionRootMissing) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text("自进化会话需要在 ~/TapgoAICoding 找到本项目（含 Package.swift 与 AGENTS.md）。请先在本机克隆或同步仓库。")
+        }
         .sheet(isPresented: $showConnectPhone) {
             ConnectPhoneView()
         }
@@ -123,6 +129,11 @@ struct SidebarView: View {
         .onReceive(NotificationCenter.default.publisher(for: .tapgoSelectNextThread)) { _ in
             selectAdjacentThread(1)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenEvolution)) { _ in
+            if !store.openEvolution() {
+                showEvolutionRootMissing = true
+            }
+        }
     }
 
     // MARK: - Top bar (new task is the first button)
@@ -131,10 +142,12 @@ struct SidebarView: View {
     private var topBar: some View {
         VStack(alignment: .leading, spacing: 2) {
             menuItem("自进化", "sparkles") {
-                showEvolutionLog = true
+                if !store.openEvolution() {
+                    showEvolutionRootMissing = true
+                }
             }
-            .help("查看 Tapgo AICoding 的自进化日志与使用指南")
-            .accessibilityLabel("自进化日志")
+            .help("进入自进化专属会话：独立对话、独立开发 (⌘⌥E)")
+            .accessibilityLabel("自进化会话")
             menuItem("连接手机", "iphone.gen3.radiowaves.left.and.right") {
                 showConnectPhone = true
             }
@@ -359,7 +372,9 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func projectGroupHeader(_ group: ThreadGroup) -> some View {
-        if let p = group.project {
+        if group.isEvolutionGroup {
+            evolutionGroupHeader(group)
+        } else if let p = group.project {
             HStack(spacing: 6) {
                 Image(systemName: p.isRemote ? "globe" : "folder.fill")
                     .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
@@ -443,6 +458,42 @@ struct SidebarView: View {
             }
             .accessibilityLabel("未分类会话, \(group.threads.count) 个")
         }
+    }
+
+    /// 自进化分组的专属头部：sparkles 图标 +「自进化」，点击进入最新的
+    /// 自进化会话；同样支持折叠/展开。
+    private func evolutionGroupHeader(_ group: ThreadGroup) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "sparkles")
+                .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
+                .foregroundStyle(DSHTheme.brand)
+                .frame(width: Layout.projectIconWidth, alignment: .leading)
+            Text("自进化")
+                .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            if groupHasRunningTask(group) {
+                runningDot
+            }
+            Spacer()
+            Button {
+                toggleGroup(group.id)
+            } label: {
+                Image(systemName: collapsedGroups.contains(group.id) ? "chevron.right" : "chevron.down")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(collapsedGroups.contains(group.id) ? "展开自进化分组" : "收起自进化分组")
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // 点击头部直接进入（或创建）最新的自进化会话。
+            if !store.openEvolution() {
+                showEvolutionRootMissing = true
+            }
+        }
+        .help("自进化专属会话 · 点击进入 (⌘⌥E)")
+        .accessibilityLabel("自进化会话分组, \(group.threads.count) 个")
     }
 
     private func toggleGroup(_ id: String) {
@@ -731,6 +782,17 @@ struct SidebarView: View {
 
     // MARK: - Footer
 
+    /// 左下角灰色行: 当前模型供应商 / 套餐名 / 周余量百分比。
+    private var modelQuotaSummary: String {
+        var parts = ["MiniMax"]
+        let snapshot = store.rateLimits
+        parts.append(snapshot?.planLabel ?? "Token Plan")
+        if let weekly = snapshot?.secondary, weekly.windowDurationMins == 10080 {
+            parts.append("周余量 \(max(0, 100 - weekly.usedPercent))%")
+        }
+        return parts.joined(separator: " · ")
+    }
+
     @ViewBuilder
     private var userBar: some View {
         HStack(spacing: 8) {
@@ -742,10 +804,18 @@ struct SidebarView: View {
                     Text(user.displayName)
                         .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                         .lineLimit(1)
-                    Text(user.wechatNickname ?? user.email ?? user.roleText)
+                    Text(modelQuotaSummary)
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
+                }
+                .task {
+                    // 进侧栏立即拉额度, 之后每 5 分钟刷新 (周余量/套餐名)。
+                    store.refreshRateLimits()
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 300_000_000_000)
+                        store.refreshRateLimits()
+                    }
                 }
                 .contextMenu {
                     Button(role: .destructive) {
@@ -817,7 +887,10 @@ struct SidebarView: View {
     private struct ThreadGroup: Identifiable {
         let project: Project?
         let threads: [TapgoCore.Thread]
-        var id: String { project?.id ?? "_legacy" }
+        /// True for the pinned 自进化 group: independent of projects,
+        /// always sorted to the very top of the sidebar.
+        var isEvolutionGroup: Bool = false
+        var id: String { isEvolutionGroup ? "_evolution" : (project?.id ?? "_legacy") }
     }
 
     private var grouped: [ThreadGroup] {
@@ -827,7 +900,11 @@ struct SidebarView: View {
         // empty groups are dropped so the sidebar doesn't show dead
         // project headers when nothing matches.
         var byProject: [String?: [TapgoCore.Thread]] = [:]
-        for t in store.liveThreads {
+        // 自进化会话不参与项目分组——它们有独立的置顶分组。
+        let evolutionThreads = store.liveThreads.filter {
+            $0.isEvolution && (!isSearching || threadMatchesSearch($0, query: trimmedQuery))
+        }
+        for t in store.liveThreads where !t.isEvolution {
             // "仅当前项目" scope narrows to the active project's threads.
             if searchScope, t.projectId != workspace.state.activeProjectId { continue }
             // Match against title, first user input, and the project
@@ -882,8 +959,17 @@ struct SidebarView: View {
                 groups.append(ThreadGroup(project: p, threads: []))
             }
         }
+        // 自进化分组：独立于项目，只要存在（或搜索命中）就置顶展示。
+        if !evolutionThreads.isEmpty {
+            groups.append(ThreadGroup(
+                project: nil,
+                threads: sortedThreads(evolutionThreads),
+                isEvolutionGroup: true
+            ))
+        }
         // Active project always at the top.
         groups.sort { lhs, rhs in
+            if lhs.isEvolutionGroup != rhs.isEvolutionGroup { return lhs.isEvolutionGroup }
             if lhs.project?.id == activeId { return true }
             if rhs.project?.id == activeId { return false }
             let lp = lhs.project.map { workspace.isProjectPinned($0.id) } ?? false

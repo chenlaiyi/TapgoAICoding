@@ -44,11 +44,15 @@ public struct Thread: Identifiable, Hashable, Codable {
     public var goalWorkedSeconds: Double
     /// When the goal last resumed running — used to compute live elapsed time.
     public var goalResumedAt: Date?
+    /// Conversation mode. `nil` = ordinary user conversation;
+    /// `"evolution"` = 自进化专属会话 (independent entry, own history,
+    /// fixed cwd on the Tapgo AICoding project itself).
+    public var mode: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, createdAt, updatedAt
         case projectId, cwd, harnessThreadId, turns, isPinned, goal, goalSetAt
-        case goalStatus, goalWorkedSeconds, goalResumedAt
+        case goalStatus, goalWorkedSeconds, goalResumedAt, mode
     }
 
     public init(from decoder: Decoder) throws {
@@ -69,6 +73,7 @@ public struct Thread: Identifiable, Hashable, Codable {
         goalStatus = try c.decodeIfPresent(String.self, forKey: .goalStatus)
         goalWorkedSeconds = try c.decodeIfPresent(Double.self, forKey: .goalWorkedSeconds) ?? 0
         goalResumedAt = try c.decodeIfPresent(Date.self, forKey: .goalResumedAt)
+        mode = try c.decodeIfPresent(String.self, forKey: .mode)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -87,7 +92,11 @@ public struct Thread: Identifiable, Hashable, Codable {
         try c.encodeIfPresent(goalStatus, forKey: .goalStatus)
         try c.encode(goalWorkedSeconds, forKey: .goalWorkedSeconds)
         try c.encodeIfPresent(goalResumedAt, forKey: .goalResumedAt)
+        try c.encodeIfPresent(mode, forKey: .mode)
     }
+
+    /// Conversation mode marker for 自进化 sessions.
+    public static let evolutionMode = "evolution"
 
     public init(
         id: String,
@@ -103,7 +112,8 @@ public struct Thread: Identifiable, Hashable, Codable {
         goalSetAt: Date? = nil,
         goalStatus: String? = nil,
         goalWorkedSeconds: Double = 0,
-        goalResumedAt: Date? = nil
+        goalResumedAt: Date? = nil,
+        mode: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -119,7 +129,13 @@ public struct Thread: Identifiable, Hashable, Codable {
         self.goalStatus = goalStatus
         self.goalWorkedSeconds = goalWorkedSeconds
         self.goalResumedAt = goalResumedAt
+        self.mode = mode
     }
+
+    /// True for 自进化专属会话 (independent entry / own history / the
+    /// project iterates on itself). UI reads this to render the
+    /// evolution panel and keep these threads in their own group.
+    public var isEvolution: Bool { mode == Self.evolutionMode }
 
     public static func newLocal(
         projectId: String? = nil,

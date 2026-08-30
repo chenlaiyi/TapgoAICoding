@@ -105,6 +105,10 @@ struct TapgoAICodingApp: App {
                     NotificationCenter.default.post(name: .tapgoToggleTrajectory, object: nil)
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
+                Button("进入自进化会话") {
+                    NotificationCenter.default.post(name: .tapgoOpenEvolution, object: nil)
+                }
+                .keyboardShortcut("e", modifiers: [.command, .option])
                 Button("聚焦会话搜索") {
                     NotificationCenter.default.post(name: .tapgoFocusSearch, object: nil)
                 }
@@ -184,4 +188,5 @@ extension Notification.Name {
     static let tapgoSelectPrevThread = Notification.Name("tapgo.selectPrevThread")
     static let tapgoSelectNextThread = Notification.Name("tapgo.selectNextThread")
     static let tapgoOpenActiveProject = Notification.Name("tapgo.openActiveProject")
+    static let tapgoOpenEvolution = Notification.Name("tapgo.openEvolution")
 }

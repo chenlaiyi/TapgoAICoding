@@ -349,3 +349,71 @@ func runThreadDateBanner(_ t: TestRunner) {
     t.expect(!TapgoCore.Thread.showDateBanner(at: 3, in: turns), "dateBanner: out of range false")
     t.expect(!TapgoCore.Thread.showDateBanner(at: -1, in: turns), "dateBanner: negative index false")
 }
+
+// MARK: - Thread: evolution mode + workspace
+
+@MainActor
+func runThreadEvolutionMode(_ t: TestRunner) {
+    // mode round-trips through ThreadStore persistence and drives isEvolution.
+    let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-evo-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    let evo = TapgoCore.Thread(
+        id: "evo-1", title: "自进化",
+        createdAt: Date(), updatedAt: Date(),
+        cwd: "/Users/alice/TapgoAICoding",
+        mode: TapgoCore.Thread.evolutionMode
+    )
+    t.expect(evo.isEvolution, "evolution: isEvolution true for evolution mode")
+    let store = ThreadStore(baseDir: tmp)
+    store.save(evo)
+    let reloaded = ThreadStore(baseDir: tmp).threads.first
+    t.expectEqual(reloaded?.id, "evo-1", "evolution: id round-trips")
+    t.expectEqual(reloaded?.isEvolution, true, "evolution: mode round-trips through disk")
+
+    // Ordinary threads (no mode key on disk) decode as non-evolution.
+    let ordinary = TapgoCore.Thread(id: "local-1", title: "普通会话",
+                                    createdAt: Date(), updatedAt: Date())
+    t.expect(!ordinary.isEvolution, "evolution: default mode is not evolution")
+    let tmp2 = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-evo-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: tmp2) }
+    ThreadStore(baseDir: tmp2).save(ordinary)
+    t.expectEqual(ThreadStore(baseDir: tmp2).threads.first?.isEvolution, false,
+                  "evolution: legacy file without mode decodes non-evolution")
+
+    // A fixed 自进化 title must never be auto-titled away by the first
+    // user message (hasDefaultTitle only matches 新-prefixed placeholders).
+    t.expect(!evo.hasDefaultTitle, "evolution: fixed title survives auto-title")
+
+    // Project-root detection: both markers required.
+    let probe = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-root-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: probe) }
+    try? FileManager.default.createDirectory(at: probe, withIntermediateDirectories: true)
+    t.expect(!EvolutionWorkspace.looksLikeProjectRoot(probe), "workspace: empty dir is not a project root")
+    try? Data("// swift".utf8).write(to: probe.appendingPathComponent("Package.swift"))
+    t.expect(!EvolutionWorkspace.looksLikeProjectRoot(probe), "workspace: Package.swift alone is not enough")
+    try? Data("# 约定".utf8).write(to: probe.appendingPathComponent("AGENTS.md"))
+    t.expect(EvolutionWorkspace.looksLikeProjectRoot(probe), "workspace: Package.swift + AGENTS.md is a project root")
+
+    // locateProjectRoot only accepts home/TapgoAICoding.
+    let home = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-home-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: home) }
+    t.expectNil(EvolutionWorkspace.locateProjectRoot(home: home), "workspace: missing home yields nil")
+    let root = home.appendingPathComponent("TapgoAICoding", isDirectory: true)
+    try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    t.expectNil(EvolutionWorkspace.locateProjectRoot(home: home), "workspace: bare dir yields nil")
+    try? Data("x".utf8).write(to: root.appendingPathComponent("Package.swift"))
+    try? Data("x".utf8).write(to: root.appendingPathComponent("AGENTS.md"))
+    t.expectEqual(EvolutionWorkspace.locateProjectRoot(home: home)?.path, root.path,
+                  "workspace: home/TapgoAICoding located")
+
+    // The kickoff prompt carries the anchors the evolution flow relies on.
+    let prompt = EvolutionWorkspace.kickoffPrompt()
+    t.expect(prompt.contains("自进化指令"), "prompt: marker present")
+    t.expect(prompt.contains("swift run TapgoTests"), "prompt: full regression command present")
+    t.expect(prompt.contains("makeHistory()"), "prompt: version sync point present")
+    t.expect(prompt.contains("git fetch origin"), "prompt: repo state check present")
+}

@@ -286,7 +286,9 @@ final class SessionStore: ObservableObject {
         // Keep the top-left project chip in sync with the selected
         // thread's project, so selecting a thread in project B no longer
         // leaves the header stuck on a previously-active project A.
-        if let t = liveThreads.first(where: { $0.id == id }) {
+        // 自进化会话没有 projectId（独立于项目分组），进入它时保留
+        // 当前项目不动，避免顺带把 composer 的项目条清空。
+        if let t = liveThreads.first(where: { $0.id == id }), !t.isEvolution {
             workspace.setActiveProject(t.projectId)
         }
         persistActiveThread()
@@ -299,13 +301,54 @@ final class SessionStore: ObservableObject {
         UserDefaults.standard.set(activeThreadId, forKey: Self.lastThreadKey)
     }
 
+    /// 进入自进化专属会话（独立入口）。
+    ///
+    /// 已有自进化线程 → 直接选中最新的一条（对话历史独立保留）；
+    /// 还没有 → 在本项目根目录（`~/TapgoAICoding`）下创建一个新的
+    /// `mode == .evolution` 线程，cwd 固定为项目根，让 AI 在该会话
+    /// 内对项目自身做迭代开发。
+    ///
+    /// 返回 false 表示本机没有找到项目根，调用方应提示用户（此时
+    /// 不创建无法独立开发的空壳会话）。
+    @discardableResult
+    func openEvolution() -> Bool {
+        if let existing = liveThreads
+            .filter({ $0.isEvolution })
+            .max(by: { $0.updatedAt < $1.updatedAt }) {
+            selectThread(existing.id)
+            return true
+        }
+        guard let root = EvolutionWorkspace.locateProjectRoot(
+            home: FileManager.default.homeDirectoryForCurrentUser
+        ) else {
+            return false
+        }
+        let t = TapgoCore.Thread(
+            id: "evo-" + UUID().uuidString,
+            title: EvolutionWorkspace.threadTitle,
+            createdAt: Date(),
+            updatedAt: Date(),
+            projectId: nil,
+            cwd: root.path,
+            harnessThreadId: nil,
+            turns: [],
+            mode: TapgoCore.Thread.evolutionMode
+        )
+        liveThreads.insert(t, at: 0)
+        threads.save(t)
+        activeThreadId = t.id
+        persistActiveThread()
+        NotificationCenter.default.post(name: .tapgoClearComposer, object: nil)
+        NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil)
+        return true
+    }
+
     /// Create a new thread in the active project (if any). For
     /// remote projects the thread's `cwd` is the *actual* remote
     /// path (e.g. `/Users/remoteuser/workspaces`), NOT a local
     /// mirror. The remote harness will see that path and chdir
     /// into it on its own host.
-    func newThread(title: String? = nil) {
-        let project = activeProject()
+    func newThread(title: String? = nil) {        let project = activeProject()
         let cwd = project?.remotePath ?? project?.harnessCwd
         let t = TapgoCore.Thread(
             id: "local-" + UUID().uuidString,
