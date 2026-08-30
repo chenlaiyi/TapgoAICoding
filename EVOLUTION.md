@@ -19,6 +19,29 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.52 — 模型设置深度打磨
+**Date**: 2026-08-31
+**Tag**: v0.5.52
+**Changed**:
+- `CustomModel.validationErrors([String])` 一次返回所有错误；新增 apiKey 必填、`isAcceptableBaseURL` 仅放行 https（http 仅限 localhost / 127.0.0.1 / ::1）、`contextWindowOptions` 覆盖 8K → 1M
+- `TapgoConfig` 新增 `testConnection` / `clearAPIKey` / `deleteCustomModel`；后者删除选中自定义模型时主动写回 `builtin:MiniMax-M3`，避免旧 ID 残留后被 `resolveSelected` 隐式回落
+- `TapgoCore/ModelSettingsProbe` 把 IO 抽到 TapgoCore，让 TapgoTests 单测无需依赖 TapgoAICoding executable target
+- `SettingsView.modelTab`：
+  - 思考强度改为 5 档（默认/none/low/medium/high），文案走 L10n
+  - 「新会话模型」Picker 按「内置/自定义」分段
+  - 行尾内置新增「测试」「清除 Key」两个操作，结果内联反馈；自定义保留「删除」
+  - 内置点「编辑」走完整 `ModelFormSheet`，apiModel/brand/displayName 锁住，仅 Key 可改
+  - `ModelFormSheet` 多错误列表显示、上下文窗口新 8K~1M 档位、宽度 500
+  - 「MiniMax 端点覆盖」应用/默认按钮接 banner 反馈（成功 3 秒后消失）
+- L10n：新增 16 个 key（取消/保存/删除/清除 Key/思考强度五档/模型 * /测试/连接/已应用）
+- 测试：`ModelRegistryTests` +3 段新断言（HTTP 提示、localhost 接受、错误列表、contextWindow 范围）；新增 `TapgoConfigTests` 覆盖 readAPIKey / deleteCustomModel / testConnection
+**Why**: v0.5.42 自定义模型增删改查落地后留下 9 处体验与数据正确性瑕疵：
+- 校验错误一次只显示一条、http 公网端点无阻拦、apiKey 留空保存可成功
+- 内置模型「编辑」只暴露 Key，名字/端点都改不动；删除选中自定义模型后选中态靠隐式回落
+- 思考强度只有 3 档、上下文窗口选项偏少；每行只有「编辑/删除」两个操作
+- 端点覆盖「应用」按钮吞错、无反馈
+**Next**: v0.5.53 准备为 ModelSettingsProbe 暴露公共 toast / banner 组件，把所有端点/Key 操作的成功/失败反馈统一到顶层通知。
+
 ## v0.5.51 — 电脑控制从全屏盲点升级为目标应用语义操作
 **Date**: 2026-08-31
 **Commit**: 4610726

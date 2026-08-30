@@ -50,7 +50,7 @@ func runModelRegistry(_ t: TestRunner) {
     let countBeforeDuplicate = reloaded.customModels.count
     reloaded.add(CustomModel(
         id: "custom-TRIM", displayName: "Replacement", apiModel: "model-v2",
-        brand: "Brand", baseURL: "https://example.com/v2"))
+        brand: "Brand", baseURL: "https://example.com/v2", apiKey: "sk-x"))
     t.expectEqual(reloaded.customModels.count, countBeforeDuplicate,
                   "registry: duplicate id replaces instead of appending")
     t.expectEqual(reloaded.customModel(id: "custom-TRIM")?.displayName, "Replacement",
@@ -86,4 +86,44 @@ func runModelRegistry(_ t: TestRunner) {
     let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
     t.expectEqual((attrs?[.posixPermissions] as? NSNumber)?.int16Value, Int16(0o600),
                   "registry: file written 0600")
+
+    // MARK: v0.5.52 校验：URL 仅 https（除本地）、apiKey 必填、多错误一次性列出
+    let publicHTTP = CustomModel(
+        id: "custom-HTTP", displayName: "Public HTTP", apiModel: "any",
+        brand: "Brand", baseURL: "http://example.com/v1",
+        apiKey: "sk-x", contextWindow: 128_000)
+    t.expect(publicHTTP.validationErrors.contains(where: { $0.contains("明文 HTTP") }),
+             "registry: rejects public http with 明文 HTTP hint")
+    let localHTTP = CustomModel(
+        id: "custom-LH", displayName: "Local HTTP", apiModel: "any",
+        brand: "Brand", baseURL: "http://127.0.0.1:8080/v1",
+        apiKey: "sk-x", contextWindow: 128_000)
+    t.expectNil(localHTTP.validationError, "registry: accepts http to 127.0.0.1")
+    let localhostHTTP = CustomModel(
+        id: "custom-LO", displayName: "Localhost", apiModel: "any",
+        brand: "Brand", baseURL: "http://localhost:9999",
+        apiKey: "sk-x", contextWindow: 128_000)
+    t.expectNil(localhostHTTP.validationError, "registry: accepts http to localhost")
+    let noKey = CustomModel(
+        id: "custom-NK", displayName: "No Key", apiModel: "any",
+        brand: "Brand", baseURL: "https://example.com/v1",
+        apiKey: "", contextWindow: 128_000)
+    t.expect(noKey.validationErrors.contains(where: { $0.contains("API Key") }),
+             "registry: empty apiKey flagged when required")
+    let noKeyButExisting = noKey.validationErrors(requireAPIKey: false)
+    t.expect(!noKeyButExisting.contains(where: { $0.contains("API Key") }),
+             "registry: editing existing custom skips apiKey check")
+    let multiError = CustomModel(
+        id: "custom-ME", displayName: "", apiModel: "",
+        brand: "", baseURL: "not-a-url",
+        apiKey: "", contextWindow: 0)
+    t.expect(multiError.validationErrors.count >= 4,
+             "registry: validationErrors lists all missing fields at once")
+    let supportedSizes = Set(CustomModel.contextWindowOptions)
+    t.expect(supportedSizes.contains(8_192) && supportedSizes.contains(1_000_000),
+             "registry: contextWindowOptions spans 8K to 1M")
+    t.expectEqual(CustomModel.normalizedContextWindow(8_192), 8_192,
+                  "registry: normalizedContextWindow keeps known size")
+    t.expectEqual(CustomModel.normalizedContextWindow(123_456), 1_000_000,
+                  "registry: normalizedContextWindow falls back to 1M for unknown")
 }

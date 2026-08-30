@@ -34,8 +34,40 @@ struct SettingsView: View {
     @State private var modelRows: [TapgoConfig.ResolvedModel] = []
     @State private var customModelSheet: CustomModel?
     @State private var customSheetIsNew = false
-    @State private var builtinKeySheet: TapgoModel?
+    /// v0.5.52 起：内置模型点「编辑」也走完整表单，apiModel/brand 锁住。
+    @State private var builtinEditSheet: TapgoConfig.ResolvedModel?
     @State private var deleteCandidate: TapgoConfig.ResolvedModel?
+    /// 行内「测试」按钮的运行状态：model id → 测试中/结果。
+    @State private var modelTestState: [String: ModelTestState] = [:]
+    @State private var clearKeyCandidate: TapgoConfig.ResolvedModel?
+    /// 「MiniMax 端点覆盖」卡片的成功/失败内联反馈（v0.5.52）。
+    @State private var baseURLBanner: BaseURLBanner?
+    /// 删除当前选中自定义模型后的「已回落到 X」一次性提示。
+    @State private var selectionFallbackBanner: String?
+
+    enum ModelTestState: Equatable {
+        case testing
+        case success(latencyMs: UInt)
+        case failure(String)
+
+        var displayText: String {
+            switch self {
+            case .testing: return L10n.testingConnection
+            case .success(let ms): return L10n.connectionSucceeded(latencyMs: ms)
+            case .failure(let msg): return L10n.connectionFailed(msg)
+            }
+        }
+        var isSuccess: Bool {
+            if case .success = self { return true }
+            return false
+        }
+    }
+
+    struct BaseURLBanner: Equatable {
+        enum Kind: Equatable { case success, failure(String) }
+        let kind: Kind
+        let message: String
+    }
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
     @AppStorage(TapgoConfig.memoryEnabledKey) private var memoryEnabled = true
@@ -130,14 +162,19 @@ struct SettingsView: View {
         .sheet(item: $customModelSheet) { draft in
             ModelFormSheet(
                 model: draft,
-                isNew: customSheetIsNew
+                isNew: customSheetIsNew,
+                isBuiltinLocked: false
             ) { saved in
                 saveCustomModel(saved)
             }
         }
-        .sheet(item: $builtinKeySheet) { model in
-            BuiltinKeySheet(model: model) { key in
-                saveBuiltinKey(model, key: key)
+        .sheet(item: $builtinEditSheet) { row in
+            ModelFormSheet(
+                model: Self.customModelDraft(forBuiltin: row),
+                isNew: false,
+                isBuiltinLocked: true
+            ) { saved in
+                saveBuiltinEdit(row: row, draft: saved)
             }
         }
         .confirmationDialog(
@@ -146,13 +183,29 @@ struct SettingsView: View {
                                set: { if !$0 { deleteCandidate = nil } }),
             titleVisibility: .visible
         ) {
-            Button("删除", role: .destructive) {
+            Button(L10n.delete, role: .destructive) {
                 if let row = deleteCandidate { deleteModel(row) }
                 deleteCandidate = nil
             }
-            Button("取消", role: .cancel) { deleteCandidate = nil }
+            Button(L10n.cancel, role: .cancel) { deleteCandidate = nil }
         } message: {
             Text("仅删除 App 内的模型配置，不影响上游账号。")
+        }
+        .confirmationDialog(
+            String(format: L10n.modelClearKeyConfirm, clearKeyCandidate?.displayName ?? ""),
+            isPresented: .init(get: { clearKeyCandidate != nil },
+                               set: { if !$0 { clearKeyCandidate = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(L10n.clearKey, role: .destructive) {
+                if let row = clearKeyCandidate, let builtIn = row.builtIn {
+                    TapgoConfig.clearAPIKey(for: builtIn)
+                }
+                clearKeyCandidate = nil
+            }
+            Button(L10n.cancel, role: .cancel) { clearKeyCandidate = nil }
+        } message: {
+            Text(L10n.modelClearKeyHint)
         }
     }
 
@@ -519,7 +572,7 @@ struct SettingsView: View {
         testingHostId = nil
     }
 
-    // MARK: - Model tab (v0.5.41)
+    // MARK: - Model tab (v0.5.41; v0.5.52 起内置也走 ModelFormSheet)
 
     // MARK: 模型 CRUD (v0.5.42)
 
@@ -528,8 +581,8 @@ struct SettingsView: View {
     }
 
     private func editModel(_ row: TapgoConfig.ResolvedModel) {
-        if let builtIn = row.builtIn {
-            builtinKeySheet = builtIn
+        if row.builtIn != nil {
+            builtinEditSheet = row
         } else if let custom = TapgoConfig.modelRegistry().customModel(id: row.id) {
             customModelSheet = custom
             customSheetIsNew = false
@@ -537,46 +590,101 @@ struct SettingsView: View {
     }
 
     private func saveCustomModel(_ model: CustomModel) {
-        let normalized = model.normalizedForStorage()
-        guard normalized.validationError == nil else { return }
         let registry = TapgoConfig.modelRegistry()
-        if registry.customModel(id: normalized.id) != nil {
-            registry.update(normalized)
+        // 编辑既有自定义模型时保留已写入的 Key（草稿里可能是空），
+        // 仅要求其他字段通过校验。
+        let existing = registry.customModel(id: model.id)
+        let requireKey = (existing?.apiKey.isEmpty ?? true)
+        let normalized = model.normalizedForStorage()
+        guard normalized.validationErrors(requireAPIKey: requireKey).isEmpty else { return }
+        let draft = existing.map {
+            CustomModel(
+                id: $0.id,
+                displayName: normalized.displayName,
+                apiModel: normalized.apiModel,
+                brand: normalized.brand,
+                baseURL: normalized.baseURL,
+                apiKey: normalized.apiKey.isEmpty ? $0.apiKey : normalized.apiKey,
+                contextWindow: normalized.contextWindow
+            )
+        } ?? normalized
+        if registry.customModel(id: draft.id) != nil {
+            registry.update(draft)
         } else {
-            registry.add(normalized)
+            registry.add(draft)
         }
         TapgoConfig.syncModelConfigFiles()
         reloadModelRows()
     }
 
-    private func saveBuiltinKey(_ model: TapgoModel, key: String) {
-        guard !key.isEmpty else { return }
-        let path: URL
-        switch model {
-        case .minimaxM3: path = TapgoConfig.authPath
-        case .glm53Flash: path = TapgoConfig.glmAuthPath
-        case .deepSeekV4Flash, .deepSeekV4Pro: path = TapgoConfig.deepSeekAuthPath
+    /// 内置模型点「编辑」时，套一份 CustomModel 草稿给 ModelFormSheet。
+    /// 真实落盘的字段只有 apiKey（其它字段锁住，保存时按 builtin 改写）。
+    private static func customModelDraft(forBuiltin row: TapgoConfig.ResolvedModel) -> CustomModel {
+        let key: String
+        switch row.builtIn {
+        case .minimaxM3: key = readKeyFile(TapgoConfig.authPath)
+        case .glm53Flash: key = readKeyFile(TapgoConfig.glmAuthPath)
+        case .deepSeekV4Flash, .deepSeekV4Pro: key = readKeyFile(TapgoConfig.deepSeekAuthPath)
+        case .none: key = ""
         }
-        if let data = try? JSONSerialization.data(
-            withJSONObject: ["OPENAI_API_KEY": key],
-            options: [.prettyPrinted, .sortedKeys]) {
-            try? data.write(to: path, options: .atomic)
-            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path.path)
+        return CustomModel(
+            id: "builtin:\(row.apiModel)",
+            displayName: row.displayName,
+            apiModel: row.apiModel,
+            brand: row.builtIn.map { _ in "Tapgo" } ?? "",
+            baseURL: row.baseURL,
+            apiKey: key,
+            contextWindow: row.contextWindow
+        )
+    }
+
+    /// 内置模型保存：把表单里的 Key 写回隔离 Codex home 的凭据文件；
+    /// 其它字段保留 builtin 默认值（不允许改写 apiModel/brand/displayName）。
+    private func saveBuiltinEdit(row: TapgoConfig.ResolvedModel, draft: CustomModel) {
+        guard let builtIn = row.builtIn else { return }
+        let trimmedKey = draft.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedKey.isEmpty {
+            let path: URL
+            switch builtIn {
+            case .minimaxM3: path = TapgoConfig.authPath
+            case .glm53Flash: path = TapgoConfig.glmAuthPath
+            case .deepSeekV4Flash, .deepSeekV4Pro: path = TapgoConfig.deepSeekAuthPath
+            }
+            if let data = try? JSONSerialization.data(
+                withJSONObject: ["OPENAI_API_KEY": trimmedKey],
+                options: [.prettyPrinted, .sortedKeys]) {
+                try? data.write(to: path, options: .atomic)
+                try? FileManager.default.setAttributes(
+                    [.posixPermissions: 0o600], ofItemAtPath: path.path)
+            }
+            TapgoConfig.syncModelConfigFiles()
         }
-        TapgoConfig.syncModelConfigFiles()
+        modelTestState[row.id] = nil
         reloadModelRows()
+    }
+
+    private static func readKeyFile(_ path: URL) -> String {
+        ModelSettingsProbe.readAPIKey(at: path)
     }
 
     private func deleteModel(_ row: TapgoConfig.ResolvedModel) {
-        TapgoConfig.modelRegistry().remove(id: row.id)
-        if ModelRegistry.normalizedID(
-            UserDefaults.standard.string(forKey: TapgoConfig.selectedModelKey) ?? ""
-        ) == row.id {
-            TapgoConfig.setSelectedModel(id: "builtin:\(TapgoModel.minimaxM3.rawValue)")
-            selectedModelRaw = "builtin:\(TapgoModel.minimaxM3.rawValue)"
+        guard row.builtIn == nil else { return }  // 内置不允许走删除路径
+        let wasSelected = TapgoConfig.isSelectedCustomModel(id: row.id)
+        let removed = TapgoConfig.deleteCustomModel(id: row.id)
+        guard removed else { return }
+        if wasSelected {
+            let fallback = "builtin:\(TapgoModel.minimaxM3.rawValue)"
+            selectedModelRaw = fallback
+            selectionFallbackBanner = "已删除选中模型「\(row.displayName)」，新会话将回落到 \(TapgoModel.minimaxM3.displayName)。"
         }
-        TapgoConfig.syncModelConfigFiles()
+        modelTestState[row.id] = nil
         reloadModelRows()
+        if wasSelected {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                selectionFallbackBanner = nil
+            }
+        }
     }
 
     private func credentialOK(for row: TapgoConfig.ResolvedModel) -> Bool {
@@ -584,10 +692,6 @@ struct SettingsView: View {
             return credentialConfigured(for: builtIn)
         }
         return TapgoConfig.modelRegistry().customModel(id: row.id)?.apiKey.isEmpty == false
-    }
-
-    private func credentialStatusText(for row: TapgoConfig.ResolvedModel) -> String {
-        credentialOK(for: row) ? "Key 已配置" : "Key 缺失"
     }
 
     /// 各模型凭据文件是否已配置（key 非空）。
@@ -625,8 +729,15 @@ struct SettingsView: View {
                         description: "进行中的会话继续使用创建时的模型。"
                     ) {
                         Picker("新会话模型", selection: $selectedModelRaw) {
-                            ForEach(modelRows) { model in
-                                Text(model.displayName).tag(model.id)
+                            Section(L10n.modelSectionBuiltin) {
+                                ForEach(modelRows.filter { $0.builtIn != nil }) { model in
+                                    Text(model.displayName).tag(model.id)
+                                }
+                            }
+                            Section(L10n.modelSectionCustom) {
+                                ForEach(modelRows.filter { $0.builtIn == nil }) { model in
+                                    Text(model.displayName).tag(model.id)
+                                }
                             }
                         }
                         .labelsHidden()
@@ -646,19 +757,27 @@ struct SettingsView: View {
                         description: "仅覆盖支持该参数的模型；默认值由供应商决定。"
                     ) {
                         Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
-                            Text("默认 (模型定)").tag("")
-                            Text("无 (none)").tag("none")
-                            Text("高 (high)").tag("high")
+                            ForEach(TapgoConfig.supportedReasoningEfforts, id: \.self) { effort in
+                                Text(reasoningEffortLabel(effort)).tag(effort)
+                            }
                         }
                         .labelsHidden()
                         .frame(width: 230)
+                    }
+                    if isCurrentReasoningUnsupported {
+                        Text(L10n.modelKeyUnsupported)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.warn)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.bottom, 10)
                     }
                 }
             }
 
             SettingsCard(
                 title: "模型列表",
-                description: "内置模型可更新凭据；自定义模型可编辑或删除。",
+                description: L10n.modelListHint,
                 icon: "shippingbox"
             ) {
                 VStack(spacing: 0) {
@@ -684,75 +803,181 @@ struct SettingsView: View {
 
                     ForEach(Array(modelRows.enumerated()), id: \.element.id) { index, row in
                         if index > 0 { Divider() }
-                        VStack(alignment: .leading, spacing: 7) {
-                            HStack(spacing: 8) {
-                                Text(row.displayName)
-                                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.medium))
-                                    .foregroundStyle(DSHTheme.label)
-                                if row.id == selectedModelID {
-                                    Text("当前")
-                                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(DSHTheme.brandSoft, in: Capsule())
-                                        .foregroundStyle(DSHTheme.brand)
-                                }
-                                Text(row.builtIn == nil ? "自定义" : "内置")
-                                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                                    .foregroundStyle(.tertiary)
-                                Spacer()
-                                Button("编辑") { editModel(row) }
-                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                if row.builtIn == nil {
-                                    Button("删除", role: .destructive) { deleteCandidate = row }
-                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                }
-                            }
-                            HStack(spacing: 8) {
-                                Label(
-                                    credentialStatusText(for: row),
-                                    systemImage: credentialOK(for: row) ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
-                                )
-                                .foregroundStyle(credentialOK(for: row) ? DSHTheme.success : DSHTheme.error)
-                                Text(row.baseURL)
-                                    .foregroundStyle(.tertiary)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                                    .textSelection(.enabled)
-                            }
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        }
-                        .padding(.vertical, 12)
+                        modelRowView(row)
                     }
                 }
             }
 
             SettingsCard(
-                title: "MiniMax 端点覆盖",
-                description: "高级设置。留空使用默认端点，仅影响 MiniMax。",
+                title: L10n.modelEndpointOverrideTitle,
+                description: L10n.modelEndpointOverrideDesc,
                 icon: "network"
             ) {
-                HStack {
-                    TextField("Endpoint (Base URL)", text: $baseURL)
-                        .textFieldStyle(.roundedBorder)
-                        .disableAutocorrection(true)
-                    Button(L10n.apply) {
-                        try? TapgoConfig.applyBaseURL(baseURL)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        TextField("Endpoint (Base URL)", text: $baseURL)
+                            .textFieldStyle(.roundedBorder)
+                            .disableAutocorrection(true)
+                        Button(L10n.apply) {
+                            applyBaseURLWithFeedback(apply: true)
+                        }
+                        Button(L10n.resetDefault) {
+                            baseURL = ""
+                            applyBaseURLWithFeedback(apply: false)
+                        }
                     }
-                    Button(L10n.resetDefault) {
-                        baseURL = ""
-                        try? TapgoConfig.applyBaseURL("")
+                    Text("默认：\(TapgoConfig.defaultRegion.baseURL)；GLM / DeepSeek 始终使用各自官方端点。")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.tertiary)
+                    if let banner = baseURLBanner {
+                        Text(banner.message)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(banner.kind == .success ? DSHTheme.success : DSHTheme.error)
                     }
                 }
-                Text("默认：\(TapgoConfig.defaultRegion.baseURL)；GLM / DeepSeek 始终使用各自官方端点。")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
             }
         }
         .onAppear {
             reloadModelRows()
             let resolved = TapgoConfig.resolveSelected()
             if selectedModelRaw != resolved.id { selectedModelRaw = resolved.id }
+        }
+    }
+
+    /// 模型列表里单行（v0.5.52 起新增「测试」/「清除 Key」/「当前生效端点」）。
+    @ViewBuilder
+    private func modelRowView(_ row: TapgoConfig.ResolvedModel) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Text(row.displayName)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.medium))
+                    .foregroundStyle(DSHTheme.label)
+                if row.id == selectedModelID {
+                    Text(L10n.modelCurrentSelection)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(DSHTheme.brandSoft, in: Capsule())
+                        .foregroundStyle(DSHTheme.brand)
+                }
+                Text(row.builtIn == nil ? L10n.modelSectionCustom : L10n.modelSectionBuiltin)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Button("编辑") { editModel(row) }
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                if row.builtIn != nil {
+                    Button(L10n.modelTest) { runModelTest(for: row) }
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    Button(L10n.clearKey, role: .destructive) { clearKeyCandidate = row }
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                }
+                if row.builtIn == nil {
+                    Button(L10n.delete, role: .destructive) { deleteCandidate = row }
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                }
+            }
+            HStack(spacing: 8) {
+                Label(
+                    credentialOK(for: row) ? L10n.modelKeyConfigured : L10n.modelKeyMissing,
+                    systemImage: credentialOK(for: row) ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+                )
+                .foregroundStyle(credentialOK(for: row) ? DSHTheme.success : DSHTheme.error)
+                Text(row.baseURL)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+            }
+            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            if let hint = modelEffectiveURLHint(for: row) {
+                Text(String(format: L10n.modelBaseURLHint, hint))
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.warn)
+            }
+            if let state = modelTestState[row.id] {
+                testResultView(state)
+            }
+        }
+        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private func testResultView(_ state: ModelTestState) -> some View {
+        HStack(spacing: 6) {
+            switch state {
+            case .testing:
+                ProgressView().controlSize(.small)
+            case .success:
+                Image(systemName: "checkmark.seal.fill")
+            case .failure:
+                Image(systemName: "exclamationmark.triangle.fill")
+            }
+            Text(state.displayText)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+        }
+        .foregroundStyle(state.isSuccess ? DSHTheme.success : DSHTheme.error)
+    }
+
+    /// 内置模型若 `effectiveBaseURL` 与 `defaultBaseURL` 不同（用户填了
+    /// 端点覆盖），展示「当前生效端点」；否则不显示，避免噪音。
+    private func modelEffectiveURLHint(for row: TapgoConfig.ResolvedModel) -> String? {
+        guard let builtIn = row.builtIn else { return nil }
+        let defaultURL = builtIn.defaultBaseURL
+        guard row.baseURL != defaultURL else { return nil }
+        return row.baseURL
+    }
+
+    private func runModelTest(for row: TapgoConfig.ResolvedModel) {
+        modelTestState[row.id] = .testing
+        TapgoConfig.testConnection(for: row) { result in
+            switch result {
+            case .success(let ms):
+                modelTestState[row.id] = .success(latencyMs: ms)
+            case .failure(let error):
+                let msg = (error as? LocalizedError)?.errorDescription
+                    ?? error.localizedDescription
+                modelTestState[row.id] = .failure(msg)
+            }
+        }
+    }
+
+    private func applyBaseURLWithFeedback(apply: Bool) {
+        do {
+            try TapgoConfig.applyBaseURL(baseURL)
+            let message = apply ? L10n.applied : L10n.modelBannerBaseURLReset
+            baseURLBanner = BaseURLBanner(kind: .success, message: message)
+        } catch {
+            baseURLBanner = BaseURLBanner(
+                kind: .failure(error.localizedDescription),
+                message: L10n.connectionFailed(error.localizedDescription)
+            )
+        }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if baseURLBanner != nil { baseURLBanner = nil }
+        }
+    }
+
+    private func reasoningEffortLabel(_ effort: String) -> String {
+        switch effort {
+        case "": return L10n.reasoningEffortDefault
+        case "none": return L10n.reasoningEffortNone
+        case "low": return L10n.reasoningEffortLow
+        case "medium": return L10n.reasoningEffortMedium
+        case "high": return L10n.reasoningEffortHigh
+        default: return effort
+        }
+    }
+
+    /// 当用户选了内置模型不支持的思考强度（如 MiniMax 选 medium）时返回 true。
+    /// v0.5.52 的内置模型只支持 `none` / `high`；自定义模型视作全支持。
+    private var isCurrentReasoningUnsupported: Bool {
+        guard let row = modelRows.first(where: { $0.id == selectedModelID }),
+              row.builtIn != nil else { return false }
+        switch reasoningEffort {
+        case "", "none", "high": return false
+        default: return true
         }
     }
 
@@ -1570,79 +1795,86 @@ struct ModelFormSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State var model: CustomModel
     let isNew: Bool
+    /// v0.5.52 起：内置模型也走完整表单，apiModel/brand/displayName/baseURL 锁住。
+    let isBuiltinLocked: Bool
     let onSave: (CustomModel) -> Void
 
-    private var validationError: String? { model.validationError }
+    /// 编辑既有自定义模型时不强求 Key（保留已写入的旧 Key）；新增或内置
+    /// 编辑留空就报错。
+    private var requireAPIKey: Bool {
+        if isBuiltinLocked { return true }
+        return isNew
+    }
+
+    private var validationErrors: [String] {
+        model.validationErrors(requireAPIKey: requireAPIKey)
+    }
 
     var body: some View {
         VStack(spacing: 12) {
-            Text(isNew ? "新增模型" : "编辑模型")
+            Text(isBuiltinLocked
+                 ? "配置 \(model.displayName)"
+                 : (isNew ? "新增模型" : "编辑模型"))
                 .font(AppFont.scaled(.headline, multiplier: 1)).bold()
+            if isBuiltinLocked {
+                Text(L10n.modelBuiltinEditHint)
+                    .font(AppFont.scaled(.caption, multiplier: 1))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             Form {
                 TextField("显示名（如 DeepSeek V4 Pro）", text: $model.displayName)
+                    .disabled(isBuiltinLocked)
                 TextField("品牌（如 DeepSeek）", text: $model.brand)
+                    .disabled(isBuiltinLocked)
                 TextField("API 模型 ID（如 deepseek-v4-pro）", text: $model.apiModel)
                     .disableAutocorrection(true)
+                    .disabled(isBuiltinLocked)
                 TextField("端点 Base URL", text: $model.baseURL)
                     .disableAutocorrection(true)
                 SecureField("API Key", text: $model.apiKey)
                     .disableAutocorrection(true)
                 Picker("上下文窗口", selection: $model.contextWindow) {
-                    Text("1M").tag(1_000_000)
-                    Text("256K").tag(256_000)
-                    Text("128K").tag(128_000)
+                    ForEach(CustomModel.contextWindowOptions, id: \.self) { value in
+                        Text(contextWindowLabel(value)).tag(value)
+                    }
                 }
             }
             .formStyle(.grouped)
-            if let validationError {
-                Text(validationError)
-                    .font(AppFont.scaled(.caption, multiplier: 1))
-                    .foregroundStyle(DSHTheme.error)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if !validationErrors.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(validationErrors.prefix(4), id: \.self) { err in
+                        Label(err, systemImage: "exclamationmark.circle.fill")
+                            .font(AppFont.scaled(.caption, multiplier: 1))
+                            .foregroundStyle(DSHTheme.error)
+                    }
+                    if validationErrors.count > 4 {
+                        Text("还有 \(validationErrors.count - 4) 项错误")
+                            .font(AppFont.scaled(.caption2, multiplier: 1))
+                            .foregroundStyle(DSHTheme.error)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack {
                 Spacer()
-                Button("取消") { dismiss() }
-                Button("保存") {
+                Button(L10n.cancel) { dismiss() }
+                Button(L10n.save) {
                     onSave(model.normalizedForStorage())
                     dismiss()
                 }
-                .disabled(validationError != nil)
+                .disabled(!validationErrors.isEmpty)
             }
         }
         .padding(20)
-        .frame(width: 460)
+        .frame(width: 500)
     }
-}
 
-/// 内置模型的 API Key 配置 sheet（写入对应 auth 文件，0600）。
-struct BuiltinKeySheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let model: TapgoModel
-    let onSave: (String) -> Void
-    @State private var key = ""
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("配置 \(model.displayName) 的 API Key")
-                .font(AppFont.scaled(.headline, multiplier: 1)).bold()
-            Text("Key 会写入隔离 Codex home 的凭据文件（0600），不会上传。留空保存则不做修改。")
-                .font(AppFont.scaled(.caption, multiplier: 1))
-                .foregroundStyle(.secondary)
-            SecureField("sk-...", text: $key)
-                .textFieldStyle(.roundedBorder)
-                .disableAutocorrection(true)
-            HStack {
-                Spacer()
-                Button("取消") { dismiss() }
-                Button("保存") {
-                    if !key.isEmpty { onSave(key) }
-                    dismiss()
-                }
-                .disabled(key.isEmpty)
-            }
+    private func contextWindowLabel(_ value: Int) -> String {
+        switch value {
+        case ..<1_000: return "\(value)K"
+        case ..<1_000_000: return "\(value / 1_000)K"
+        default: return "\(value / 1_000_000)M"
         }
-        .padding(20)
-        .frame(width: 420)
     }
 }

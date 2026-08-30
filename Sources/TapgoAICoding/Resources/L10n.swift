@@ -92,6 +92,33 @@ enum L10n {
     static let approvalPolicyHint = "批准策略设为\"询问\"后，harness 在执行命令/修改文件前会暂停并在聊天里请求批准。默认\"永不询问\"保持全自动审批。"
     static let apply = "应用"
     static let resetDefault = "默认"
+    static let reasoningEffortDefault = "默认 (模型定)"
+    static let reasoningEffortNone = "无 (none)"
+    static let reasoningEffortLow = "低 (low)"
+    static let reasoningEffortMedium = "中 (medium)"
+    static let reasoningEffortHigh = "高 (high)"
+    static let cancel = "取消"
+    static let save = "保存"
+    static let delete = "删除"
+    static let confirm = "确定"
+    static let clearKey = "清除 Key"
+    static let testingConnection = "正在测试连接…"
+    static let applied = "已应用"
+    static let modelListHint = "内置模型可更新凭据、覆盖端点；自定义模型可全字段编辑或删除。"
+    static let modelKeyConfigured = "Key 已配置"
+    static let modelKeyMissing = "Key 缺失"
+    static let modelTest = "测试"
+    static let modelClearKeyConfirm = "清除「%@」的 API Key？"
+    static let modelClearKeyHint = "将删除隔离 Codex home 中的凭据文件，新会话会立刻 401。"
+    static let modelBuiltinEditHint = "内置模型仅可更新 Key；其他字段不可修改。"
+    static let modelSectionBuiltin = "内置"
+    static let modelSectionCustom = "自定义"
+    static let modelCurrentSelection = "当前"
+    static let modelBaseURLHint = "当前生效端点：%@"
+    static let modelEndpointOverrideTitle = "MiniMax 端点覆盖"
+    static let modelEndpointOverrideDesc = "高级设置。留空使用默认端点，仅影响 MiniMax；其他供应商用各自默认端点。"
+    static let modelBannerBaseURLReset = "已重置为默认端点"
+    static let modelKeyUnsupported = "当前模型不支持该思考强度，将被忽略。"
 
     // MARK: - Errors
     static let failedToSendApproval = "发送批准失败:"
@@ -143,6 +170,10 @@ enum L10n {
         default: return kind
         }
     }
+
+    /// 「连通 · 延迟 N ms」/ 「失败 · HTTP xxx」格式，供测试连接反馈。
+    static func connectionSucceeded(latencyMs: UInt) -> String { "连通 · 延迟 \(latencyMs) ms" }
+    static func connectionFailed(_ message: String) -> String { "失败 · \(message)" }
 
     /// Chinese label for a file-change kind raw value.
     static func fileChangeKindName(_ kind: String) -> String {

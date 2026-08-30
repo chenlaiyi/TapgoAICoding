@@ -366,10 +366,15 @@ enum TapgoConfig {
             UserDefaults.standard.set(ApprovalPolicy.untrusted.rawValue, forKey: Keys.approvalPolicy)
         }
         let effort = UserDefaults.standard.string(forKey: reasoningEffortKey) ?? ""
-        if effort != "" && effort != "none" && effort != "high" {
+        if !effort.isEmpty && Self.supportedReasoningEfforts.first(where: { $0 == effort }) == nil {
             UserDefaults.standard.removeObject(forKey: reasoningEffortKey)
         }
     }
+
+    /// v0.5.52 起思考强度固定 5 档；空串表示「模型定」，其它值经 setter
+    /// 写入时按 `supportedReasoningEfforts` 过滤。
+    static let supportedReasoningEfforts: [String] = ["", "none", "low", "medium", "high"]
+    static let defaultReasoningEffort: String = ""
 
     static var sandboxMode: SandboxMode {
         get { SandboxMode(rawValue: UserDefaults.standard.string(forKey: Keys.sandbox) ?? "") ?? .dangerFullAccess }
@@ -411,15 +416,15 @@ enum TapgoConfig {
 
     /// Optional reasoning-effort string sent as `effort` to `turn/start`.
     /// Empty/nil = don't send (keep the model's server default). Options
-    /// mirror the catalog's `supported_reasoning_levels` (`none`, `high`).
+    /// mirror the picker in 设置 → 模型 (v0.5.52 起固定 5 档)。
     static var reasoningEffort: String? {
         get {
             let v = UserDefaults.standard.string(forKey: reasoningEffortKey) ?? ""
-            return v == "none" || v == "high" ? v : nil
+            return supportedReasoningEfforts.contains(v) && !v.isEmpty ? v : nil
         }
         set {
             let v = newValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let supported = v == "none" || v == "high" ? v : ""
+            let supported = supportedReasoningEfforts.contains(v) ? v : ""
             UserDefaults.standard.set(supported.isEmpty ? nil : supported, forKey: reasoningEffortKey)
         }
     }
@@ -506,6 +511,67 @@ enum TapgoConfig {
         let registry = modelRegistry()
         registry.setSelected(selected.id)
         syncModelConfigFiles()
+    }
+
+    /// 当前选中态是否引用了某个自定义模型 id（v0.5.52 起，删除路径
+    /// 用此判断是否需要主动写回 `builtin:MiniMax-M3`，避免隐式回落）。
+    static func isSelectedCustomModel(id: String) -> Bool {
+        let raw = UserDefaults.standard.string(forKey: selectedModelKey) ?? ""
+        return ModelRegistry.normalizedID(raw) == id
+    }
+
+    /// 删除自定义模型。删除前若选中态指向该模型，主动写回
+    /// `builtin:MiniMax-M3` 并重写 config.toml / 目录，避免旧 ID
+    /// 残留在 UserDefaults 后被 `resolveSelected` 隐式回落（v0.5.52）。
+    /// 返回「是否真的删除了该自定义模型」，上层据此决定是否 toast 提示。
+    @discardableResult
+    static func deleteCustomModel(id: String) -> Bool {
+        let removed = ModelSettingsProbe.deleteCustomModel(
+            id: id,
+            registry: modelRegistry(),
+            selectedModelKey: selectedModelKey,
+            fallbackSelectedID: "builtin:\(TapgoModel.minimaxM3.rawValue)"
+        )
+        syncModelConfigFiles()
+        return removed
+    }
+
+    /// 清除内置模型的凭据文件（0600）。下次启动未重写时，harness 会拿到
+    /// 空 bearer 并返回 401。新会话将无法使用该内置模型，直到重新填 Key。
+    /// 自定义模型 Key 与定义一起存在 `model-registry.json`，由
+    /// `CustomModel` 自身管理，不走此 API。
+    static func clearAPIKey(for model: TapgoModel) {
+        let path: URL
+        switch model {
+        case .minimaxM3: path = authPath
+        case .glm53Flash: path = glmAuthPath
+        case .deepSeekV4Flash, .deepSeekV4Pro: path = deepSeekAuthPath
+        }
+        try? FileManager.default.removeItem(at: path)
+        syncModelConfigFiles()
+    }
+
+    /// 探测任意模型（含自定义）的端点连通性（v0.5.52）。
+    /// 内部走 `ModelSettingsProbe.testConnection`，注入 baseURL + Key。
+    static func testConnection(
+        for row: ResolvedModel,
+        completion: @escaping (Result<UInt, Error>) -> Void
+    ) {
+        let key: String?
+        if let builtIn = row.builtIn {
+            switch builtIn {
+            case .minimaxM3: key = ModelSettingsProbe.readAPIKey(at: authPath)
+            case .glm53Flash: key = ModelSettingsProbe.readAPIKey(at: glmAuthPath)
+            case .deepSeekV4Flash, .deepSeekV4Pro: key = ModelSettingsProbe.readAPIKey(at: deepSeekAuthPath)
+            }
+        } else {
+            key = TapgoConfig.modelRegistry().customModel(id: row.id)?.apiKey
+        }
+        ModelSettingsProbe.testConnection(
+            baseURL: row.baseURL,
+            apiKey: key,
+            completion: completion
+        )
     }
 
     /// 增删改自定义模型 / 切换选择后调用：按最新注册表重写

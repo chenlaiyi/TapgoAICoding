@@ -56,25 +56,82 @@ public struct CustomModel: Codable, Identifiable, Equatable {
         return copy
     }
 
-    /// 返回适合直接展示给用户的校验错误；nil 表示可保存。
-    public var validationError: String? {
+    /// 返回适合直接展示给用户的校验错误（v0.5.52 起改为一次返回多条）。
+    /// UI 在表单顶部红字列出；`nil`/`[]` 都视为可保存。
+    public var validationErrors: [String] {
+        validationErrors(requireAPIKey: true)
+    }
+
+    /// 同 `validationErrors`，但允许调用方在「编辑既有自定义模型且未输入新
+    /// Key」时关掉 API Key 必填校验（保留已写入的旧 Key）。
+    public func validationErrors(requireAPIKey: Bool) -> [String] {
         let value = normalizedForStorage()
-        if value.displayName.isEmpty { return "请填写显示名" }
-        if value.apiModel.isEmpty { return "请填写 API 模型 ID" }
-        if value.baseURL.isEmpty { return "请填写端点 Base URL" }
-        guard let components = URLComponents(string: value.baseURL),
+        var errors: [String] = []
+        if value.displayName.isEmpty { errors.append("请填写显示名") }
+        if value.apiModel.isEmpty { errors.append("请填写 API 模型 ID") }
+        if value.brand.isEmpty { errors.append("请填写品牌") }
+        if value.baseURL.isEmpty {
+            errors.append("请填写端点 Base URL")
+        } else {
+            let acceptedAny = Self.isAcceptableBaseURL(value.baseURL, allowLocalhost: true)
+            let acceptedPublic = Self.isAcceptableBaseURL(value.baseURL, allowLocalhost: false)
+            if acceptedAny {
+                // 通过：https 或 本地 http
+            } else if acceptedPublic {
+                // https 接受但 http-only 的 host（理论上不会到这里，留作保险）
+                errors.append("端点必须是有效的 https Base URL（http 仅限本地）")
+            } else if let scheme = URLComponents(string: value.baseURL)?.scheme?.lowercased(),
+                      scheme == "http" {
+                errors.append("明文 HTTP 仅限 localhost / 127.0.0.1 / ::1")
+            } else {
+                errors.append("端点必须是有效的 https Base URL（http 仅限本地）")
+            }
+        }
+        if requireAPIKey, value.apiKey.isEmpty {
+            errors.append("请填写 API Key")
+        }
+        if value.contextWindow <= 0 {
+            errors.append("上下文窗口必须大于 0")
+        }
+        return errors
+    }
+
+    /// 端点 URL 校验：`https` 始终接受；`http` 仅在 host 是
+    /// localhost / 127.0.0.1 / ::1 时接受，避免明文 token 走公网。
+    /// 同时要求无 user/password/query/fragment（与历史约束一致）。
+    public static func isAcceptableBaseURL(_ raw: String, allowLocalhost: Bool) -> Bool {
+        guard let components = URLComponents(string: raw),
               let scheme = components.scheme?.lowercased(),
-              scheme == "https" || scheme == "http",
-              components.host?.isEmpty == false,
+              (scheme == "https" || scheme == "http"),
+              let host = components.host, !host.isEmpty,
               components.user == nil,
               components.password == nil,
               components.query == nil,
               components.fragment == nil
-        else {
-            return "端点必须是有效的 http(s) Base URL，且不能包含账号、查询参数或片段"
-        }
-        if value.contextWindow <= 0 { return "上下文窗口必须大于 0" }
-        return nil
+        else { return false }
+        if scheme == "https" { return true }
+        // scheme == "http"
+        if !allowLocalhost { return false }
+        let lower = host.lowercased()
+        return lower == "localhost"
+            || lower == "127.0.0.1"
+            || lower == "::1"
+            || lower.hasSuffix(".localhost")
+    }
+
+    /// 兼容旧调用方（v0.5.42/v0.5.51 测试与外部 API）；返回首条错误或 nil。
+    public var validationError: String? {
+        validationErrors.first
+    }
+
+    /// v0.5.52 起支持更多上下文档位：8K → 1M 升序排列。
+    public static let contextWindowOptions: [Int] = [
+        8_192, 16_384, 32_768, 65_536, 128_000, 200_000, 256_000, 500_000, 1_000_000
+    ]
+
+    /// 把任意整数吸附到最近一档上下文窗口；未知值落到 1M。
+    public static func normalizedContextWindow(_ raw: Int) -> Int {
+        contextWindowOptions.first(where: { $0 == raw }) ?? 1_000_000
     }
 
     enum CodingKeys: String, CodingKey {

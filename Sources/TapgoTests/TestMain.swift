@@ -66,6 +66,9 @@ let allSections: [String] = [
     "GLMQuota: quota/limit 解析与映射",
     "DeepSeekQuota: balance 解析与映射",
     "ModelRegistry: 自定义模型增删改查",
+    "TapgoConfigProbe: readAPIKey parses auth file",
+    "TapgoConfigProbe: deleteCustomModel rewrites selected id",
+    "TapgoConfigProbe: testConnection probes /models",
     "DeepSeekQuota: DeepSeekQuotaClient transport & auth",
     "GLMQuota: GLMQuotaClient transport & auth",
     "ExecEvent: approval request parsing",
@@ -348,6 +351,15 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ModelRegistry: 自定义模型增删改查") {
             runModelRegistry(runner)
+        }
+        await runIfInScope(runner, "TapgoConfigProbe: readAPIKey parses auth file") {
+            runTapgoConfigReadAPIKey(runner)
+        }
+        await runIfInScope(runner, "TapgoConfigProbe: deleteCustomModel rewrites selected id") {
+            runTapgoConfigDeleteCustomModel(runner)
+        }
+        await runIfInScope(runner, "TapgoConfigProbe: testConnection probes /models") {
+            await runTapgoConfigTestConnection(runner)
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)
