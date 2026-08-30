@@ -30,6 +30,7 @@
 - 修复: 新增 `TapgoConfig.renderedConfigWithKey(region:authKey:)`, 两条 config 写出路径 (首次 init 的 writeAll 与 ensureReady 的漂移重写) 都把占位符替换为 auth.json 里的真实 key; 模板注释同步更正 (不再声称 key 不落盘, 文件 0600)。
 - 自愈验证: 本机重启 App 后 ensureReady 检测漂移自动重写, config.toml 中 bearer 与 auth.json 完全一致 (125 字符 sk-cp-12…, 占位符残留 0)。
 - 端到端验证: 经公网 H5 `api/send` 发送鉴权验证消息 → 回合 completed, 模型回复『已恢复正常』。
+- **JKmacmini 补充修复 (数据层)**: JK 的 auth.json 存的是已失效的旧格式 key (`sk-mini1-…`, 49 位, 直连 MiniMax 401), config/heal 均正常但 key 本身死了 —— 已将本机验证过的 Token Plan key 写入 JK 并重启, 公网端到端验证回合 completed。当前代码无任何 auth.json 写入点, 09:54 的改写来源待观察是否复现。
 **Why**: v0.5.27 的 config 漂移重写是按『占位符有效』的错误假设写的, 上线即打断了所有会话的模型鉴权; 配置文件属于关键数据, 重写必须保留可用的凭据语义。
 **Next**: 观察三台机器配置一致性; 评估给 config.toml 重写加 .bak 备份, 避免同类覆盖不可回滚。
 
