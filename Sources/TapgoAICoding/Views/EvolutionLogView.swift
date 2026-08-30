@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.50",
+                    date: "2026-08-30",
+                    commit: "7668a47",
+                    tag: "v0.5.50",
+                    summary: "本地化应用名启动不再假成功",
+                    changes: [
+                        "open_application 等待 /usr/bin/open 完整退出并检查退出码，不再把进程创建成功误报为应用启动成功。",
+                        "英文 bundle 名失败后按 Spotlight 本地化显示名索引解析 .app；中文「计算器」可定位 Calculator.app，bundle id 仍由 NSWorkspace 解析。",
+                        "JKMac mini 实测调用前无 Calculator 进程，中文启动后产生新 PID，并可继续用中文名读取 com.apple.calculator 界面树；完整回归 2397/2397。"
+                    ],
+                    why: "v0.5.49 的权限桥接已打通，但验收使用英文 Calculator 绕过了中文名称找不到应用且仍返回成功的问题。",
+                    next: "三机同步 0.5.50；另外两台完成本机 TCC 双授权后做相同真实会话回归。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.49",
                     date: "2026-08-30",
                     commit: "535ae92",

@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.50 — 本地化应用名启动不再假成功
+**Date**: 2026-08-30
+**Commit**: 7668a47
+**Tag**: v0.5.50
+**Test status**: 2397 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过远程环境段）
+**Changed**:
+- `open_application` 现在等待 `/usr/bin/open` 完整退出并检查退出码，不再把“进程成功创建”误报为“应用成功启动”。
+- 英文 bundle 名失败时，按本机 Spotlight 的 `kMDItemDisplayName` 本地化索引解析 `.app`，中文“计算器”可正确定位 `/System/Applications/Calculator.app`；bundle id 仍走 `NSWorkspace` 直接解析。
+- JKMac mini 实测调用前 Calculator 进程不存在；`open_application(name="计算器")` 后出现新 PID，并可用 `get_app_state(app="计算器")` 读取 `com.apple.calculator` 界面树。
+**Why**: v0.5.49 的核心权限桥接已打通，但真实验收使用英文 `Calculator` 绕过了一个中文场景：旧实现未等待 `open` 结束，中文本地化名称找不到应用时仍返回成功。
+**Next**: 三台 Mac 同步 0.5.50；MacBook Pro 与 fafamacmini 分别完成本机 TCC 双授权后，再做与 JKMac mini 相同的真实会话验收。
+
 ## v0.5.49 — 正式签名 Helper 桥接打通真实电脑控制
 **Date**: 2026-08-30
 **Commit**: 535ae92
