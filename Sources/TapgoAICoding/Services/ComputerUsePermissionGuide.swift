@@ -173,7 +173,12 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
         panel.hasShadow = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
-        panel.isMovableByWindowBackground = true
+        // The panel itself must stay anchored above System Settings. If
+        // background movement is enabled, AppKit consumes the pointer drag
+        // before SwiftUI's `.onDrag` can export the helper `.app`, so the
+        // entire guide window follows the cursor instead of the app tile.
+        panel.isMovable = false
+        panel.isMovableByWindowBackground = false
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self

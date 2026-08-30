@@ -4,7 +4,7 @@
 
 Tapgo AICoding is a native macOS SwiftUI coding-agent client. It uses the [OpenAI Codex Harness](https://github.com/openai/codex) `app-server` as its runtime and manages conversations, tools, approvals, file changes, and command execution over persistent JSON-RPC. The desktop workspace is designed for multiple projects, long-running tasks, and development across several Macs.
 
-Current version: **v0.5.46** · macOS 14+
+Current version: **v0.5.47** · macOS 14+
 
 ## Current capabilities
 
@@ -229,7 +229,7 @@ Canonical test command:
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
 ```
 
-The latest v0.5.46 verification is **2394 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, and computer-use tests still run.
+The latest v0.5.47 verification is **2394 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, and computer-use tests still run.
 
 Release products:
 
@@ -279,7 +279,7 @@ Release history lives in [EVOLUTION.md](EVOLUTION.md). A release should keep the
 Rollback example:
 
 ```bash
-git checkout v0.5.46
+git checkout v0.5.47
 ./scripts/build-app.sh
 open 'Tapgo AICoding.app'
 ```
