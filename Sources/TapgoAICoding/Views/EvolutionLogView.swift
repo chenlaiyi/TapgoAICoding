@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.45",
+                    date: "2026-08-30",
+                    commit: "e174ceb",
+                    tag: "v0.5.45",
+                    summary: "电脑控制界面验收修复",
+                    changes: [
+                        "电脑控制两个开关固定使用 macOS 滑动样式，避免在设置卡片中渲染为复选框。",
+                        "输入区电脑操作入口改用携带初始页的 sheet 状态，首次点击也能稳定直达电脑控制设置。",
+                        "保留 v0.5.44 已发布标签，修复以新版本交付，不改写远端历史。"
+                    ],
+                    why: "真实界面验收发现开关视觉形态和首次直达页面存在偏差，需要在不改写既有发布的前提下完成修复。",
+                    next: "三机授权后验证语义元素点击；继续补按元素输入、滚动与多显示器选择。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.44",
                     date: "2026-08-30",
                     commit: "c39cbda",

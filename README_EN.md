@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.md)
 
-A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex). It includes **MiniMax M3, GLM 5.3 Flash, and DeepSeek V4 Flash / Pro**, and also supports custom OpenAI Responses-compatible models. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.44 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
+A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex). It includes **MiniMax M3, GLM 5.3 Flash, and DeepSeek V4 Flash / Pro**, and also supports custom OpenAI Responses-compatible models. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.45 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
 
 ```
 ┌──────────────────────────────────────────┐

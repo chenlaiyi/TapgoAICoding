@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.45 — 电脑控制界面验收修复
+**Date**: 2026-08-30
+**Commit**: e174ceb
+**Tag**: v0.5.45
+**Test status**: 2390 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Changed**:
+- 将电脑控制两个开关明确固定为 macOS 滑动开关，避免系统默认 Form 样式显示为复选框。
+- 输入区「电脑操作」入口改用带初始页面的独立 sheet 状态，稳定直达电脑控制设置，消除首次打开误落到常规页的竞态。
+**Why**: v0.5.44 发布后的真实界面验收发现开关视觉形态和首次直达页面不符合预期，需要发布一个不改写既有标签的修复版本。
+**Next**: 三机授权后验证语义元素点击链路；继续补按元素输入、滚动与多显示器选择。
+
 ## v0.5.44 — 电脑控制完整启停、输入区入口与 Accessibility 语义操作
 **Date**: 2026-08-30
 **Commit**: c39cbda

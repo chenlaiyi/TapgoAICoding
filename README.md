@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-Tapgo AICoding 是一个基于 SwiftUI 的原生 macOS 客户端，为 [OpenAI Codex Harness](https://github.com/openai/codex) 提供图形界面。内置支持 **MiniMax M3、GLM 5.3 Flash、DeepSeek V4 Flash / Pro**，并允许添加兼容 OpenAI Responses API 的自定义模型。应用通过标准输入输出与 Harness 的 `app-server` JSON-RPC 协议通信，不依赖 Shell 调用，也不使用旧式 exec 模式。v0.5.44 面向已通过 [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1) 验证的服务端请求协议，并参考了 [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) 的恢复、上下文压缩和默认拒绝审批设计，但不嵌入其 Developer Preview Node/Python 运行时。
+Tapgo AICoding 是一个基于 SwiftUI 的原生 macOS 客户端，为 [OpenAI Codex Harness](https://github.com/openai/codex) 提供图形界面。内置支持 **MiniMax M3、GLM 5.3 Flash、DeepSeek V4 Flash / Pro**，并允许添加兼容 OpenAI Responses API 的自定义模型。应用通过标准输入输出与 Harness 的 `app-server` JSON-RPC 协议通信，不依赖 Shell 调用，也不使用旧式 exec 模式。v0.5.45 面向已通过 [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1) 验证的服务端请求协议，并参考了 [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) 的恢复、上下文压缩和默认拒绝审批设计，但不嵌入其 Developer Preview Node/Python 运行时。
 
 ```text
 ┌──────────────────────────────────────────┐
