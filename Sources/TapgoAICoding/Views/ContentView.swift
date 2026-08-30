@@ -5,8 +5,7 @@ import TapgoCore
 struct ContentView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
-    @State private var showSettings = false
-    @State private var settingsInitialTab: SettingsView.Tab = .general
+    @State private var settingsPresentation: SettingsPresentation?
     @State private var showNewTask = false
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
     @State private var showShortcuts = false
@@ -30,11 +29,10 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenSettings)) { note in
             if let raw = note.object as? String,
                let requested = SettingsView.Tab(rawValue: raw) {
-                settingsInitialTab = requested
+                settingsPresentation = SettingsPresentation(tab: requested)
             } else {
-                settingsInitialTab = .general
+                settingsPresentation = SettingsPresentation(tab: .general)
             }
-            showSettings = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenNewTask)) { _ in
             showNewTask = true
@@ -48,8 +46,8 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenCommandPalette)) { _ in
             showCommandPalette = true
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(initialTab: settingsInitialTab)
+        .sheet(item: $settingsPresentation) { presentation in
+            SettingsView(initialTab: presentation.tab)
                 .environmentObject(workspace)
                 .environmentObject(store)
         }
@@ -68,8 +66,7 @@ struct ContentView: View {
             CommandPaletteView(
                 onNewTask: { showNewTask = true },
                 onSettings: {
-                    settingsInitialTab = .general
-                    showSettings = true
+                    settingsPresentation = SettingsPresentation(tab: .general)
                 },
                 onToggleTrajectory: { showTrajectory.toggle() }
             )
@@ -131,8 +128,7 @@ struct ContentView: View {
                 SidebarView(
                     showNewTask: { showNewTask = true },
                     showSettings: {
-                        settingsInitialTab = .general
-                        showSettings = true
+                        settingsPresentation = SettingsPresentation(tab: .general)
                     }
                 )
             } content: {
@@ -149,8 +145,7 @@ struct ContentView: View {
                 SidebarView(
                     showNewTask: { showNewTask = true },
                     showSettings: {
-                        settingsInitialTab = .general
-                        showSettings = true
+                        settingsPresentation = SettingsPresentation(tab: .general)
                     }
                 )
             } detail: {
@@ -202,6 +197,11 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private struct SettingsPresentation: Identifiable {
+        let id = UUID()
+        let tab: SettingsView.Tab
     }
 
     // MARK: - Local folder pick
