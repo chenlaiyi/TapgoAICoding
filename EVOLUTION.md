@@ -21,7 +21,7 @@
 
 ## v0.5.28 — 紧急修复 config.toml 漂移重写抹掉真实鉴权导致 401
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: ca7da89
 **Tag**: v0.5.28
 **Test status**: 2307 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:

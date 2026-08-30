@@ -291,7 +291,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.28",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "ca7da89",
                     tag: "v0.5.28",
                     summary: "紧急修复 config.toml 漂移重写抹掉真实鉴权导致 401",
                     changes: [
