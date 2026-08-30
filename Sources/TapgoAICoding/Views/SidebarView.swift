@@ -243,7 +243,10 @@ struct SidebarView: View {
             if grouped.isEmpty {
                 emptyState
             } else {
-                ForEach(grouped, id: \.project?.id) { group in
+                // 用 ThreadGroup.id 做 identity：自进化组与未分类组的
+                // project 都是 nil，按 project?.id 取 key 会撞车，List
+                // 会渲染出重复分组。
+                ForEach(grouped, id: \.id) { group in
                     threadSection(for: group)
                 }
             }
