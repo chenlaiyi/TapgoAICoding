@@ -144,6 +144,9 @@ struct ChatView: View {
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
+    /// 当前选中的模型（composer 弹窗切换，对新建会话生效）。
+    @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
+        TapgoModel.minimaxM3.rawValue
     @FocusState private var searchFieldFocused: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
@@ -1472,15 +1475,28 @@ struct ComposerView: View {
                     }
 
                     Menu {
-                        Button {
-                            copyGlobal(store.modelName)
+                        // v0.5.31: 模型行从"复制模型名"升级为切换子菜单。
+                        // 选择立即持久化, 对新建会话生效; 进行中的会话
+                        // 保持创建时的模型不变。
+                        Menu {
+                            ForEach(TapgoModel.allCases) { m in
+                                Button {
+                                    TapgoConfig.selectedModel = m
+                                } label: {
+                                    if m.rawValue == selectedModelRaw {
+                                        Label(m.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(m.rawValue)
+                                    }
+                                }
+                            }
                         } label: {
-                            Label("模型: \(store.modelName)", systemImage: "cpu")
+                            Label("切换模型（新会话生效）", systemImage: "cpu")
                         }
                         Button {
-                            copyGlobal(TapgoConfig.effectiveBaseURL)
+                            copyGlobal(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))
                         } label: {
-                            Label("端点: \(TapgoConfig.effectiveBaseURL)", systemImage: "network")
+                            Label("端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))", systemImage: "network")
                         }
                         if let pct = composerContextPercent {
                             Button {} label: {

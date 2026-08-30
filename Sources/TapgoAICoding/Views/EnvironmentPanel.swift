@@ -45,10 +45,10 @@ struct EnvironmentPanel: View {
                     row(icon: "arrow.triangle.branch.circle", label: "分支", value: branch ?? "—")
                     changesRow
                 }
-                row(icon: "cpu", label: "模型", value: TapgoConfig.modelName)
+                row(icon: "cpu", label: "模型", value: TapgoConfig.selectedModel.rawValue)
                 row(icon: "globe.asia.australia", label: "区域", value: TapgoConfig.defaultRegion.displayName)
                 // Endpoint → open run settings.
-                buttonRow(icon: "network", label: "端点", value: TapgoConfig.effectiveBaseURL) {
+                buttonRow(icon: "network", label: "端点", value: TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel)) {
                     NotificationCenter.default.post(name: .tapgoRequestOpenSettings, object: nil)
                 }
                 buttonRow(icon: "doc.text", label: "配置", value: "config.toml") {
@@ -254,8 +254,8 @@ struct EnvironmentPanel: View {
             lines.append("路径: \(cwd)")
             lines.append("来源: 本地")
         }
-        lines.append("模型: \(TapgoConfig.modelName)")
-        lines.append("端点: \(TapgoConfig.effectiveBaseURL)")
+        lines.append("模型: \(TapgoConfig.selectedModel.rawValue)")
+        lines.append("端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))")
         lines.append("沙箱: \(TapgoConfig.SandboxMode(rawValue: sandboxRaw)?.displayName ?? "")")
         lines.append("批准: \(TapgoConfig.ApprovalPolicy(rawValue: approvalPolicyRaw)?.displayName ?? "")")
         lines.append("思考: \(effortLabel)")

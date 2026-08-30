@@ -116,14 +116,21 @@ final class SessionStore: ObservableObject {
     /// Mirror of persisted threads (live turns in-memory only).
     @Published private(set) var liveThreads: [TapgoCore.Thread] = []
 
-    var modelName: String { TapgoConfig.modelName }
+    /// composer 底栏与状态快照展示的模型 = 当前选中的模型
+    /// （切模型对新建会话生效，进行中的会话保持创建时的模型）。
+    var modelName: String { TapgoConfig.selectedModel.rawValue }
 
     /// 拉取 MiniMax 官方 Token Plan 剩余额度，写入 `rateLimits`。可重复调用 —
-    /// 重叠请求由 `rateLimitsLoading` 合并。模型由 `TapgoConfig.modelName`
-    /// 决定（当前固定为 MiniMax-M3）。任何错误都会写到 `rateLimitsError`，
-    /// 弹窗会显示为红字 caption。
+    /// 重叠请求由 `rateLimitsLoading` 合并。额度通道只接 MiniMax 官方接口：
+    /// 选中 GLM 时没有对应查询途径，这里清空旧快照并注明原因，避免把
+    /// MiniMax 的额度错标到 GLM 头上。
     func refreshRateLimits() {
         guard !rateLimitsLoading else { return }
+        guard TapgoConfig.selectedModel == .minimaxM3 else {
+            rateLimits = nil
+            rateLimitsError = "\(TapgoConfig.selectedModel.rawValue) 走 BigModel Coding Plan，暂不支持在 App 内查询额度"
+            return
+        }
         rateLimitsLoading = true
         Task { @MainActor [weak self] in
             defer { self?.rateLimitsLoading = false }

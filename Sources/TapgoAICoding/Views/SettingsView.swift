@@ -459,7 +459,7 @@ struct SettingsView: View {
             Text("Tapgo AICoding \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0")")
                 .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
                 .textSelection(.enabled)
-            Text("固定模型: \(TapgoConfig.modelName)")
+            Text("当前模型: \(TapgoConfig.selectedModel.rawValue)（composer 弹窗可切换，新会话生效）")
                 .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .textSelection(.enabled)
             Text("独立 Codex home: \(TapgoConfig.codexHome.path)")
@@ -741,9 +741,9 @@ struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.4.0"
         let text = [
             "Tapgo AICoding \(version)",
-            "模型: \(TapgoConfig.modelName)",
+            "模型: \(TapgoConfig.selectedModel.rawValue)",
             "区域: \(TapgoConfig.defaultRegion.displayName)",
-            "端点: \(TapgoConfig.effectiveBaseURL)",
+            "端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))",
             "Codex home: \(TapgoConfig.codexHome.path)",
             "日志: \(TapgoConfig.logFileURL.path)",
         ].joined(separator: "\n")

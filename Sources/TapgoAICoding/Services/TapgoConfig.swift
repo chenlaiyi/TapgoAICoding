@@ -24,9 +24,11 @@ enum TapgoConfig {
         }
     }
 
-    /// We pin the model. There is no other model available in this app.
-    static let modelName = "MiniMax-M3"
-    static let modelProvider = "minimax"
+    /// 默认模型与 provider（config.toml 顶层缺省值）。v0.5.31 起支持
+    /// 多模型切换：实际每个新会话用哪个由 `selectedModel` 决定，经
+    /// `thread/start` 显式下发；后台任务（记忆整理、额度查询）固定 MiniMax。
+    static let modelName = TapgoModel.minimaxM3.rawValue
+    static let modelProvider = TapgoModel.minimaxM3.providerId
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
@@ -410,6 +412,43 @@ enum TapgoConfig {
         log("Applied base URL: \(effectiveBaseURL)")
     }
 
+    // MARK: - 模型切换 (v0.5.31)
+
+    /// 当前选中的模型（composer 弹窗切换）。只影响**新会话**——进行中的
+    /// 会话沿用创建时的模型；记忆整理与额度查询等后台任务固定 MiniMax。
+    static let selectedModelKey = "tapgo.model"
+
+    static var selectedModel: TapgoModel {
+        get {
+            TapgoModel(rawValue: UserDefaults.standard.string(forKey: selectedModelKey) ?? "")
+                ?? .minimaxM3
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: selectedModelKey) }
+    }
+
+    /// 选中模型的实际端点：MiniMax 尊重用户在运行设置里的覆盖，GLM 固定。
+    static func effectiveBaseURL(for model: TapgoModel) -> String {
+        switch model {
+        case .minimaxM3: return effectiveBaseURL
+        case .glm53Flash: return model.defaultBaseURL
+        }
+    }
+
+    /// GLM（BigModel Coding Plan）的独立鉴权文件，与 auth.json 同设计
+    /// （0600，`{"OPENAI_API_KEY": "<key>"}`）。`renderConfig` 会把其中
+    /// 的 key 注入 `[model_providers.glm]` 的 bearer。文件缺失时注入
+    /// 空串而不是占位符——占位符没有任何运行时替换机制（v0.5.28 的
+    /// 教训），选 GLM 的新会话会直接收到 401，错误清晰可定位。
+    static var glmAuthPath: URL { codexHome.appendingPathComponent("auth-glm.json") }
+
+    static func glmAuthKey() -> String {
+        guard let data = try? Data(contentsOf: glmAuthPath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let key = json["OPENAI_API_KEY"] as? String
+        else { return "" }
+        return key
+    }
+
     /// Root of the isolated Codex home.
     static var codexHome: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -603,10 +642,12 @@ enum TapgoConfig {
     // MARK: - Templates
 
     /// 模板渲染 + 占位符注入: config.toml 里 `experimental_bearer_token` 的
-    /// `__FROM_AUTH_JSON__` 占位替换为 auth.json 中的真实 key。codex 不会
-    /// 解析这个占位符, 缺了它请求就会 401 (1004 login fail)。
-    static func renderedConfigWithKey(region: Region, authKey: String) -> String {
+    /// `__FROM_AUTH_JSON__` / `__FROM_AUTH_GLM_JSON__` 占位分别替换为
+    /// auth.json 与 auth-glm.json 中的真实 key。codex 不会解析占位符,
+    /// 缺了它们请求就会 401。
+    static func renderedConfigWithKey(region: Region, authKey: String, glmKey: String? = nil) -> String {
         renderConfig(region: region)
+            .replacingOccurrences(of: "__FROM_AUTH_GLM_JSON__", with: glmKey ?? glmAuthKey())
             .replacingOccurrences(of: "__FROM_AUTH_JSON__", with: authKey)
     }
 
@@ -622,50 +663,33 @@ enum TapgoConfig {
         model_auto_compact_token_limit = \(autoCompactTokenLimit)
         model_catalog_json = "\(modelCatalogPath.path)"
 
-        [model_providers.\(modelProvider)]
+        [model_providers.\(TapgoModel.minimaxM3.providerId)]
         name = "MiniMax"
         base_url = "\(effectiveBaseURL)"
         wire_api = "responses"
         experimental_bearer_token = "__FROM_AUTH_JSON__"
 
+        # v0.5.31: GLM-5.3-Flash (BigModel Coding Plan)。智谱官方给 Codex 的
+        # OpenAI Responses 协议专属端点, wire 必须是 responses (harness 0.149+
+        # 已移除 chat)。鉴权来自独立的 auth-glm.json; 文件缺失时 bearer 为空,
+        # 选 GLM 的新会话会收到 401。
+        [model_providers.\(TapgoModel.glm53Flash.providerId)]
+        name = "GLM"
+        base_url = "\(TapgoModel.glm53Flash.defaultBaseURL)"
+        wire_api = "responses"
+        experimental_bearer_token = "__FROM_AUTH_GLM_JSON__"
+
         [projects."/Users/Shared"]
         trust_level = "untrusted"
 
         [notice]
-        # experimental_bearer_token 已由 App 注入 auth.json 中的真实 key,
-        # 本文件与 auth.json 同为 0600 权限, 请勿外传。
+        # experimental_bearer_token 已由 App 注入真实 key,
+        # 本文件与 auth.json / auth-glm.json 同为 0600 权限, 请勿外传。
         """
     }
 
     static func renderCatalog() -> String {
-        """
-        {
-          "models": [
-            {
-              "slug": "\(modelName)",
-              "display_name": "\(modelName)",
-              "description": "Tapgo AICoding 唯一可用模型。",
-              "default_reasoning_level": "high",
-              "supported_reasoning_levels": [
-                { "effort": "none", "description": "Think-Off" },
-                { "effort": "high", "description": "Deep" }
-              ],
-              "shell_type": "shell_command",
-              "visibility": "list",
-              "supported_in_api": true,
-              "priority": 0,
-              "base_instructions": "You are Tapgo AICoding, an autonomous coding agent powered by MiniMax-M3. For every actionable request, inspect the current workspace and use the available tools to implement and verify the result. Never claim that tools are unavailable unless a concrete tool call failed in the current turn. Treat persistent memory only as background; the current user request and current workspace evidence always win. \(AgentOutputPolicy.catalogInstructions)",
-              "supports_reasoning_summaries": true,
-              "default_reasoning_summary": "none",
-              "support_verbosity": false,
-              "truncation_policy": { "mode": "bytes", "limit": 10000 },
-              "supports_parallel_tool_calls": false,
-              "experimental_supported_tools": [],
-              "input_modalities": ["text", "image"]
-            }
-          ]
-        }
-        """
+        TapgoModel.catalogJSON()
     }
 
     private static func writeDefaultCatalog(region: Region) throws {

@@ -469,9 +469,12 @@ final class CodexHarnessClient {
         includeServiceName: Bool,
         clearBaseInstructionsWhenNil: Bool
     ) -> [String: JSONValue] {
+        // v0.5.31: model/modelProvider 跟随用户在 composer 弹窗里的选择，
+        // 对新建会话生效；config.toml 里两个 provider 常驻，切换无需重写。
+        let selected = TapgoConfig.selectedModel
         var params: [String: JSONValue] = [
-            "model": .string(TapgoConfig.modelName),
-            "modelProvider": .string(TapgoConfig.modelProvider),
+            "model": .string(selected.rawValue),
+            "modelProvider": .string(selected.providerId),
             "approvalPolicy": .string(TapgoConfig.approvalPolicy.rawValue),
             "sandbox": .string(TapgoConfig.sandboxMode.rawValue),
         ]

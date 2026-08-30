@@ -794,7 +794,7 @@ struct SidebarView: View {
         if let weekly = snapshot?.secondary, weekly.windowDurationMins == 10080 {
             parts.append("周余量 \(max(0, 100 - weekly.usedPercent))%")
         }
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: "·")
     }
 
     @ViewBuilder

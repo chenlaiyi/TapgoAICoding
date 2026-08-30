@@ -62,6 +62,7 @@ let allSections: [String] = [
     "e2e: remote turn with `false` (exit code propagation)",
     "Thread: auto-title from first user message",
     "Thread: evolution mode + workspace",
+    "TapgoModel: catalog & provider mapping",
     "ExecEvent: approval request parsing",
     "ExecEvent: command output streaming",
     "ExecEvent: turn plan, diff, compaction",
@@ -322,6 +323,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Thread: evolution mode + workspace") {
             runThreadEvolutionMode(runner)
+        }
+        await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
+            runModelCatalog(runner)
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)

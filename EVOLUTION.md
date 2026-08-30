@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.30 — 侧栏用户信息灰色行改为「供应商·套餐名·周余量」
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.30
+**Test status**: 2323 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
+**Changed**:
+- 用户要求: App 左下角用户信息的灰色名字行(原先重复显示昵称)改为显示当前模型供应商/套餐名/周余量百分比。
+- `SidebarView.userBar` 灰色行改为 `modelQuotaSummary`: `MiniMax·Coding Plan·周余量 74%` —— 供应商取 TapgoConfig, 套餐名用 `rateLimits?.planLabel` (MiniMax coding_plan 端点不返回套餐名字段, 回退 `Coding Plan` 端点语义; 初版误用『Token Plan』被用户指出后更正), 周余量 = 100 - secondary(10080 分钟窗口).usedPercent, 与 MiniMax 接口 `current_weekly_remaining_percent` 实测一致。
+- userBar 挂 `.task`: 进侧栏立即 `refreshRateLimits()`, 之后每 5 分钟刷新。
+- 目视回归: 窗口级截图确认左下角渲染 `MiniMax·Coding Plan·周余量 74%` (接口真实数据 74, 无截断)。
+**Why**: 用户要在常驻位置一眼看到当前供应商/套餐/周配额健康度; 灰色行原本重复显示昵称没有信息量。
+**Next**: 若 MiniMax 接口未来返回正式套餐名字段, 用真实值替换 Coding Plan 回退; 周余量颜色随压力等级变化。
+
 ## v0.5.29 — 自进化升级为独立入口：独立对话、独立开发专属会话
 **Date**: 2026-08-30
 **Commit**: 4ebecd9

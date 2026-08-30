@@ -69,7 +69,7 @@ enum L10n {
     // MARK: - Composer
     static let sendButton = "发送"
     static let attachImages = "添加图片附件"
-    static let composePlaceholder = "给 MiniMax-M3 发条任务… (⌘↩ 发送)"
+    static let composePlaceholder = "给当前模型发条任务… (⌘↩ 发送)"
     static let noProject = "无项目"
 
     // MARK: - Approval
