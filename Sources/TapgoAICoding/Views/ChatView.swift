@@ -1341,7 +1341,31 @@ struct ComposerView: View {
                     .help("添加附件 / 插入技能")
                     .accessibilityLabel("添加附件或技能")
 
-                    if let p = workspace.state.activeProject {
+                    // 自进化会话的专属项目条：固定指向 TapgoAICoding 项目
+                    // 根，不跟随 activeProject——否则用户看到「OctTapgo」
+                    // 会以为还在项目会话里（v0.5.33 用户实测踩坑）。
+                    if let thread = activeThread, thread.isEvolution {
+                        let repoName = thread.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Tapgo AICoding"
+                        Button {
+                            if let cwd = thread.cwd {
+                                NSWorkspace.shared.open(URL(fileURLWithPath: cwd))
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "sparkles")
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                    .foregroundStyle(DSHTheme.brand)
+                                Text("自进化 · \(repoName)")
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(DSHTheme.brandSoft, in: Capsule())
+                            .help("自进化会话固定工作在 \(thread.cwd ?? repoName)，消息只发进本会话")
+                            .accessibilityLabel("自进化会话，工作目录 \(thread.cwd ?? repoName)")
+                        }
+                        .buttonStyle(.plain)
+                    } else if let p = workspace.state.activeProject {
                         Menu {
                             Button {
                                 NotificationCenter.default.post(name: .tapgoRequestOpenLocalFolder, object: nil)
@@ -1487,9 +1511,9 @@ struct ComposerView: View {
                                     TapgoConfig.selectedModel = m
                                 } label: {
                                     if m.rawValue == selectedModelRaw {
-                                        Label(m.rawValue, systemImage: "checkmark")
+                                        Label(m.displayName, systemImage: "checkmark")
                                     } else {
-                                        Text(m.rawValue)
+                                        Text(m.displayName)
                                     }
                                 }
                             }
@@ -1555,7 +1579,7 @@ struct ComposerView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "cpu").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            Text(store.modelName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            Text(store.modelDisplayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             if isRunning {
                                 ProgressView().controlSize(.mini)
                             }
@@ -1569,7 +1593,7 @@ struct ComposerView: View {
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(DSHTheme.brandSoft, in: Capsule())
                         .help(L10n.modelChipHint + modelContextTooltip)
-                        .accessibilityLabel("模型 \(store.modelName), 来自独立配置")
+                        .accessibilityLabel("模型 \(store.modelDisplayName), 来自独立配置")
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
@@ -2472,7 +2496,12 @@ struct ComposerView: View {
     }
 
     /// Composer placeholder, mentioning the active project when set.
+    /// 自进化会话必须显式覆盖——否则仍按 activeProject 显示「给 OctTapgo
+    /// 发条任务…」，用户会误以为没切进自进化、把指令发去项目会话。
     private var composerPlaceholder: String {
+        if activeThread?.isEvolution == true {
+            return "向自进化下达本轮指令…"
+        }
         if let p = workspace.state.activeProject {
             return "给 \(p.displayName) 发条任务…"
         }

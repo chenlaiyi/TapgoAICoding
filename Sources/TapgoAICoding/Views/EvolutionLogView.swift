@@ -333,6 +333,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.39",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.39",
+                    summary: "模型选择菜单改显「品牌 + 模型名」，不再暴露技术 slug",
+                    changes: [
+                        "用户反馈模型菜单里 deepseek-v4-flash 这类技术 slug 太复杂，只想要品牌 + 模型名。",
+                        "TapgoModel 新增 displayName：MiniMax M3 / GLM 5.3 Flash / DeepSeek V4 Flash / DeepSeek V4 Pro；API slug 不动，仅展示层切换。",
+                        "切换菜单、composer 芯片、环境面板、设置页、诊断信息统一改用 displayName；测试 +5。"
+                    ],
+                    why: "面向用户的 UI 不应出现技术 slug；品牌 + 模型名一眼可辨。",
+                    next: "手机 H5 端模型名仍显示 slug，待后续统一。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.38",
                     date: "2026-08-30",
                     commit: nil,

@@ -18,6 +18,17 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
 
     public var id: String { rawValue }
 
+    /// 选择菜单 / 状态芯片等 UI 处的展示名：品牌 + 模型名，
+    /// 不暴露 "deepseek-v4-flash" 这类技术 slug（slug 只用于 API 调用）。
+    public var displayName: String {
+        switch self {
+        case .minimaxM3: return "MiniMax M3"
+        case .glm53Flash: return "GLM 5.3 Flash"
+        case .deepSeekV4Flash: return "DeepSeek V4 Flash"
+        case .deepSeekV4Pro: return "DeepSeek V4 Pro"
+        }
+    }
+
     /// codex config.toml `[model_providers.<providerId>]` 段名，
     /// 同时是 `thread/start` 的 `modelProvider` 参数值。
     public var providerId: String {
@@ -54,7 +65,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         """
             {
               "slug": "\(rawValue)",
-              "display_name": "\(rawValue)",
+              "display_name": "\(displayName)",
               "description": "\(catalogDescription)",
               "default_reasoning_level": "high",
               "supported_reasoning_levels": [

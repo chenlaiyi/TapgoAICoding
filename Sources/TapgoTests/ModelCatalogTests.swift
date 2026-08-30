@@ -15,6 +15,18 @@ func runModelCatalog(_ t: TestRunner) {
                   "model: deepseek-v4-flash maps to provider deepseek")
     t.expectEqual(TapgoModel.deepSeekV4Pro.providerId, "deepseek",
                   "model: deepseek-v4-pro maps to provider deepseek")
+    // UI 展示名: 品牌 + 模型名, 不暴露技术 slug。
+    t.expectEqual(TapgoModel.minimaxM3.displayName, "MiniMax M3",
+                  "model: MiniMax display name is brand + model")
+    t.expectEqual(TapgoModel.glm53Flash.displayName, "GLM 5.3 Flash",
+                  "model: GLM display name is brand + model")
+    t.expectEqual(TapgoModel.deepSeekV4Flash.displayName, "DeepSeek V4 Flash",
+                  "model: DeepSeek flash display name is brand + model")
+    t.expectEqual(TapgoModel.deepSeekV4Pro.displayName, "DeepSeek V4 Pro",
+                  "model: DeepSeek pro display name is brand + model")
+    // slug 保持官方 API 名不变（displayName 只是展示层）。
+    t.expectEqual(TapgoModel.deepSeekV4Flash.rawValue, "deepseek-v4-flash",
+                  "model: raw slug stays the official API id")
 
     // 端点: GLM 必须指向智谱给 Codex 的 OpenAI Responses 协议专属端点
     // (docs.bigmodel.cn/cn/coding-plan/tool/codex); MiniMax 保持官方 v1。
