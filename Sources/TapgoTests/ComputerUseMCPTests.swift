@@ -175,7 +175,16 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
 // MARK: - config.toml 幂等写入
 
 func runComputerUseMCPConfigSection(_ t: TestRunner) {
-    let cmd = "/Applications/Tapgo AICoding.app/Contents/MacOS/TapgoComputerUseMCP"
+    let resources = "/Applications/Tapgo AICoding.app/Contents/Resources"
+    let cmd = ComputerUseMCP.bundledHelperExecutablePath(resourcesPath: resources)
+    t.expectEqual(
+        cmd,
+        "/Applications/Tapgo AICoding.app/Contents/Resources/computer-use-helper/Tapgo Computer Use.app/Contents/MacOS/TapgoComputerUseMCP",
+        "helper: MCP 指向独立 App 内的真实执行进程"
+    )
+    t.expect(cmd.contains(ComputerUseMCP.helperDirectoryName), "helper: 路径含稳定 helper 目录")
+    t.expect(cmd.contains(ComputerUseMCP.helperAppName), "helper: 路径含可拖拽 App bundle")
+    t.expect(cmd.hasSuffix(ComputerUseMCP.helperExecutableName), "helper: 路径以 MCP 可执行文件结尾")
 
     // 全新 config: 追加段
     let fresh = "model = \"MiniMax-M3\"\n"

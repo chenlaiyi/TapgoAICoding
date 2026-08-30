@@ -11,6 +11,7 @@
 // 诊断日志一律走 stderr, stdout 只输出 MCP 响应。
 
 import Foundation
+import Darwin
 import TapgoComputerUse
 import TapgoCore
 
@@ -18,11 +19,44 @@ func stderrLog(_ message: String) {
     FileHandle.standardError.write(Data(("[tapgo-computer-use] \(message)\n").utf8))
 }
 
+func permissionStatusData() -> Data? {
+    let payload: [String: Any] = [
+        "accessibility": ComputerUse.accessibilityAllowed,
+        "screen_recording": ComputerUse.screenCaptureAllowed,
+        "bundle_identifier": Bundle.main.bundleIdentifier ?? "",
+    ]
+    return try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+}
+
+/// Read-only status probe used by the settings UI. The file form is launched
+/// through Launch Services so macOS evaluates the helper app's own TCC
+/// identity rather than inheriting the calling terminal/application context.
+let commandArguments = Array(CommandLine.arguments.dropFirst())
+if commandArguments.first == "--permission-status" {
+    if let data = permissionStatusData() {
+        FileHandle.standardOutput.write(data)
+        FileHandle.standardOutput.write(Data("\n".utf8))
+        exit(EXIT_SUCCESS)
+    }
+    exit(EXIT_FAILURE)
+}
+if commandArguments.first == "--permission-status-file",
+   commandArguments.count == 2,
+   let data = permissionStatusData() {
+    do {
+        try data.write(to: URL(fileURLWithPath: commandArguments[1]), options: .atomic)
+        exit(EXIT_SUCCESS)
+    } catch {
+        stderrLog("permission status write failed: \(error.localizedDescription)")
+        exit(EXIT_FAILURE)
+    }
+}
+
 /// 权限缺失时的统一提示 (模型可把这段话转述给用户)。
 let screenPermissionHint =
-    "截屏失败: 本进程没有 macOS「屏幕录制」权限。请让用户在「系统设置 → 隐私与安全性 → 屏幕录制」里为 Tapgo AICoding 勾选授权, 然后重启 App 重试。"
+    "截屏失败: Tapgo Computer Use 没有 macOS「屏幕录制」权限。请在 Tapgo AICoding 的电脑控制设置中打开对应系统页面并完成授权，然后重启会话重试。"
 let accessibilityHint =
-    "操作失败: 本进程没有 macOS「辅助功能」权限。请让用户在「系统设置 → 隐私与安全性 → 辅助功能」里为 Tapgo AICoding 勾选授权, 然后重启 App 重试。"
+    "操作失败: Tapgo Computer Use 没有 macOS「辅助功能」权限。请在 Tapgo AICoding 的电脑控制设置中打开对应系统页面并完成授权，然后重启会话重试。"
 let invalidCoordHint = "参数错误: x/y 必须是 0...1 的归一化坐标 (相对主屏截图, 左上原点)。请先调用 screenshot 获取画面。"
 
 /// 工具执行器: MCP 协议层 → ComputerUse 原语。

@@ -23,6 +23,25 @@ public enum ComputerUseMCP {
     /// config.toml 里的 server 键名 (`[mcp_servers.<key>]`)。
     public static let configServerKey = "tapgo_computer_use"
 
+    /// The actual TCC identity used for Accessibility and Screen Recording.
+    /// Keep the MCP executable inside a real helper `.app`, because macOS
+    /// privacy settings authorize application bundles rather than an
+    /// unrelated host UI process.
+    public static let helperDirectoryName = "computer-use-helper"
+    public static let helperAppName = "Tapgo Computer Use.app"
+    public static let helperExecutableName = "TapgoComputerUseMCP"
+
+    /// Build the stable executable path inside the packaged helper app.
+    /// `resourcesPath` is the parent app's `Contents/Resources` directory.
+    public static func bundledHelperExecutablePath(resourcesPath: String) -> String {
+        URL(fileURLWithPath: resourcesPath, isDirectory: true)
+            .appendingPathComponent(helperDirectoryName, isDirectory: true)
+            .appendingPathComponent(helperAppName, isDirectory: true)
+            .appendingPathComponent("Contents/MacOS", isDirectory: true)
+            .appendingPathComponent(helperExecutableName, isDirectory: false)
+            .path
+    }
+
     // MARK: - Tool outcome
 
     /// 一次工具执行的结果; 由 MCP 层封装成 `content` 数组。

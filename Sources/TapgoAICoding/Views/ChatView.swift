@@ -2,8 +2,6 @@ import SwiftUI
 import Combine
 import TapgoCore
 import UniformTypeIdentifiers
-import ApplicationServices
-import CoreGraphics
 
 /// Compact token/byte formatter shared by ChatView and ComposerView:
 /// "1.2M" / "12.3k" / "123".
@@ -1209,6 +1207,7 @@ struct ComposerView: View {
     @AppStorage(TapgoConfig.computerUseEnabledKey) private var computerUseEnabled = true
     @AppStorage(TapgoConfig.computerUseShowInComposerKey) private var computerUseShowInComposer = true
     @State private var computerPermissionRefresh = 0
+    @State private var computerPermissionState = ComputerUsePermissionState.loading
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
@@ -1624,6 +1623,11 @@ struct ComposerView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             computerPermissionRefresh += 1
         }
+        .task(id: computerPermissionRefresh) {
+            computerPermissionState = await ComputerUsePermissionProbe.read(
+                helperAppURL: TapgoConfig.computerUseHelperAppURL()
+            )
+        }
         .onChange(of: workspace.state.activeProjectId) { _, _ in
             // A draft typed for one project shouldn't be sent to another.
             text = ""
@@ -1750,8 +1754,8 @@ struct ComposerView: View {
 
     private var computerControlReady: Bool {
         computerUseEnabled
-            && AXIsProcessTrusted()
-            && CGPreflightScreenCaptureAccess()
+            && computerPermissionState.accessibility == true
+            && computerPermissionState.screenRecording == true
             && computerUseConfigRegistered
     }
 
@@ -1765,8 +1769,8 @@ struct ComposerView: View {
     private var computerControlStatusText: String {
         guard computerUseEnabled else { return "电脑控制已关闭" }
         var missing: [String] = []
-        if !AXIsProcessTrusted() { missing.append("辅助功能未授权") }
-        if !CGPreflightScreenCaptureAccess() { missing.append("屏幕录制未授权") }
+        if computerPermissionState.accessibility != true { missing.append("辅助功能未授权") }
+        if computerPermissionState.screenRecording != true { missing.append("屏幕录制未授权") }
         if !computerUseConfigRegistered { missing.append("MCP 未注册") }
         return missing.isEmpty ? "电脑控制已就绪" : missing.joined(separator: "、")
     }

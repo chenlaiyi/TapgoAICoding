@@ -52,11 +52,17 @@ APP_BUNDLE_DIR="${ROOT}/${APP_DIR_NAME}.app"
 CONTENTS_DIR="${APP_BUNDLE_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+HELPER_ROOT_DIR="${RESOURCES_DIR}/computer-use-helper"
+HELPER_APP_DIR="${HELPER_ROOT_DIR}/Tapgo Computer Use.app"
+HELPER_CONTENTS_DIR="${HELPER_APP_DIR}/Contents"
+HELPER_MACOS_DIR="${HELPER_CONTENTS_DIR}/MacOS"
+HELPER_RESOURCES_DIR="${HELPER_CONTENTS_DIR}/Resources"
 
 BIN_NAME="TapgoAICoding"
 BIN_SRC="${ROOT}/.build/release/${BIN_NAME}"
 PLIST_SRC="${ROOT}/AppBuilder/Info.plist"
 ENTITLEMENTS_SRC="${ROOT}/AppBuilder/TapgoAICoding.entitlements"
+HELPER_PLIST_SRC="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
 PKGINFO_SRC="${ROOT}/AppBuilder/PkgInfo"
 ICNS_SRC="${ROOT}/AppBuilder/AppIcon.icns"
 
@@ -92,27 +98,33 @@ fi
 
 echo "==> Assembling .app bundle at ${APP_BUNDLE_DIR}"
 mavis-trash "$APP_BUNDLE_DIR" 2>/dev/null || rm -rf "$APP_BUNDLE_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$HELPER_MACOS_DIR" "$HELPER_RESOURCES_DIR"
 
 cp "$BIN_SRC" "$MACOS_DIR/${BIN_NAME}"
 chmod +x "$MACOS_DIR/${BIN_NAME}"
 
-cp "$MCP_SRC" "$MACOS_DIR/${MCP_NAME}"
-chmod +x "$MACOS_DIR/${MCP_NAME}"
-echo "  embedded MCP server: ${MCP_NAME}"
+cp "$MCP_SRC" "$HELPER_MACOS_DIR/${MCP_NAME}"
+chmod +x "$HELPER_MACOS_DIR/${MCP_NAME}"
+cp "$HELPER_PLIST_SRC" "$HELPER_CONTENTS_DIR/Info.plist"
+echo "  embedded computer-use helper: Tapgo Computer Use.app"
 
 cp "$PLIST_SRC" "$CONTENTS_DIR/Info.plist"
 cp "$PKGINFO_SRC" "$CONTENTS_DIR/PkgInfo"
 
 if [[ -f "$ICNS_SRC" ]]; then
   cp "$ICNS_SRC" "${RESOURCES_DIR}/AppIcon.icns"
+  cp "$ICNS_SRC" "${HELPER_RESOURCES_DIR}/AppIcon.icns"
   echo "  embedded icon: AppIcon.icns"
 fi
 
 # Ad-hoc codesign — no developer account needed.
 if command -v codesign >/dev/null 2>&1; then
   echo "==> Ad-hoc codesigning"
-  codesign --force --deep --sign - \
+  codesign --force --sign - \
+    --entitlements "$ENTITLEMENTS_SRC" \
+    --options runtime \
+    "$HELPER_APP_DIR" 2>&1 | sed 's/^/    /'
+  codesign --force --sign - \
     --entitlements "$ENTITLEMENTS_SRC" \
     --options runtime \
     "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'

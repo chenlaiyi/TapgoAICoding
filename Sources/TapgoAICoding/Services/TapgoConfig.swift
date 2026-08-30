@@ -600,14 +600,39 @@ enum TapgoConfig {
 
     // MARK: 电脑控制 MCP 注册 (v0.5.20)
 
-    /// 计算随包分发的 `TapgoComputerUseMCP` 二进制路径: 已安装 App 取
-    /// `Contents/MacOS/` 同级; `swift run` 开发态取 `.build/<cfg>/` 同级。
-    static func computerUseMCPBinaryPath(bundle: Bundle = .main) -> String? {
+    /// The packaged helper app is the real macOS TCC identity. The release
+    /// bundle stores the MCP executable inside that helper; `swift run`
+    /// keeps the sibling-binary fallback for development only.
+    static func computerUseHelperAppURL(bundle: Bundle = .main) -> URL? {
+        guard let resources = bundle.resourceURL else { return nil }
+        let helper = resources
+            .appendingPathComponent(ComputerUseMCP.helperDirectoryName, isDirectory: true)
+            .appendingPathComponent(ComputerUseMCP.helperAppName, isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: helper.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return nil }
+        return helper
+    }
+
+    static func computerUseMCPBinaryURL(bundle: Bundle = .main) -> URL? {
+        if let resources = bundle.resourceURL {
+            let helperExecutable = URL(
+                fileURLWithPath: ComputerUseMCP.bundledHelperExecutablePath(
+                    resourcesPath: resources.path
+                )
+            )
+            if FileManager.default.isExecutableFile(atPath: helperExecutable.path) {
+                return helperExecutable
+            }
+        }
         guard let exe = bundle.executableURL else { return nil }
         let sibling = exe.deletingLastPathComponent()
-            .appendingPathComponent("TapgoComputerUseMCP")
-        guard FileManager.default.isExecutableFile(atPath: sibling.path) else { return nil }
-        return sibling.path
+            .appendingPathComponent(ComputerUseMCP.helperExecutableName)
+        return FileManager.default.isExecutableFile(atPath: sibling.path) ? sibling : nil
+    }
+
+    static func computerUseMCPBinaryPath(bundle: Bundle = .main) -> String? {
+        computerUseMCPBinaryURL(bundle: bundle)?.path
     }
 
     /// 把 `[mcp_servers.tapgo_computer_use]` 幂等写入隔离 Codex home 的

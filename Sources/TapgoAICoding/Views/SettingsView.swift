@@ -1,7 +1,5 @@
 import SwiftUI
 import TapgoCore
-import ApplicationServices
-import CoreGraphics
 import AppKit
 
 /// ZCode-style settings workspace: grouped navigation on the left and a
@@ -21,6 +19,7 @@ struct SettingsView: View {
     @State private var codexMemoryStatus: MemoryFileStatus?
     @State private var memoryCopyMessage: String?
     @State private var computerPermissionRefresh = 0
+    @State private var computerPermissionState = ComputerUsePermissionState.loading
     @State private var computerUseMessage: String?
 
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw =
@@ -872,7 +871,6 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var computerTab: some View {
-        let _ = computerPermissionRefresh
         VStack(alignment: .leading, spacing: 18) {
             SettingsCard(
                 title: "电脑控制",
@@ -910,23 +908,27 @@ struct SettingsView: View {
                         computerStatusRow(
                             title: "辅助功能 (Accessibility)",
                             description: "读取与驱动界面元素、合成键盘和鼠标输入。",
-                            ready: AXIsProcessTrusted(),
+                            ready: computerPermissionState.accessibility,
                             readyText: "已授权",
-                            notReadyText: "未授权"
+                            notReadyText: "未授权",
+                            actionTitle: ComputerUsePermissionKind.accessibility.settingsButtonTitle,
+                            action: { openPermissionSettings(.accessibility) }
                         )
                         Divider()
                         computerStatusRow(
                             title: "屏幕录制 (Screen Recording)",
                             description: "让 Agent 在操作前读取当前屏幕。",
-                            ready: CGPreflightScreenCaptureAccess(),
+                            ready: computerPermissionState.screenRecording,
                             readyText: "已授权",
-                            notReadyText: "未授权"
+                            notReadyText: "未授权",
+                            actionTitle: ComputerUsePermissionKind.screenRecording.settingsButtonTitle,
+                            action: { openPermissionSettings(.screenRecording) }
                         )
                         Divider()
                         computerStatusRow(
                             title: "电脑控制 MCP",
                             description: computerUseConfigRegistered
-                                ? "已写入隔离 Codex home；新会话或重启 Harness 后生效。"
+                                ? "已指向 Tapgo Computer Use Helper；新会话或重启 Harness 后生效。"
                                 : "尚未在隔离 Codex home 中找到注册段。",
                             ready: computerUseConfigRegistered,
                             readyText: "已注册",
@@ -956,16 +958,11 @@ struct SettingsView: View {
                         } label: {
                             Label("重新注册 MCP", systemImage: "terminal")
                         }
-                        Button {
-                            openPrivacySettings()
-                        } label: {
-                            Label("打开隐私与安全性", systemImage: "gear")
-                        }
                         Spacer(minLength: 0)
                     }
                 }
 
-                Text("若系统权限显示“未授权”，请在 macOS“系统设置 → 隐私与安全性”中授权 Tapgo AICoding，然后重新启动 App。")
+                Text("权限属于真正执行电脑控制的 Tapgo Computer Use Helper。点击对应入口后，把浮动面板里的 Helper 拖进系统允许列表。")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             } else {
@@ -993,6 +990,18 @@ struct SettingsView: View {
                 computerUseMessage = "设置已保存，但 MCP 配置更新失败；请检查隔离配置目录权限。"
             }
         }
+        .task(id: computerPermissionRefresh) {
+            computerPermissionState = .loading
+            computerPermissionState = await ComputerUsePermissionProbe.read(
+                helperAppURL: TapgoConfig.computerUseHelperAppURL()
+            )
+            if let error = computerPermissionState.error {
+                computerUseMessage = error
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            computerPermissionRefresh += 1
+        }
     }
 
     private var computerUseConfigRegistered: Bool {
@@ -1005,9 +1014,11 @@ struct SettingsView: View {
     private func computerStatusRow(
         title: String,
         description: String,
-        ready: Bool,
+        ready: Bool?,
         readyText: String = "已就绪",
-        notReadyText: String = "未就绪"
+        notReadyText: String = "未就绪",
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
     ) -> some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
@@ -1019,16 +1030,42 @@ struct SettingsView: View {
                     .foregroundStyle(DSHTheme.labelDim)
             }
             Spacer(minLength: 24)
-            Label(ready ? readyText : notReadyText, systemImage: ready ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+            if ready == false, let actionTitle, let action {
+                Button(action: action) {
+                    Label(actionTitle, systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(.plain)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.medium))
+                .foregroundStyle(DSHTheme.brand)
+            }
+            let statusText = ready == nil ? "检测中" : (ready == true ? readyText : notReadyText)
+            let statusIcon = ready == nil ? "clock" : (ready == true ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+            Label(statusText, systemImage: statusIcon)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
-                .foregroundStyle(ready ? DSHTheme.success : DSHTheme.warn)
+                .foregroundStyle(ready == nil ? DSHTheme.labelTertiary : (ready == true ? DSHTheme.success : DSHTheme.warn))
         }
         .padding(.vertical, 14)
     }
 
-    private func openPrivacySettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") else { return }
-        NSWorkspace.shared.open(url)
+    private func openPermissionSettings(_ permission: ComputerUsePermissionKind) {
+        guard let helperAppURL = TapgoConfig.computerUseHelperAppURL() else {
+            computerUseMessage = "未找到 Tapgo Computer Use Helper；请重新安装最新版 App。"
+            return
+        }
+        guard let settingsURL = permission.settingsURL,
+              NSWorkspace.shared.open(settingsURL) else {
+            computerUseMessage = "无法打开 macOS 的\(permission.title)设置。"
+            return
+        }
+        ComputerUsePermissionGuideController.shared.present(
+            permission: permission,
+            helperAppURL: helperAppURL,
+            completion: {
+                computerPermissionRefresh += 1
+                computerUseMessage = "已返回 App，请重新检测并确认\(permission.title)状态。"
+            }
+        )
+        computerUseMessage = "请把浮动面板中的 Tapgo Computer Use 拖进\(permission.title)允许列表。"
     }
 
     private func settingsControlRow<Control: View>(
