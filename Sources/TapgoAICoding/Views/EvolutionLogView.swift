@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.42",
                     date: "2026-08-30",
-                    commit: "待提交",
+                    commit: "26bb60b",
                     tag: "v0.5.42",
                     summary: "自定义模型增删改查与端到端选择",
                     changes: [

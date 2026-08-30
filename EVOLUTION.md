@@ -21,7 +21,7 @@
 
 ## v0.5.42 — 自定义模型增删改查与端到端选择
 **Date**: 2026-08-30
-**Commit**: 待提交
+**Commit**: 26bb60b
 **Tag**: v0.5.42
 **Test status**: 2366 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过 13 个远程环境段）
 **Changed**:
