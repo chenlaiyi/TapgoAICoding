@@ -19,6 +19,20 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.34 — GLM 额度可查：接入 BigModel 官方 monitor/usage/quota/limit
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.34
+**Test status**: 2355 passed / 8 failed（既有 SSH 环境失败，与本版无关）
+**Changed**:
+- 用户质疑「GLM 无法查到？」——查证属实可以查：智谱官方用量查询插件 (zai-org/zai-coding-plugins) 的 query-usage.mjs 揭示了端点 `GET https://open.bigmodel.cn/api/monitor/usage/quota/limit`，Authorization 头直接放套餐 key（裸 token，实测 Bearer 也收），Coding Plan key 返回 5 小时档 (unit 3×5) 与周档 (unit 6×1) 两档已用百分比 + `level` 套餐档位（本账号 lite）。
+- 新增 `TapgoCore/GLMQuotaClient`：与 MiniMaxQuotaClient 同构（authPath + transport 注入 + QuotaError + fetchRemains → RateLimitsSnapshot）；percentage 直映 usedPercent，unit/number 映射窗口分钟数，nextResetTime 毫秒 → resetsAt，level → planType（planLabel 归一化为 Lite）。
+- `SessionStore.refreshRateLimits` 按所选模型双通道取数：MiniMax → coding_plan/remains（auth.json）；GLM → quota/limit（auth-glm.json）。
+- 额度弹窗撤掉 v0.5.31 的「暂不支持查询」占位，GLM 渲染真实余量卡片；侧栏灰色行 GLM 显示「GLM·Lite·81%/33%」格式（余量=100-已用），与 MiniMax 数值格式对齐。
+- 测试 +18：GLMQuota 解析映射 11 断言 + transport/auth 7 断言（裸 key 头、HTTP 500、业务码透传、缺失凭据）。
+**Why**: 用户截图质疑 GLM 额度显示为「暂不支持查询」；实测 BigModel 有官方接口，补齐与 MiniMax 对等的额度体验。
+**Next**: 真机观察 GLM 数值；BigModel 若调整字段结构需同步解析。
+
 ## v0.5.33 — 自进化日志模块重构：分段导航 + 紧凑折叠条目 + 当前版本数据源修复
 **Date**: 2026-08-30
 **Commit**: 5ed7ead

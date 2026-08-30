@@ -142,44 +142,38 @@ struct ModelUsagePopover: View {
                     .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelTertiary)
             }
-            if TapgoConfig.selectedModel == .glm53Flash {
-                // v0.5.31: GLM 走 BigModel Coding Plan, App 内没有余量查询通道。
-                // 显示中性指引, 不渲染 MiniMax 的"等待上报"占位与红色错误。
-                Text("GLM-5.3-Flash 的套餐余量请在 bigmodel.cn 控制台查看，App 内暂不支持查询。")
+            let cells = quotaCells()
+            if cells.isEmpty {
+                // v0.5.33: GLM 也接了官方余量接口; 空数据文案按模型区分。
+                Text(TapgoConfig.selectedModel == .glm53Flash
+                     ? "暂无 GLM 额度数据（检查 auth-glm.json）"
+                     : "等待首次订阅用量上报")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
             } else {
-                let cells = quotaCells()
-                if cells.isEmpty {
-                    Text("等待首次订阅用量上报")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(DSHTheme.labelTertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 4)
-                } else {
-                    HStack(alignment: .top, spacing: 8) {
-                        ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
-                            QuotaCellView(cell: cell, appFontScale: appFontScale)
-                        }
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                        QuotaCellView(cell: cell, appFontScale: appFontScale)
                     }
                 }
-                if let err = rateLimitsError, rateLimits == nil {
-                    Text(err)
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(DSHTheme.error)
-                        .lineLimit(2)
-                }
+            }
+            if let err = rateLimitsError, rateLimits == nil {
+                Text(err)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.error)
+                    .lineLimit(2)
             }
         }
     }
 
-    /// 额度来源标签跟随所选模型: MiniMax 显示官方接口名, GLM 显示套餐名。
+    /// 额度来源标签跟随所选模型: 两者都显示各自官方接口的语义名。
     private var sourceLabel: String {
-        TapgoConfig.selectedModel == .glm53Flash
-            ? "BigModel Coding Plan"
-            : (rateLimitsLoading ? "刷新中…" : "MiniMax coding_plan/remains")
+        if rateLimitsLoading { return "刷新中…" }
+        return TapgoConfig.selectedModel == .glm53Flash
+            ? "BigModel monitor/usage/quota/limit"
+            : "MiniMax coding_plan/remains"
     }
 
     /// Build the 2–3 quota cells from the snapshot:

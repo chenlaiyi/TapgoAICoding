@@ -63,6 +63,8 @@ let allSections: [String] = [
     "Thread: auto-title from first user message",
     "Thread: evolution mode + workspace",
     "TapgoModel: catalog & provider mapping",
+    "GLMQuota: quota/limit 解析与映射",
+    "GLMQuota: GLMQuotaClient transport & auth",
     "ExecEvent: approval request parsing",
     "ExecEvent: command output streaming",
     "ExecEvent: turn plan, diff, compaction",
@@ -326,6 +328,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
             runModelCatalog(runner)
+        }
+        await runIfInScope(runner, "GLMQuota: quota/limit 解析与映射") {
+            runGLMQuota(runner)
+        }
+        await runIfInScope(runner, "GLMQuota: GLMQuotaClient transport & auth") {
+            await runGLMQuotaClient(runner)
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)

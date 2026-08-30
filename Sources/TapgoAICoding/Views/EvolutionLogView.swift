@@ -252,6 +252,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.34",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.34",
+                    summary: "GLM 额度可查：接入 BigModel 官方 monitor/usage/quota/limit",
+                    changes: [
+                        "查证 GLM 套餐余量可以查询：智谱官方用量查询插件揭示端点 GET https://open.bigmodel.cn/api/monitor/usage/quota/limit，Authorization 直放套餐 key（裸 token）。",
+                        "新增 GLMQuotaClient（与 MiniMaxQuotaClient 同构）：percentage→usedPercent，unit 3×5→5小时档 / unit 6×1→周档，nextResetTime 毫秒→resetsAt，level→planLabel（如 Lite）。",
+                        "refreshRateLimits 按所选模型双通道取数（MiniMax coding_plan/remains / BigModel quota/limit，key 分别来自 auth.json 与 auth-glm.json）。",
+                        "额度弹窗撤掉「暂不支持查询」占位，GLM 渲染真实余量卡片；侧栏 GLM 显示「GLM·Lite·81%/33%」。",
+                        "测试 +18 全绿（2355 passed / 8 既有 SSH 环境失败）。"
+                    ],
+                    why: "用户质疑 GLM 额度显示为暂不支持查询；实测 BigModel 有官方接口，补齐与 MiniMax 对等的额度体验。",
+                    next: "真机观察 GLM 数值；BigModel 若调整字段结构需同步解析。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.33",
                     date: "2026-08-30",
                     commit: "5ed7ead",

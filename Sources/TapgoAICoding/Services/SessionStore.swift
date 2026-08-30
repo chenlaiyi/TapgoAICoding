@@ -120,28 +120,30 @@ final class SessionStore: ObservableObject {
     /// （切模型对新建会话生效，进行中的会话保持创建时的模型）。
     var modelName: String { TapgoConfig.selectedModel.rawValue }
 
-    /// 拉取 MiniMax 官方 Token Plan 剩余额度，写入 `rateLimits`。可重复调用 —
-    /// 重叠请求由 `rateLimitsLoading` 合并。额度通道只接 MiniMax 官方接口：
-    /// 选中 GLM 时清空旧快照即可（不当错误处理），弹窗会按所选模型显示
-    /// 对应的查看指引。
+    /// 拉取当前所选模型的官方套餐余量，写入 `rateLimits`。可重复调用 —
+    /// 重叠请求由 `rateLimitsLoading` 合并。v0.5.33 起两条通道都在：
+    /// MiniMax 走官方 coding_plan/remains，GLM 走 BigModel
+    /// monitor/usage/quota/limit（端点抄自智谱官方用量查询插件）；
+    /// 任何错误写到 `rateLimitsError`。
     func refreshRateLimits() {
         guard !rateLimitsLoading else { return }
-        guard TapgoConfig.selectedModel == .minimaxM3 else {
-            rateLimits = nil
-            rateLimitsError = nil
-            return
-        }
         rateLimitsLoading = true
         Task { @MainActor [weak self] in
             defer { self?.rateLimitsLoading = false }
             do {
-                let client = MiniMaxQuotaClient(
-                    authPath: TapgoConfig.authPath,
-                    modelName: TapgoConfig.modelName
-                )
-                let snap = try await client.fetchRemains()
+                let snapshot: RateLimitsSnapshot
+                if TapgoConfig.selectedModel == .minimaxM3 {
+                    snapshot = try await MiniMaxQuotaClient(
+                        authPath: TapgoConfig.authPath,
+                        modelName: TapgoConfig.modelName
+                    ).fetchRemains()
+                } else {
+                    snapshot = try await GLMQuotaClient(
+                        authPath: TapgoConfig.glmAuthPath
+                    ).fetchRemains()
+                }
                 guard let self else { return }
-                self.rateLimits = snap
+                self.rateLimits = snapshot
                 self.rateLimitsError = nil
             } catch {
                 guard let self else { return }
