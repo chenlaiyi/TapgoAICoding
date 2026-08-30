@@ -153,6 +153,13 @@ struct ChatView: View {
                 threadBody(thread: thread)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                // 空会话也要能看到自进化引导横幅——否则新建的自进化
+                // 会话没有「开始自进化」入口，独立开发无从发起。
+                if let thread = activeThread, thread.isEvolution {
+                    EvolutionPanel(thread: thread) { showEvolutionLog = true }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                }
                 Spacer()
                 Text("我们该处理什么工作？")
                     .font(AppFont.scaled(.largeTitle, multiplier: appFontScale.multiplier).bold())
