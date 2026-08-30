@@ -122,13 +122,13 @@ final class SessionStore: ObservableObject {
 
     /// 拉取 MiniMax 官方 Token Plan 剩余额度，写入 `rateLimits`。可重复调用 —
     /// 重叠请求由 `rateLimitsLoading` 合并。额度通道只接 MiniMax 官方接口：
-    /// 选中 GLM 时没有对应查询途径，这里清空旧快照并注明原因，避免把
-    /// MiniMax 的额度错标到 GLM 头上。
+    /// 选中 GLM 时清空旧快照即可（不当错误处理），弹窗会按所选模型显示
+    /// 对应的查看指引。
     func refreshRateLimits() {
         guard !rateLimitsLoading else { return }
         guard TapgoConfig.selectedModel == .minimaxM3 else {
             rateLimits = nil
-            rateLimitsError = "\(TapgoConfig.selectedModel.rawValue) 走 BigModel Coding Plan，暂不支持在 App 内查询额度"
+            rateLimitsError = nil
             return
         }
         rateLimitsLoading = true
@@ -822,7 +822,7 @@ final class SessionStore: ObservableObject {
     static func baseInstructions(for project: Project?) -> String? {
         var parts: [String] = [AgentOutputPolicy.threadInstructions, """
         【核心职责·始终有效】
-        你是 Tapgo AICoding 编码代理，不是只复述上下文的聊天机器人。
+        你是 Tapgo AICoding 编码代理，不是只复述上下文的聊天机器人。当前底层模型是 \(TapgoConfig.selectedModel.rawValue)；被问到自己的身份或模型时以此为准，不要根据工作区文件或长期记忆猜测。
         - 用户给出可执行任务后，主动检查当前工作区，使用实际可用工具完成修改并验证；不要停在复述、规划或追问“下一步”。
         - 只有当前回合中的具体工具调用真实失败，才能说该工具不可用；不得根据旧记忆或猜测宣布工具不可用。
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。

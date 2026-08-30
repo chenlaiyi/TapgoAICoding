@@ -289,6 +289,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.32",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.32",
+                    summary: "侧栏额度行按用户反馈改版：套餐名 Ultra + 纯数字余量",
+                    changes: [
+                        "用户反馈三点：套餐名弄错了（实际订阅是 Ultra，不是 Token Plan/Coding Plan）；『周余量』等文字不要显示，只显示数值；格式改为 5小时余量%/周余量%。",
+                        "modelQuotaSummary 改版：MiniMax·Ultra·21%/76%——供应商/套餐随选中模型（GLM 选中时只显示 GLM，不显示 MiniMax 配额）；套餐名走 TapgoConfig.planDisplayName = \"Ultra\"（MiniMax 接口不返回套餐名，以实际订阅为准，换套餐改一处常量）。",
+                        "5 小时窗口（300 分钟）与周窗口（10080 分钟）各自取 100 - usedPercent，斜杠分隔无文字。"
+                    ],
+                    why: "用户明确给出目标格式与真实套餐名；显示应忠实于订阅事实而不是端点语义猜测。",
+                    next: "无。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.31",
                     date: "2026-08-30",
                     commit: "f81cf47",

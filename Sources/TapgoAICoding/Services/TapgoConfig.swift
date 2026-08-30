@@ -28,6 +28,8 @@ enum TapgoConfig {
     /// 多模型切换：实际每个新会话用哪个由 `selectedModel` 决定，经
     /// `thread/start` 显式下发；后台任务（记忆整理、额度查询）固定 MiniMax。
     static let modelName = TapgoModel.minimaxM3.rawValue
+    /// 当前订阅的 MiniMax 套餐显示名 (接口不返回套餐名, 以实际订阅为准)。
+    static let planDisplayName = "Ultra"
     static let modelProvider = TapgoModel.minimaxM3.providerId
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
