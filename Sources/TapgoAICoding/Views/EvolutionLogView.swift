@@ -252,6 +252,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.38",
+                    date: "2026-08-30",
+                    commit: "PENDING2",
+                    tag: "v0.5.38",
+                    summary: "自进化会话 composer 专属化：占位文案与项目条不再误导为当前项目",
+                    changes: [
+                        "用户实测踩坑: 点「自进化」进入专属会话后, composer 占位仍是「给 OctTapgo 发条任务…」、项目条仍显示 OctTapgo——用户以为没切进去, 把【自进化指令】粘贴进了 OctTapgo 下的普通会话, AI 在错误目录 (~/OctTapgo) 里跑了一轮 252.6k tokens 的自进化。",
+                        "修复 1 — 占位文案: activeThread 为自进化会话时显示「向自进化下达本轮指令…」, 不再跟随 activeProject。",
+                        "修复 2 — 项目条: 自进化会话显示专属胶囊「✨ 自进化 · <仓库名>」(固定指向项目根, 点击打开目录), 不跟随 activeProject 切换。",
+                        "保留 v0.5.33 的行为: 进入自进化会话不清空用户当前项目, 仅在 composer 层做上下文显式化。"
+                    ],
+                    why: "会话已切换但输入区上下文没切换, 视觉状态与实际路由不一致, 是把指令发错会话的直接诱因。",
+                    next: "评估在普通会话发送以【自进化指令】开头的消息时给出确认提示。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.37",
                     date: "2026-08-30",
                     commit: "ceb6e5b",
