@@ -178,11 +178,154 @@ let executor: ComputerUseMCP.Executor = { tool, args in
     }
 }
 
+/// Resolve the containing helper `.app` from the executable path. The MCP
+/// bridge itself is started directly by Codex, but privileged operations must
+/// be executed by a fresh Launch Services instance of this app so macOS TCC
+/// evaluates `com.tapgo.aicoding.computer-use-helper` instead of the Harness
+/// parent-process chain.
+func containingHelperAppURL() -> URL? {
+    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
+    let app = executable
+        .deletingLastPathComponent() // MacOS
+        .deletingLastPathComponent() // Contents
+        .deletingLastPathComponent() // Tapgo Computer Use.app
+    guard app.pathExtension == "app",
+          FileManager.default.fileExists(atPath: app.path) else { return nil }
+    return app
+}
+
+func bridgeFailureResponse(requestData: Data, message: String) -> Data? {
+    ComputerUseMCP.handle(requestData: requestData) { _, _ in
+        ComputerUseMCP.ToolOutcome(isError: true, text: message)
+    }
+}
+
+/// Only accept bridge files created in the helper's own owner-only temporary
+/// directory. This prevents one-shot mode from being abused to read from or
+/// write to arbitrary paths (including symbolic links).
+func bridgeFileURLsAreSafe(requestURL: URL, responseURL: URL) -> Bool {
+    let fm = FileManager.default
+    let request = requestURL.standardizedFileURL
+    let response = responseURL.standardizedFileURL
+    let directory = request.deletingLastPathComponent()
+    let temporaryRoot = fm.temporaryDirectory.standardizedFileURL
+    guard response.deletingLastPathComponent() == directory,
+          directory.deletingLastPathComponent() == temporaryRoot,
+          directory.lastPathComponent.hasPrefix("tapgo-computer-use-"),
+          request.lastPathComponent == "request.json",
+          response.lastPathComponent == "response.json",
+          !fm.fileExists(atPath: response.path),
+          let attributes = try? fm.attributesOfItem(atPath: directory.path),
+          (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == geteuid(),
+          let permissions = (attributes[.posixPermissions] as? NSNumber)?.intValue,
+          permissions & 0o777 == 0o700,
+          let values = try? request.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+          values.isRegularFile == true,
+          values.isSymbolicLink != true else { return false }
+    return true
+}
+
+/// Execute one `tools/call` through Launch Services and return the helper's
+/// exact JSON-RPC response. Request/response files live in an owner-only
+/// temporary directory and are deleted after every call.
+func launchServicesResponse(requestData: Data, helperAppURL: URL) -> Data? {
+    let fm = FileManager.default
+    let directory = fm.temporaryDirectory
+        .appendingPathComponent("tapgo-computer-use-\(UUID().uuidString)", isDirectory: true)
+    let requestURL = directory.appendingPathComponent("request.json")
+    let responseURL = directory.appendingPathComponent("response.json")
+    do {
+        try fm.createDirectory(
+            at: directory,
+            withIntermediateDirectories: false,
+            attributes: [.posixPermissions: 0o700]
+        )
+        defer { try? fm.removeItem(at: directory) }
+        try requestData.write(to: requestURL, options: .atomic)
+        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: requestURL.path)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [
+            "-n", helperAppURL.path,
+            "--args", "--execute-request-file", requestURL.path, responseURL.path,
+        ]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            return bridgeFailureResponse(
+                requestData: requestData,
+                message: "电脑控制 Helper 启动失败（open exit \(process.terminationStatus)）。"
+            )
+        }
+
+        let deadline = Date().addingTimeInterval(15)
+        repeat {
+            if let data = try? Data(contentsOf: responseURL), !data.isEmpty {
+                return data
+            }
+            usleep(20_000)
+        } while Date() < deadline
+        return bridgeFailureResponse(
+            requestData: requestData,
+            message: "电脑控制 Helper 响应超时，请重新检测权限后重试。"
+        )
+    } catch {
+        return bridgeFailureResponse(
+            requestData: requestData,
+            message: "电脑控制 Helper 桥接失败：\(error.localizedDescription)"
+        )
+    }
+}
+
+/// One-shot worker mode. This process is launched by Launch Services, so the
+/// actual executor sees the helper app's Accessibility/Screen Recording TCC
+/// grants. The stdio bridge waits for this response file and forwards it to
+/// Codex unchanged.
+if commandArguments.first == "--execute-request-file",
+   commandArguments.count == 3 {
+    let requestURL = URL(fileURLWithPath: commandArguments[1])
+    let responseURL = URL(fileURLWithPath: commandArguments[2])
+    do {
+        guard bridgeFileURLsAreSafe(requestURL: requestURL, responseURL: responseURL) else {
+            stderrLog("one-shot request rejected: unsafe bridge paths")
+            exit(EXIT_FAILURE)
+        }
+        let requestData = try Data(contentsOf: requestURL)
+        guard requestData.count <= 1_048_576 else {
+            stderrLog("one-shot request rejected: request exceeds 1 MiB")
+            exit(EXIT_FAILURE)
+        }
+        guard let response = ComputerUseMCP.handle(requestData: requestData, executor: executor) else {
+            exit(EXIT_SUCCESS)
+        }
+        try response.write(to: responseURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: responseURL.path
+        )
+        exit(EXIT_SUCCESS)
+    } catch {
+        stderrLog("one-shot request failed: \(error.localizedDescription)")
+        exit(EXIT_FAILURE)
+    }
+}
+
 stderrLog("started (pid \(ProcessInfo.processInfo.processIdentifier), tools: \(ComputerUseMCP.toolNames.count))")
+let helperAppURL = containingHelperAppURL()
 while let line = readLine(strippingNewline: true) {
     let data = Data(line.utf8)
     guard !data.isEmpty else { continue }
-    guard let response = ComputerUseMCP.handle(requestData: data, executor: executor) else { continue }
+    let method = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["method"] as? String
+    let response: Data?
+    if method == "tools/call", let helperAppURL {
+        response = launchServicesResponse(requestData: data, helperAppURL: helperAppURL)
+    } else {
+        response = ComputerUseMCP.handle(requestData: data, executor: executor)
+    }
+    guard let response else { continue }
     FileHandle.standardOutput.write(response)
     FileHandle.standardOutput.write(Data("\n".utf8))
 }

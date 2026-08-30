@@ -16,7 +16,8 @@
 #   Detect with:     xcrun --show-sdk-path  (check for missing SwiftUIMacros)
 #   2. Creates Tapgo AICoding.app/Contents/{MacOS,Resources}/
 #   3. Copies the binary, Info.plist, entitlements
-#   4. Ad-hoc codesigns so Gatekeeper is lenient for local use
+#   4. Signs with Tapgo's Developer ID when available; otherwise explicitly
+#      falls back to ad-hoc signing for local development only
 #
 # Result: a real macOS application — drop it in /Applications, or just
 # `open` from the project root.
@@ -117,14 +118,33 @@ if [[ -f "$ICNS_SRC" ]]; then
   echo "  embedded icon: AppIcon.icns"
 fi
 
-# Ad-hoc codesign — no developer account needed.
+# Prefer the stable Tapgo Developer ID so macOS TCC grants survive helper
+# binary updates. A caller may override this with TAPGO_SIGNING_IDENTITY; use
+# `-` explicitly for a local ad-hoc build.
 if command -v codesign >/dev/null 2>&1; then
-  echo "==> Ad-hoc codesigning"
-  codesign --force --sign - \
+  DEFAULT_SIGNING_IDENTITY="Developer ID Application: Fujian Tapgo Bussiness Management Co., Ltd (KF2CE24685)"
+  SIGNING_IDENTITY="${TAPGO_SIGNING_IDENTITY:-}"
+  if [[ -z "$SIGNING_IDENTITY" ]]; then
+    if security find-identity -v -p codesigning 2>/dev/null | grep -Fq "$DEFAULT_SIGNING_IDENTITY"; then
+      SIGNING_IDENTITY="$DEFAULT_SIGNING_IDENTITY"
+    else
+      SIGNING_IDENTITY="-"
+    fi
+  fi
+  if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    echo "==> Ad-hoc codesigning (local development fallback)"
+    TIMESTAMP_ARGS=()
+  else
+    echo "==> Developer ID codesigning"
+    TIMESTAMP_ARGS=(--timestamp)
+  fi
+  codesign --force --sign "$SIGNING_IDENTITY" \
+    "${TIMESTAMP_ARGS[@]}" \
     --entitlements "$ENTITLEMENTS_SRC" \
     --options runtime \
     "$HELPER_APP_DIR" 2>&1 | sed 's/^/    /'
-  codesign --force --sign - \
+  codesign --force --sign "$SIGNING_IDENTITY" \
+    "${TIMESTAMP_ARGS[@]}" \
     --entitlements "$ENTITLEMENTS_SRC" \
     --options runtime \
     "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
