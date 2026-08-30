@@ -1,346 +1,300 @@
 # Tapgo AICoding
 
-**English** | [简体中文](README.md)
+[简体中文](README.md) | **English**
 
-A native macOS SwiftUI front-end for the [OpenAI Codex Harness](https://github.com/openai/codex). It includes **MiniMax M3, GLM 5.3 Flash, and DeepSeek V4 Flash / Pro**, and also supports custom OpenAI Responses-compatible models. Powered by the harness's `app-server` JSON-RPC protocol over stdio — no shell-out, no exec-mode hacks. v0.5.46 targets the current server-request protocol validated against [Codex 0.150.1](https://github.com/openai/codex/releases/tag/rust-v0.150.1), and borrows recovery, compaction and fail-closed approval ideas from [DeepSeek Harness dsh-v0.1.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.1-rc.2) without embedding its Developer Preview Node/Python runtime.
+Tapgo AICoding is a native macOS SwiftUI coding-agent client. It uses the [OpenAI Codex Harness](https://github.com/openai/codex) `app-server` as its runtime and manages conversations, tools, approvals, file changes, and command execution over persistent JSON-RPC. The desktop workspace is designed for multiple projects, long-running tasks, and development across several Macs.
 
-```
-┌──────────────────────────────────────────┐
-│  SwiftUI App (this repo)                  │
-│  ─ NavigationSplitView:                   │
-│     Sidebar  ·  Chat  ·  Trajectory       │
-│  ─ Composer (text + image, ⌘↩ to send)    │
-│  ─ Persistent threads (resume across runs)│
-│  ─ Streaming assistant deltas             │
-│  ─ Inline tool calls, file changes, exec  │
-└─────────────────┬────────────────────────┘
-                  │ JSON-RPC over stdio
-                  ▼
-┌──────────────────────────────────────────┐
-│  `codex app-server --listen stdio://`     │
-│  ─ Initialize / thread/start / turn/start │
-│  ─ Agent loop, sandbox, approval policy   │
-│  ─ Turn / item / delta notifications      │
-└─────────────────┬────────────────────────┘
-                  │ HTTPS (OpenAI-compatible Responses API)
-                  ▼
-┌──────────────────────────────────────────┐
-│  Selected OpenAI-compatible model/provider│
-│  MiniMax · GLM · DeepSeek · Custom        │
-│  Model/provider pinned in isolated config │
-└──────────────────────────────────────────┘
-```
+Current version: **v0.5.46** · macOS 14+
 
-## Why this stack
+## Current capabilities
 
-- **Codex Harness is the runtime** — agent loop, sandboxing, approvals, trajectory logging. We don't reinvent it; we just give it a Mac-native UI.
-- **OpenAI-compatible API** — the harness's `model_provider` plugin accepts `base_url` + bearer token, so built-in and custom providers can be switched without modifying the harness.
-- **App-server mode** — unlike the legacy `codex exec` mode, the persistent JSON-RPC service gives us proper streaming deltas, per-item lifecycle, server-request approvals and tool-call notifications.
-- **Recoverable context** — completed/failed turns resume the same harness thread; a pruned rollout falls back to a bounded local transcript instead of silently forgetting the conversation.
-- **Fail-closed approvals** — current JSON-RPC approval request IDs are preserved and answered with `accept`/`decline`; unknown server requests are rejected rather than implicitly approved or left hanging.
-- **Durable agent role and memory hygiene** — coding-agent instructions are always present; only stable, sanitized user/project facts are injected as memory, while reasoning traces, transient tasks and version snapshots are rejected.
-- **Incremental progress contract** — every meaningful completed step produces an immediate 1–3-line update; failures and blockers surface immediately, while the final answer only closes the loop.
-- **Clipboard screenshot compatibility** — ⌘V accepts PNG plus the TIFF/JPEG/HEIC-style image representations exposed by macOS apps, normalizing them to a temporary PNG attachment.
-- **Persisted user-image messages** — sent screenshots are copied into app-owned storage and remain visible as user-message thumbnails across relaunches.
-- **Live turn timeline** — running turns render received messages and tool events immediately; command/tool start and completion updates no longer wait for the final answer.
-- **Compaction-aware metrics** — automatic Harness compaction remains enabled, while misleading per-conversation context percentage meters are removed from the sidebar and composer.
-- **Swift/SwiftUI** — true Mac app, no Electron, ~5 MB binary, fast startup.
+| Area | Implemented capabilities |
+| --- | --- |
+| Coding workspace | Local projects, SSH projects, pinned projects, directory selection, remote browsing, and persistent workspace state |
+| Agent conversations | Streaming replies, reasoning summaries, tool calls, command output, file diffs, approvals, trajectory replay, interruption, and retry |
+| Concurrency and queueing | Multiple conversations run independently; messages within one conversation can be queued, reordered, removed, sent immediately, or steered into the active turn |
+| Models | MiniMax M3, GLM 5.3 Flash, DeepSeek V4 Flash / Pro, plus custom OpenAI Responses-compatible models |
+| Model usage | MiniMax / GLM plan limits, DeepSeek balance, context usage, and consistent remaining-capacity presentation |
+| Input and content | Text, screenshots, image attachments, Markdown, code blocks, tables, task lists, links, and images |
+| Search and export | In-conversation search, global conversation search, message copy, and full Markdown export |
+| Computer use | Dedicated `Tapgo Computer Use.app` helper, 11 MCP tools, screenshots, semantic UI inspection and clicking, mouse, keyboard, scrolling, and app launching |
+| Phone remote | QR-launched H5 controller over LAN, Tailscale, or an optional public relay; project/thread switching, messaging, image upload, and computer control |
+| Memory | USER / GLOBAL / KEY durable memory layers, independent read/write controls, consolidation, size limits, and iCloud Drive sync across Macs |
+| Plugins | Browse, install, enable, disable, and remove official Codex plugins and supported DeepSeek Harness plugins |
+| Self-evolution | Dedicated evolution conversation, version history, build/test/commit/tag workflow, recoverable state, and rollback |
+| Interface | Light/dark/system appearance, global font scale, settings center, shortcuts, command palette, and adaptive layout |
 
-## Hard isolation from the official Codex install
+## Architecture
 
-Tapgo AICoding never reads or writes anything under `~/.codex/`. All its state — config, auth, model catalog, session history — lives in a **dedicated** Codex home:
-
-```
-~/Library/Application Support/Tapgo AICoding/
-└── codex/
-    ├── auth.json                          (0600, MiniMax credential)
-    ├── auth-glm.json                      (0600, GLM credential, if configured)
-    ├── auth-deepseek.json                 (0600, DeepSeek credential, if configured)
-    ├── config.toml                        (0600, model + provider configuration)
-    ├── model-catalogs/
-    │   └── tapgo-catalog.json             (built-in + custom model catalog)
-    └── sessions/                           (harness-side thread history)
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Tapgo AICoding.app                                      │
+│ SwiftUI Workspace · Chat · Settings · Trajectory · Phone│
+└──────────────────────────┬──────────────────────────────┘
+                           │ JSON-RPC over stdio
+┌──────────────────────────▼──────────────────────────────┐
+│ codex app-server                                        │
+│ Thread / Turn · Agent Loop · Approval · Tool Events     │
+└───────────────┬───────────────────────────┬─────────────┘
+                │ Responses API             │ MCP
+┌───────────────▼────────────────┐  ┌───────▼────────────────────┐
+│ MiniMax / GLM / DeepSeek       │  │ Tapgo Computer Use.app     │
+│ or a custom compatible model   │  │ Screen · UI · Mouse · Keys │
+└────────────────────────────────┘  └────────────────────────────┘
 ```
 
-Logs go to `~/Library/Logs/Tapgo AICoding/harness.log`.
+Tapgo AICoding does not implement a second agent runtime. It uses the Codex Harness conversation, tool, sandbox, and approval protocols directly. Each conversation owns an independent runner, so switching views or conversations does not stop other active tasks.
 
-The official `~/.codex/config.toml` and `~/.codex/auth.json` are not touched. The official Codex desktop app and CLI keep working exactly as they did before.
+## Requirements
 
-`init-tapgo.sh` never reads the official Codex home or its backups；凭据只来自用户显式提供的文件、环境变量或隐藏交互输入。
+- macOS 14 Sonoma or later.
+- Swift 5.9. Building the full app requires a macOS SDK that includes the SwiftUI macro plugin. The build script defaults to `macosx26.5`; override it with `TAPGO_SDK` when needed.
+- Codex CLI 0.149.1 or later.
+- At least one supported model and API key.
+- Computer use requires Accessibility and Screen Recording permission for the dedicated helper in macOS Privacy & Security settings.
 
-## Project layout
+## Quick start
 
-```
-mac-codex-app/
-├── Package.swift                       # SwiftPM executable target
-├── scripts/
-│   ├── init-tapgo.sh                   # write isolated config + auth + catalog
-│   ├── build-app.sh                    # wrap binary in Tapgo AICoding.app
-│   └── build-icon.sh
-├── AppBuilder/
-│   ├── Info.plist
-│   ├── PkgInfo
-│   ├── TapgoAICoding.entitlements      # no-sandbox (local use)
-│   └── project.yml                     # xcodegen spec (optional)
-├── Sources/TapgoAICoding/
-│   ├── App.swift                       # @main + bootstrap
-│   ├── Models/                         # Thread, Turn, TurnItem, ToolCall
-│   ├── Services/
-│   │   ├── TapgoConfig.swift           # isolated CODEX_HOME + template files
-│   │   ├── CodexHarnessClient.swift    # JSON-RPC client over stdio
-│   │   └── SessionStore.swift          # ObservableObject state
-│   ├── Views/                          # Sidebar, Chat, Terminal, Diff, Approval, Trajectory
-│   └── Resources/
-│       └── L10n.swift
-├── README.md                           # Chinese (GitHub default)
-└── README_EN.md                        # English
-```
-
-## Setup (one-time)
+### 1. Clone
 
 ```bash
-cd ~/TapgoAICoding
+git clone https://github.com/chenlaiyi/TapgoAICoding.git
+cd TapgoAICoding
+```
+
+### 2. Initialize the isolated Codex home
+
+```bash
 ./scripts/init-tapgo.sh
 ```
 
-The script will:
+The initializer:
 
-1. Check that the `codex` CLI is installed (Homebrew cask, ≥ 0.149.1). Resolution order is explicit `HARNESS_BIN`, Homebrew paths, `~/.local/bin/codex`, then `PATH`.
-2. Read the MiniMax-M3 bearer token only from an explicit `--from-file` path, `MINIMAX_API_KEY` / `TAPGO_API_KEY`, or a hidden interactive prompt. The script never probes `~/.codex/` backups.
-3. Store the selected key with mode `0600` in
-   `~/Library/Application Support/Tapgo AICoding/codex/auth.json`.
-4. Write the model catalog, `config.toml`, and verify by launching the
-   harness with `CODEX_HOME=…` and confirming the `initialize` response
-   reports the isolated `codexHome`.
+1. Checks the Codex CLI version.
+2. Reads a MiniMax key from hidden input, an environment variable, or an explicit `--from-file` path.
+3. Creates an isolated `config.toml`, `auth.json`, and model catalog.
+4. Launches `codex app-server` and verifies that the isolated home is active.
 
-After this runs:
+Environment-variable and explicit-file examples:
 
-- The official Codex desktop app and CLI keep using `~/.codex/`.
-- Tapgo AICoding uses **only** the isolated `~/Library/Application Support/Tapgo AICoding/codex/`.
-- Both can coexist without interference.
+```bash
+MINIMAX_API_KEY='…' ./scripts/init-tapgo.sh
+./scripts/init-tapgo.sh --from-file /path/to/key-file
+```
 
-## Run
+The script never scans or migrates credentials from the official `~/.codex/` directory.
+
+### 3. Build and run
 
 ```bash
 ./scripts/build-app.sh
 open 'Tapgo AICoding.app'
 ```
 
-The script:
+The build bundles:
 
-1. Runs `swift build -c release` (executable: `TapgoAICoding`).
-2. Wraps the binary in `Tapgo AICoding.app` with a proper `Info.plist`,
-   `PkgInfo`, and ad-hoc codesign.
-3. Bundle id: `com.tapgo.aicoding`, display name: `Tapgo AICoding`.
+- The `TapgoAICoding` executable.
+- The `TapgoComputerUseMCP` executable.
+- A dedicated `Tapgo Computer Use.app` helper with its own bundle identity.
+- Plists, icons, entitlements, and ad-hoc code signatures.
 
-After the first launch, the app stays open in your Dock with the icon
-already familiar from `AppIcon.icns`.
+If Gatekeeper warns on first launch, right-click the app in Finder and choose Open.
 
-**First launch**: macOS may show a Gatekeeper warning. Right-click the
-app in Finder → Open → Open. After that, double-click works normally.
+### 4. Sign in and configure
 
-## What the app does
+After launch:
 
-| Feature | Where it lives |
-|---|---|
-| Multi-thread sidebar (persistent harness thread ids) | `SidebarView` |
-| Streaming assistant deltas | `CodexHarnessClient` → `SessionStore` → `ChatView`; animated typing dots (`StreamingIndicator`) while generating |
-| Reasoning trace + summary | `reasoning/textDelta` trace + `reasoningSummaryTextDelta` summary, each in a collapsed disclosure |
-| Assistant markdown-lite | fenced code blocks (copyable) + inline code + bold + strikethrough + headings + bullet/numbered/task lists + auto-linked URLs + blockquotes + horizontal rules + pipe tables + images (`![alt](url)`), via `MarkdownLite` → `MarkdownMessageView` |
-| Copy assistant message | `CopyIconButton` in `MessageRow` (copies the full reply to the pasteboard) |
-| Export conversation as Markdown | header `square.and.arrow.up` button → `TurnMarkdown.render` (all turns joined) |
-| Built-in and custom model switching | MiniMax M3, GLM 5.3 Flash, DeepSeek V4 Flash / Pro, plus custom compatible models; changes apply to new conversations |
-| Multimodal input (text + image) | `ComposerView` + `CodexHarnessClient.run(images:)` |
-| Inline tool calls | `MessageRow` `.toolCall` case |
-| Embedded terminal output | `CommandExecutionView` |
-| File change preview | `FileChangeView` |
-| Approval flow | configurable `approvalPolicy` (设置 → 运行); interactive 批准/拒绝 via `ApprovalRow` when the harness asks |
-| Trajectory replay | `TrajectoryView` (detail pane), with per-turn status + start time + duration + filter (全部/命令/文件/错误/工具 via `TrajectoryFilter`); turns collapse (latest expanded) |
-| Interrupt running turn | `turn/interrupt` JSON-RPC method via `ChatView` toolbar |
-| Parallel conversations | each conversation owns an independent runner, queue, cancellation path, approval route, and visible run state; switching chats never interrupts another chat |
-| Thread persistence + resume | `ThreadStore` persists `turns` + `harnessThreadId`; `sendUserMessage` resumes via `thread/resume` |
-| Token usage per turn | `Turn.usage` (`TokenUsage`, parsed from `turn/completed`); caption in `ChatView` |
-| Context meter + composer quick-switch | header color-coded `context N%` progress bar (`TokenUsage.contextLevel`); `ComposerView` sandbox + approval-policy menus (persisted) |
-| In-chat search (⌘⇧F) | `Turn.matches(query:)` + `TurnItem.searchableText` (TapgoCore); `ChatView` search bar shows "X/Y" position, ⏎ jumps to next match, ⇧⏎ to previous; matches user input + assistant text + reasoning + command stdout/stderr + tool args/result + file path/diff + approval reason |
-| Global font scale (设置 → 外观) | `AppFontScale` enum (small 0.85× / medium 1.00× / large 1.20×) + `AppFont.scaled(_:multiplier:)` central token in `TapgoCore`; SettingsView segmented picker + live preview; ChatView ⋮ 菜单提供同一切换; 通过 `@Environment(\.tapgoFontScale)` 注入到所有视图,改字号不破坏布局 (避开 `dynamicTypeSize` 在 macOS 上的不一致和 `scaleEffect` 撕裂布局) |
+1. Sign in with an authorized Tapgo administrator account.
+2. Add a local project or configure an SSH host in Settings.
+3. Choose a model, update built-in credentials, or add a custom model under Settings → Models.
+4. Review approval and sandbox settings under Settings → General.
+5. If computer use is needed, enable it under Settings → Computer Use and complete macOS authorization.
 
-## Tests
+Model and execution-policy changes apply to new conversations. Existing conversations retain the model and policy with which they were created.
+
+## Models and credentials
+
+### Built-in models
+
+| Display name | Provider | Endpoint type | Credential file |
+| --- | --- | --- | --- |
+| MiniMax M3 | `minimax` | OpenAI Responses compatible | `auth.json` |
+| GLM 5.3 Flash | `glm` | BigModel Responses | `auth-glm.json` |
+| DeepSeek V4 Flash | `deepseek` | DeepSeek Responses | `auth-deepseek.json` |
+| DeepSeek V4 Pro | `deepseek` | DeepSeek Responses | `auth-deepseek.json` |
+
+Custom models can define a display name, brand, API model ID, base URL, API key, and context window in Settings. Tapgo AICoding writes an isolated model registry and generates the matching provider configuration; source changes are not required.
+
+All model configuration lives under:
+
+```text
+~/Library/Application Support/Tapgo AICoding/codex/
+```
+
+Credential and configuration files use `0600` permissions. Never copy them into the repository or expose keys in issues, logs, or screenshots.
+
+## Computer use
+
+Since v0.5.46, the dedicated `Tapgo Computer Use.app` helper owns the real macOS TCC identity. Computer-control permissions are no longer borrowed from the main app, Terminal, or another host process.
+
+Current MCP tools:
+
+```text
+list_applications   get_app_state    click_element
+screenshot          get_screen_size  left_click
+double_click        type_text        press_key
+scroll              open_application
+```
+
+To enable computer use:
+
+1. Open Settings → Computer Use.
+2. Turn on Enable Computer Use.
+3. Open Accessibility and Screen Recording settings.
+4. Follow the in-app instructions and drag the actual helper app into the relevant allow lists.
+5. Return to Tapgo AICoding and re-check. Start a new conversation or restart the harness before use.
+
+Secure text fields never expose their real contents through the Accessibility tree. Permission state, helper state, and MCP registration are read independently; one does not prove the others.
+
+## Phone remote control
+
+Connect Phone starts a short-lived tokenized HTTP service on the Mac and generates a QR code. Scanning it opens the H5 controller directly in the phone browser; no native mobile app is required.
+
+The H5 controller can:
+
+- Show projects, conversations, transcript content, and run state.
+- Switch projects or conversations, create a conversation, and send messages.
+- Upload images and display conversation images.
+- Select a model and show the current friendly model name.
+- When authorized, capture the screen, click, scroll, type, send function keys, and lock or sleep the Mac.
+- Connect over the same Wi-Fi, Tailscale, or an optional deployed relay.
+
+Treat the URL token as a temporary access credential. Stop the service or rotate the QR code when it is no longer needed. The native client under `mobile/ios/` remains experimental; the QR-launched H5 controller is the current recommended mobile path.
+
+## Memory and cross-device sync
+
+Memory files live under:
+
+```text
+~/Library/Application Support/Tapgo AICoding/memory/
+├── user.md          # cross-project user preferences
+├── memory.md        # global environment and tool facts
+└── keys/            # branch-scoped project memory
+```
+
+Settings provide independent read, write, and iCloud Drive sync controls. Only memory Markdown files are synced; API keys, repositories, and full conversations are excluded. Writes are sanitized, deduplicated, and size-limited. Temporary tasks, reasoning traces, credentials, and version snapshots should not enter durable memory.
+
+## Data and security boundaries
+
+Tapgo AICoding and the official Codex installation use separate homes:
+
+```text
+Official Codex       ~/.codex/
+Tapgo AICoding       ~/Library/Application Support/Tapgo AICoding/codex/
+Application state    ~/Library/Application Support/Tapgo AICoding/state/v1/
+Application logs     ~/Library/Logs/Tapgo AICoding/harness.log
+```
+
+- Official Codex configuration and authentication files are not read or rewritten.
+- Conversations are persisted as per-ID files with `0600` permissions.
+- Approval modes: never ask, ask on request, or ask only for untrusted actions.
+- Sandbox modes: read-only, workspace-write, or full access.
+- The default full-access + auto-approve configuration is convenient for trusted local development but has the largest risk surface. Tighten it for unfamiliar repositories.
+- Public commits must never contain `.env`, `auth*.json`, private keys, certificates, tokens, or production deployment credentials.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘N` | New conversation |
+| `⇧⌘N` | New task with directory picker |
+| `⌘O` | Open local directory |
+| `⌘,` | Open Settings |
+| `⌘↩` | Send or steer into the active turn |
+| `⌘.` | Interrupt active task |
+| `⇧⌘R` | Retry the previous turn |
+| `⇧⌘F` | Find in the current conversation |
+| `⌘K` | Focus conversation search |
+| `⇧⌘P` | Open command palette |
+| `⇧⌘T` | Toggle trajectory panel |
+| `⌥⌘E` | Open the self-evolution conversation |
+| `⇧⌘E` | Copy the full conversation as Markdown |
+| `⇧⌘D` | Cycle appearance |
+
+## Tests and builds
+
+Canonical test command:
 
 ```bash
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
-#   720/720 — must stay green (skipping SSH-integration; they need a
-#   real remote codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3)
-
-# To run the FULL suite including SSH-integration (will fail without
-# a real remote host — expected):
-swift run TapgoTests
-
-swift build                 # debug build
-swift build -c release      # release build
 ```
 
-We deliberately do **not** use XCTest or swift-testing — the
-CommandLineTools Swift toolchain on this machine ships neither
-framework. The `TapgoTests` executable target (`Sources/TapgoTests/`)
-runs a custom `TestRunner` with `expect` / `expectEqual` / `expectThrows`
-and a non-zero exit on any failure. Tests import the same `TapgoCore`
-library the app uses, so they exercise the real validators, store
-logic, and SSH argv builder — not a hand-rolled copy. The current
-suite covers:
+The latest v0.5.46 verification is **2394 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, and computer-use tests still run.
 
-- **`RemoteCommandBuilder`**: path/host/user/command allow-lists
-  (rejects `;`, `&&`, `$()`, newlines, NUL, overlong, …),
-  `buildSshArgv` shape (`-o` BatchMode/ConnectTimeout/StrictHostKeyChecking,
-  `user@host`, single-arg command), and rejection of every kind
-  of bad input. The SSH argv is a remote-code-execution surface,
-  so these are the most important assertions in the suite.
-- **`Project` / `RemoteHost` / `WorkspaceState`**: the "no fake cwd"
-  contract — a remote project's `displayPath` must mention the
-  remote target while `harnessCwd` stays on the local mirror.
-  Plus Codable round-trips.
-- **`WorkspaceStore`**: dedup on add, 0700 dir / 0600 file
-  permissions, `ensureRemoteMirrorExists` (the fix for the
-  codex 0.149.0 unified-exec ENOENT), cascade on host removal.
-- **`ThreadStore`**: per-id 0600 files, v0 → v1 one-time migration
-  (with rename of the legacy `threads.json` to `threads.v0.json`
-  so it never re-runs), and `turns`/`items` **are** persisted and
-  round-trip (including a legacy file that lacks `turns`).
-| Persistent threads | `thread/resume` JSON-RPC method, `Thread.harnessThreadId` |
-
-## What Tapgo AICoding deliberately does NOT do
-
-- **No sharing of official Codex credentials.** Each provider's credentials
-  stay in Tapgo AICoding's isolated directory and never reuse the official
-  Codex authentication files.
-- **No arbitrary reasoning levels.** 设置仅提供服务端默认、`none`、`high`；
-  非默认值只在 `turn/start` 发送，旧的 `low` / `medium` 持久值会自动迁移。
-- **No edits to `~/.codex/`.** The official Codex install is treated
-  as an unrelated program；初始化只接受显式 `--from-file`、环境变量或隐藏交互输入，
-  不扫描任何官方配置或历史备份。
-- **No app-server token store.** Tokens live in
-  `~/Library/Application Support/Tapgo AICoding/codex/auth.json`
-  (0600), not in Keychain — keep parity with how `codex` itself stores
-  them.
-
-## Configuration knobs
-
-The following defaults live in `~/Library/Application Support/Tapgo AICoding/codex/config.toml` (written by `init-tapgo.sh`). Switching models in the app updates the selected model and provider configuration:
-
-| Field | Value (pinned) |
-|---|---|
-| `model` | `MiniMax-M3` |
-| `model_provider` | `minimax` |
-| `[model_providers.minimax].base_url` | `https://api.minimaxi.com/v1` (China) |
-| `model_catalog_json` | `…/model-catalogs/tapgo-catalog.json` |
-
-> Approval policy and sandbox mode are **runtime** settings (not
-> `config.toml`): they're persisted in `UserDefaults` and passed to
-> `thread/start`. Change them in 设置 → 运行 or via the composer chips.
-> The provider **endpoint (base URL)** is also editable in 设置 → 运行 —
-> an override is written into `config.toml` (`TapgoConfig.applyBaseURL`)
-> and takes effect on the next harness run.
-
-To switch regions temporarily, pass `TAPGO_BASE_URL=…` to
-`init-tapgo.sh` (the script will reuse whatever you set).
-
-## Limitations / next steps
-
-- **Thread persistence ✔** — threads and their `turns`/`items` are
-  persisted under `state/v1/threads/<id>.json` and reloaded on launch,
-  so the sidebar and chat history survive an app restart. The on-disk
-  copy is the source of truth for the visible conversation (we don't
-  re-fetch historical items from the harness).
-- **Thread resume ✔** — a reopened thread keeps its `harnessThreadId`;
-  sending a message resumes the harness-side session via `thread/resume`
-  instead of starting a new one.
-- **Reasoning trace + summary** — the raw `reasoning/textDelta` trace is
-  kept (collapsed behind a "思考过程" disclosure), and the condensed
-  `reasoningSummaryTextDelta` summary streams into its own collapsed
-  "思考摘要" disclosure. The final `reasoning/summary` array is only used
-  to fill the trace when nothing streamed.
-- **Approvals are configurable, default off** — the app ships with
-  `approvalPolicy: never` (auto-approve). Select **询问** (on-request) in
-  设置 → 运行 to let the harness pause and ask you to 批准/拒绝 commands,
-  file changes, and tool calls inline. The wire format for the request
-  and response is best-effort across codex versions; if a stricter
-  policy ever hangs a turn, switch back to **永不询问** (or hit 中断).
-
-## Troubleshooting
-
-- **App shows "首次运行" setup screen** → you haven't run
-  `scripts/init-tapgo.sh` yet (or `auth.json` is missing/empty). Run
-  it, then click the **重新检查** button in the setup screen.
-- **Harness exits immediately** → check
-  `tail -f ~/Library/Logs/Tapgo\ AICoding/harness.log`. Most often
-  this is a wrong key or a 402 from the upstream API.
-- **"Model provider `minimax` not found"** → your
-  `~/Library/Application Support/Tapgo AICoding/codex/config.toml` is
-  stale or was hand-edited. Re-run `scripts/init-tapgo.sh`.
-- **App is damaged / Gatekeeper warning** → right-click in Finder →
-  Open → Open. (We ad-hoc codesign for local use; a stricter
-  Gatekeeper policy may still want the explicit click-through once.)
-- **Build fails on macOS < 14** → `Package.swift` requires Sonoma.
-
----
-
-## Self-evolution loop
-
-Once a feature ships, the agent (this Codex instance, talking to itself
-through `codex app-server`) can keep iterating on the codebase without
-manual file editing. Every iteration goes through a single gated
-pipeline:
+Release products:
 
 ```bash
-./scripts/evolve.sh patch \
-  "fix: sidebar crash on empty workspace" \
-  "Root cause: SidebarView assumed ≥1 project; guard with empty state."
+swift build -c release --product TapgoAICoding
+swift build -c release --product TapgoComputerUseMCP
 ```
 
-That one command:
-
-1. Bumps `AppBuilder/Info.plist` (`CFBundleShortVersionString` + `CFBundleVersion`)
-2. Runs `swift build -c release` — aborts on failure
-3. Runs `swift run TapgoTests` — aborts on any red test
-4. Appends a section to `EVOLUTION.md`
-5. Commits + creates an annotated git tag `vX.Y.Z`
-6. `git push origin main --tags`
-7. Rebuilds `Tapgo AICoding.app` from the new binary
-8. Writes `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`
-9. Prints a summary block + the rollback command
-
-If steps 2 or 3 fail, Info.plist is reverted and nothing is committed.
-
-### Restart-and-resume across iterations
+Or build the complete app bundle:
 
 ```bash
-./scripts/restart-and-resume.sh
-```
-
-This gracefully kills the current `Tapgo AICoding.app` process, relaunches
-the freshly-built bundle, and prints the path to the state file the
-new session should read to recover context.
-
-Because the underlying `codex app-server` persists threads (via
-`thread/resume`), and the state file persists the **next-action list**
-+ last commit SHA + version, an iteration that gets cut off mid-task
-can be picked up in a new conversation turn after a restart.
-
-### Hard rollback at any time
-
-```bash
-git checkout v0.3.7
 ./scripts/build-app.sh
-./scripts/restart-and-resume.sh
 ```
 
-Every shipped iteration is a git tag pushed to `origin/main`, so
-GitHub itself is the backup. To go back two versions: pick the
-older tag, check it out, rebuild, restart.
+Do not use a bare `swift build -c release` as the packaging command. `TapgoTests` is an executable test target that uses `@testable import TapgoCore`; release builds should select the intended product explicitly.
 
-### What the agent must NEVER do
+## Repository layout
 
-- Edit `~/.codex/` — Tapgo AICoding uses only the isolated
-  `~/Library/Application Support/Tapgo AICoding/codex/`.
-- Bump a **major** version without explicit user approval.
-- Commit a tag whose tests are not green.
-- Push while `git status` is dirty in untracked files.
+```text
+TapgoAICoding/
+├── Package.swift
+├── Sources/
+│   ├── TapgoCore/                 # models, protocols, storage, validation
+│   ├── TapgoComputerUse/          # AppKit screenshot/input primitives
+│   ├── TapgoComputerUseMCP/       # dedicated computer-use MCP server
+│   ├── TapgoAICoding/             # macOS SwiftUI app
+│   └── TapgoTests/                # executable regression suite
+├── AppBuilder/                    # app/helper plists, icon, signing config
+├── scripts/                       # initialization, build, evolution, restart
+├── mobile/ios/                    # experimental native iOS pairing client
+├── EVOLUTION.md                   # release history
+├── AGENT_MEMORY.md                # sanitized stable project-memory snapshot
+├── README.md                      # Chinese default
+└── README_EN.md                   # English
+```
+
+## Releases and rollback
+
+Release history lives in [EVOLUTION.md](EVOLUTION.md). A release should keep these states aligned:
+
+- `AppBuilder/Info.plist`
+- `AppBuilder/project.yml`
+- In-app evolution history
+- Git commit and `vX.Y.Z` tag
+- Installed app versions on collaborating Macs
+
+Rollback example:
+
+```bash
+git checkout v0.5.46
+./scripts/build-app.sh
+open 'Tapgo AICoding.app'
+```
+
+Checking out a tag creates a detached HEAD. Return to `main` and verify the remote state before continuing development.
+
+## Current limitations
+
+- The app is ad-hoc signed, so first launch and helper authorization require user confirmation.
+- Computer use is fully available only when Accessibility, Screen Recording, and MCP registration are all valid.
+- Remote SSH integration tests require real hosts and are skipped by the canonical offline command.
+- The public phone relay requires separate server and reverse-proxy deployment; production credentials are not part of this repository.
+- `mobile/ios/` is not yet a released App Store client, and Android is incomplete.
+- The build currently depends on an SDK that provides the SwiftUI macro plugin; validate the toolchain after changing Xcode or SDK versions.
+
+## License
+
+This repository does not currently include a standalone open-source license. Public visibility does not automatically grant rights to copy, modify, or redistribute the code. Add an explicit `LICENSE` before presenting the project as open source.
