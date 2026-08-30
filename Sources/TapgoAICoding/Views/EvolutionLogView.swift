@@ -252,6 +252,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.44",
+                    date: "2026-08-30",
+                    commit: "c39cbda",
+                    tag: "v0.5.44",
+                    summary: "电脑控制完整启停、输入区入口与 Accessibility 语义操作",
+                    changes: [
+                        "补齐电脑控制总开关与输入框入口显示偏好：总开关真实注册/移除 MCP，显示开关只控制 Composer 快捷入口。",
+                        "Composer 新增电脑操作 chip，以绿/橙/灰状态点显示已就绪、缺权限与已关闭，点击直达电脑控制设置。",
+                        "MCP 工具 8 → 11：新增应用枚举、Accessibility 界面树读取和按元素点击；安全输入框内容强制隐藏。",
+                        "启动与模型配置重写均尊重总开关；配置移除与参数边界补齐测试，完整离线回归 2390/2390。"
+                    ],
+                    why: "上一版只有状态与手动注册，没有真正的能力启停和 Composer 入口；截图坐标操作也不足以覆盖 Codex 风格的语义电脑控制。",
+                    next: "三机授权后验证语义元素点击；继续补按元素输入、滚动与多显示器选择。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.43",
                     date: "2026-08-30",
                     commit: "b4a7597",

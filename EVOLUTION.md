@@ -19,6 +19,20 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.44 — 电脑控制完整启停、输入区入口与 Accessibility 语义操作
+**Date**: 2026-08-30
+**Commit**: c39cbda
+**Tag**: v0.5.44
+**Test status**: 2390 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Changed**:
+- 参考 ZCode 补齐「启用电脑控制」与「在输入框底部显示电脑操作」两个独立开关；总开关真实注册/移除 MCP 配置，显示偏好不改变能力状态。
+- Composer 新增「电脑操作」快捷入口，以绿/橙/灰状态点区分已就绪、缺权限与已关闭，点击直达电脑控制设置。
+- 电脑控制设置页新增权限/MCP 真值、关闭态说明、重新检测、重新注册和系统隐私设置入口；App 启动及模型配置重写均尊重总开关。
+- MCP 工具由 8 个扩展为 11 个，新增 list_applications / get_app_state / click_element；支持读取 macOS Accessibility 元素树并按元素操作，安全输入框内容强制隐藏。
+- 新增 MCP 段安全移除、语义工具 schema 与参数边界测试；完整离线回归 2390/2390。
+**Why**: v0.5.43 只有状态页和手动注册按钮，没有真正的启停开关与 Composer 入口；底层也只有截图坐标操作，无法兑现「读取/驱动 UI 元素」的语义电脑控制。
+**Next**: 在三台 Mac 分别授权后验证语义元素点击链路；后续补充按元素输入、滚动与多显示器选择。
+
 ## v0.5.43 — 参考 ZCode 重构设置中心
 **Date**: 2026-08-30
 **Commit**: b4a7597
