@@ -21,7 +21,7 @@
 
 ## v0.5.34 — GLM 额度可查：接入 BigModel 官方 monitor/usage/quota/limit
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: a0af5f8
 **Tag**: v0.5.34
 **Test status**: 2355 passed / 8 failed（既有 SSH 环境失败，与本版无关）
 **Changed**:

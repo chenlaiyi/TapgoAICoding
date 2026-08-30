@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.34",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "a0af5f8",
                     tag: "v0.5.34",
                     summary: "GLM 额度可查：接入 BigModel 官方 monitor/usage/quota/limit",
                     changes: [
