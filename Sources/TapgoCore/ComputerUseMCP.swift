@@ -32,6 +32,16 @@ public enum ComputerUseMCP {
     public static let helperAppName = "Tapgo Computer Use.app"
     public static let helperExecutableName = "TapgoComputerUseMCP"
 
+    /// Injected into every new model session so desktop control follows a
+    /// verified observe-act-observe loop instead of guessing global positions.
+    public static let agentInstructions = """
+    【电脑控制工作流·使用电脑控制工具时强制执行】
+    - 先用 list_applications 确认目标应用，再调用 get_app_state(app, include_screenshot=true) 同时读取深层元素树与目标应用窗口。
+    - 始终把操作绑定到目标 app；优先用 click_element 和 set_element_value。只有元素树中确实没有可操作元素时，才使用同一张应用窗口截图里的 app 相对坐标。
+    - 每次导航、点击、输入或滚动后重新调用 get_app_state 核对结果；元素编号在界面变化后立即失效，不得复用。
+    - 不得根据旧截图或全屏位置反复盲点。连续两次未达到预期时，停止坐标猜测，重新读取当前应用与窗口状态后再决定。
+    """
+
     public static func helperExecutablePath(helperAppPath: String) -> String {
         URL(fileURLWithPath: helperAppPath, isDirectory: true)
             .appendingPathComponent("Contents/MacOS", isDirectory: true)
@@ -82,7 +92,7 @@ public enum ComputerUseMCP {
     /// 工具全集。press_key 的 key 参数枚举复用 PhoneRemote.ControlKey
     /// (H5 电脑控制与 MCP 共用同一套键名)。
     public static let toolNames: [String] = [
-        "list_applications", "get_app_state", "click_element",
+        "list_applications", "get_app_state", "click_element", "set_element_value",
         "screenshot", "get_screen_size", "left_click", "double_click",
         "type_text", "press_key", "scroll", "open_application",
     ]
@@ -96,40 +106,47 @@ public enum ComputerUseMCP {
                  "列出当前运行的用户应用、bundle id 与前台状态。需要语义读取/按元素操作时先用它确认 app 参数。",
                  ["type": "object", "properties": [:], "additionalProperties": false]),
             tool("get_app_state",
-                 "读取目标应用的 macOS Accessibility 元素树并给每个元素临时编号。导航或界面变化后编号会失效，操作前必须重新读取。",
-                 object(["app": str()], required: ["app"])),
+                 "把目标应用切到前台，读取深层 macOS Accessibility 元素树并给元素临时编号；支持 Electron/WebArea。include_screenshot=true 时同时返回该应用主窗口截图。导航或界面变化后编号会失效，操作前必须重新读取。",
+                 object(["app": str(), "include_screenshot": bool()], required: ["app"])),
             tool("click_element",
                  "按下 get_app_state 最近一次状态中的元素编号。适合按钮、菜单项、复选框等语义控件；操作后重新读取状态核对。",
                  object(["app": str(), "element_index": integer(minimum: 0, maximum: 999)],
                         required: ["app", "element_index"])),
+            tool("set_element_value",
+                 "直接给 get_app_state 返回的可编辑文本框设置值，比坐标点击后盲打可靠；不会在结果中回显内容。设置后必须重新读取状态核对。",
+                 object(["app": str(),
+                         "element_index": integer(minimum: 0, maximum: 999),
+                         "text": str()],
+                        required: ["app", "element_index", "text"])),
             tool("screenshot",
-                 "截取 Mac 主屏画面, 返回 JPEG 图像与屏幕尺寸。完成 GUI 任务前先截屏确认当前状态; 点击后应再次截屏核对结果。",
-                 ["type": "object", "properties": [:], "additionalProperties": false]),
+                 "返回 JPEG。处理某个应用时必须传 app，只截取并聚焦该应用主窗口；省略 app 才截整个主屏。点击后再次截图核对。",
+                 object(["app": str()], required: [])),
             tool("get_screen_size",
                  "获取 Mac 主屏尺寸 (逻辑点数与像素)。只想知道屏幕大小/比例时用这个, 不需要图像。",
                  ["type": "object", "properties": [:], "additionalProperties": false]),
             tool("left_click",
-                 "在主屏归一化坐标 (x, y ∈ 0...1, 左上原点) 处单击鼠标。坐标取自最近一次 screenshot 的相对位置。",
-                 object(["x": num(), "y": num()], required: ["x", "y"])),
+                 "优先使用 click_element。仅在无语义元素时，按最近 screenshot 的左上原点归一化坐标单击；传 app 时坐标相对该应用窗口并先聚焦，省略 app 才相对主屏。",
+                 object(["app": str(), "x": num(), "y": num()], required: ["x", "y"])),
             tool("double_click",
-                 "在主屏归一化坐标处双击鼠标 (打开文件/选中词等)。",
-                 object(["x": num(), "y": num()], required: ["x", "y"])),
+                 "按归一化坐标双击；传 app 时相对该应用窗口并先聚焦，省略 app 才相对主屏。",
+                 object(["app": str(), "x": num(), "y": num()], required: ["x", "y"])),
             tool("type_text",
-                 "把整段文本作为键盘输入逐字符打到当前焦点窗口 (支持中文; \\n 会转成回车)。打字前先用 left_click 把焦点放到目标输入框。",
-                 object(["text": str()], required: ["text"])),
+                 "向当前焦点控件逐字符输入文本；建议传 app 以先聚焦目标应用。表单输入优先使用 set_element_value；\\n 会转成回车。",
+                 object(["app": str(), "text": str()], required: ["text"])),
             tool("press_key",
-                 "按一个命名按键, 可选组合修饰键。key 枚举: \(keyEnum.joined(separator: ", "))。",
-                 object(["key": ["type": "string", "enum": keyEnum],
+                 "在指定 app 中按一个命名按键，可选组合修饰键；建议始终传 app，避免按键落到其他应用。key 枚举: \(keyEnum.joined(separator: ", "))。",
+                 object(["app": str(),
+                         "key": ["type": "string", "enum": keyEnum],
                          "modifiers": ["type": "array",
                                        "items": ["type": "string",
                                                  "enum": ["command", "control", "option", "shift"]]],
                          "example": ["key": "return", "modifiers": ["command"]]],
                         required: ["key"])),
             tool("scroll",
-                 "滚轮滚动。dy 为行数, 正数向下滚、负数向上滚, 限幅 ±20。",
-                 object(["dy": num()], required: ["dy"])),
+                 "在指定 app 中滚轮滚动；建议始终传 app。dy 为行数，正数向下、负数向上，限幅 ±20。",
+                 object(["app": str(), "dy": num()], required: ["dy"])),
             tool("open_application",
-                 "按名字启动一个 macOS 应用 (等价 `open -a <名字>`), 例如 Safari / 访达 / 系统设置。启动后建议截屏确认窗口状态。",
+                 "按应用名、中文本地化名或 bundle id 启动并切到前台；会检查真实退出状态。启动后用 get_app_state(app, include_screenshot=true) 确认。",
                  object(["name": str()], required: ["name"])),
         ]
         return ["tools": tools]
@@ -150,6 +167,7 @@ public enum ComputerUseMCP {
         ["type": "integer", "minimum": minimum, "maximum": maximum]
     }
     private static func str() -> [String: Any] { ["type": "string"] }
+    private static func bool() -> [String: Any] { ["type": "boolean"] }
 
     // MARK: - Typed argument accessors (执行器与单测共用)
 
@@ -171,10 +189,19 @@ public enum ComputerUseMCP {
         (args["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
     }
 
+    /// Form values may legitimately be empty when clearing an editable field.
+    public static func elementValueArg(_ args: [String: Any]) -> String? {
+        args["text"] as? String
+    }
+
     public static func appNameArg(_ args: [String: Any]) -> String? {
         guard let raw = args["app"] as? String else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    public static func boolArg(_ args: [String: Any], _ key: String) -> Bool {
+        args[key] as? Bool ?? false
     }
 
     public static func elementIndex(_ args: [String: Any]) -> Int? {

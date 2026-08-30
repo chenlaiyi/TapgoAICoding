@@ -37,7 +37,7 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
        let result = obj["result"] as? [String: Any],
        let tools = result["tools"] as? [[String: Any]] {
         t.expectEqual(tools.count, ComputerUseMCP.toolNames.count, "mcp: 工具数与注册表一致")
-        t.expectEqual(tools.count, 11, "mcp: 工具全集 11 个")
+        t.expectEqual(tools.count, 12, "mcp: 工具全集 12 个")
         let names = tools.compactMap { $0["name"] as? String }
         for required in ComputerUseMCP.toolNames {
             t.expect(names.contains(required), "mcp: 工具 \(required) 已注册")
@@ -57,6 +57,21 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
         t.expect(keyEnum.contains("return"), "mcp: press_key 枚举含 return")
         t.expect(keyEnum.contains("volumeUp"), "mcp: press_key 枚举含媒体键")
         t.expectEqual(keyEnum.count, PhoneRemote.ControlKey.allCases.count, "mcp: press_key 枚举全集")
+
+        let state = tools.first { ($0["name"] as? String) == "get_app_state" }
+        let stateProps = ((state?["inputSchema"] as? [String: Any])?["properties"] as? [String: Any])
+        t.expectEqual((stateProps?["include_screenshot"] as? [String: Any])?["type"] as? String,
+                      "boolean", "mcp: get_app_state 可同时请求应用窗口截图")
+
+        let screenshot = tools.first { ($0["name"] as? String) == "screenshot" }
+        let screenshotProps = ((screenshot?["inputSchema"] as? [String: Any])?["properties"] as? [String: Any])
+        t.expectEqual((screenshotProps?["app"] as? [String: Any])?["type"] as? String,
+                      "string", "mcp: screenshot 支持指定应用窗口")
+
+        let setValue = tools.first { ($0["name"] as? String) == "set_element_value" }
+        let setValueRequired = ((setValue?["inputSchema"] as? [String: Any])?["required"] as? [String]) ?? []
+        t.expect(Set(setValueRequired) == Set(["app", "element_index", "text"]),
+                 "mcp: 语义赋值要求 app/index/text")
     } else {
         t.expect(false, "mcp: tools/list 可回包且可解析")
     }
@@ -152,9 +167,20 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
     t.expect(ComputerUseMCP.lineDelta(["dy": 0]) == nil, "coord: dy=0 拒绝")
     t.expectEqual(ComputerUseMCP.textArg(["text": "你好 world"]), "你好 world", "text: UTF-8")
     t.expect(ComputerUseMCP.textArg(["text": ""]) == nil, "text: 空串拒绝")
+    t.expectEqual(ComputerUseMCP.elementValueArg(["text": ""]), "", "element value: 允许清空字段")
+    t.expect(ComputerUseMCP.elementValueArg(["text": 1]) == nil, "element value: 拒绝非字符串")
     t.expectEqual(ComputerUseMCP.appNameArg(["app": " com.apple.Safari "]), "com.apple.Safari",
                   "app: 去除首尾空白")
     t.expect(ComputerUseMCP.appNameArg(["app": "  "]) == nil, "app: 空串拒绝")
+    t.expect(ComputerUseMCP.boolArg(["include_screenshot": true], "include_screenshot"),
+             "bool: true 读取")
+    t.expect(!ComputerUseMCP.boolArg(["include_screenshot": 1], "include_screenshot"),
+             "bool: 数字不算 Bool")
+    t.expect(!ComputerUseMCP.boolArg([:], "include_screenshot"), "bool: 缺省 false")
+    t.expect(ComputerUseMCP.agentInstructions.contains("get_app_state(app, include_screenshot=true)"),
+             "workflow: 强制先观察目标应用")
+    t.expect(ComputerUseMCP.agentInstructions.contains("连续两次"),
+             "workflow: 禁止反复盲点坐标")
     t.expectEqual(ComputerUseMCP.elementIndex(["element_index": 42]), 42,
                   "element: 非负整数合法")
     t.expect(ComputerUseMCP.elementIndex(["element_index": -1]) == nil,

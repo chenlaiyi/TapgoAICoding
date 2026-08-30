@@ -57,7 +57,7 @@ let screenPermissionHint =
     "截屏失败: Tapgo Computer Use 没有 macOS「屏幕录制」权限。请在 Tapgo AICoding 的电脑控制设置中打开对应系统页面并完成授权，然后重启会话重试。"
 let accessibilityHint =
     "操作失败: Tapgo Computer Use 没有 macOS「辅助功能」权限。请在 Tapgo AICoding 的电脑控制设置中打开对应系统页面并完成授权，然后重启会话重试。"
-let invalidCoordHint = "参数错误: x/y 必须是 0...1 的归一化坐标 (相对主屏截图, 左上原点)。请先调用 screenshot 获取画面。"
+let invalidCoordHint = "参数错误: x/y 必须是 0...1 的归一化坐标（左上原点）。处理应用窗口时先调用 screenshot(app=...)，点击时也传同一个 app。"
 
 /// 工具执行器: MCP 协议层 → ComputerUse 原语。
 let executor: ComputerUseMCP.Executor = { tool, args in
@@ -79,6 +79,26 @@ let executor: ComputerUseMCP.Executor = { tool, args in
                 isError: true,
                 text: "无法读取 \(app) 的辅助功能界面树。请先调用 list_applications，并确认辅助功能权限。")
         }
+        if ComputerUseMCP.boolArg(args, "include_screenshot") {
+            guard ComputerUse.screenCaptureAllowed else {
+                return ComputerUseMCP.ToolOutcome(
+                    isError: true,
+                    text: state + "\n\n" + screenPermissionHint
+                )
+            }
+            guard let capture = ComputerUse.applicationScreenshotJPEG(appName: app) else {
+                return ComputerUseMCP.ToolOutcome(
+                    isError: true,
+                    text: state + "\n\n应用窗口截图失败；目标窗口可能未显示在主桌面。"
+                )
+            }
+            let metadata = "\n\n窗口截图: \(capture.appLabel) \(Int(capture.pointWidth))x\(Int(capture.pointHeight)) pt，window_id=\(capture.windowID)。坐标工具传 app 时相对这张图。"
+            return ComputerUseMCP.ToolOutcome(
+                isError: false,
+                text: state + metadata,
+                imageJPEGBase64: capture.jpeg.base64EncodedString()
+            )
+        }
         return ComputerUseMCP.ToolOutcome(isError: false, text: state)
 
     case "click_element":
@@ -94,17 +114,45 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         let result = ComputerUse.pressElement(appName: app, index: index)
         return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
 
+    case "set_element_value":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let index = ComputerUseMCP.elementIndex(args),
+              let text = ComputerUseMCP.elementValueArg(args) else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: 需要 app、element_index 与字符串 text。请先调用 get_app_state。"
+            )
+        }
+        let result = ComputerUse.setElementValue(appName: app, index: index, value: text)
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
     case "screenshot":
         guard ComputerUse.screenCaptureAllowed else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: screenPermissionHint)
         }
-        guard let jpeg = ComputerUse.screenshotJPEG(maxSide: 1280) else {
-            return ComputerUseMCP.ToolOutcome(isError: true, text: "截屏失败: CGDisplayCreateImage 返回空。")
+        if let app = ComputerUseMCP.appNameArg(args) {
+            guard let capture = ComputerUse.applicationScreenshotJPEG(appName: app) else {
+                return ComputerUseMCP.ToolOutcome(
+                    isError: true,
+                    text: "截取 \(app) 窗口失败；请先调用 open_application 或 list_applications 确认应用正在运行。"
+                )
+            }
+            return ComputerUseMCP.ToolOutcome(
+                isError: false,
+                text: "应用窗口 \(capture.appLabel) \(Int(capture.pointWidth))x\(Int(capture.pointHeight)) pt，window_id=\(capture.windowID)。坐标工具传 app 时相对本图，左上原点。",
+                imageJPEGBase64: capture.jpeg.base64EncodedString()
+            )
+        }
+        guard let jpeg = ComputerUse.screenshotJPEG(maxSide: 1600) else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "主屏截图失败: CGDisplayCreateImage 返回空。")
         }
         let size = ComputerUse.mainScreenSize()
         return ComputerUseMCP.ToolOutcome(
             isError: false,
-            text: String(format: "主屏 %.0fx%.0f pt (像素 %dx%d, scale %.0fx)。图像按最长边 1280 等比缩放; 点击请用相对该图像的归一化坐标。",
+            text: String(format: "主屏 %.0fx%.0f pt (像素 %dx%d, scale %.0fx)。图像按最长边 1600 等比缩放；主屏点击省略 app 并使用相对本图坐标。",
                          size.pointWidth, size.pointHeight, size.pixelWidth, size.pixelHeight, size.scale),
             imageJPEGBase64: jpeg.base64EncodedString())
 
@@ -122,10 +170,13 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         guard let (x, y) = ComputerUseMCP.normalizedCoord(args) else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: invalidCoordHint)
         }
-        ComputerUse.click(nx: x, ny: y, doubleClick: tool == "double_click")
-        let verb = tool == "double_click" ? "双击" : "单击"
-        return ComputerUseMCP.ToolOutcome(isError: false,
-                                          text: "已在 (\(x), \(y)) 完成\(verb)。建议截屏核对结果。")
+        let result = ComputerUse.click(
+            nx: x,
+            ny: y,
+            doubleClick: tool == "double_click",
+            appName: ComputerUseMCP.appNameArg(args)
+        )
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
 
     case "type_text":
         guard ComputerUse.accessibilityAllowed else {
@@ -133,6 +184,10 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         }
         guard let text = ComputerUseMCP.textArg(args) else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: 需要非空 text 字符串。")
+        }
+        if let app = ComputerUseMCP.appNameArg(args),
+           !ComputerUse.activateApplication(named: app) {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
         }
         ComputerUse.typeText(text)
         return ComputerUseMCP.ToolOutcome(isError: false,
@@ -149,6 +204,10 @@ let executor: ComputerUseMCP.Executor = { tool, args in
                 text: "参数错误: key 必须是命名按键之一 (\(names))。")
         }
         let modifiers = ComputerUseMCP.modifierFlags(args)
+        if let app = ComputerUseMCP.appNameArg(args),
+           !ComputerUse.activateApplication(named: app) {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
+        }
         ComputerUse.pressKey(name: key.rawValue, modifiers: modifiers)
         let combo = modifiers.isEmpty ? key.rawValue : key.rawValue + " + " + modifiers.joined(separator: "+")
         return ComputerUseMCP.ToolOutcome(isError: false, text: "已按键 \(combo)。")
@@ -160,6 +219,10 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         guard let dy = ComputerUseMCP.lineDelta(args) else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: dy 必须是非 0 数值 (行数, 正=向下)。")
         }
+        if let app = ComputerUseMCP.appNameArg(args),
+           !ComputerUse.activateApplication(named: app) {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
+        }
         ComputerUse.scroll(lines: dy)
         return ComputerUseMCP.ToolOutcome(isError: false, text: "已滚动 \(Int(dy)) 行。")
 
@@ -170,8 +233,10 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         guard ComputerUse.openApplication(named: name) else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: "启动 \(name) 失败 (open -a 返回错误)。")
         }
-        return ComputerUseMCP.ToolOutcome(isError: false,
-                                          text: "已请求启动 \(name)。等 1-2 秒后截屏确认窗口状态。")
+        return ComputerUseMCP.ToolOutcome(
+            isError: false,
+            text: "已启动并切到 \(name)。请调用 get_app_state(app=\"\(name)\", include_screenshot=true) 确认。"
+        )
 
     default:
         return ComputerUseMCP.ToolOutcome(isError: true, text: "未知工具: \(tool)")

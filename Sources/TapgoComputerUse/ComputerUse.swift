@@ -24,6 +24,14 @@ public enum ComputerUse {
         }
     }
 
+    public struct ApplicationScreenshot {
+        public let jpeg: Data
+        public let appLabel: String
+        public let pointWidth: CGFloat
+        public let pointHeight: CGFloat
+        public let windowID: CGWindowID
+    }
+
     // MARK: - Permissions
 
     /// 「屏幕录制」TCC 权限预检 (不弹窗)。
@@ -66,6 +74,86 @@ public enum ComputerUse {
                                   properties: [.compressionFactor: 0.72])
     }
 
+    private struct ApplicationWindowInfo {
+        let id: CGWindowID
+        let bounds: CGRect
+    }
+
+    /// Capture only the target application's largest visible normal window.
+    /// `/usr/sbin/screencapture -l` is used because the modern SDK removes the
+    /// legacy per-window CoreGraphics image API; the child remains attributed
+    /// to this signed Helper's Screen Recording identity.
+    public static func applicationScreenshotJPEG(
+        appName: String?,
+        maxSide: CGFloat = 1600
+    ) -> ApplicationScreenshot? {
+        guard let app = resolveApplication(named: appName) else { return nil }
+        app.activate(options: [.activateAllWindows])
+        usleep(180_000)
+        guard let window = primaryWindowInfo(for: app) else { return nil }
+
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tapgo-window-\(UUID().uuidString).jpg")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = ["-x", "-o", "-l\(window.id)", "-tjpg", fileURL.path]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0,
+                  let raw = try? Data(contentsOf: fileURL),
+                  let bitmap = NSBitmapImageRep(data: raw),
+                  let image = bitmap.cgImage else { return nil }
+            let scaled = scaledImage(image, maxSide: maxSide) ?? image
+            let rep = NSBitmapImageRep(cgImage: scaled)
+            guard let jpeg = rep.representation(
+                using: .jpeg,
+                properties: [.compressionFactor: 0.76]
+            ) else { return nil }
+            return ApplicationScreenshot(
+                jpeg: jpeg,
+                appLabel: app.localizedName ?? app.bundleIdentifier ?? "未知应用",
+                pointWidth: window.bounds.width,
+                pointHeight: window.bounds.height,
+                windowID: window.id
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    @discardableResult
+    public static func activateApplication(named name: String?) -> Bool {
+        guard let app = resolveApplication(named: name) else { return false }
+        let activated = app.activate(options: [.activateAllWindows])
+        if activated { usleep(120_000) }
+        return activated
+    }
+
+    private static func primaryWindowInfo(for app: NSRunningApplication) -> ApplicationWindowInfo? {
+        guard let raw = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return nil }
+        return raw.compactMap { item -> ApplicationWindowInfo? in
+            guard (item[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value
+                    == app.processIdentifier,
+                  (item[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+                  let number = item[kCGWindowNumber as String] as? NSNumber,
+                  let boundsDictionary = item[kCGWindowBounds as String] as? [String: Any],
+                  let bounds = CGRect(
+                    dictionaryRepresentation: boundsDictionary as CFDictionary
+                  ),
+                  bounds.width >= 120, bounds.height >= 80 else { return nil }
+            return .init(id: CGWindowID(number.uint32Value), bounds: bounds)
+        }.max { lhs, rhs in
+            lhs.bounds.width * lhs.bounds.height < rhs.bounds.width * rhs.bounds.height
+        }
+    }
+
     /// 等比缩放 CGImage 到最长边 `maxSide` (若已小于则返回 nil 让调用方用原图)。
     static func scaledImage(_ image: CGImage, maxSide: CGFloat) -> CGImage? {
         let w = CGFloat(image.width), h = CGFloat(image.height)
@@ -81,11 +169,11 @@ public enum ComputerUse {
         return ctx.makeImage()
     }
 
-    /// 归一化坐标 (0...1, 相对主屏截图、原点左上) → 全局 CG 坐标 (原点左下)。
+    /// 归一化坐标 (0...1, 相对主屏截图、原点左上) → 全局 CG 坐标。
     public static func displayPoint(nx: Double, ny: Double) -> CGPoint {
         let bounds = CGDisplayBounds(CGMainDisplayID())
         return CGPoint(x: bounds.minX + CGFloat(nx) * bounds.width,
-                       y: bounds.minY + (1 - CGFloat(ny)) * bounds.height)
+                       y: bounds.minY + CGFloat(ny) * bounds.height)
     }
 
     // MARK: - Semantic UI access
@@ -112,8 +200,10 @@ public enum ComputerUse {
     /// Read a bounded, flattened Accessibility tree. Values from secure text
     /// fields are always redacted. Indices are ephemeral and must be refreshed
     /// after navigation/state changes before `click_element` is called.
-    public static func appStateDescription(appName: String?, maxElements: Int = 220) -> String? {
+    public static func appStateDescription(appName: String?, maxElements: Int = 600) -> String? {
         guard let app = resolveApplication(named: appName) else { return nil }
+        app.activate(options: [.activateAllWindows])
+        usleep(120_000)
         let nodes = accessibilityNodes(for: app, maxElements: maxElements)
         guard !nodes.isEmpty else { return nil }
         let appLabel = app.localizedName ?? app.bundleIdentifier ?? "未知应用"
@@ -135,16 +225,56 @@ public enum ComputerUse {
         guard let app = resolveApplication(named: appName) else {
             return .init(success: false, message: "未找到目标应用。请先调用 list_applications。")
         }
-        let nodes = accessibilityNodes(for: app, maxElements: max(220, index + 1))
+        app.activate(options: [.activateAllWindows])
+        usleep(120_000)
+        let nodes = accessibilityNodes(for: app, maxElements: max(600, index + 1))
         guard nodes.indices.contains(index) else {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
-        app.activate(options: [])
         let error = AXUIElementPerformAction(nodes[index].element, kAXPressAction as CFString)
         guard error == .success else {
             return .init(success: false, message: "元素 \(index) 不支持按下操作（AXError \(error.rawValue)）。")
         }
         return .init(success: true, message: "已按下元素 \(index)。请重新调用 get_app_state 或 screenshot 核对结果。")
+    }
+
+    /// Directly set an editable Accessibility element's value. This is much
+    /// more reliable than coordinate-click + blind typing for Electron forms.
+    public static func setElementValue(
+        appName: String?,
+        index: Int,
+        value: String
+    ) -> ElementActionResult {
+        guard index >= 0 else {
+            return .init(success: false, message: "element_index 必须是非负整数。")
+        }
+        guard let app = resolveApplication(named: appName) else {
+            return .init(success: false, message: "未找到目标应用。请先调用 list_applications。")
+        }
+        app.activate(options: [.activateAllWindows])
+        usleep(120_000)
+        let nodes = accessibilityNodes(for: app, maxElements: max(600, index + 1))
+        guard nodes.indices.contains(index) else {
+            return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
+        }
+        let element = nodes[index].element
+        var settable = DarwinBoolean(false)
+        guard AXUIElementIsAttributeSettable(
+            element,
+            kAXValueAttribute as CFString,
+            &settable
+        ) == .success, settable.boolValue else {
+            return .init(success: false, message: "元素 \(index) 不支持设置值；请重新读取并选择可编辑文本框。")
+        }
+        _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        let error = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, value as CFString)
+        guard error == .success else {
+            return .init(success: false, message: "设置元素 \(index) 失败（AXError \(error.rawValue)）。")
+        }
+        return .init(
+            success: true,
+            message: "已设置元素 \(index) 的内容（\(value.count) 个字符，内容不回显）。请重新调用 get_app_state 核对。"
+        )
     }
 
     private struct AccessibilityNode {
@@ -177,8 +307,12 @@ public enum ComputerUse {
         var result: [AccessibilityNode] = []
 
         func walk(_ element: AXUIElement, depth: Int) {
-            guard result.count < maxElements, depth <= 12 else { return }
+            guard result.count < maxElements, depth <= 32 else { return }
             result.append(.init(element: element, depth: depth))
+            // Closed menu trees can contain hundreds of irrelevant items and
+            // used to exhaust the scan before Electron web controls appeared.
+            let role = attribute(element, kAXRoleAttribute) as? String
+            if role == kAXMenuBarRole || role == kAXMenuRole { return }
             guard let children = attribute(element, kAXChildrenAttribute) as? [AXUIElement] else { return }
             for child in children {
                 walk(child, depth: depth + 1)
@@ -216,6 +350,31 @@ public enum ComputerUse {
         } else if role == secureTextRole {
             details.append("value=\"[已隐藏]\"")
         }
+        if let placeholder = attribute(element, kAXPlaceholderValueAttribute) as? String,
+           !placeholder.isEmpty {
+            details.append("placeholder=\"\(compact(placeholder))\"")
+        }
+        if let identifier = attribute(element, kAXIdentifierAttribute) as? String,
+           !identifier.isEmpty {
+            details.append("id=\"\(compact(identifier))\"")
+        }
+        if (attribute(element, kAXSelectedAttribute) as? NSNumber)?.boolValue == true {
+            details.append("selected=true")
+        }
+        if (attribute(element, kAXFocusedAttribute) as? NSNumber)?.boolValue == true {
+            details.append("focused=true")
+        }
+        if (attribute(element, kAXEnabledAttribute) as? NSNumber)?.boolValue == false {
+            details.append("enabled=false")
+        }
+        var valueSettable = DarwinBoolean(false)
+        if AXUIElementIsAttributeSettable(
+            element,
+            kAXValueAttribute as CFString,
+            &valueSettable
+        ) == .success, valueSettable.boolValue, role != secureTextRole {
+            details.append("settable=true")
+        }
         let indent = String(repeating: "  ", count: min(depth, 12))
         return indent + role + (details.isEmpty ? "" : " " + details.joined(separator: " "))
     }
@@ -236,9 +395,36 @@ public enum ComputerUse {
 
     // MARK: - Mouse / keyboard
 
-    /// 在归一化坐标处单击 / 双击 (先移动光标再按抬)。
-    public static func click(nx: Double, ny: Double, doubleClick: Bool) {
-        let pt = displayPoint(nx: nx, ny: ny)
+    /// 在主屏或指定应用窗口的归一化坐标处单击 / 双击。CoreGraphics
+    /// 全局鼠标坐标与窗口列表均为左上原点，不再做错误的 Y 轴翻转。
+    @discardableResult
+    public static func click(
+        nx: Double,
+        ny: Double,
+        doubleClick: Bool,
+        appName: String? = nil
+    ) -> ElementActionResult {
+        let pt: CGPoint
+        if let appName {
+            guard let app = resolveApplication(named: appName) else {
+                return .init(success: false, message: "未找到目标应用 \(appName)。")
+            }
+            app.activate(options: [.activateAllWindows])
+            usleep(120_000)
+            guard let window = primaryWindowInfo(for: app) else {
+                return .init(success: false, message: "未找到 \(appName) 的可见主窗口。")
+            }
+            pt = CGPoint(
+                x: window.bounds.minX + CGFloat(nx) * window.bounds.width,
+                y: window.bounds.minY + CGFloat(ny) * window.bounds.height
+            )
+        } else {
+            let bounds = CGDisplayBounds(CGMainDisplayID())
+            pt = CGPoint(
+                x: bounds.minX + CGFloat(nx) * bounds.width,
+                y: bounds.minY + CGFloat(ny) * bounds.height
+            )
+        }
         let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
                            mouseCursorPosition: pt, mouseButton: .left)
         move?.post(tap: .cghidEventTap)
@@ -255,6 +441,8 @@ public enum ComputerUse {
             up?.post(tap: .cghidEventTap)
             if state < clicks { usleep(120_000) }
         }
+        let scope = appName.map { "应用 \($0) 窗口" } ?? "主屏"
+        return .init(success: true, message: "已在\(scope)相对坐标 (\(nx), \(ny)) 完成点击。")
     }
 
     /// 滚轮: `lines` 行, 正数向下。限幅 ±20 行防误操作把页面滚飞。

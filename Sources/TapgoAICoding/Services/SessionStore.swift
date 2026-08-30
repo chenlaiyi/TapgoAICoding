@@ -846,7 +846,7 @@ final class SessionStore: ObservableObject {
         - 只有当前回合中的具体工具调用真实失败，才能说该工具不可用；不得根据旧记忆或猜测宣布工具不可用。
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。
         - 使用简体中文；输出节奏严格遵守前面的强制协议。
-        """]
+        """, ComputerUseMCP.agentInstructions]
         if let userMem = TapgoConfig.readMemoryForInjection(
             projectRoot: project?.worktreeRoot,
             gitBranch: Self.detectGitBranch(for: project)
