@@ -500,12 +500,16 @@ enum TapgoConfig {
             try? atomicWrite(Data(config.utf8), to: configPath)
             try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
             try? writeDefaultCatalog(region: defaultRegion)
+            // Rewriting the generated model config must not silently remove
+            // the bundled computer-control tool registered at app startup.
+            ensureComputerUseMCPSection()
             return
         }
         let config = renderedConfigWithKey(region: defaultRegion, authKey: key)
         try? atomicWrite(Data(config.utf8), to: configPath)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
         try? writeDefaultCatalog(region: defaultRegion)
+        ensureComputerUseMCPSection()
         log("syncModelConfigFiles: config.toml + catalog 已按模型注册表重写")
     }
 

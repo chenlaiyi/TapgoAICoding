@@ -84,6 +84,8 @@ final class PluginManagerViewModel: ObservableObject {
 }
 
 struct PluginManagerView: View {
+    var isEmbedded = false
+
     private enum Tab: String, CaseIterable, Identifiable {
         case installed
         case codex
@@ -126,7 +128,12 @@ struct PluginManagerView: View {
             }
             content
         }
-        .frame(width: 980, height: 680)
+        .frame(
+            minWidth: isEmbedded ? 0 : 980,
+            maxWidth: isEmbedded ? .infinity : 980,
+            minHeight: isEmbedded ? 0 : 680,
+            maxHeight: isEmbedded ? .infinity : 680
+        )
         .background(DSHTheme.bg)
         .task { await model.refresh() }
         .confirmationDialog(
@@ -174,13 +181,15 @@ struct PluginManagerView: View {
                 .buttonStyle(.borderless)
                 .disabled(model.isLoading)
                 .help("刷新插件目录")
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                if !isEmbedded {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("关闭插件管理")
                 }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("关闭插件管理")
             }
 
             HStack(spacing: 8) {

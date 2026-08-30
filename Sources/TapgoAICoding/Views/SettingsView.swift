@@ -1,15 +1,17 @@
 import SwiftUI
 import TapgoCore
+import ApplicationServices
+import CoreGraphics
 
-/// Settings sheet. Three tabs:
-///   1. Projects — add / rename / remove / "open in Finder" / "Open in Terminal"
-///   2. Remote Hosts — add / edit / test / remove
-///   3. About — version, CODEX_HOME, log dir
+/// ZCode-style settings workspace: grouped navigation on the left and a
+/// task-focused, scrollable settings page on the right.  Each control still
+/// uses Tapgo AICoding's existing source of truth; the layout does not invent
+/// switches for capabilities that the app cannot actually persist or apply.
 struct SettingsView: View {
     @EnvironmentObject var workspace: WorkspaceStore
     @EnvironmentObject var authStore: AdminAuthStore
     @Environment(\.dismiss) private var dismiss
-    @State private var tab: Tab = .projects
+    @State private var tab: Tab = .general
     @State private var addHostSheet = false
     @State private var testingHostId: String?
     @State private var testingOutput: String?
@@ -17,6 +19,8 @@ struct SettingsView: View {
     @State private var globalMemoryStatus: MemoryFileStatus?
     @State private var codexMemoryStatus: MemoryFileStatus?
     @State private var memoryCopyMessage: String?
+    @State private var computerPermissionRefresh = 0
+    @State private var computerUseMessage: String?
 
     @AppStorage(TapgoConfig.approvalPolicyKey) private var approvalPolicyRaw =
         TapgoConfig.ApprovalPolicy.never.rawValue
@@ -41,49 +45,77 @@ struct SettingsView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     enum Tab: String, CaseIterable, Identifiable {
+        case general = "常规"
+        case appearance = "外观"
+        case model = "模型设置"
+        case computer = "电脑控制"
+        case memory = "记忆"
+        case plugins = "插件"
         case account = "账户"
         case projects = "项目"
         case remote = "远程主机"
-        case model = "模型"
-        case runtime = "运行"
-        case appearance = "外观"
         case about = "关于"
-        case memory = "记忆"
         var id: String { rawValue }
-    }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("设置").font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier)).bold()
-                Spacer()
-                Button { dismiss() } label: { Image(systemName: "xmark.circle.fill") }
-                    .buttonStyle(.borderless).accessibilityLabel("关闭")
-            }.padding(20)
-            Divider()
-            HStack(spacing: 0) {
-                List(Tab.allCases, selection: $tab) { t in
-                    Text(t.rawValue).tag(t)
-                }
-                .listStyle(.sidebar)
-                .frame(width: 140)
-                Divider()
-                Group {
-                    switch tab {
-                    case .account:    accountTab
-                    case .projects:   projectsTab
-                    case .remote:     remoteTab
-                    case .model:      modelTab
-                    case .runtime:    runtimeTab
-                    case .appearance: appearanceTab
-                    case .about:      aboutTab
-                    case .memory:     memoryTab
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        var icon: String {
+            switch self {
+            case .general: return "slider.horizontal.3"
+            case .appearance: return "paintpalette"
+            case .model: return "cube"
+            case .computer: return "display"
+            case .memory: return "brain.head.profile"
+            case .plugins: return "puzzlepiece.extension"
+            case .account: return "person.crop.circle"
+            case .projects: return "folder"
+            case .remote: return "network"
+            case .about: return "info.circle"
             }
         }
-        .frame(minWidth: 720, minHeight: 480)
+
+        var subtitle: String {
+            switch self {
+            case .general: return "审批、安全与 Agent 运行方式"
+            case .appearance: return "主题、字号与实时预览"
+            case .model: return "选择、添加并维护模型供应商"
+            case .computer: return "工具注册与 macOS 权限状态"
+            case .memory: return "跨会话记忆与跨设备同步"
+            case .plugins: return "安装、启停与管理扩展能力"
+            case .account: return "当前 Tapgo 登录身份"
+            case .projects: return "本地工作区与项目列表"
+            case .remote: return "SSH 开发主机与连接检测"
+            case .about: return "版本、配置目录与诊断信息"
+            }
+        }
+    }
+
+    private struct NavigationSection: Identifiable {
+        let title: String
+        let tabs: [Tab]
+        var id: String { title }
+    }
+
+    private let navigationSections = [
+        NavigationSection(title: "基础设置", tabs: [.general, .appearance, .model, .computer]),
+        NavigationSection(title: "工作区", tabs: [.projects, .remote]),
+        NavigationSection(title: "Agent 能力", tabs: [.memory, .plugins]),
+        NavigationSection(title: "账户与支持", tabs: [.account, .about]),
+    ]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            settingsSidebar
+                .frame(width: 228)
+            Divider()
+            VStack(spacing: 0) {
+                pageHeader
+                Divider()
+                pageContent
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DSHTheme.bg)
+        }
+        .frame(width: 1080, height: 720)
+        .background(DSHTheme.moduleBg)
         .sheet(isPresented: $addHostSheet) {
             AddRemoteHostSheet { host in
                 workspace.addRemoteHost(host)
@@ -115,6 +147,142 @@ struct SettingsView: View {
             Button("取消", role: .cancel) { deleteCandidate = nil }
         } message: {
             Text("仅删除 App 内的模型配置，不影响上游账号。")
+        }
+    }
+
+    private var settingsSidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { dismiss() } label: {
+                Label("返回工作区", systemImage: "chevron.left")
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 9)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(navigationSections) { section in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(section.title)
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
+                                .foregroundStyle(DSHTheme.labelTertiary)
+                                .padding(.horizontal, 12)
+                                .textCase(.uppercase)
+                            ForEach(section.tabs) { item in
+                                sidebarButton(item)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 18)
+            }
+
+            Divider()
+            HStack(spacing: 10) {
+                if let user = authStore.currentUser {
+                    UserAvatar(url: user.avatarURL, name: user.displayName, size: 30)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(user.displayName)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
+                            .lineLimit(1)
+                        Text("Tapgo AICoding")
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.tertiary)
+                    }
+                } else {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(DSHTheme.brand)
+                    Text("Tapgo AICoding")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
+                }
+                Spacer()
+            }
+            .padding(14)
+        }
+        .background(DSHTheme.moduleBg)
+    }
+
+    private func sidebarButton(_ item: Tab) -> some View {
+        Button {
+            tab = item
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: item.icon)
+                    .frame(width: 17)
+                Text(item.rawValue)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+            .foregroundStyle(tab == item ? DSHTheme.label : DSHTheme.labelDim)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(
+                tab == item ? DSHTheme.interactiveHoverStrong : Color.clear,
+                in: RoundedRectangle(cornerRadius: 9)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.rawValue)
+    }
+
+    private var pageHeader: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(tab.rawValue)
+                    .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier).weight(.semibold))
+                    .foregroundStyle(DSHTheme.label)
+                Text(tab.subtitle)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+            }
+            Spacer()
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("关闭设置")
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 22)
+        .background(DSHTheme.bg)
+    }
+
+    @ViewBuilder
+    private var pageContent: some View {
+        switch tab {
+        case .projects:
+            projectsTab
+        case .remote:
+            remoteTab
+        case .plugins:
+            PluginManagerView(isEmbedded: true)
+        default:
+            ScrollView {
+                Group {
+                    switch tab {
+                    case .general: generalTab
+                    case .appearance: appearanceTab
+                    case .model: modelTab
+                    case .computer: computerTab
+                    case .memory: memoryTab
+                    case .account: accountTab
+                    case .about: aboutTab
+                    case .projects, .remote, .plugins: EmptyView()
+                    }
+                }
+                .frame(maxWidth: 760, alignment: .topLeading)
+                .padding(28)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
         }
     }
 
@@ -439,95 +607,129 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var modelTab: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("模型配置").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-            Form {
-                Picker("新会话模型", selection: $selectedModelRaw) {
-                    ForEach(modelRows) { model in
-                        Text(model.displayName).tag(model.id)
+        VStack(alignment: .leading, spacing: 18) {
+            SettingsCard(
+                title: "默认模型",
+                description: "选择新会话使用的模型与思考强度。",
+                icon: "cpu"
+            ) {
+                VStack(spacing: 0) {
+                    settingsControlRow(
+                        title: "新会话模型",
+                        description: "进行中的会话继续使用创建时的模型。"
+                    ) {
+                        Picker("新会话模型", selection: $selectedModelRaw) {
+                            ForEach(modelRows) { model in
+                                Text(model.displayName).tag(model.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 230)
+                        .onChange(of: selectedModelRaw) { _, raw in
+                            let normalized = ModelRegistry.normalizedID(raw)
+                            guard modelRows.contains(where: { $0.id == normalized }) else { return }
+                            TapgoConfig.setSelectedModel(id: normalized)
+                            if selectedModelRaw != normalized { selectedModelRaw = normalized }
+                        }
+                    }
+
+                    Divider()
+
+                    settingsControlRow(
+                        title: L10n.reasoningEffortTitle,
+                        description: "仅覆盖支持该参数的模型；默认值由供应商决定。"
+                    ) {
+                        Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
+                            Text("默认 (模型定)").tag("")
+                            Text("无 (none)").tag("none")
+                            Text("高 (high)").tag("high")
+                        }
+                        .labelsHidden()
+                        .frame(width: 230)
                     }
                 }
-                .onChange(of: selectedModelRaw) { _, raw in
-                    let normalized = ModelRegistry.normalizedID(raw)
-                    guard modelRows.contains(where: { $0.id == normalized }) else { return }
-                    TapgoConfig.setSelectedModel(id: normalized)
-                    if selectedModelRaw != normalized { selectedModelRaw = normalized }
-                }
-                Picker(L10n.reasoningEffortTitle, selection: $reasoningEffort) {
-                    Text("默认 (模型定)").tag("")
-                    Text("无 (none)").tag("none")
-                    Text("高 (high)").tag("high")
-                }
             }
-            .formStyle(.grouped)
-            Text("切换模型对新建会话生效；进行中的会话保持创建时的模型。")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
 
-            HStack {
-                Text("模型列表").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-                Spacer()
-                Button {
-                    customModelSheet = CustomModel(displayName: "", apiModel: "", brand: "", baseURL: "https://", apiKey: "")
-                    customSheetIsNew = true
-                } label: {
-                    Label("新增模型", systemImage: "plus")
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            ForEach(modelRows) { row in
-                VStack(alignment: .leading, spacing: 3) {
+            SettingsCard(
+                title: "模型列表",
+                description: "内置模型可更新凭据；自定义模型可编辑或删除。",
+                icon: "shippingbox"
+            ) {
+                VStack(spacing: 0) {
                     HStack {
-                        Text(row.displayName)
-                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(DSHTheme.label)
-                        if row.id == selectedModelID {
-                            Text("当前")
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                                .padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(DSHTheme.brand.opacity(0.12), in: Capsule())
-                                .foregroundStyle(DSHTheme.brand)
-                        }
-                        Spacer()
-                        Button("编辑") { editModel(row) }
+                        Text("\(modelRows.count) 个模型")
                             .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        if row.builtIn == nil {
-                            Button("删除", role: .destructive) { deleteCandidate = row }
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button {
+                            customModelSheet = CustomModel(
+                                displayName: "",
+                                apiModel: "",
+                                brand: "",
+                                baseURL: "https://",
+                                apiKey: ""
+                            )
+                            customSheetIsNew = true
+                        } label: {
+                            Label("新增模型", systemImage: "plus")
                         }
                     }
-                    HStack {
-                        Text(credentialStatusText(for: row))
+                    .padding(.bottom, 8)
+
+                    ForEach(Array(modelRows.enumerated()), id: \.element.id) { index, row in
+                        if index > 0 { Divider() }
+                        VStack(alignment: .leading, spacing: 7) {
+                            HStack(spacing: 8) {
+                                Text(row.displayName)
+                                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.medium))
+                                    .foregroundStyle(DSHTheme.label)
+                                if row.id == selectedModelID {
+                                    Text("当前")
+                                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(DSHTheme.brandSoft, in: Capsule())
+                                        .foregroundStyle(DSHTheme.brand)
+                                }
+                                Text(row.builtIn == nil ? "自定义" : "内置")
+                                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                                    .foregroundStyle(.tertiary)
+                                Spacer()
+                                Button("编辑") { editModel(row) }
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                if row.builtIn == nil {
+                                    Button("删除", role: .destructive) { deleteCandidate = row }
+                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                }
+                            }
+                            HStack(spacing: 8) {
+                                Label(
+                                    credentialStatusText(for: row),
+                                    systemImage: credentialOK(for: row) ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
+                                )
+                                .foregroundStyle(credentialOK(for: row) ? DSHTheme.success : DSHTheme.error)
+                                Text(row.baseURL)
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .textSelection(.enabled)
+                            }
                             .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(credentialOK(for: row) ? DSHTheme.labelTertiary : DSHTheme.error)
-                        Spacer()
-                        Text(row.builtIn == nil ? "自定义" : "内置")
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 12)
                     }
-                    Text(row.baseURL)
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                        .textSelection(.enabled)
                 }
-                .padding(.vertical, 4)
-            }
-            .padding(.horizontal, 20)
-            .onAppear {
-                reloadModelRows()
-                let resolved = TapgoConfig.resolveSelected()
-                if selectedModelRaw != resolved.id { selectedModelRaw = resolved.id }
             }
 
-            Text("MiniMax 端点覆盖（高级）").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-                .padding(.top, 8)
-            Form {
-                TextField("Endpoint (Base URL)", text: $baseURL)
-                    .textFieldStyle(.roundedBorder)
-                    .disableAutocorrection(true)
+            SettingsCard(
+                title: "MiniMax 端点覆盖",
+                description: "高级设置。留空使用默认端点，仅影响 MiniMax。",
+                icon: "network"
+            ) {
                 HStack {
+                    TextField("Endpoint (Base URL)", text: $baseURL)
+                        .textFieldStyle(.roundedBorder)
+                        .disableAutocorrection(true)
                     Button(L10n.apply) {
                         try? TapgoConfig.applyBaseURL(baseURL)
                     }
@@ -536,43 +738,73 @@ struct SettingsView: View {
                         try? TapgoConfig.applyBaseURL("")
                     }
                 }
+                Text("默认：\(TapgoConfig.defaultRegion.baseURL)；GLM / DeepSeek 始终使用各自官方端点。")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
             }
-            .formStyle(.grouped)
-            Text("留空则使用默认端点：\(TapgoConfig.defaultRegion.baseURL)；仅影响 MiniMax，GLM / DeepSeek 固定官方端点。")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 20)
-            Spacer()
         }
-        .padding(.top, 20)
+        .onAppear {
+            reloadModelRows()
+            let resolved = TapgoConfig.resolveSelected()
+            if selectedModelRaw != resolved.id { selectedModelRaw = resolved.id }
+        }
     }
 
-    // MARK: - Runtime tab
+    // MARK: - General tab
 
     @ViewBuilder
-    private var runtimeTab: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("运行行为").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-            Form {
-                Picker(L10n.approvalPolicyTitle, selection: $approvalPolicyRaw) {
-                    ForEach(TapgoConfig.ApprovalPolicy.allCases) { p in
-                        Text(p.displayName).tag(p.rawValue)
+    private var generalTab: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            SettingsCard(
+                title: "权限与安全",
+                description: "控制 Agent 何时请求批准，以及命令可访问的本机范围。",
+                icon: "lock.shield"
+            ) {
+                VStack(spacing: 0) {
+                    settingsControlRow(
+                        title: L10n.approvalPolicyTitle,
+                        description: "新建会话使用；进行中的会话保持创建时策略。"
+                    ) {
+                        Picker(L10n.approvalPolicyTitle, selection: $approvalPolicyRaw) {
+                            ForEach(TapgoConfig.ApprovalPolicy.allCases) { policy in
+                                Text(policy.displayName).tag(policy.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 190)
                     }
-                }
-                Picker(L10n.sandboxModeTitle, selection: $sandboxRaw) {
-                    ForEach(TapgoConfig.SandboxMode.allCases) { m in
-                        Text(m.displayName).tag(m.rawValue)
+
+                    Divider()
+
+                    settingsControlRow(
+                        title: L10n.sandboxModeTitle,
+                        description: "权限越宽，Agent 越能自主执行；同时也应更谨慎审核高风险动作。"
+                    ) {
+                        Picker(L10n.sandboxModeTitle, selection: $sandboxRaw) {
+                            ForEach(TapgoConfig.SandboxMode.allCases) { mode in
+                                Text(mode.displayName).tag(mode.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 190)
                     }
                 }
             }
-            .formStyle(.grouped)
-            Text(L10n.approvalPolicyHint)
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
-            Spacer()
+
+            SettingsCard(
+                title: "设置生效范围",
+                description: "像 ZCode 一样把“现在生效”与“新会话生效”明确区分，避免误判。",
+                icon: "arrow.triangle.2.circlepath"
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("外观、字号与记忆开关会立即应用。", systemImage: "bolt.fill")
+                    Label("模型、审批与沙箱策略从新会话开始应用。", systemImage: "plus.bubble")
+                    Label("电脑控制 MCP 注册后需重启 Harness 或新建会话。", systemImage: "terminal")
+                }
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                .foregroundStyle(DSHTheme.labelDim)
+            }
         }
-        .padding(.top, 20)
     }
 
     // MARK: - Appearance tab
@@ -580,28 +812,168 @@ struct SettingsView: View {
     @ViewBuilder
     private var appearanceTab: some View {
         let scale = AppFontScale(rawValue: fontScaleRaw) ?? .medium
-        VStack(alignment: .leading, spacing: 14) {
-            Text("外观").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
-            Form {
-                Section("字体大小") {
-                    Picker("字体大小", selection: $fontScaleRaw) {
-                        ForEach(AppFontScale.allCases) { s in
-                            Text(s.displayName).tag(s.rawValue)
+        VStack(alignment: .leading, spacing: 18) {
+            SettingsCard(
+                title: "界面设置",
+                description: "主题和文字大小立即应用到整个 App。",
+                icon: "circle.lefthalf.filled"
+            ) {
+                VStack(spacing: 0) {
+                    settingsControlRow(
+                        title: "界面主题",
+                        description: "选择浅色、深色或跟随 macOS 系统外观。"
+                    ) {
+                        Picker("界面主题", selection: $appearanceRaw) {
+                            Text("跟随系统").tag("system")
+                            Text("浅色").tag("light")
+                            Text("深色").tag("dark")
                         }
+                        .labelsHidden()
+                        .frame(width: 160)
                     }
-                    .pickerStyle(.segmented)
-                    Text("全局生效：聊天、侧栏、设置、提示等所有文本。会话内菜单（⋮ → 字体大小）也是同一选项。")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.secondary)
-                }
-                Section("预览") {
-                    previewRow(scale: scale)
+
+                    Divider()
+
+                    settingsControlRow(
+                        title: "界面字号",
+                        description: "聊天、侧栏、设置与提示文字统一缩放。"
+                    ) {
+                        Picker("界面字号", selection: $fontScaleRaw) {
+                            ForEach(AppFontScale.allCases) { option in
+                                Text(option.displayName).tag(option.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 250)
+                    }
                 }
             }
-            .formStyle(.grouped)
-            Spacer()
+
+            SettingsCard(
+                title: "实时预览",
+                description: "预览与聊天、侧栏使用同一套字体缩放。",
+                icon: "textformat.size"
+            ) {
+                previewRow(scale: scale)
+                    .padding(4)
+            }
         }
-        .padding(.top, 20)
+    }
+
+    // MARK: - Computer control tab
+
+    @ViewBuilder
+    private var computerTab: some View {
+        let _ = computerPermissionRefresh
+        VStack(alignment: .leading, spacing: 18) {
+            SettingsCard(
+                title: "电脑控制状态",
+                description: "Tapgo AICoding 通过随 App 分发的 MCP 工具执行截屏、鼠标和键盘操作。",
+                icon: "display.and.arrow.down"
+            ) {
+                VStack(spacing: 0) {
+                    computerStatusRow(
+                        title: "辅助功能 (Accessibility)",
+                        description: "读取与驱动界面元素、合成键盘和鼠标输入。",
+                        ready: AXIsProcessTrusted()
+                    )
+                    Divider()
+                    computerStatusRow(
+                        title: "屏幕录制 (Screen Recording)",
+                        description: "让 Agent 在操作前读取当前屏幕。",
+                        ready: CGPreflightScreenCaptureAccess()
+                    )
+                    Divider()
+                    computerStatusRow(
+                        title: "电脑控制 MCP",
+                        description: computerUseConfigRegistered
+                            ? "已写入隔离 Codex home；新会话或重启 Harness 后生效。"
+                            : "尚未在隔离 Codex home 中找到注册段。",
+                        ready: computerUseConfigRegistered
+                    )
+                }
+            }
+
+            SettingsCard(
+                title: "工具注册",
+                description: "重新检测不会申请权限；重新注册只更新 Tapgo AICoding 自己的隔离配置。",
+                icon: "wrench.and.screwdriver"
+            ) {
+                HStack(spacing: 12) {
+                    Button {
+                        computerPermissionRefresh += 1
+                        computerUseMessage = "已重新读取当前权限与配置状态。"
+                    } label: {
+                        Label("重新检测", systemImage: "arrow.clockwise")
+                    }
+                    Button {
+                        let ok = TapgoConfig.ensureComputerUseMCPSection()
+                        computerPermissionRefresh += 1
+                        computerUseMessage = ok
+                            ? "电脑控制 MCP 已注册；请新建会话或重启 Harness。"
+                            : "未找到随 App 分发的电脑控制二进制，未修改配置。"
+                    } label: {
+                        Label("重新注册 MCP", systemImage: "terminal")
+                    }
+                    if let computerUseMessage {
+                        Text(computerUseMessage)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+
+            Text("如果系统权限仍显示“未授权”，请到 macOS“系统设置 → 隐私与安全性”中授权 Tapgo AICoding，然后重新启动 App。")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var computerUseConfigRegistered: Bool {
+        guard let config = try? String(contentsOf: TapgoConfig.configPath, encoding: .utf8) else {
+            return false
+        }
+        return config.contains("[mcp_servers.tapgo_computer_use]")
+    }
+
+    private func computerStatusRow(title: String, description: String, ready: Bool) -> some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.medium))
+                    .foregroundStyle(DSHTheme.label)
+                Text(description)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+            }
+            Spacer(minLength: 24)
+            Label(ready ? "已就绪" : "未就绪", systemImage: ready ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
+                .foregroundStyle(ready ? DSHTheme.success : DSHTheme.warn)
+        }
+        .padding(.vertical, 14)
+    }
+
+    private func settingsControlRow<Control: View>(
+        title: String,
+        description: String,
+        @ViewBuilder control: () -> Control
+    ) -> some View {
+        HStack(alignment: .center, spacing: 20) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.medium))
+                    .foregroundStyle(DSHTheme.label)
+                Text(description)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+            }
+            Spacer(minLength: 20)
+            control()
+        }
+        .padding(.vertical, 14)
     }
 
     /// Tiny live-preview that uses the same `AppFont` helper the rest of
@@ -721,7 +1093,6 @@ struct SettingsView: View {
     @ViewBuilder
     private var memoryTab: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("记忆").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
             Form {
                 Section("跨会话记忆 · 三层架构") {
                     Toggle(isOn: $memoryEnabled) {
@@ -849,7 +1220,6 @@ struct SettingsView: View {
                 .foregroundStyle(.tertiary)
             Spacer()
         }
-        .padding(.top, 20)
         .task { refreshMemoryStatus() }
     }
 
@@ -857,7 +1227,7 @@ struct SettingsView: View {
     private var iCloudStatusRow: some View {
         let available = MemoryCloudSync.isICloudAvailable
         let path = MemoryCloudSync.iCloudMirrorURL?.path ?? "(iCloud Drive 未配置)"
-        return VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 Circle()
                     .fill(available ? Color.green : Color.orange)
@@ -968,6 +1338,56 @@ struct SettingsView: View {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(text, forType: .string)
+    }
+}
+
+/// Shared card surface for settings pages. It owns only presentation;
+/// persistence remains in the controls supplied by each tab.
+private struct SettingsCard<Content: View>: View {
+    let title: String
+    let description: String
+    let icon: String
+    @ViewBuilder let content: Content
+
+    init(
+        title: String,
+        description: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.description = description
+        self.icon = icon
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(DSHTheme.brand)
+                    .frame(width: 32, height: 32)
+                    .background(DSHTheme.brandSoft, in: RoundedRectangle(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(DSHTheme.label)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(DSHTheme.labelDim)
+                }
+                Spacer(minLength: 0)
+            }
+            content
+        }
+        .padding(18)
+        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+        .overlay(
+            RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                .stroke(DSHTheme.border, lineWidth: 1)
+        )
+        .shadow(color: DSHTheme.cardShadow, radius: 8, y: 2)
     }
 }
 

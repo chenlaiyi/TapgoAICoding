@@ -21,16 +21,26 @@ func runPluginCatalogCodexParsing(_ runner: TestRunner) {
         "installed": false,
         "enabled": false,
         "source": {"path": "/tmp/figma"}
+      }, {
+        "pluginId": "git-skill@openai-api-curated",
+        "name": "git-skill",
+        "marketplaceName": "openai-api-curated",
+        "version": null,
+        "installed": false,
+        "enabled": false,
+        "source": {"source": "git", "url": "https://example.invalid/skill.git"}
       }]
     }
     """#.data(using: .utf8)!
 
     do {
         let items = try PluginCatalogParser.decodeCodex(json)
-        runner.expectEqual(items.count, 2, "installed and available plugins are merged")
+        runner.expectEqual(items.count, 3, "installed and available plugins are merged")
         runner.expectEqual(items.first?.name, "pdf", "installed plugins sort first")
         runner.expectEqual(items.first?.enabled, false, "disabled state is retained")
-        runner.expect(items.last?.matches("FIGMA") == true, "search is case-insensitive")
+        runner.expect(items.contains { $0.matches("FIGMA") }, "search is case-insensitive")
+        runner.expectEqual(items.first { $0.name == "git-skill" }?.version, "—",
+                           "versionless git plugins remain visible")
     } catch {
         runner.expect(false, "Codex catalog decodes: \(error)")
     }

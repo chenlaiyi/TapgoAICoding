@@ -88,7 +88,9 @@ public struct CodexPluginRecord: Decodable, Sendable {
     public let pluginId: String
     public let name: String
     public let marketplaceName: String
-    public let version: String
+    /// Some git-backed marketplace entries do not publish a semantic version.
+    /// Keep those records visible instead of failing the entire catalog.
+    public let version: String?
     public let installed: Bool
     public let enabled: Bool
     public let source: Source?
@@ -97,7 +99,7 @@ public struct CodexPluginRecord: Decodable, Sendable {
         PluginCatalogItem(
             id: "codex:\(pluginId)",
             name: name,
-            version: version,
+            version: version ?? "—",
             marketplace: .codex,
             marketplaceName: marketplaceName,
             installSpecifier: pluginId,
