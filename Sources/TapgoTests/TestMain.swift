@@ -69,6 +69,8 @@ let allSections: [String] = [
     "TapgoConfigProbe: readAPIKey parses auth file",
     "TapgoConfigProbe: deleteCustomModel rewrites selected id",
     "TapgoConfigProbe: testConnection probes /models",
+    "ProviderRegistry: Provider/ProviderModel CRUD + 持久化",
+    "ProviderRegistry: v0.5.52 legacy migration",
     "DeepSeekQuota: DeepSeekQuotaClient transport & auth",
     "GLMQuota: GLMQuotaClient transport & auth",
     "ExecEvent: approval request parsing",
@@ -360,6 +362,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "TapgoConfigProbe: testConnection probes /models") {
             await runTapgoConfigTestConnection(runner)
+        }
+        await runIfInScope(runner, "ProviderRegistry: Provider/ProviderModel CRUD + 持久化") {
+            runProviderRegistry(runner)
+        }
+        await runIfInScope(runner, "ProviderRegistry: v0.5.52 legacy migration") {
+            runProviderRegistryMigration(runner)
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)

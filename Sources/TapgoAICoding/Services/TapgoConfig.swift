@@ -462,6 +462,35 @@ enum TapgoConfig {
         ModelRegistry(fileURL: modelRegistryFileURL)
     }
 
+    /// Provider 注册表文件（v0.5.53 起替代分散的 auth*.json + model-registry.json）。
+    /// 单测里可注入替代路径；生产路径由 codexHome 决定。
+    static var providerRegistryFileURL: URL {
+        codexHome.appendingPathComponent("provider-registry.json")
+    }
+
+    /// Provider 注册表单例路径：每次构造新实例但路径稳定。
+    /// 注入式单测传 `providerRegistryFileURL` 覆盖。
+    static func providerRegistry() -> ProviderRegistry {
+        ProviderRegistry(
+            fileURL: providerRegistryFileURL,
+            legacyModelRegistryURL: modelRegistryFileURL,
+            legacyAuthPaths: [authPath, glmAuthPath, deepSeekAuthPath]
+        )
+    }
+
+    /// 所有 Provider（v0.5.53 起）。同时触发首次启动的 v0.5.52 迁移。
+    static func allProviders() -> [Provider] {
+        let registry = providerRegistry()
+        registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        return registry.providers
+    }
+
+    /// 当前选中的 Provider；选中态为空时返回第一个内置。
+    static func resolveSelectedProvider() -> Provider {
+        providerRegistry().resolveSelectedProvider()
+    }
+
     /// 全部可选模型：内置 4 个 + 用户自定义，内置在前。
     static func allModels() -> [ResolvedModel] {
         var out: [ResolvedModel] = TapgoModel.allCases.map { m in
@@ -572,6 +601,41 @@ enum TapgoConfig {
             apiKey: key,
             completion: completion
         )
+    }
+
+    // MARK: - v0.5.53 Provider-aware API（仿造 ZCode）
+
+    /// 清除指定 Provider 的 Key（v0.5.53 起）。内置 / 自定义 Provider 都用这个
+    /// API；旧 `clearAPIKey(for: TapgoModel)` 保留供 ChatView 等旧路径用。
+    /// 内部委托给 ProviderRegistry.setAPIKey，并触发 syncModelConfigFiles
+    /// 让 config.toml 重写。
+    static func clearAPIKey(providerID: String) {
+        let registry = providerRegistry()
+        registry.migrateFromLegacyIfNeeded()
+        registry.setAPIKey("", for: providerID)
+        syncModelConfigFiles()
+    }
+
+    /// 探测某个 Provider 下某个 Model 的端点连通性（v0.5.53 起）。
+    static func testConnection(
+        provider: Provider,
+        model: ProviderModel,
+        completion: @escaping (Result<UInt, Error>) -> Void
+    ) {
+        ModelSettingsProbe.testConnection(
+            baseURL: provider.baseURL,
+            apiKey: provider.apiKey,
+            completion: completion
+        )
+    }
+
+    /// 触发 Provider 注册表同步到 harness config.toml / catalog（v0.5.53）。
+    /// 旧 `syncModelConfigFiles` 路径完整保留，本函数只是它的别名 + 触发
+    /// 迁移；新代码优先用本函数。
+    static func syncProviderFiles() {
+        let registry = providerRegistry()
+        registry.migrateFromLegacyIfNeeded()
+        syncModelConfigFiles()
     }
 
     /// 增删改自定义模型 / 切换选择后调用：按最新注册表重写

@@ -19,6 +19,22 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.53 — 模型设置 1:1 仿造 ZCode（供应商/模型两层）
+**Date**: 2026-08-31
+**Tag**: v0.5.53
+**Changed**:
+- `TapgoCore/Provider.swift`（新增）：`Provider`（供应商，内嵌 baseURL/apiKey/models）+ `ProviderModel`（供应商下的具体模型）+ `TapgoProviderKind`（内置供应商枚举：zhipu / minimax / deepseek）。智谱默认挂 GLM-5.3 / GLM-5.3-Flash / GLM-5-Turbo 三个模型。
+- `TapgoCore/ProviderRegistry.swift`（新增）：`provider-registry.json`（0600）持久化全部供应商；`ensureBuiltinProviders` / `addOrUpdate`（内置仅允许改 Key/baseURL/models） / `removeProvider`（内置拒绝删除） / `setSelectedProvider` / `setSelectedModel` / `reorderProviders`（UI 占位）。
+- v0.5.52 → v0.5.53 自动迁移：旧 `model-registry.json` 的每个 CustomModel 转为一个自定义 Provider；旧 `auth.json` / `auth-glm.json` / `auth-deepseek.json` 的 Key 按「文件名含 glm → 智谱、deepseek → DeepSeek、其余 → MiniMax」合并进内置 Provider；旧文件移入 `backups/` 保留。
+- `TapgoConfig`：新增 `allProviders()` / `resolveSelectedProvider()` / `providerRegistry()` / `clearAPIKey(providerID:)` / `testConnection(provider:model:)` / `syncProviderFiles()`；旧 ResolvedModel 路径完整保留（thread/start + 手机 H5 不受影响）。
+- `Views/ModelSettingsView.swift`（新增）：ZCode 风格模型设置页——顶部「刷新 / 拖拽调整供应商顺序（占位） / 添加供应商」操作条 + 「智谱（已启用）/ 自定义供应商」两个 Section；供应商卡内每个模型行 = API 模型 ID（可编辑 TextField）+ 上下文窗口菜单 + 「当前」徽章 + 「测试」（内联连通/延迟/失败反馈）。
+- `EditProviderSheet`：新增/编辑供应商（显示名/品牌/端点/Key + 内嵌模型列表增删改查）；内置供应商仅 Key 可改，其余字段 disabled。
+- `SettingsView.modelTab` 替换为 `ModelSettingsView()`；v0.5.52 的 modelTab 内联 UI、ModelFormSheet、BuiltinKeySheet、「MiniMax 端点覆盖」卡片全部移除。
+- L10n：新增智谱/自定义供应商/添加供应商/拖拽调整供应商顺序/编辑模型配置等 key。
+- 测试：新增 `ProviderRegistryTests` 两个 section（CRUD + 持久化往返、legacy 迁移）；`ProviderRegistryState` 显式 Codable 让 `[String:String]` 编为 JSON object。
+**Why**: 用户要求按 ZCode 的模型设置模块 1:1 仿造。ZCode 把「供应商」作为一级分类、模型挂在供应商下，与 Tapgo 既有「内置 4 模型 + 自定义模型」扁平结构不同。本次引入 Provider/ProviderModel 两层数据模型与 ZCode 同构 UI，同时保留旧 harness 配置路径避免破坏 ChatView / 手机 H5。
+**Next**: v0.5.54 计划把 harness config.toml 的 `[model_providers.*]` 切换为按 Provider 生成（providerId 与 ProviderRegistry 对齐），并把「拖拽调整供应商顺序」做成真实现。
+
 ## v0.5.52 — 模型设置深度打磨
 **Date**: 2026-08-31
 **Tag**: v0.5.52
