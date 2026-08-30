@@ -21,7 +21,7 @@
 
 ## v0.5.36 — 额度口径统一：弹窗余量卡片改显「剩余量」
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: 65c6444
 **Tag**: v0.5.36
 **Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
 **Changed**:

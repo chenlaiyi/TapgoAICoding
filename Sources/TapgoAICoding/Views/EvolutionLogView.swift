@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.36",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "65c6444",
                     tag: "v0.5.36",
                     summary: "额度口径统一：弹窗余量卡片改显「剩余量」",
                     changes: [
