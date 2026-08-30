@@ -289,6 +289,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.28",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.28",
+                    summary: "紧急修复 config.toml 漂移重写抹掉真实鉴权导致 401",
+                    changes: [
+                        "用户真机反馈：会话每轮 Reconnecting 5/5 后报 unexpected status 401 Unauthorized: login fail (1004)，url 指向 api.minimaxi.com/v1/responses。",
+                        "根因是 v0.5.27『修复 7』的回旋镖：ensureReady 按模板 diff 重写 config.toml 时，模板里的 experimental_bearer_token = \"__FROM_AUTH_JSON__\" 是 Tapgo 自造占位符，全仓没有任何运行时替换机制——磁盘旧 config 的鉴权段是历史真实有效的 key，重写把它覆盖回占位符，请求不带 Authorization。",
+                        "修复：新增 TapgoConfig.renderedConfigWithKey(region:authKey:)，两条 config 写出路径（init 的 writeAll 与 ensureReady 的漂移重写）都把占位符替换为 auth.json 真实 key；模板注释同步更正。",
+                        "自愈验证：重启 App 后 ensureReady 检测漂移自动重写，bearer 与 auth.json 完全一致（125 字符 sk-cp-12…，占位符残留 0）。",
+                        "端到端验证：经公网 H5 api/send 发送鉴权验证消息 → 回合 completed，模型回复『已恢复正常』。"
+                    ],
+                    why: "v0.5.27 的 config 漂移重写是按『占位符有效』的错误假设写的，上线即打断了所有会话的模型鉴权；配置文件属于关键数据，重写必须保留可用的凭据语义。",
+                    next: "观察三台机器配置一致性；评估给 config.toml 重写加 .bak 备份，避免同类覆盖不可回滚。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.27",
                     date: "2026-08-29",
                     commit: "cb8e2db",

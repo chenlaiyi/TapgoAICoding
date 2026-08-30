@@ -527,9 +527,10 @@ enum TapgoConfig {
         // `model_auto_compact_token_limit` (v0.3.0 之后才加入模板), 缺了这条
         // harness 就不会在 800k 自动压缩上下文, 用户会话会一路累积到几十 MB
         // (实测 24M tokens 仍不 compact, 弹窗里 contextPercent 显示 2524%)。
-        // 这里只 diff 模板期望内容, 不动 auth.json; bearer token 仍是占位符,
-        // 真正的 key 由 harness 启动时从 auth.json 读出。
-        let desiredConfig = renderConfig(region: defaultRegion)
+        // 这里只 diff 期望内容, 不动 auth.json。注意 bearer 必须注入真实 key:
+        // v0.5.27 的重写曾把旧 config 里的真实鉴权覆盖回占位符, MiniMax 返回
+        // 401 (1004 login fail) —— 占位符没有任何运行时替换机制。
+        let desiredConfig = renderedConfigWithKey(region: defaultRegion, authKey: key)
         let installedConfig = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
         if installedConfig != desiredConfig {
             try atomicWrite(Data(desiredConfig.utf8), to: configPath)
@@ -564,8 +565,8 @@ enum TapgoConfig {
         try atomicWrite(authData, to: authPath)
         try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: authPath.path)
 
-        // 2. config.toml
-        let config = renderConfig(region: region)
+        // 2. config.toml — 占位符替换为真实 key (0600 文件, 与官方备份同设计)。
+        let config = renderedConfigWithKey(region: region, authKey: apiKey)
         try atomicWrite(Data(config.utf8), to: configPath)
         try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
 
@@ -601,6 +602,14 @@ enum TapgoConfig {
 
     // MARK: - Templates
 
+    /// 模板渲染 + 占位符注入: config.toml 里 `experimental_bearer_token` 的
+    /// `__FROM_AUTH_JSON__` 占位替换为 auth.json 中的真实 key。codex 不会
+    /// 解析这个占位符, 缺了它请求就会 401 (1004 login fail)。
+    static func renderedConfigWithKey(region: Region, authKey: String) -> String {
+        renderConfig(region: region)
+            .replacingOccurrences(of: "__FROM_AUTH_JSON__", with: authKey)
+    }
+
     static func renderConfig(region: Region) -> String {
         """
         # Tapgo AICoding — isolated Codex home.
@@ -623,10 +632,8 @@ enum TapgoConfig {
         trust_level = "untrusted"
 
         [notice]
-        # The bearer token is supplied at runtime via auth.json so the
-        # plaintext secret never lives in this file. If you ever inspect
-        # config.toml in version control, you will only see the placeholder
-        # above; the real token is in the 0600 auth.json alongside it.
+        # experimental_bearer_token 已由 App 注入 auth.json 中的真实 key,
+        # 本文件与 auth.json 同为 0600 权限, 请勿外传。
         """
     }
 

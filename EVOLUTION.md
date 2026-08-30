@@ -19,6 +19,20 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.28 — 紧急修复 config.toml 漂移重写抹掉真实鉴权导致 401
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.28
+**Test status**: 2307 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
+**Changed**:
+- 用户真机反馈: 会话每轮 Reconnecting 5/5 后报 `unexpected status 401 Unauthorized: login fail: Please carry the API secret key (1004), url: https://api.minimaxi.com/v1/responses`。
+- 根因是 v0.5.27『修复 7』的回旋镖: `ensureReady` 按模板 diff 重写 config.toml 时, 模板里的 `experimental_bearer_token = "__FROM_AUTH_JSON__"` 是 Tapgo 自造占位符, 全仓没有任何运行时替换机制 —— 而磁盘上旧 config 的鉴权段是历史上真实有效的 key。重写把它覆盖回占位符, codex 发往 MiniMax 的请求不带 Authorization, 401 必现。
+- 修复: 新增 `TapgoConfig.renderedConfigWithKey(region:authKey:)`, 两条 config 写出路径 (首次 init 的 writeAll 与 ensureReady 的漂移重写) 都把占位符替换为 auth.json 里的真实 key; 模板注释同步更正 (不再声称 key 不落盘, 文件 0600)。
+- 自愈验证: 本机重启 App 后 ensureReady 检测漂移自动重写, config.toml 中 bearer 与 auth.json 完全一致 (125 字符 sk-cp-12…, 占位符残留 0)。
+- 端到端验证: 经公网 H5 `api/send` 发送鉴权验证消息 → 回合 completed, 模型回复『已恢复正常』。
+**Why**: v0.5.27 的 config 漂移重写是按『占位符有效』的错误假设写的, 上线即打断了所有会话的模型鉴权; 配置文件属于关键数据, 重写必须保留可用的凭据语义。
+**Next**: 观察三台机器配置一致性; 评估给 config.toml 重写加 .bak 备份, 避免同类覆盖不可回滚。
+
 ## v0.5.27 — 额度弹窗二轮修复：诊断信息 + 双端点 fallback + 6 行百分比去重 + 模型分桶映射 + 毫秒时间戳
 **Date**: 2026-08-29
 **Commit**: cb8e2db
