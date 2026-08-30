@@ -21,7 +21,7 @@
 
 ## v0.5.39 — 模型选择菜单改显「品牌 + 模型名」，不再暴露技术 slug
 **Date**: 2026-08-30
-**Commit**: PLACEHOLDER
+**Commit**: 5080e78
 **Tag**: v0.5.39
 **Test status**: 2380 passed / 8 failed（既有 SSH 环境失败，与本版无关）
 **Changed**:

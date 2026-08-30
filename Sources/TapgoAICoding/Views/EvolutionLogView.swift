@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.39",
                     date: "2026-08-30",
-                    commit: "PLACEHOLDER",
+                    commit: "5080e78",
                     tag: "v0.5.39",
                     summary: "模型选择菜单改显「品牌 + 模型名」，不再暴露技术 slug",
                     changes: [
