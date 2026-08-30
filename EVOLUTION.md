@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.40 — 手机 H5 端模型名统一为 displayName：底栏与模型面板不再显示技术 slug
+**Date**: 2026-08-30
+**Commit**: PENDING
+**Tag**: v0.5.40
+**Test status**: 2340 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过 13 项 SSH 集成段）
+**Changed**:
+- v0.5.39 只改了 Mac 端展示层，手机 H5 状态快照仍传 `store.modelName`（API slug），H5 composer 底栏与模型选择面板继续暴露 deepseek-v4-flash 这类技术 slug。
+- `PhoneRemoteServer` 状态快照 `model` 改用 `store.modelDisplayName`（H5 端即得「DeepSeek V4 Flash」）；H5 JS 兜底文案同步改 "MiniMax M3"（displayName 口径）。
+- H5 页面测试断言更新为 displayName 兜底；版本同步点对齐 0.5.40。
+**Why**: 同一模型 Mac 端显示「DeepSeek V4 Flash」、手机端显示「deepseek-v4-flash」，口径分裂；H5 复用 Mac 端 v0.5.39 的展示层规则后两端口径一致。
+**Next**: 真机扫码回归手机端模型名；评估普通会话发送【自进化指令】开头消息的确认提示（v0.5.38 Next）。
+
 ## v0.5.39 — 模型选择菜单改显「品牌 + 模型名」，不再暴露技术 slug
 **Date**: 2026-08-30
 **Commit**: 5080e78

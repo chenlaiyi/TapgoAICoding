@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.40",
+                    date: "2026-08-30",
+                    commit: "PENDING",
+                    tag: "v0.5.40",
+                    summary: "手机 H5 端模型名统一为 displayName：底栏与模型面板不再显示技术 slug",
+                    changes: [
+                        "v0.5.39 只改了 Mac 端展示层，H5 状态快照仍传 API slug，手机端继续暴露 deepseek-v4-flash。",
+                        "PhoneRemoteServer 快照 model 改用 modelDisplayName；H5 JS 兜底文案同步改 displayName 口径。",
+                        "H5 页面测试断言更新为 displayName 兜底；版本同步点对齐 0.5.40。"
+                    ],
+                    why: "同一模型 Mac 端显示「DeepSeek V4 Flash」、手机端显示 slug，口径分裂；H5 复用 v0.5.39 展示层规则。",
+                    next: "真机扫码回归手机端模型名；评估普通会话发送【自进化指令】开头消息的确认提示。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.39",
                     date: "2026-08-30",
                     commit: "5080e78",

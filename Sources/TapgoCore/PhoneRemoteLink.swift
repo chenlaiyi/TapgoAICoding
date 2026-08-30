@@ -608,7 +608,7 @@ public enum PhoneRemote {
         public var transcript: [TranscriptTurn]
         /// 电脑控制可用性; nil 时 H5 隐藏电脑控制入口。
         public var control: ControlStatus?
-        /// 当前模型名 (composer 底栏展示, 如 "MiniMax-M3")。
+        /// 当前模型展示名 (composer 底栏/H5 模型面板展示, 如 "DeepSeek V4 Flash")。
         public var model: String?
         /// Mac 端待发附件图片张数 (手机上传后 >0, 发送后清零)。
         public var attachedCount: Int
@@ -1262,7 +1262,7 @@ public enum PhoneRemote {
           }
           $("attMsg").textContent = att > 0 ? " 已附 " + att + " 张图片, 随下一条消息一起发送" : "";
           // composer 底栏状态 (仿 ZCode: 转圈 / 模型名 / 大脑绿点 / 盾牌)
-          $("modelName").textContent = s.model || "MiniMax-M3";
+          $("modelName").textContent = s.model || "MiniMax M3";
           $("busySpin").classList.toggle("hidden", !busy);
           const ctl = s.control;
           const ctrlReadyAll = !!(ctl && ctl.enabled && ctl.accessibilityAllowed && ctl.screenAllowed);

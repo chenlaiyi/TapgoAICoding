@@ -495,7 +495,7 @@ func runPhoneRemotePage(_ t: TestRunner) {
     // v0.5.22 composer 底栏 (仿 ZCode: + 盾牌 转圈 模型名 大脑 白色↑)
     t.expect(html.contains("barIcon"), "page: 底栏线性图标按钮")
     t.expect(html.contains("modelName"), "page: 模型名展示位")
-    t.expect(html.contains("MiniMax-M3"), "page: 模型名兜底文案")
+    t.expect(html.contains("MiniMax M3"), "page: 模型名兜底文案 (displayName)")
     t.expect(html.contains("busySpin"), "page: busy 转圈")
     t.expect(html.contains("brainDot"), "page: 大脑状态点")
     t.expect(html.contains("shieldBtn"), "page: 盾牌按钮")

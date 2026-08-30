@@ -334,7 +334,7 @@ final class PhoneRemoteController: ObservableObject {
                                                       accessibilityAllowed: Self.accessibilityAllowed),
                                                   projects: seeds,
                                                   activeProjectId: workspace.state.activeProjectId,
-                                                  model: store.modelName,
+                                                  model: store.modelDisplayName,
                                                   attachedCount: store.attachedImages.count)
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
