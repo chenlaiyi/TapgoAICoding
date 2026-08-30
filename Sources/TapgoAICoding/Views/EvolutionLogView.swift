@@ -254,12 +254,12 @@ struct EvolutionLogView: View {
                 EvolutionEntry(
                     version: "v0.5.48",
                     date: "2026-08-30",
-                    commit: "760a000",
+                    commit: "bd57e49",
                     tag: "v0.5.48",
                     summary: "使用原生文件拖拽向系统权限列表添加 Helper",
                     changes: [
                         "以 AppKit NSDraggingSession 替换 SwiftUI NSItemProvider，生成 Finder 式本地文件拖拽。",
-                        "载荷同时写入 public.file-url 与 NSFilenamesPboardType，指向真实 Tapgo Computer Use.app。",
+                        "以原生 NSURL 交给 AppKit 生成 public.file-url 及系统兼容类型，精确指向真实 Tapgo Computer Use.app。",
                         "拖拽操作固定为 copy，并支持非激活浮窗的第一次鼠标事件；完整离线回归 2394/2394。"
                     ],
                     why: "SwiftUI 数据拖放能显示图标，但系统隐私列表不把它识别为可添加的本地应用文件，松手后不会新增条目。",
