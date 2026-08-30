@@ -89,6 +89,43 @@ final result: passed
 
 ---
 
+# ZCode 电脑控制与输入区入口回归
+
+- 参考设置：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/zcode-computer-control-audit/01-zcode-computer-control-enabled.png`
+- 参考输入区：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/zcode-computer-control-audit/03-zcode-input-button-visible.png`
+- 实现设置：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-control-v0544/04-settings-switches-enabled.png`
+- 实现输入区：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-control-v0544/07-composer-warning.png`
+- 设置同屏比较：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-control-v0544/08-zcode-vs-tapgo-settings.png`
+- 输入区同屏比较：`/Users/chanlaiyi/.codex/visualizations/2026/08/30/01a052a9-a532-7e22-8604-2fe3e40fb042/tapgo-computer-control-v0544/09-zcode-vs-tapgo-composer.png`
+- 视口与归一化：ZCode 设置 871 × 768 px、Tapgo 设置 1080 × 720 px；ZCode 输入区 871 × 768 px、Tapgo 输入区 1125 × 768 px。设置比较按 720 px 高度、输入区比较按 768 px 高度等比缩放并水平拼接，未拉伸。
+
+## 同屏比较结论
+
+- 信息架构保留 ZCode 的关键层级：电脑控制总开关、独立的输入区入口显示开关、Accessibility、Screen Recording 与工具注册真值。
+- 两个开关均使用 macOS 原生滑动样式；开启、关闭和保留入口三种状态的视觉语义清楚。
+- Tapgo 沿用自身 SwiftUI 卡片、蓝色品牌色和现有侧栏密度，没有逐像素复制 Electron 外观；权限缺失使用橙色、MCP 已注册使用绿色，状态与本机权威回读一致。
+- 输入区入口与项目、权限、额度和模型选择处于同一工具行；灰色表示能力关闭，橙色表示已开启但权限未齐，绿色预留给完全就绪状态。
+- 全部图标使用 SF Symbols，无新增位图、占位素材、拉伸或低清资源。
+
+## 五态交互验证
+
+- 总开关关闭：权限卡片收起，电脑控制 MCP 配置段被移除；输入区入口按显示偏好保留并呈灰色。
+- 入口显示关闭：返回工作区后 AX 树不再包含“电脑操作”，能力开关状态保持不变。
+- 总开关与入口均开启：设置页显示两个开关为 on，MCP 为已注册；本机未授权的 Accessibility 与 Screen Recording 如实显示橙色警告。
+- 输入区可见：AX 描述为“电脑操作，辅助功能未授权、屏幕录制未授权”，没有把缺权限误报为可用。
+- 入口直达：关闭态首次点击及启用态再次点击都直接打开“电脑控制”页，不再误落到“常规”。
+
+## Findings 与修复历史
+
+- 第一次实现验收发现 P1：SwiftUI 默认将 Toggle 显示为复选框；已显式使用 `.toggleStyle(.switch)` 修复。
+- 第二次安装验收发现 P1：入口首次打开时，目标页状态与 sheet 展示存在竞态，偶发进入“常规”；已改为携带初始页的 `sheet(item:)` 单一状态修复。
+- 修复后未发现剩余 P0/P1/P2 视觉或交互问题。
+- 可接受差异：ZCode 截图所在机器权限已授权；Tapgo 本机没有这两项系统授权，因此实现截图显示真实的橙色未授权状态。未在验收中擅自修改 macOS 隐私与安全性设置。
+
+final result: passed
+
+---
+
 # Codex 式输入区排队卡片回归
 
 - 参考视觉真值：`/var/folders/rc/12_j75493m5bd29vc05fzr3w0000gn/T/codex-clipboard-b6c98511-94d4-40be-b00f-609b40b612c7.png`
