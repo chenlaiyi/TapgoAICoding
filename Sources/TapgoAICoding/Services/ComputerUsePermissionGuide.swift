@@ -161,12 +161,14 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
         )
 
         let size = NSSize(width: 590, height: 142)
-        let panel = NSPanel(
+        let panel = ComputerUsePermissionGuidePanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
+        panel.title = "Tapgo Computer Use 授权引导"
+        panel.setAccessibilityLabel("Tapgo Computer Use 授权引导")
         panel.contentView = NSHostingView(rootView: view)
         panel.backgroundColor = .clear
         panel.isOpaque = false
@@ -180,11 +182,17 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
         panel.isMovable = false
         panel.isMovableByWindowBackground = false
         panel.isReleasedWhenClosed = false
+        panel.becomesKeyOnlyIfNeeded = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
         position(panel: panel, size: size)
         self.panel = panel
-        panel.orderFrontRegardless()
+        // System Settings becomes active after opening its privacy pane. Make
+        // this small panel the key Tapgo window so its native drag view can
+        // receive the initial mouse-down and the following drag sequence.
+        // The panel stays floating above the still-visible destination list.
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
     }
 
     func dismiss() {
@@ -207,6 +215,15 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
             y: frame.minY + 34
         ))
     }
+}
+
+/// Borderless `NSPanel` defaults to a non-key window. Allowing it to become
+/// key makes its native drag source reliably receive mouse-down/drag events
+/// after System Settings has activated, while it still cannot become the
+/// application's main document window.
+private final class ComputerUsePermissionGuidePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }
 
 private struct ComputerUsePermissionGuideView: View {
@@ -242,6 +259,7 @@ private struct ComputerUsePermissionGuideView: View {
                         helperAppURL: helperAppURL,
                         helperIcon: helperIcon
                     )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .help("拖动到系统设置的\(permission.title)允许列表")
             }
@@ -305,6 +323,11 @@ private final class HelperAppNativeDragSourceView: NSView, NSDraggingSource {
         self.helperAppURL = helperAppURL
         self.helperIcon = helperIcon
         super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("拖动 Tapgo Computer Use")
+        setAccessibilityHelp("拖动到系统设置的允许列表")
+        setAccessibilityValue("等待拖动")
     }
 
     @available(*, unavailable)
@@ -316,14 +339,28 @@ private final class HelperAppNativeDragSourceView: NSView, NSDraggingSource {
         true
     }
 
+    override var mouseDownCanMoveWindow: Bool {
+        false
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        bounds.contains(point) ? self : nil
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .openHand)
+    }
+
     override func mouseDown(with event: NSEvent) {
         hasStartedDrag = false
+        setAccessibilityValue("已按下")
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard !hasStartedDrag,
               FileManager.default.fileExists(atPath: helperAppURL.path) else { return }
         hasStartedDrag = true
+        setAccessibilityValue("拖拽已开始")
 
         // Let AppKit serialize the file URL exactly as Finder does. `NSURL`
         // is the native `NSPasteboardWriting` object for a local file and
@@ -343,6 +380,14 @@ private final class HelperAppNativeDragSourceView: NSView, NSDraggingSource {
             contents: helperIcon
         )
         beginDraggingSession(with: [draggingItem], event: event, source: self)
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        operation: NSDragOperation
+    ) {
+        setAccessibilityValue(operation == .copy ? "拖拽成功" : "目标未接受")
     }
 
     func draggingSession(

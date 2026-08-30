@@ -186,6 +186,20 @@ func runComputerUseMCPConfigSection(_ t: TestRunner) {
     t.expect(cmd.contains(ComputerUseMCP.helperAppName), "helper: 路径含可拖拽 App bundle")
     t.expect(cmd.hasSuffix(ComputerUseMCP.helperExecutableName), "helper: 路径以 MCP 可执行文件结尾")
 
+    let installedApp = ComputerUseMCP.installedHelperAppPath(
+        applicationSupportPath: "/Users/test/Library/Application Support/Tapgo AICoding"
+    )
+    t.expectEqual(
+        installedApp,
+        "/Users/test/Library/Application Support/Tapgo AICoding/computer-use/Tapgo Computer Use.app",
+        "helper: 独立安装路径稳定"
+    )
+    t.expectEqual(
+        ComputerUseMCP.helperExecutablePath(helperAppPath: installedApp),
+        "/Users/test/Library/Application Support/Tapgo AICoding/computer-use/Tapgo Computer Use.app/Contents/MacOS/TapgoComputerUseMCP",
+        "helper: MCP 与权限拖拽共享独立 App"
+    )
+
     // 全新 config: 追加段
     let fresh = "model = \"MiniMax-M3\"\n"
     let up1 = ComputerUseMCP.upsertSection(inConfig: fresh, commandPath: cmd)

@@ -236,7 +236,7 @@ func runLocalInitializeRoundtrip(_ t: TestRunner) async {
             timeout: localInitTimeout
         )
         let userAgent = resp.objectValue?["userAgent"]?.stringValue ?? ""
-        t.expect(userAgent.contains("codex") || userAgent.contains("0.149"),
+        t.expect(userAgent.localizedCaseInsensitiveContains("codex") || userAgent.contains("0.149"),
                  "local-init: initialize returned a codex userAgent: \(userAgent.prefix(150))")
         try transport.send(frame: .object([
             "method": .string("initialized"),

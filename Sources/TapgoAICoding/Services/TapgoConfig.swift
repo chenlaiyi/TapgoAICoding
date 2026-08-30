@@ -600,10 +600,15 @@ enum TapgoConfig {
 
     // MARK: 电脑控制 MCP 注册 (v0.5.20)
 
-    /// The packaged helper app is the real macOS TCC identity. The release
-    /// bundle stores the MCP executable inside that helper; `swift run`
-    /// keeps the sibling-binary fallback for development only.
-    static func computerUseHelperAppURL(bundle: Bundle = .main) -> URL? {
+    private static var computerUseHelperInstallRoot: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Tapgo AICoding", isDirectory: true)
+            .appendingPathComponent(ComputerUseMCP.helperInstallDirectoryName, isDirectory: true)
+    }
+
+    private static let computerUseHelperInstallLock = NSLock()
+
+    private static func bundledComputerUseHelperAppURL(bundle: Bundle) -> URL? {
         guard let resources = bundle.resourceURL else { return nil }
         let helper = resources
             .appendingPathComponent(ComputerUseMCP.helperDirectoryName, isDirectory: true)
@@ -614,13 +619,59 @@ enum TapgoConfig {
         return helper
     }
 
-    static func computerUseMCPBinaryURL(bundle: Bundle = .main) -> URL? {
-        if let resources = bundle.resourceURL {
-            let helperExecutable = URL(
-                fileURLWithPath: ComputerUseMCP.bundledHelperExecutablePath(
-                    resourcesPath: resources.path
-                )
+    /// Install the bundled helper at an owner-controlled, stable standalone
+    /// path before registering, probing, or dragging it. macOS privacy lists
+    /// expect a real application item; ZCode follows the same pattern instead
+    /// of dragging the nested bundle directly from its parent's Resources.
+    static func computerUseHelperAppURL(bundle: Bundle = .main) -> URL? {
+        computerUseHelperInstallLock.lock()
+        defer { computerUseHelperInstallLock.unlock() }
+        guard let bundled = bundledComputerUseHelperAppURL(bundle: bundle) else { return nil }
+        let fm = FileManager.default
+        let target = computerUseHelperInstallRoot
+            .appendingPathComponent(ComputerUseMCP.helperAppName, isDirectory: true)
+        let bundledExecutable = bundled
+            .appendingPathComponent("Contents/MacOS", isDirectory: true)
+            .appendingPathComponent(ComputerUseMCP.helperExecutableName)
+        let targetExecutable = target
+            .appendingPathComponent("Contents/MacOS", isDirectory: true)
+            .appendingPathComponent(ComputerUseMCP.helperExecutableName)
+        let bundledInfo = bundled.appendingPathComponent("Contents/Info.plist")
+        let targetInfo = target.appendingPathComponent("Contents/Info.plist")
+
+        if fm.fileExists(atPath: target.path),
+           fm.contentsEqual(atPath: bundledExecutable.path, andPath: targetExecutable.path),
+           fm.contentsEqual(atPath: bundledInfo.path, andPath: targetInfo.path) {
+            return target
+        }
+
+        do {
+            try fm.createDirectory(
+                at: computerUseHelperInstallRoot,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
             )
+            let staging = computerUseHelperInstallRoot
+                .appendingPathComponent(".Tapgo Computer Use-\(UUID().uuidString).app", isDirectory: true)
+            defer { try? fm.removeItem(at: staging) }
+            try fm.copyItem(at: bundled, to: staging)
+            if fm.fileExists(atPath: target.path) {
+                _ = try fm.replaceItemAt(target, withItemAt: staging)
+            } else {
+                try fm.moveItem(at: staging, to: target)
+            }
+            return target
+        } catch {
+            log("computerUseHelperAppURL: 独立 Helper 安装失败：\(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    static func computerUseMCPBinaryURL(bundle: Bundle = .main) -> URL? {
+        if let helperApp = computerUseHelperAppURL(bundle: bundle) {
+            let helperExecutable = URL(fileURLWithPath: ComputerUseMCP.helperExecutablePath(
+                helperAppPath: helperApp.path
+            ))
             if FileManager.default.isExecutableFile(atPath: helperExecutable.path) {
                 return helperExecutable
             }

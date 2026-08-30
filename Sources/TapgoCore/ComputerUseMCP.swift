@@ -28,18 +28,32 @@ public enum ComputerUseMCP {
     /// privacy settings authorize application bundles rather than an
     /// unrelated host UI process.
     public static let helperDirectoryName = "computer-use-helper"
+    public static let helperInstallDirectoryName = "computer-use"
     public static let helperAppName = "Tapgo Computer Use.app"
     public static let helperExecutableName = "TapgoComputerUseMCP"
+
+    public static func helperExecutablePath(helperAppPath: String) -> String {
+        URL(fileURLWithPath: helperAppPath, isDirectory: true)
+            .appendingPathComponent("Contents/MacOS", isDirectory: true)
+            .appendingPathComponent(helperExecutableName, isDirectory: false)
+            .path
+    }
+
+    public static func installedHelperAppPath(applicationSupportPath: String) -> String {
+        URL(fileURLWithPath: applicationSupportPath, isDirectory: true)
+            .appendingPathComponent(helperInstallDirectoryName, isDirectory: true)
+            .appendingPathComponent(helperAppName, isDirectory: true)
+            .path
+    }
 
     /// Build the stable executable path inside the packaged helper app.
     /// `resourcesPath` is the parent app's `Contents/Resources` directory.
     public static func bundledHelperExecutablePath(resourcesPath: String) -> String {
-        URL(fileURLWithPath: resourcesPath, isDirectory: true)
+        let helperAppPath = URL(fileURLWithPath: resourcesPath, isDirectory: true)
             .appendingPathComponent(helperDirectoryName, isDirectory: true)
             .appendingPathComponent(helperAppName, isDirectory: true)
-            .appendingPathComponent("Contents/MacOS", isDirectory: true)
-            .appendingPathComponent(helperExecutableName, isDirectory: false)
             .path
+        return helperExecutablePath(helperAppPath: helperAppPath)
     }
 
     // MARK: - Tool outcome
