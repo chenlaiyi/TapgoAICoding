@@ -12,6 +12,9 @@ import Foundation
 public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     case minimaxM3 = "MiniMax-M3"
     case glm53Flash = "GLM-5.3-Flash"
+    /// DeepSeek 官方 slug 为小写（api-docs.deepseek.com Codex 接入文档）。
+    case deepSeekV4Flash = "deepseek-v4-flash"
+    case deepSeekV4Pro = "deepseek-v4-pro"
 
     public var id: String { rawValue }
 
@@ -21,21 +24,29 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .minimaxM3: return "minimax"
         case .glm53Flash: return "glm"
+        case .deepSeekV4Flash, .deepSeekV4Pro: return "deepseek"
         }
     }
 
     /// 默认端点。MiniMax 允许用户在运行设置里覆盖，实际值由上层
-    /// `TapgoConfig.effectiveBaseURL(for:)` 决定；GLM 目前固定。
+    /// `TapgoConfig.effectiveBaseURL(for:)` 决定；GLM / DeepSeek 固定。
     public var defaultBaseURL: String {
         switch self {
         case .minimaxM3: return "https://api.minimaxi.com/v1"
         case .glm53Flash: return "https://open.bigmodel.cn/api/v1"
+        // DeepSeek API 原生支持 OpenAI Responses 协议 (codex 会追加 /responses)。
+        case .deepSeekV4Flash, .deepSeekV4Pro: return "https://api.deepseek.com"
         }
     }
 
-    /// 两个模型都暴露 1M 上下文；与 config.toml 的
-    /// `model_context_window` / `autoCompactTokenLimit` 保持一致。
-    public var contextWindow: Int { 1_000_000 }
+    /// 各模型上下文窗口。与 config.toml 的 `model_context_window` /
+    /// `autoCompactTokenLimit` 保持一致（三者都在 1M 量级）。
+    public var contextWindow: Int {
+        switch self {
+        case .minimaxM3, .glm53Flash: return 1_000_000
+        case .deepSeekV4Flash, .deepSeekV4Pro: return 1_048_576
+        }
+    }
 
     /// harness 模型目录里该模型条目的 JSON 片段（不含外层包裹）。
     /// `baseInstructions` 按模型注入，让自述与实际模型一致。
@@ -71,6 +82,8 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .minimaxM3: return "MiniMax 官方 Coding Plan 模型。"
         case .glm53Flash: return "智谱 GLM-5.3-Flash（BigModel Coding Plan）。"
+        case .deepSeekV4Flash: return "DeepSeek V4-Flash（按量计费，原生 Responses API）。"
+        case .deepSeekV4Pro: return "DeepSeek V4-Pro（按量计费，原生 Responses API）。"
         }
     }
 

@@ -432,7 +432,7 @@ enum TapgoConfig {
     static func effectiveBaseURL(for model: TapgoModel) -> String {
         switch model {
         case .minimaxM3: return effectiveBaseURL
-        case .glm53Flash: return model.defaultBaseURL
+        case .glm53Flash, .deepSeekV4Flash, .deepSeekV4Pro: return model.defaultBaseURL
         }
     }
 
@@ -445,6 +445,19 @@ enum TapgoConfig {
 
     static func glmAuthKey() -> String {
         guard let data = try? Data(contentsOf: glmAuthPath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let key = json["OPENAI_API_KEY"] as? String
+        else { return "" }
+        return key
+    }
+
+    /// DeepSeek（按量计费）的独立鉴权文件，与 auth-glm.json 同设计
+    /// （0600，`{"OPENAI_API_KEY": "<key>"}`）。文件缺失时 bearer 为空，
+    /// 选 DeepSeek 的新会话会收到 401。
+    static var deepSeekAuthPath: URL { codexHome.appendingPathComponent("auth-deepseek.json") }
+
+    static func deepSeekAuthKey() -> String {
+        guard let data = try? Data(contentsOf: deepSeekAuthPath),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let key = json["OPENAI_API_KEY"] as? String
         else { return "" }
@@ -647,9 +660,15 @@ enum TapgoConfig {
     /// `__FROM_AUTH_JSON__` / `__FROM_AUTH_GLM_JSON__` 占位分别替换为
     /// auth.json 与 auth-glm.json 中的真实 key。codex 不会解析占位符,
     /// 缺了它们请求就会 401。
-    static func renderedConfigWithKey(region: Region, authKey: String, glmKey: String? = nil) -> String {
+    static func renderedConfigWithKey(
+        region: Region,
+        authKey: String,
+        glmKey: String? = nil,
+        deepSeekKey: String? = nil
+    ) -> String {
         renderConfig(region: region)
             .replacingOccurrences(of: "__FROM_AUTH_GLM_JSON__", with: glmKey ?? glmAuthKey())
+            .replacingOccurrences(of: "__FROM_AUTH_DEEPSEEK_JSON__", with: deepSeekKey ?? deepSeekAuthKey())
             .replacingOccurrences(of: "__FROM_AUTH_JSON__", with: authKey)
     }
 
@@ -681,12 +700,22 @@ enum TapgoConfig {
         wire_api = "responses"
         experimental_bearer_token = "__FROM_AUTH_GLM_JSON__"
 
+        # v0.5.35: DeepSeek V4 系列。API 原生支持 OpenAI Responses 协议
+        # (api-docs.deepseek.com/quick_start/agent_integrations/codex),
+        # wire 必须 responses。鉴权来自独立的 auth-deepseek.json;
+        # 文件缺失时 bearer 为空, 选 DeepSeek 的新会话会收到 401。
+        [model_providers.\(TapgoModel.deepSeekV4Flash.providerId)]
+        name = "DeepSeek"
+        base_url = "\(TapgoModel.deepSeekV4Flash.defaultBaseURL)"
+        wire_api = "responses"
+        experimental_bearer_token = "__FROM_AUTH_DEEPSEEK_JSON__"
+
         [projects."/Users/Shared"]
         trust_level = "untrusted"
 
         [notice]
         # experimental_bearer_token 已由 App 注入真实 key,
-        # 本文件与 auth.json / auth-glm.json 同为 0600 权限, 请勿外传。
+        # 本文件与 auth.json / auth-glm.json / auth-deepseek.json 同为 0600 权限, 请勿外传。
         """
     }
 

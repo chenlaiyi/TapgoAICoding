@@ -252,6 +252,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.35",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.35",
+                    summary: "接入 DeepSeek V4 系列（v4-flash / v4-pro，原生 Responses API）",
+                    changes: [
+                        "官方文档确认 DeepSeek API 原生支持 OpenAI Responses 协议；本机实测 key 打 https://api.deepseek.com/responses 返回标准 Responses 对象。",
+                        "TapgoModel 新增 deepseek-v4-flash / deepseek-v4-pro（官方 slug，1,048,576 上下文）；config.toml 新增 [model_providers.deepseek]，鉴权独立 auth-deepseek.json（0600）。",
+                        "额度/余额三路接线补全：DeepSeek 按量计费走 GET /user/balance，侧栏显示「DeepSeek·余额 ¥17.95 CNY」，弹窗来源标签 DeepSeek user/balance。",
+                        "切换子菜单自动列出全部 4 个模型，切换对新建会话生效。",
+                        "测试 +20 全绿（2375 passed / 8 既有 SSH 环境失败）。"
+                    ],
+                    why: "用户要求在模型选择里加入 DeepSeek 最新系列；V4 系列原生 Responses API 与 harness 0.149+ 零桥接兼容。",
+                    next: "deepseek-v4-flash-vision-exp（图片输入）暂未接入，等需要再评估。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.34",
                     date: "2026-08-30",
                     commit: "a0af5f8",

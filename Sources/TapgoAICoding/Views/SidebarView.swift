@@ -785,18 +785,26 @@ struct SidebarView: View {
 
     // MARK: - Footer
 
-    /// 左下角灰色行: 当前模型供应商 / 套餐名 / 「5小时余量%/周余量%」。
-    /// 供应商跟随当前选中的模型 (v0.5.31)。v0.5.33 起 GLM 也接了
-    /// BigModel 官方余量接口: 套餐名用接口返回的 planLabel (如 Lite),
-    /// 数值格式与 MiniMax 一致; 接口异常时退回「Coding Plan」不带数字。
+    /// 左下角灰色行: 当前模型供应商 / 套餐名或余额 / 「5小时余量%/周余量%」。
+    /// 供应商跟随当前选中的模型 (v0.5.31)。v0.5.33 起 GLM 接 BigModel
+    /// 官方余量接口 (planLabel 如 Lite); v0.5.35 起 DeepSeek 按量计费,
+    /// 显示接口返回的余额 (如 ¥17.95 CNY), 无窗口百分比。
     private var modelQuotaSummary: String {
-        let isMinimax = TapgoConfig.selectedModel == .minimaxM3
-        var parts = [isMinimax ? "MiniMax" : "GLM"]
+        var parts: [String]
         let snapshot = store.rateLimits
-        // MiniMax 接口不返回套餐名, 用本地常量 (实际订阅 Ultra);
-        // GLM 接口返回 level 字段, 经 planLabel 归一化 (如 Lite)。
-        parts.append(isMinimax ? TapgoConfig.planDisplayName
-                               : (snapshot?.planLabel ?? "Coding Plan"))
+        switch TapgoConfig.selectedModel {
+        case .minimaxM3:
+            // MiniMax 接口不返回套餐名, 用本地常量 (实际订阅 Ultra)。
+            parts = ["MiniMax", TapgoConfig.planDisplayName]
+        case .glm53Flash:
+            parts = ["GLM", snapshot?.planLabel ?? "Coding Plan"]
+        case .deepSeekV4Flash, .deepSeekV4Pro:
+            parts = ["DeepSeek"]
+            if let credits = snapshot?.credits, credits.isVisible, !credits.balance.isEmpty {
+                parts.append("余额 \(credits.balance)")
+            }
+            return parts.joined(separator: "·")
+        }
         var quota: [String] = []
         if let primary = snapshot?.primary {
             quota.append("\(max(0, 100 - primary.usedPercent))%")

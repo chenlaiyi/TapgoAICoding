@@ -11,6 +11,10 @@ func runModelCatalog(_ t: TestRunner) {
                   "model: MiniMax-M3 maps to provider minimax")
     t.expectEqual(TapgoModel.glm53Flash.providerId, "glm",
                   "model: GLM-5.3-Flash maps to provider glm")
+    t.expectEqual(TapgoModel.deepSeekV4Flash.providerId, "deepseek",
+                  "model: deepseek-v4-flash maps to provider deepseek")
+    t.expectEqual(TapgoModel.deepSeekV4Pro.providerId, "deepseek",
+                  "model: deepseek-v4-pro maps to provider deepseek")
 
     // 端点: GLM 必须指向智谱给 Codex 的 OpenAI Responses 协议专属端点
     // (docs.bigmodel.cn/cn/coding-plan/tool/codex); MiniMax 保持官方 v1。
@@ -18,11 +22,17 @@ func runModelCatalog(_ t: TestRunner) {
                   "model: GLM-5.3-Flash pins the official Responses endpoint")
     t.expectEqual(TapgoModel.minimaxM3.defaultBaseURL, "https://api.minimaxi.com/v1",
                   "model: MiniMax-M3 pins the official china endpoint")
+    t.expectEqual(TapgoModel.deepSeekV4Flash.defaultBaseURL, "https://api.deepseek.com",
+                  "model: DeepSeek pins the official responses-capable endpoint")
 
-    // 两个模型上下文一致 (1M), config.toml 的 model_context_window 不用改。
-    for model in TapgoModel.allCases {
-        t.expectEqual(model.contextWindow, 1_000_000,
-                      "model: \(model.rawValue) exposes 1M context window")
+    // 上下文窗口: MiniMax/GLM 1M, DeepSeek 官方标称 1,048,576。
+    let expectedWindows: [TapgoModel: Int] = [
+        .minimaxM3: 1_000_000, .glm53Flash: 1_000_000,
+        .deepSeekV4Flash: 1_048_576, .deepSeekV4Pro: 1_048_576,
+    ]
+    for (model, expected) in expectedWindows {
+        t.expectEqual(model.contextWindow, expected,
+                      "model: \(model.rawValue) context window")
     }
 
     // 目录 JSON: 合法、两个模型都在列、自述与模型对应。

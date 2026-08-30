@@ -64,6 +64,8 @@ let allSections: [String] = [
     "Thread: evolution mode + workspace",
     "TapgoModel: catalog & provider mapping",
     "GLMQuota: quota/limit 解析与映射",
+    "DeepSeekQuota: balance 解析与映射",
+    "DeepSeekQuota: DeepSeekQuotaClient transport & auth",
     "GLMQuota: GLMQuotaClient transport & auth",
     "ExecEvent: approval request parsing",
     "ExecEvent: command output streaming",
@@ -334,6 +336,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "GLMQuota: GLMQuotaClient transport & auth") {
             await runGLMQuotaClient(runner)
+        }
+        await runIfInScope(runner, "DeepSeekQuota: balance 解析与映射") {
+            runDeepSeekQuota(runner)
+        }
+        await runIfInScope(runner, "DeepSeekQuota: DeepSeekQuotaClient transport & auth") {
+            await runDeepSeekQuotaClient(runner)
         }
         await runIfInScope(runner, "ExecEvent: approval request parsing") {
             runExecEventParserApprovalRequests(runner)

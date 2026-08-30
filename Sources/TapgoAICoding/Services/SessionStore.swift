@@ -120,11 +120,11 @@ final class SessionStore: ObservableObject {
     /// （切模型对新建会话生效，进行中的会话保持创建时的模型）。
     var modelName: String { TapgoConfig.selectedModel.rawValue }
 
-    /// 拉取当前所选模型的官方套餐余量，写入 `rateLimits`。可重复调用 —
-    /// 重叠请求由 `rateLimitsLoading` 合并。v0.5.33 起两条通道都在：
-    /// MiniMax 走官方 coding_plan/remains，GLM 走 BigModel
-    /// monitor/usage/quota/limit（端点抄自智谱官方用量查询插件）；
-    /// 任何错误写到 `rateLimitsError`。
+    /// 拉取当前所选模型的官方套餐余量/余额，写入 `rateLimits`。可重复调用 —
+    /// 重叠请求由 `rateLimitsLoading` 合并。三条通道：MiniMax 走
+    /// coding_plan/remains，GLM 走 BigModel monitor/usage/quota/limit
+    /// （端点抄自智谱官方用量查询插件），DeepSeek 走 user/balance
+    /// （按量计费，只显示余额）。任何错误写到 `rateLimitsError`。
     func refreshRateLimits() {
         guard !rateLimitsLoading else { return }
         rateLimitsLoading = true
@@ -132,15 +132,20 @@ final class SessionStore: ObservableObject {
             defer { self?.rateLimitsLoading = false }
             do {
                 let snapshot: RateLimitsSnapshot
-                if TapgoConfig.selectedModel == .minimaxM3 {
+                switch TapgoConfig.selectedModel {
+                case .minimaxM3:
                     snapshot = try await MiniMaxQuotaClient(
                         authPath: TapgoConfig.authPath,
                         modelName: TapgoConfig.modelName
                     ).fetchRemains()
-                } else {
+                case .glm53Flash:
                     snapshot = try await GLMQuotaClient(
                         authPath: TapgoConfig.glmAuthPath
                     ).fetchRemains()
+                case .deepSeekV4Flash, .deepSeekV4Pro:
+                    snapshot = try await DeepSeekQuotaClient(
+                        authPath: TapgoConfig.deepSeekAuthPath
+                    ).fetchBalance()
                 }
                 guard let self else { return }
                 self.rateLimits = snapshot

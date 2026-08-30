@@ -19,6 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.35 — 接入 DeepSeek V4 系列（v4-flash / v4-pro，原生 Responses API）
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.35
+**Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
+**Changed**:
+- 用户要求接入 DeepSeek 最新系列。官方文档 (api-docs.deepseek.com/quick_start/agent_integrations/codex) 确认 DeepSeek API 原生支持 OpenAI Responses 协议；本机实测 key 打 `https://api.deepseek.com/responses` 返回标准 Responses 对象（v4-flash 带推理输出）。
+- `TapgoModel` 新增 `deepseek-v4-flash` / `deepseek-v4-pro`（官方 slug，1,048,576 上下文，reasoning low/high/max，默认 high）；模型目录条目随 allCases 自动生成。
+- config.toml 模板新增 `[model_providers.deepseek]`（base_url https://api.deepseek.com，wire responses），鉴权来自独立 `auth-deepseek.json`（0600；缺失时选 DeepSeek 的新会话 401）。key 取自本机 `~/.deepseek/config.toml`，实测有效。
+- 额度/余额三路接线补全：DeepSeek 按量计费无订阅窗口，走 `GET /user/balance` 显示余额（如「DeepSeek·余额 ¥17.95 CNY」）；弹窗来源标签 `DeepSeek user/balance`。
+- 切换子菜单自动列出全部 4 个模型（MiniMax-M3 / GLM-5.3-Flash / deepseek-v4-flash / deepseek-v4-pro），切换对新建会话生效。
+- 测试 +20：DeepSeekQuota 解析 8 断言 + transport/auth 7 断言 + ModelCatalog DeepSeek 映射与上下文窗口断言。
+**Why**: 用户要求在模型选择里加入 DeepSeek 最新系列；V4 系列原生 Responses API 与 harness 0.149+ 零桥接兼容。
+**Next**: deepseek-v4-flash-vision-exp（图片输入）暂未接入，等用户需要再评估；切换后首次使用建议看一眼 rollout 的 model_provider 确认。
+
 ## v0.5.34 — GLM 额度可查：接入 BigModel 官方 monitor/usage/quota/limit
 **Date**: 2026-08-30
 **Commit**: a0af5f8

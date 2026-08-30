@@ -145,9 +145,7 @@ struct ModelUsagePopover: View {
             let cells = quotaCells()
             if cells.isEmpty {
                 // v0.5.33: GLM 也接了官方余量接口; 空数据文案按模型区分。
-                Text(TapgoConfig.selectedModel == .glm53Flash
-                     ? "暂无 GLM 额度数据（检查 auth-glm.json）"
-                     : "等待首次订阅用量上报")
+                Text(emptyQuotaHint)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,12 +166,23 @@ struct ModelUsagePopover: View {
         }
     }
 
-    /// 额度来源标签跟随所选模型: 两者都显示各自官方接口的语义名。
+    /// 额度来源标签跟随所选模型: 显示各自官方接口的语义名。
     private var sourceLabel: String {
         if rateLimitsLoading { return "刷新中…" }
-        return TapgoConfig.selectedModel == .glm53Flash
-            ? "BigModel monitor/usage/quota/limit"
-            : "MiniMax coding_plan/remains"
+        switch TapgoConfig.selectedModel {
+        case .minimaxM3: return "MiniMax coding_plan/remains"
+        case .glm53Flash: return "BigModel monitor/usage/quota/limit"
+        case .deepSeekV4Flash, .deepSeekV4Pro: return "DeepSeek user/balance"
+        }
+    }
+
+    /// 无快照时的占位文案，按模型给出对应指引。
+    private var emptyQuotaHint: String {
+        switch TapgoConfig.selectedModel {
+        case .minimaxM3: return "等待首次订阅用量上报"
+        case .glm53Flash: return "暂无 GLM 额度数据（检查 auth-glm.json）"
+        case .deepSeekV4Flash, .deepSeekV4Pro: return "暂无 DeepSeek 余额数据（检查 auth-deepseek.json）"
+        }
     }
 
     /// Build the 2–3 quota cells from the snapshot:
