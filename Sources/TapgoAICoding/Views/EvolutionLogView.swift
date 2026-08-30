@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.43",
+                    date: "2026-08-30",
+                    commit: "b4a7597",
+                    tag: "v0.5.43",
+                    summary: "参考 ZCode 重构设置中心",
+                    changes: [
+                        "设置中心改为分组侧栏、页面说明与卡片化内容，明确立即生效、新会话生效和重启 Harness 生效。",
+                        "新增电脑控制权限与 MCP 注册真值页；模型配置重写后会自动恢复电脑控制 MCP 段。",
+                        "模型列表首次加载和插件 version=null 解析问题一并修复；电脑控制逐页回归通过，测试 2367/2367。"
+                    ],
+                    why: "原设置页层级与生效范围不清楚；ZCode 的分域导航、状态可见性和解释性更适合持续扩展 Agent 能力。",
+                    next: "只在具备完整后端真值源后再接入浏览器控制、技能和 MCP 服务器设置，避免空壳开关。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.42",
                     date: "2026-08-30",
                     commit: "26bb60b",

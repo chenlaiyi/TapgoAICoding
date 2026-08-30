@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.43 — 参考 ZCode 重构设置中心
+**Date**: 2026-08-30
+**Commit**: b4a7597
+**Tag**: v0.5.43
+**Test status**: 2367 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Changed**:
+- 设置中心改为分组侧栏、页面标题/说明与卡片化内容，明确区分立即生效、新会话生效和重启 Harness 生效。
+- 新增真实电脑控制状态页，回读辅助功能、屏幕录制和 MCP 注册状态；模型配置重写后自动恢复电脑控制 MCP 段。
+- 模型页完成卡片化并修复首次进入模型列表不加载；插件管理嵌入设置页，并兼容官方目录中 `version = null` 的 Git 插件。
+- 使用电脑控制逐页回归常规、外观、模型、电脑控制、记忆和插件页；Codex 官方 48 项、DeepSeek 官方 2 项均可正常读取。
+**Why**: 原设置页只是窄侧栏加 Form 的功能集合，层级、说明和生效范围不清楚；ZCode 的分域导航与状态可见性更适合持续扩展 Agent 能力。
+**Next**: 继续评估浏览器控制、技能、MCP 服务器等能力是否具备完整后端真值源，具备后再接入设置，避免只做空壳开关。
+
 ## v0.5.42 — 自定义模型增删改查与端到端选择
 **Date**: 2026-08-30
 **Commit**: 26bb60b
