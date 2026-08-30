@@ -120,6 +120,9 @@ final class SessionStore: ObservableObject {
     /// （切模型对新建会话生效，进行中的会话保持创建时的模型）。
     var modelName: String { TapgoConfig.selectedModel.rawValue }
 
+    /// UI 展示用的当前模型名（品牌 + 模型名）；`modelName` 保持 API slug。
+    var modelDisplayName: String { TapgoConfig.selectedModel.displayName }
+
     /// 拉取当前所选模型的官方套餐余量/余额，写入 `rateLimits`。可重复调用 —
     /// 重叠请求由 `rateLimitsLoading` 合并。三条通道：MiniMax 走
     /// coding_plan/remains，GLM 走 BigModel monitor/usage/quota/limit

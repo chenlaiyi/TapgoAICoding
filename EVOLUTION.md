@@ -19,7 +19,21 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.39 — 模型选择菜单改显「品牌 + 模型名」，不再暴露技术 slug
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.39
+**Test status**: 2380 passed / 8 failed（既有 SSH 环境失败，与本版无关）
+**Changed**:
+- 用户反馈模型菜单里 "deepseek-v4-flash" 这类技术 slug 太复杂，只想要品牌 + 模型名。
+- `TapgoModel` 新增 `displayName`：MiniMax M3 / GLM 5.3 Flash / DeepSeek V4 Flash / DeepSeek V4 Pro；API slug（rawValue）保持官方名不动，仅展示层切换。
+- 模型切换菜单、composer 芯片、环境面板、设置页、诊断信息统一改用 displayName；目录 display_name 同步。
+- 测试 +5（displayName 四项 + slug 不变断言）。
+**Why**: 面向用户的 UI 不应出现技术 slug；品牌 + 模型名一眼可辨。
+**Next**: 手机 H5 端模型名仍显示 slug，待后续统一为 displayName。
+
 ## v0.5.38 — 自进化会话 composer 专属化：占位文案与项目条不再误导为当前项目
+
 **Date**: 2026-08-30
 **Changed**:
 - 用户实测踩坑: 点「自进化」进入专属会话后, composer 占位仍是「给 OctTapgo 发条任务…」、项目条仍显示 OctTapgo——用户以为没切进去, 把【自进化指令】粘贴进了 OctTapgo 下的普通会话, AI 在错误目录 (~/OctTapgo) 里跑了一轮 252.6k tokens 的自进化。

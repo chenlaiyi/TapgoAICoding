@@ -1511,9 +1511,9 @@ struct ComposerView: View {
                                     TapgoConfig.selectedModel = m
                                 } label: {
                                     if m.rawValue == selectedModelRaw {
-                                        Label(m.rawValue, systemImage: "checkmark")
+                                        Label(m.displayName, systemImage: "checkmark")
                                     } else {
-                                        Text(m.rawValue)
+                                        Text(m.displayName)
                                     }
                                 }
                             }
@@ -1579,7 +1579,7 @@ struct ComposerView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "cpu").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            Text(store.modelName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            Text(store.modelDisplayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             if isRunning {
                                 ProgressView().controlSize(.mini)
                             }
@@ -1593,7 +1593,7 @@ struct ComposerView: View {
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(DSHTheme.brandSoft, in: Capsule())
                         .help(L10n.modelChipHint + modelContextTooltip)
-                        .accessibilityLabel("模型 \(store.modelName), 来自独立配置")
+                        .accessibilityLabel("模型 \(store.modelDisplayName), 来自独立配置")
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)

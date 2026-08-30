@@ -45,7 +45,7 @@ struct EnvironmentPanel: View {
                     row(icon: "arrow.triangle.branch.circle", label: "分支", value: branch ?? "—")
                     changesRow
                 }
-                row(icon: "cpu", label: "模型", value: TapgoConfig.selectedModel.rawValue)
+                row(icon: "cpu", label: "模型", value: TapgoConfig.selectedModel.displayName)
                 row(icon: "globe.asia.australia", label: "区域", value: TapgoConfig.defaultRegion.displayName)
                 // Endpoint → open run settings.
                 buttonRow(icon: "network", label: "端点", value: TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel)) {
@@ -254,7 +254,7 @@ struct EnvironmentPanel: View {
             lines.append("路径: \(cwd)")
             lines.append("来源: 本地")
         }
-        lines.append("模型: \(TapgoConfig.selectedModel.rawValue)")
+        lines.append("模型: \(TapgoConfig.selectedModel.displayName)")
         lines.append("端点: \(TapgoConfig.effectiveBaseURL(for: TapgoConfig.selectedModel))")
         lines.append("沙箱: \(TapgoConfig.SandboxMode(rawValue: sandboxRaw)?.displayName ?? "")")
         lines.append("批准: \(TapgoConfig.ApprovalPolicy(rawValue: approvalPolicyRaw)?.displayName ?? "")")
