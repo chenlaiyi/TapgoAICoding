@@ -1879,8 +1879,12 @@ struct ComposerView: View {
     private var contextMeterChip: some View {
         let lastUsage = activeThread?.turns.last(where: { $0.usage != nil })?.usage
         let avgCache = averageCacheHitPercent(thread: activeThread)
-        let meterPercent: Int? = store.rateLimits?.worstUsedPercent
-            ?? lastUsage?.contextPercent
+        // v0.5.37: 与侧栏/弹窗口径统一, 圆形表显示**剩余量**
+        // (最差窗口的 100 - 已用)。无额度数据时退回上下文占用百分比。
+        let quotaRemaining = store.rateLimits
+            .flatMap { $0.worstUsedPercent }
+            .map { max(0, 100 - $0) }
+        let meterPercent: Int? = quotaRemaining ?? lastUsage?.contextPercent
         HStack(spacing: 4) {
             CircularContextMeter(percent: meterPercent, isActive: isRunning)
         }
@@ -1912,7 +1916,9 @@ struct ComposerView: View {
                 appFontScale: appFontScale
             )
         }
-        .accessibilityLabel("上下文用量 \(meterPercent.map(String.init) ?? "未知")%")
+        .accessibilityLabel(quotaRemaining != nil
+            ? "套餐余量 \(quotaRemaining.map(String.init) ?? "未知")%"
+            : "上下文用量 \(meterPercent.map(String.init) ?? "未知")%")
     }
 
     private func averageCacheHitPercent(thread: TapgoCore.Thread?) -> Int? {

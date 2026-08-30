@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.37",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.37",
+                    summary: "圆形额度表改显「剩余量」：侧栏 / 弹窗 / 圆环三处口径完全统一",
+                    changes: [
+                        "用户圈出圆形额度表：显示已用 26%（周额度已用），与余量 74% 口径相反。",
+                        "contextMeterChip 翻转：有额度数据时显示最差窗口剩余量（MiniMax 当前 74）；无额度数据退回上下文占用百分比。",
+                        "无障碍标签同步：有额度数据时报「套餐余量 X%」。三处（侧栏 / 弹窗 / 圆环）全部为剩余口径。"
+                    ],
+                    why: "同一个数字三种口径让用户无法直接对照。",
+                    next: "观察圆环填充方向语义（环越满 = 剩余越多）；有反馈再评估倒计时样式。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.36",
                     date: "2026-08-30",
                     commit: "65c6444",
