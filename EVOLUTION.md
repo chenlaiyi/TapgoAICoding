@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.51 — 电脑控制从全屏盲点升级为目标应用语义操作
+**Date**: 2026-08-31
+**Commit**: 4610726
+**Tag**: v0.5.51
+**Test status**: 2411 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过远程环境段）
+**Changed**:
+- Accessibility 扫描深度由 12 提升到 32、上限由 220 提升到 600，并跳过关闭菜单的无关子树；ZCode Electron 深层 WebArea 的“模型设置”“添加供应商”“添加模型”和表单字段可被稳定读取。
+- 新增 `set_element_value` 语义赋值；截图、点击、按键、输入与滚动均支持绑定目标 App，应用窗口截图和坐标共用同一窗口，修正旧坐标 Y 轴翻转错误。
+- 新会话强制执行“确认应用 → 元素树与窗口联合观察 → 语义操作 → 每步复核”，连续失败停止盲点；模型目录同时修复多行 base instructions 的 JSON 转义。
+**Why**: 旧实现只读到 Electron 外壳，菜单子树提前耗尽元素预算；坐标又基于全屏且不锁定 App，焦点漂移后会误点 Tapgo、微信或系统设置，无法完成 ZCode 模型配置。
+**Next**: 在三台 Mac 完成本版同步；已授权机器继续扩大复杂 Electron 表单回归，未授权机器完成本机 TCC 后再验收截图与点击。
+
 ## v0.5.50 — 本地化应用名启动不再假成功
 **Date**: 2026-08-30
 **Commit**: 7668a47

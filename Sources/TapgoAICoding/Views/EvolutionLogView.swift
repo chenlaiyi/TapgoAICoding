@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.51",
+                    date: "2026-08-31",
+                    commit: "4610726",
+                    tag: "v0.5.51",
+                    summary: "电脑控制从全屏盲点升级为目标应用语义操作",
+                    changes: [
+                        "Accessibility 扫描深度 12 → 32、元素上限 220 → 600，并跳过关闭菜单的无关子树，可稳定读取 ZCode Electron 深层 WebArea 控件。",
+                        "新增 set_element_value；截图、点击、按键、输入与滚动均可绑定目标 App，应用窗口截图与坐标统一，并修复旧 Y 轴翻转错误。",
+                        "新会话强制执行确认应用、联合观察、语义操作和每步复核；连续失败停止盲点，同时修复多行 base instructions 的 JSON 转义；完整回归 2411/2411。"
+                    ],
+                    why: "旧实现只读到 Electron 外壳，且全屏坐标不锁定 App；焦点漂移后会误点其他窗口，无法完成 ZCode 模型配置。",
+                    next: "三机同步 0.5.51；已授权机器扩大 Electron 表单回归，未授权机器完成本机 TCC 后再验收。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.50",
                     date: "2026-08-30",
                     commit: "7668a47",
