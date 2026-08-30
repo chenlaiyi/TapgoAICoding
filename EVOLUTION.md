@@ -21,7 +21,7 @@
 
 ## v0.5.29 — 自进化升级为独立入口：独立对话、独立开发专属会话
 **Date**: 2026-08-30
-**Commit**: PENDING
+**Commit**: 4ebecd9
 **Tag**: v0.5.29
 **Test status**: 2283 passed / 0 failed (跳过远程集成段; 全量含远程 2323 passed / 8 failed 均为既有 203.0.113.10 环境失败)
 **Changed**:
