@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.36",
+                    date: "2026-08-30",
+                    commit: "PLACEHOLDER",
+                    tag: "v0.5.36",
+                    summary: "额度口径统一：弹窗余量卡片改显「剩余量」",
+                    changes: [
+                        "用户反馈口径不一：侧栏显示余量（99%/74%），额度弹窗却显示已用（19%/33%）。统一为剩余量。",
+                        "ModelUsagePopover.quotaCells() 展示层翻转：usedPercent → max(0, 100 - usedPercent)，与侧栏公式一致；卡片标签加「余量」后缀。",
+                        "数据层不动：三个额度客户端仍产出「已用」语义的 usedPercent，只在展示层翻转。"
+                    ],
+                    why: "同一个「剩余额度」标题下混用两种口径会让用户误读（19% 被看成只剩 19%）。",
+                    next: "真机确认弹窗与侧栏数字一致。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.35",
                     date: "2026-08-30",
                     commit: "17d8923",

@@ -192,18 +192,20 @@ struct ModelUsagePopover: View {
     private func quotaCells() -> [QuotaCell] {
         guard let snap = rateLimits else { return [] }
         var out: [QuotaCell] = []
+        // v0.5.36: 与侧栏口径统一, 弹窗也显示**剩余量** (100 - 已用)。
+        // snapshot 里的 usedPercent 语义是"已用", 展示层统一翻转。
         if let primary = snap.primary {
             out.append(QuotaCell(
-                name: primary.windowLabel,
-                usedPercent: primary.usedPercent,
+                name: primary.windowLabel + "余量",
+                usedPercent: max(0, 100 - primary.usedPercent),
                 resetsAt: primary.resetsAt,
                 kind: .window
             ))
         }
         if let secondary = snap.secondary {
             out.append(QuotaCell(
-                name: secondary.windowLabel,
-                usedPercent: secondary.usedPercent,
+                name: secondary.windowLabel + "余量",
+                usedPercent: max(0, 100 - secondary.usedPercent),
                 resetsAt: secondary.resetsAt,
                 kind: .window
             ))

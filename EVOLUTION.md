@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.36 — 额度口径统一：弹窗余量卡片改显「剩余量」
+**Date**: 2026-08-30
+**Commit**: PLACEHOLDER
+**Tag**: v0.5.36
+**Test status**: 2375 passed / 8 failed（既有 SSH 环境失败，与本版无关）
+**Changed**:
+- 用户反馈口径不一：左下角侧栏显示余量（99%/74%），输入框底部的额度弹窗却显示已用（19%/33%）。统一为剩余量。
+- `ModelUsagePopover.quotaCells()` 展示层翻转：usedPercent → max(0, 100 - usedPercent)，与侧栏公式一致；卡片标签加「余量」后缀（如「5 小时余量」「每周余量」），Credits 余额卡片不变。
+- 数据层不动：三个额度客户端仍产出「已用」语义的 usedPercent，只在展示层翻转。
+**Why**: 同一个「剩余额度」标题下混用两种口径会让用户误读（19% 被看成只剩 19%）。
+**Next**: 真机确认弹窗与侧栏数字一致。
+
 ## v0.5.35 — 接入 DeepSeek V4 系列（v4-flash / v4-pro，原生 Responses API）
 **Date**: 2026-08-30
 **Commit**: 17d8923
