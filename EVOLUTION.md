@@ -19,6 +19,20 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.38 — 自进化日志可按版本号 / commit / 改动关键词过滤
+**Date**: 2026-08-30
+**Commit**: _(see `git log -1 v0.5.38`)_
+**Tag**: v0.5.38
+**Test status**: 2362 passed / 0 failed (跳过远程集成段)
+**Changed**:
+- 自进化日志 sheet 的「历史」标签页加了搜索框，对 version / tag / commit / summary / changes / why / next 做大小写无关子串匹配；非过滤态无视觉变化。
+- 「匹配 N / 总数」摘要只在 query 非空时出现；过滤无命中时显示「没有匹配的版本」引导用户清空过滤。
+- 过滤层提到 `TapgoCore/EvolutionEntryFilter`：纯 Foundation 的 `matches(_:query:)` 和 `filter(_:query:)`，让搜索规则可在 `TapgoTests` 独立单测，UI 只读取 query 调用。
+- `EvolutionEntry` 模型从 `EvolutionLogView` 移到 `TapgoCore`（公开 `Sendable` / `Equatable`），稳定 id 用 `commit ?? version`；删除 View 端重复定义。
+- 测试 +1 section（27 断言）：空 / 空白 query 不匹配且不过滤透传；version / tag / commit 大小写无关；summary / changes / why / next 中英文 substring 命中；跨字段排他；无匹配空数组；总数 2335 → 2362。
+**Why**: 自进化版本数已到 37 条，用户翻特定改动只能肉眼扫；v0.5.33 已经把这条 Next 留在工作区，本回合补齐以关闭「历史条数膨胀后无法定位」的痛点。
+**Next**: 观察是否需要按时间窗口或「类别」（模型 / UI / 测试）预切片；必要时在搜索框旁加 chip 快捷过滤。
+
 ## v0.5.37 — 圆形额度表改显「剩余量」：侧栏 / 弹窗 / 圆环三处口径完全统一
 **Date**: 2026-08-30
 **Commit**: ceb6e5b

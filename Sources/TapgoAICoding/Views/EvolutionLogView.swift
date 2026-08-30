@@ -31,6 +31,21 @@ struct EvolutionLogView: View {
     /// 数据重载后仍然稳定）。默认只展开最新一条。
     @State private var expandedVersions: Set<String> = []
 
+    /// 历史标签页的本地过滤 query。空时 `filteredHistory` 等于 `history`。
+    @State private var historyFilterQuery: String = ""
+
+    /// 纯逻辑过滤层（TapgoCore）——便于在 TapgoTests 独立单测。
+    private let entryFilter = EvolutionEntryFilter()
+
+    private var filteredHistory: [EvolutionEntry] {
+        entryFilter.filter(history, query: historyFilterQuery)
+    }
+
+    /// 当前过滤是否激活（非空 query）。
+    private var isFiltering: Bool {
+        !historyFilterQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -44,13 +59,19 @@ struct EvolutionLogView: View {
                     switch tab {
                     case .history:
                         historyIntro
-                        ForEach(history) { entry in
-                            EvolutionEntryRow(
-                                entry: entry,
-                                isLatest: entry.version == history.first?.version,
-                                isExpanded: expandedVersions.contains(entry.version)
-                            ) {
-                                toggleExpanded(entry.version)
+                        historySearchBar
+                        historyResultSummary
+                        if filteredHistory.isEmpty {
+                            historyEmptyState
+                        } else {
+                            ForEach(filteredHistory) { entry in
+                                EvolutionEntryRow(
+                                    entry: entry,
+                                    isLatest: !isFiltering && entry.version == filteredHistory.first?.version,
+                                    isExpanded: expandedVersions.contains(entry.version)
+                                ) {
+                                    toggleExpanded(entry.version)
+                                }
                             }
                         }
                     case .playbook:
@@ -199,6 +220,66 @@ struct EvolutionLogView: View {
             .padding(.bottom, 2)
     }
 
+    /// 历史标签页的搜索框（v0.5.38）：过滤 commit / 版本号 / 摘要 /
+    /// changes / why / next 的任意子串。空 query 时与原体验等价；非空
+    /// 时在下方显示「N / 总数」并允许一键清除。
+    private var historySearchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+            TextField("搜版本号 / commit / 改动关键词", text: $historyFilterQuery)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .disableAutocorrection(true)
+                .accessibilityLabel("过滤自进化日志")
+            if isFiltering {
+                Button {
+                    historyFilterQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("清除过滤")
+                .help("清除过滤")
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
+    /// 过滤态下的「匹配 / 总数」摘要；非过滤态完全不渲染以减少视觉噪音。
+    @ViewBuilder
+    private var historyResultSummary: some View {
+        if isFiltering {
+            Text("匹配 \(filteredHistory.count) / \(history.count) 个版本")
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+                .padding(.bottom, 2)
+                .accessibilityLabel("匹配 \(filteredHistory.count) 个版本，共 \(history.count) 条")
+        }
+    }
+
+    /// 过滤后无匹配时的空态。
+    private var historyEmptyState: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("没有匹配的版本")
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
+            Text("试试输入其它版本号 / commit 短哈希，或清空过滤看完整列表。")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(DSHTheme.border, lineWidth: 1)
+        )
+    }
+
     // MARK: - Playbook (how to use me better)
 
     private var playbookSection: some View {
@@ -251,6 +332,21 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
+                EvolutionEntry(
+                    version: "v0.5.38",
+                    date: "2026-08-30",
+                    commit: nil,
+                    tag: "v0.5.38",
+                    summary: "自进化日志可按版本号 / commit / 改动关键词过滤",
+                    changes: [
+                        "历史标签页加搜索框：对 version / tag / commit / summary / changes / why / next 做大小写无关子串匹配，非过滤态无视觉变化。",
+                        "「匹配 N / 总数」摘要只在 query 非空时出现；过滤无命中显示「没有匹配的版本」空态并允许一键清空。",
+                        "过滤层提到 TapgoCore/EvolutionEntryFilter：纯 Foundation 的 matches(_:query:) 和 filter(_:query:)，可在 TapgoTests 独立单测。",
+                        "EvolutionEntry 模型从 View 迁到 TapgoCore（public Sendable / Equatable），稳定 id = commit ?? version；删除 View 端重复定义。"
+                    ],
+                    why: "自进化版本数已到 37 条，肉眼扫不到特定改动；v0.5.33 Next 留的搜索能力本回合补齐。",
+                    next: "观察是否需要按时间窗口或「类别」（模型 / UI / 测试）预切片；必要时加 chip 快捷过滤。"
+                ),
                 EvolutionEntry(
                     version: "v0.5.37",
                     date: "2026-08-30",
@@ -1191,17 +1287,7 @@ private struct PlaybookRow: View {
 
 // MARK: - Models
 
-struct EvolutionEntry: Identifiable {
-    let id = UUID()
-    let version: String
-    let date: String
-    let commit: String?
-    let tag: String?
-    let summary: String
-    let changes: [String]
-    let why: String
-    let next: String
-}
+// EvolutionEntry 现在定义在 TapgoCore/EvolutionEntryFilter.swift，方便 TapgoTests 直接单测过滤逻辑。
 
 struct PlaybookSection: Identifiable {
     let id = UUID()

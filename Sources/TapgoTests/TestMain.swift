@@ -188,6 +188,7 @@ let allSections: [String] = [
     "RemoteDirectoryLister: argv shape (pure)",
     "RemoteDirectoryLister: live on remotehost",
     "Turn: in-conversation search",
+    "EvolutionEntryFilter: query rules + filter end-to-end",
 ]
 
 /// Run a section only if it's in scope. This is what makes
@@ -666,6 +667,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Turn: in-conversation search") {
             runTurnSearch(runner)
+        }
+        await runIfInScope(runner, "EvolutionEntryFilter: query rules + filter end-to-end") {
+            runEvolutionEntryFilter(runner)
         }
         await runIfInScope(runner, "RemoteCodexHomeSync: rendered config has no secret material") {
             runRemoteCodexHomeSyncConfigNoSecret(runner)
