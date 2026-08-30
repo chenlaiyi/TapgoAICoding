@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.46 — 电脑控制独立 Helper 与系统授权拖拽引导
+**Date**: 2026-08-30
+**Commit**: 309e3c2
+**Tag**: v0.5.46
+**Test status**: 2394 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Changed**:
+- 新增独立 `Tapgo Computer Use.app` Helper，以固定 bundle id 承载 Accessibility、Screen Recording 和电脑控制 MCP，避免继续误用主 App 或宿主进程权限。
+- 两项权限分别提供精确系统设置入口；打开后显示置顶拖拽面板，可把真实 Helper App 拖入对应允许列表。
+- 权限状态通过 Launch Services 启动 Helper 并回写只读 JSON，避免直接执行二进制时继承 Terminal/主 App 的 TCC 上下文。
+- Composer 入口与设置页统一使用 Helper 真值；MCP 配置改指向嵌套 Helper 可执行文件，并补齐稳定路径测试。
+**Why**: 原实现只展示主 App 权限和通用系统设置链接，系统实际执行电脑控制的进程身份不明确，也没有 ZCode 式的一键拖拽授权流程。
+**Next**: 用户完成三台 Mac 的系统授权后，分别回读 Helper 权限并实测截图、元素树读取和点击输入链路。
+
 ## v0.5.45 — 电脑控制界面验收修复
 **Date**: 2026-08-30
 **Commit**: e174ceb

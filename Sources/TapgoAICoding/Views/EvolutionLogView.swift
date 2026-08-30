@@ -252,6 +252,22 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.46",
+                    date: "2026-08-30",
+                    commit: "309e3c2",
+                    tag: "v0.5.46",
+                    summary: "电脑控制独立 Helper 与系统授权拖拽引导",
+                    changes: [
+                        "新增独立 Tapgo Computer Use.app，以固定 bundle id 承载系统权限与电脑控制 MCP。",
+                        "辅助功能和屏幕录制分别直达对应系统设置，并显示可拖入允许列表的置顶 Helper 面板。",
+                        "权限状态通过 Launch Services 启动 Helper 回读，避免宿主进程权限污染；Composer 与设置页统一使用 Helper 真值。",
+                        "MCP 配置迁移到嵌套 Helper 可执行文件，完整离线回归 2394/2394。"
+                    ],
+                    why: "原实现没有稳定的系统授权身份，也只有通用设置链接，无法完成 ZCode 式可理解、可操作、可验证的电脑控制授权闭环。",
+                    next: "用户授权三台 Mac 后分别实测截图、元素树读取、点击和输入链路。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.45",
                     date: "2026-08-30",
                     commit: "e174ceb",
