@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.48 — 使用原生文件拖拽向系统权限列表添加 Helper
+**Date**: 2026-08-30
+**Commit**: 760a000
+**Tag**: v0.5.48
+**Test status**: 2394 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
+**Changed**:
+- 将 SwiftUI `NSItemProvider` 拖放替换为 AppKit `NSDraggingSession`，对齐 Finder 与 ZCode/Electron `startDrag(file:)` 的本地文件拖拽语义。
+- 拖拽载荷同时提供 `public.file-url` 和 `NSFilenamesPboardType`，内容为真实 `Tapgo Computer Use.app` 路径，操作类型固定为 copy。
+- 原生拖拽视图支持非激活浮窗的第一次鼠标事件，并使用 Helper 图标作为拖拽预览。
+**Why**: SwiftUI 数据拖放虽然显示了 App 图标，但 macOS 隐私权限列表不把它当作 Finder 式本地应用文件，松手后不会新增条目。
+**Next**: 获得用户动作前确认后，在系统辅助功能与屏幕录制列表各完成一次真实投放并回读 Helper 权限。
+
 ## v0.5.47 — 修复授权浮窗抢占 Helper 拖拽
 **Date**: 2026-08-30
 **Commit**: f361cfd

@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.48",
+                    date: "2026-08-30",
+                    commit: "760a000",
+                    tag: "v0.5.48",
+                    summary: "使用原生文件拖拽向系统权限列表添加 Helper",
+                    changes: [
+                        "以 AppKit NSDraggingSession 替换 SwiftUI NSItemProvider，生成 Finder 式本地文件拖拽。",
+                        "载荷同时写入 public.file-url 与 NSFilenamesPboardType，指向真实 Tapgo Computer Use.app。",
+                        "拖拽操作固定为 copy，并支持非激活浮窗的第一次鼠标事件；完整离线回归 2394/2394。"
+                    ],
+                    why: "SwiftUI 数据拖放能显示图标，但系统隐私列表不把它识别为可添加的本地应用文件，松手后不会新增条目。",
+                    next: "经用户确认后在两个系统权限列表完成真实投放与权限回读。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.47",
                     date: "2026-08-30",
                     commit: "f361cfd",
