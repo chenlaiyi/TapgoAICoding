@@ -48,7 +48,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(workbench.contains("WorkbenchReview") && workbench.contains("WorkbenchTerminal") && workbench.contains("WorkbenchBrowser"), "desktop-design: 审查终端浏览器均为真实工作台内容")
     t.expect(workbench.contains("向右拖动展开环境信息") && workbench.contains("workbench-environment-drawer"), "desktop-design: 右缘拖拽可展开环境信息")
     t.expect(workbench.contains("onTapGesture { layout.isEnvironmentVisible = true }") && workbench.contains("translation.width > 3"), "desktop-design: 贴边窗口下手柄点击或小位移拖拽都能展开环境信息")
-    t.expect(workbench.contains("autoRevealWidthThreshold") && workbench.contains("autoRevealArmed"), "desktop-design: 拖宽工作台到阈值自动弹出环境信息且带防回弹闩锁")
+    t.expect(workbench.contains("requestEnvironmentReveal") && content.contains("widenRevealThreshold"), "desktop-design: 分隔条拖宽工作台到阈值直接触发环境抽屉弹出（自绘分隔条手势）")
     t.expect(workbench.contains("layout.isEnvironmentVisible ? 590 : 340") && workbench.contains("ensureHostWindowFitsEnvironment"), "desktop-design: 环境展开时窗口与两级右栏保持可读最小宽度")
     t.expect(workbench.contains("关闭其他标签") && workbench.contains("closePanel"), "desktop-design: 标签关闭与面板关闭是两级动作")
     t.expect(app.contains("windowStyle(.hiddenTitleBar)"), "desktop-design: 自绘分层背景贯穿窗口标题栏")

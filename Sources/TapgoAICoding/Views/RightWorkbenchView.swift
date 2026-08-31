@@ -10,6 +10,9 @@ struct RightWorkbenchView: View {
     @EnvironmentObject private var store: SessionStore
     let thread: TapgoCore.Thread
     @Binding var requestedKind: WorkbenchLayoutState.TabKind?
+    /// Set true by the chat|workbench divider gesture when the user drags the
+    /// workbench wide; this view consumes it and reveals the drawer.
+    @Binding var requestEnvironmentReveal: Bool
     let closePanel: () -> Void
 
     @AppStorage("tapgo.workbench.layout") private var persistedLayout = ""
@@ -82,6 +85,11 @@ struct RightWorkbenchView: View {
             guard let kind else { return }
             focusOrOpen(kind)
             requestedKind = nil
+        }
+        .onChange(of: requestEnvironmentReveal) { _, requested in
+            guard requested else { return }
+            layout.isEnvironmentVisible = true
+            requestEnvironmentReveal = false
         }
         .animation(.easeOut(duration: 0.16), value: layout.isEnvironmentVisible)
     }
@@ -298,11 +306,6 @@ struct RightWorkbenchView: View {
         .accessibilityAction { layout.isEnvironmentVisible = true }
     }
 
-    /// Width past which dragging the chat|workbench splitter auto-reveals the
-    /// environment drawer, and the narrower width that re-arms it.
-    private static let autoRevealWidthThreshold: CGFloat = 560
-    private static let autoRevealRearmWidth: CGFloat = 500
-
     private enum WidthTarget { case workbench, environment }
 
     private func widthReader(for target: WidthTarget) -> some View {
@@ -318,38 +321,8 @@ struct RightWorkbenchView: View {
         switch target {
         case .workbench:
             workbenchWidth = min(820, max(340, Double(width)))
-            noteWorkbenchWidthChange(width)
         case .environment:
             environmentWidth = min(460, max(250, Double(width)))
-        }
-    }
-
-    @State private var lastHostWindowWidth: CGFloat = 0
-    @State private var autoRevealArmed = true
-
-    /// ZCode-style affordance: dragging the chat|workbench splitter wide
-    /// enough pops the environment drawer open. Only a splitter drag counts —
-    /// the host window width must stay put, otherwise the pane change came
-    /// from resizing the window itself. A hysteresis latch keeps a manual
-    /// close from instantly re-opening until the pane narrows again. Splitter
-    /// drags arrive as many small steps, so there is no per-step growth test.
-    private func noteWorkbenchWidthChange(_ width: CGFloat) {
-        let hostWidth = (NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible))?
-            .frame.width ?? lastHostWindowWidth
-        defer { lastHostWindowWidth = hostWidth }
-        guard didRestore else { return }
-        if layout.isEnvironmentVisible {
-            autoRevealArmed = false
-            return
-        }
-        if width < Self.autoRevealRearmWidth {
-            autoRevealArmed = true
-            return
-        }
-        guard autoRevealArmed, lastHostWindowWidth > 0 else { return }
-        if hostWidth - lastHostWindowWidth < 1 {
-            layout.isEnvironmentVisible = true
-            autoRevealArmed = false
         }
     }
 

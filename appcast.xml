@@ -3,6 +3,22 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.66</title>
+            <pubDate>Tue, 01 Sep 2026 05:50:32 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.66</link>
+            <sparkle:version>0.5.66</sparkle:version>
+            <sparkle:shortVersionString>0.5.66</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.66
+
+- 新增 ZCode 式"拖宽自动弹出环境信息"：主会话与工作台之间的分隔条改为自绘实现，向左拖动把工作台拉宽到 560pt 以上时环境信息抽屉自动弹出；以松手时的最终宽度判定，连续小段拖动可累计达标。
+- 仅向加宽方向拖动触发；向右收窄工作台（例如刚手动关闭抽屉后回收空间）不会误触发，重复弹出无回弹。
+- 右缘环境手柄保持点击直接展开与贴边小位移（>3pt）向右拖拽展开；附带修复自绘分隔条的辅助功能声明。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.66/Tapgo-AICoding-0.5.66.zip" length="9434120" type="application/octet-stream" sparkle:edSignature="2K47fIj6xTmdHsOtx2olkAhYI7LPsJaPkheTux0vgk/zAWo8+SNZ9Gbl7dJINZGkD55UopoUa/DPLlz4GIHJAQ=="/>
+        </item>
+        <item>
             <title>0.5.65</title>
             <pubDate>Tue, 01 Sep 2026 05:13:55 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.65</link>
@@ -31,22 +47,6 @@
 - 新增 ZCode 式"拖宽自动弹出"：把主会话与工作台之间的分隔条向右拖、工作台宽度达到 560pt 时环境信息抽屉自动弹出；仅分隔条拖动触发（窗口整体拉宽不触发），并带防回弹闩锁，手动关闭后工作台收窄到 500pt 以内才重新武装。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.64/Tapgo-AICoding-0.5.64.zip" length="9422439" type="application/octet-stream" sparkle:edSignature="J0iSPyCCDyK4QAi45lNMTxmUUNW9wPZ6lcME9tUGMrU4ZMKhEiEturQ8f0jEV3G79Ba+uyx7UaUHvy/jNHLPAg=="/>
-        </item>
-        <item>
-            <title>0.5.63</title>
-            <pubDate>Tue, 01 Sep 2026 04:38:59 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.63</link>
-            <sparkle:version>0.5.63</sparkle:version>
-            <sparkle:shortVersionString>0.5.63</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.63
-
-- 修复侧栏底部头像被撑成原图大矩形的问题（macOS 26 菜单按位图原尺寸渲染头像）：头像现在稳定显示为 28pt 小圆图，展示真实微信头像。
-- 头像下载后在渲染层预裁剪成圆形并按 (URL, 尺寸) 缓存，侧栏账户菜单与设置页共享同一份小圆图。
-- 套餐信息（供应商·套餐·余量）移出账户菜单 label 单独成行，不再被系统菜单丢弃，恢复 v0.5.60 的灰色套餐行。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.63/Tapgo-AICoding-0.5.63.zip" length="9421025" type="application/octet-stream" sparkle:edSignature="8sTCKyjZ8yX6rXESA/F+xW4zoBaPwsMhiO14bw8Ozc8jw4H99s3OX8ei8ZT2bmbyDa9mI5RgcsELn6qbXV4NCg=="/>
         </item>
     </channel>
 </rss>

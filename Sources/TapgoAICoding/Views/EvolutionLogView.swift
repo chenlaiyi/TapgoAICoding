@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.66",
+                    date: "2026-09-01",
+                    commit: "随 v0.5.66",
+                    tag: "v0.5.66",
+                    summary: "自绘分隔条实现拖宽自动弹出环境信息",
+                    changes: [
+                        "主会话与工作台分栏改为自绘分隔条，拖宽工作台到 ≥560pt 自动弹出环境抽屉，松手时以完整位移判定。",
+                        "仅向加宽方向触发，向右收窄不误弹；真机验证三条呼出路径全部通过。"
+                    ],
+                    why: "HSplitView 内置分隔条拖动期间宽度事件不触发，宽度监听方案不可行；只有分隔条自己的手势能同时承担分栏与弹出判定。",
+                    next: "两机部署后由真实鼠标复验拖宽弹出手感，必要时调整 560pt 阈值。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.65",
                     date: "2026-09-01",
                     commit: "随 v0.5.65",

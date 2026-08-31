@@ -9,6 +9,9 @@ struct ContentView: View {
     @State private var showNewTask = false
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
     @State private var requestedWorkbenchKind: WorkbenchLayoutState.TabKind?
+    @State private var requestEnvironmentReveal = false
+    @State private var chatPaneWidth: CGFloat = 620
+    @State private var dividerDragStartChatWidth: CGFloat = 0
     @State private var showShortcuts = false
     @State private var showCommandPalette = false
     @State private var sidebarVisible = true
@@ -142,11 +145,20 @@ struct ContentView: View {
 
             Group {
                 if showDetail {
-                    HSplitView {
-                        ChatView()
-                            .frame(minWidth: 420, idealWidth: 620)
-                        workbenchDetail
-                            .frame(minWidth: 340, idealWidth: 430, maxWidth: 1_120)
+                    // The chat|workbench split is a hand-rolled divider rather
+                    // than HSplitView: its own DragGesture both resizes the
+                    // panes and summons the environment drawer when the user
+                    // pulls the workbench wide, which HSplitView's internal
+                    // divider cannot observe (GeometryReader updates silently
+                    // miss divider drags on macOS 26).
+                    GeometryReader { proxy in
+                        HStack(spacing: 0) {
+                            ChatView()
+                                .frame(width: min(chatPaneWidth, max(420, proxy.size.width - 340)))
+                            workbenchDivider(contentWidth: proxy.size.width)
+                            workbenchDetail
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     }
                 } else {
                     adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)
@@ -160,6 +172,51 @@ struct ContentView: View {
             .ignoresSafeArea(.container, edges: .top)
         }
         .background(DSHTheme.sidebarBg)
+    }
+
+    /// Widening the workbench past this width while dragging the divider pops
+    /// the environment drawer open — ZCode's "drag wide enough and the
+    /// environment appears". The absolute width matters, not the per-gesture
+    /// translation, so several small drags accumulate toward the reveal.
+    private static let widenRevealThreshold: CGFloat = 560
+    private static let dividerWidth: CGFloat = 8
+
+    @ViewBuilder
+    private func workbenchDivider(contentWidth: CGFloat) -> some View {
+        Rectangle()
+            .fill(DSHTheme.border)
+            .frame(width: 1)
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: Self.dividerWidth - 1)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        if dividerDragStartChatWidth == 0 {
+                            dividerDragStartChatWidth = chatPaneWidth
+                        }
+                        chatPaneWidth = max(420, dividerDragStartChatWidth + value.translation.width)
+                    }
+                    .onEnded { value in
+                        // Judge at release with the full translation: drag
+                        // event streams can drop intermediate onChanged calls,
+                        // but onEnded always reports the final translation.
+                        let start = dividerDragStartChatWidth == 0 ? chatPaneWidth : dividerDragStartChatWidth
+                        dividerDragStartChatWidth = 0
+                        let finalChatWidth = max(420, start + value.translation.width)
+                        chatPaneWidth = finalChatWidth
+                        // Only a widening drag counts; dragging right to
+                        // reclaim chat space right after a manual close must
+                        // not instantly re-open the drawer.
+                        if value.translation.width < 0,
+                           contentWidth - finalChatWidth - Self.dividerWidth >= Self.widenRevealThreshold {
+                            requestEnvironmentReveal = true
+                        }
+                    }
+            )
+            .help("拖动调整宽度；拖宽工作台自动展开环境信息")
+            .accessibilityLabel("调整会话与工作台分栏")
     }
 
     /// Keeps one structural ChatView while the window crosses the responsive
@@ -194,6 +251,7 @@ struct ContentView: View {
             RightWorkbenchView(
                 thread: thread,
                 requestedKind: $requestedWorkbenchKind,
+                requestEnvironmentReveal: $requestEnvironmentReveal,
                 closePanel: { showTrajectory = false }
             )
         } else {
