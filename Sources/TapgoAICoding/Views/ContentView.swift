@@ -16,7 +16,13 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             Group {
-                if let err = store.setupError {
+                if let presentation = settingsPresentation {
+                    SettingsView(initialTab: presentation.tab) {
+                        settingsPresentation = nil
+                    }
+                    .environmentObject(workspace)
+                    .environmentObject(store)
+                } else if let err = store.setupError {
                     SetupView(error: err) { store.revalidateSetup() }
                 } else {
                     mainSplit(availableWidth: geometry.size.width)
@@ -45,11 +51,6 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenCommandPalette)) { _ in
             showCommandPalette = true
-        }
-        .sheet(item: $settingsPresentation) { presentation in
-            SettingsView(initialTab: presentation.tab)
-                .environmentObject(workspace)
-                .environmentObject(store)
         }
         .sheet(isPresented: $showNewTask) {
             NewTaskView { project in

@@ -99,6 +99,23 @@ func runGLMQuotaClient(_ t: TestRunner) async {
     t.expectEqual(capturedAuth ?? "", "glm-test-key",
                   "auth header: raw key without Bearer prefix (official plugin style)")
 
+    // MARK: ProviderRegistry in-memory key — no legacy auth file required
+    var registryAuth: String?
+    let registryKeyClient = GLMQuotaClient(apiKey: "glm-registry-key") { request in
+        registryAuth = request.value(forHTTPHeaderField: "Authorization")
+        return (body, HTTPURLResponse(url: GLMQuotaClient.quotaURL, statusCode: 200,
+                                      httpVersion: nil, headerFields: nil)!)
+    }
+    do {
+        let snap = try await registryKeyClient.fetchRemains()
+        t.expectEqual(snap.planLabel ?? "", "Lite",
+                      "provider registry key: quota response parsed")
+        t.expectEqual(registryAuth ?? "", "glm-registry-key",
+                      "provider registry key: raw Authorization header")
+    } catch {
+        t.expect(false, "provider registry key should not require auth-glm.json: \(error)")
+    }
+
     // MARK: HTTP 500 surfaces as http error
     let fail = GLMQuotaClient(authPath: authPath) { _ in
         (Data("server boom".utf8), HTTPURLResponse(url: GLMQuotaClient.quotaURL, statusCode: 500,

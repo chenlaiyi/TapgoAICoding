@@ -252,6 +252,35 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.54",
+                    date: "2026-08-31",
+                    commit: "随 v0.5.54",
+                    tag: "v0.5.54",
+                    summary: "ZCode 模型配置整窗复刻与运行链路统一",
+                    changes: [
+                        "按 ZCode 实机同视口复刻整窗设置导航、供应商侧栏、连接方式、套餐额度概览与模型操作。",
+                        "ProviderRegistry 统一模型选择、端点、Key、config.toml 和目录生成，GLM-5.3、GLM-5-Turbo 与自定义 Provider 可真实用于新会话。",
+                        "修复迁移旧 auth 文件后启动误报未配置；模型页统一显示真实剩余额度，MiniMax/智谱展示窗口、DeepSeek 展示账户余额。"
+                    ],
+                    why: "模型配置不仅要与 ZCode 视觉一致，选择结果也必须进入真实 Harness 运行链路。",
+                    next: "根据真实使用反馈继续收紧设置页细节。"
+                ),
+
+                EvolutionEntry(
+                    version: "v0.5.53",
+                    date: "2026-08-31",
+                    commit: "e3ff8ea",
+                    tag: "v0.5.53",
+                    summary: "模型供应商与模型两层注册表",
+                    changes: [
+                        "新增 Provider、ProviderModel 与 ProviderRegistry，并从旧模型和 auth 文件安全迁移。",
+                        "模型设置页引入供应商分组、连接测试、模型编辑和自定义供应商。"
+                    ],
+                    why: "为 ZCode 式供应商/模型两层配置建立数据基础。",
+                    next: "整窗复刻并统一实际 Harness 运行链路。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.51",
                     date: "2026-08-31",
                     commit: "4610726",

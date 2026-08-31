@@ -142,16 +142,16 @@ final class SessionStore: ObservableObject {
                 switch self?.selectedBuiltInModel {
                 case .minimaxM3:
                     snapshot = try await MiniMaxQuotaClient(
-                        authPath: TapgoConfig.authPath,
+                        apiKey: TapgoConfig.providerAPIKey(.minimax),
                         modelName: TapgoConfig.modelName
                     ).fetchRemains()
                 case .glm53Flash:
                     snapshot = try await GLMQuotaClient(
-                        authPath: TapgoConfig.glmAuthPath
+                        apiKey: TapgoConfig.providerAPIKey(.zhipu)
                     ).fetchRemains()
                 case .deepSeekV4Flash, .deepSeekV4Pro:
                     snapshot = try await DeepSeekQuotaClient(
-                        authPath: TapgoConfig.deepSeekAuthPath
+                        apiKey: TapgoConfig.providerAPIKey(.deepseek)
                     ).fetchBalance()
                 case nil:
                     // 自定义模型暂无额度通道：清空旧快照即可，弹窗按口径提示。
@@ -1502,13 +1502,9 @@ final class SessionStore: ObservableObject {
     static func findSCP() -> String { RemoteCodexHomeSync.findSCP() }
 
     static func readApiKey() throws -> String {
-        let url = TapgoConfig.authPath
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let key = json["OPENAI_API_KEY"] as? String,
-              !key.isEmpty
-        else {
-            throw SetupError.missingAuth(url.path)
+        let key = TapgoConfig.selectedProviderAPIKey()
+        guard !key.isEmpty else {
+            throw SetupError.missingAuth(TapgoConfig.providerRegistryFileURL.path)
         }
         return key
     }

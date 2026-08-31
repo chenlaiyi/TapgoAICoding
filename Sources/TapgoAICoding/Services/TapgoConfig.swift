@@ -488,7 +488,36 @@ enum TapgoConfig {
 
     /// 当前选中的 Provider；选中态为空时返回第一个内置。
     static func resolveSelectedProvider() -> Provider {
-        providerRegistry().resolveSelectedProvider()
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        return registry.resolveSelectedProvider()
+    }
+
+    /// v0.5.54：ProviderRegistry 已接管凭据后，启动校验、Harness 与配置
+    /// 重写都从这里取 Key。旧 auth*.json 只作为尚未迁移机器的兼容回退。
+    static func providerAPIKey(_ kind: TapgoProviderKind) -> String {
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        if let key = registry.provider(id: kind.registryID)?.apiKey, !key.isEmpty {
+            return key
+        }
+        switch kind {
+        case .zhipu: return glmAuthKey()
+        case .minimax:
+            return ModelSettingsProbe.readAPIKey(at: authPath)
+        case .deepseek: return deepSeekAuthKey()
+        }
+    }
+
+    static func selectedProviderAPIKey() -> String {
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        let selected = registry.resolveSelectedProvider()
+        if !selected.apiKey.isEmpty { return selected.apiKey }
+        return registry.providers.first(where: { !$0.apiKey.isEmpty })?.apiKey ?? ""
     }
 
     /// 全部可选模型：内置 4 个 + 用户自定义，内置在前。
@@ -519,15 +548,42 @@ enum TapgoConfig {
         return out
     }
 
-    /// 当前选中的模型。`tapgo.model` 存选中 ID（旧版本是裸 slug，
-    /// `ModelRegistry.normalizedID` 会自动补 `builtin:` 前缀）；
-    /// 找不到（如自定义模型被删）时回落 MiniMax-M3。
+    /// 当前选中的模型。v0.5.54 起 ProviderRegistry 是唯一真相源；
+    /// `tapgo.model` 仅保留给旧版偏好与 composer 的兼容显示。
     static func resolveSelected() -> ResolvedModel {
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        let provider = registry.resolveSelectedProvider()
+        let model = registry.resolveSelectedModel(for: provider)
+        if !model.apiModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return ResolvedModel(
+                id: model.id,
+                displayName: "\(provider.displayName) \(model.displayName)",
+                apiModel: model.apiModel,
+                providerId: configProviderID(for: provider),
+                baseURL: provider.baseURL,
+                contextWindow: model.contextWindow,
+                builtIn: TapgoModel(rawValue: model.apiModel)
+            )
+        }
+
+        // 极旧或损坏注册表的兼容回退。
         let raw = UserDefaults.standard.string(forKey: selectedModelKey) ?? ""
         let id = ModelRegistry.normalizedID(raw)
         let models = allModels()
         if let hit = models.first(where: { $0.id == id }) { return hit }
         return models[0]
+    }
+
+    /// ProviderRegistry ID 到 Codex config.toml provider 段名的稳定映射。
+    private static func configProviderID(for provider: Provider) -> String {
+        switch provider.builtInKind {
+        case .zhipu: return TapgoModel.glm53Flash.providerId
+        case .minimax: return TapgoModel.minimaxM3.providerId
+        case .deepseek: return TapgoModel.deepSeekV4Flash.providerId
+        case nil: return provider.id
+        }
     }
 
     /// 选择模型：写 UserDefaults + 注册表，并重写 config.toml / 目录，
@@ -537,8 +593,23 @@ enum TapgoConfig {
         let models = allModels()
         let selected = models.first(where: { $0.id == normalized }) ?? models[0]
         UserDefaults.standard.set(selected.id, forKey: selectedModelKey)
-        let registry = modelRegistry()
-        registry.setSelected(selected.id)
+        let legacyRegistry = modelRegistry()
+        legacyRegistry.setSelected(selected.id)
+
+        // composer 仍会传 v0.5.52 的 builtin:<slug>；同步映射到新的
+        // ProviderRegistry，避免界面显示已切换而 thread/start 仍沿用旧供应商。
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        if let providerAndModel = registry.providers.lazy.compactMap({ provider -> (Provider, ProviderModel)? in
+            guard let model = provider.models.first(where: {
+                $0.id == normalized || $0.apiModel == selected.apiModel
+            }) else { return nil }
+            return (provider, model)
+        }).first {
+            registry.setSelectedProvider(id: providerAndModel.0.id)
+            registry.setSelectedModel(providerAndModel.1, for: providerAndModel.0)
+        }
         syncModelConfigFiles()
     }
 
@@ -642,21 +713,12 @@ enum TapgoConfig {
     /// config.toml（含自定义 provider 段与 bearer）与模型目录。
     /// harness 实测支持热加载 provider（无需重启）。
     static func syncModelConfigFiles() {
-        guard let key = (try? Data(contentsOf: authPath))
-            .flatMap({ (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] })
-            .flatMap({ $0["OPENAI_API_KEY"] as? String }), !key.isEmpty
-        else {
-            // auth.json 缺失/为空时仍重写目录与配置（占位安全替换成空串）。
-            let config = renderedConfigWithKey(region: defaultRegion, authKey: "")
-            try? atomicWrite(Data(config.utf8), to: configPath)
-            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
-            try? writeDefaultCatalog(region: defaultRegion)
-            // Rewriting the generated model config must not silently remove
-            // the bundled computer-control tool registered at app startup.
-            syncComputerUseMCPPreference()
-            return
-        }
-        let config = renderedConfigWithKey(region: defaultRegion, authKey: key)
+        let config = renderedConfigWithKey(
+            region: defaultRegion,
+            authKey: providerAPIKey(.minimax),
+            glmKey: providerAPIKey(.zhipu),
+            deepSeekKey: providerAPIKey(.deepseek)
+        )
         try? atomicWrite(Data(config.utf8), to: configPath)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
         try? writeDefaultCatalog(region: defaultRegion)
@@ -898,17 +960,11 @@ enum TapgoConfig {
             withIntermediateDirectories: true
         )
 
-        // auth.json must exist and contain a non-empty OPENAI_API_KEY — that's
-        // the bearer codex forwards to MiniMax-M3.
-        if !fm.fileExists(atPath: authPath.path) {
-            throw SetupError.missingAuth(authPath.path)
-        }
-        guard let auth = try? Data(contentsOf: authPath),
-              let json = try? JSONSerialization.jsonObject(with: auth) as? [String: Any],
-              let key = json["OPENAI_API_KEY"] as? String,
-              !key.isEmpty
-        else {
-            throw SetupError.missingAuth(authPath.path)
+        // v0.5.53 已把 auth*.json 迁入 provider-registry.json；继续死查旧
+        // auth.json 会让迁移成功的用户反而落回初始化拦截页。
+        let key = selectedProviderAPIKey()
+        guard !key.isEmpty else {
+            throw SetupError.missingAuth(providerRegistryFileURL.path)
         }
 
         // config.toml must mention MiniMax-M3 + the minimax provider.
@@ -944,7 +1000,12 @@ enum TapgoConfig {
         // 这里只 diff 期望内容, 不动 auth.json。注意 bearer 必须注入真实 key:
         // v0.5.27 的重写曾把旧 config 里的真实鉴权覆盖回占位符, MiniMax 返回
         // 401 (1004 login fail) —— 占位符没有任何运行时替换机制。
-        let desiredConfig = renderedConfigWithKey(region: defaultRegion, authKey: key)
+        let desiredConfig = renderedConfigWithKey(
+            region: defaultRegion,
+            authKey: providerAPIKey(.minimax),
+            glmKey: providerAPIKey(.zhipu),
+            deepSeekKey: providerAPIKey(.deepseek)
+        )
         let installedConfig = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
         if installedConfig != desiredConfig {
             try atomicWrite(Data(desiredConfig.utf8), to: configPath)
@@ -1038,21 +1099,28 @@ enum TapgoConfig {
                 with: tomlBasicStringContent(authKey))
         // 自定义模型 bearer: 占位符 __CUSTOM_<id>__ 以注册表中的 key 替换。
         // Key 为空也必须替换为空串，不能把占位符本身误当成凭据发给上游。
-        for c in modelRegistry().customModels {
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        for provider in registry.customProviders {
             config = config.replacingOccurrences(
-                of: "__CUSTOM_\(c.id)__", with: tomlBasicStringContent(c.apiKey))
+                of: "__CUSTOM_\(provider.id)__",
+                with: tomlBasicStringContent(provider.apiKey))
         }
         return config
     }
 
     static func renderConfig(region: Region) -> String {
-        let customSections = modelRegistry().customModels.map { c -> String in
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        let customSections = registry.customProviders.map { provider -> String in
             """
-            [model_providers.\(c.providerId)]
-            name = "\(tomlBasicStringContent(c.brand.isEmpty ? "Custom" : c.brand))"
-            base_url = "\(tomlBasicStringContent(c.baseURL))"
+            [model_providers.\(configProviderID(for: provider))]
+            name = "\(tomlBasicStringContent(provider.brand.isEmpty ? "Custom" : provider.brand))"
+            base_url = "\(tomlBasicStringContent(provider.baseURL))"
             wire_api = "responses"
-            experimental_bearer_token = "__CUSTOM_\(c.id)__"
+            experimental_bearer_token = "__CUSTOM_\(provider.id)__"
             """
         }.joined(separator: "\n\n")
         let customBlock = customSections.isEmpty ? "" : "\n" + customSections + "\n"
@@ -1065,7 +1133,16 @@ enum TapgoConfig {
     }
 
     private static func renderConfigBody(region: Region) -> String {
-        """
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        let minimaxBaseURL = registry.provider(id: TapgoProviderKind.minimax.registryID)?.baseURL
+            ?? effectiveBaseURL
+        let glmBaseURL = registry.provider(id: TapgoProviderKind.zhipu.registryID)?.baseURL
+            ?? TapgoModel.glm53Flash.defaultBaseURL
+        let deepSeekBaseURL = registry.provider(id: TapgoProviderKind.deepseek.registryID)?.baseURL
+            ?? TapgoModel.deepSeekV4Flash.defaultBaseURL
+        return """
         # Tapgo AICoding — isolated Codex home.
         # This file is owned by Tapgo AICoding and is independent from ~/.codex/.
         # Do not edit by hand unless you know what you're doing.
@@ -1078,7 +1155,7 @@ enum TapgoConfig {
 
         [model_providers.\(TapgoModel.minimaxM3.providerId)]
         name = "MiniMax"
-        base_url = "\(effectiveBaseURL)"
+        base_url = "\(tomlBasicStringContent(minimaxBaseURL))"
         wire_api = "responses"
         experimental_bearer_token = "__FROM_AUTH_JSON__"
 
@@ -1088,7 +1165,7 @@ enum TapgoConfig {
         # 选 GLM 的新会话会收到 401。
         [model_providers.\(TapgoModel.glm53Flash.providerId)]
         name = "GLM"
-        base_url = "\(TapgoModel.glm53Flash.defaultBaseURL)"
+        base_url = "\(tomlBasicStringContent(glmBaseURL))"
         wire_api = "responses"
         experimental_bearer_token = "__FROM_AUTH_GLM_JSON__"
 
@@ -1098,7 +1175,7 @@ enum TapgoConfig {
         # 文件缺失时 bearer 为空, 选 DeepSeek 的新会话会收到 401。
         [model_providers.\(TapgoModel.deepSeekV4Flash.providerId)]
         name = "DeepSeek"
-        base_url = "\(TapgoModel.deepSeekV4Flash.defaultBaseURL)"
+        base_url = "\(tomlBasicStringContent(deepSeekBaseURL))"
         wire_api = "responses"
         experimental_bearer_token = "__FROM_AUTH_DEEPSEEK_JSON__"
 
@@ -1115,7 +1192,24 @@ enum TapgoConfig {
     }
 
     static func renderCatalog() -> String {
-        TapgoModel.catalogJSON(customs: modelRegistry().customModels)
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        let providerModels = registry.providers.flatMap { provider in
+            provider.models.compactMap { model -> CustomModel? in
+                if TapgoModel(rawValue: model.apiModel) != nil { return nil }
+                return CustomModel(
+                    id: model.id,
+                    displayName: model.displayName,
+                    apiModel: model.apiModel,
+                    brand: provider.brand,
+                    baseURL: provider.baseURL,
+                    apiKey: provider.apiKey,
+                    contextWindow: model.contextWindow
+                )
+            }
+        }
+        return TapgoModel.catalogJSON(customs: providerModels)
     }
 
     private static func writeDefaultCatalog(region: Region) throws {

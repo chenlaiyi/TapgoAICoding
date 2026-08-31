@@ -89,6 +89,38 @@ final result: passed
 
 ---
 
+# v0.5.54 ZCode 模型配置页 1:1 复刻回归
+
+- 参考视觉真值：`/Users/chanlaiyi/TapgoAICoding/design-reference-zcode-model-settings.png`（ZCode 实机，871 × 768 px）。
+- 最终实现截图：`/Users/chanlaiyi/TapgoAICoding/design-implementation-model-settings-final.png`（本机已安装 v0.5.54，890 × 769 px）。
+- 同视口比较：`/Users/chanlaiyi/TapgoAICoding/design-qa-zcode-model-settings-comparison.png`（最终实现归一化到 871 × 768 后水平拼接）。
+- 聚焦比较：`/Users/chanlaiyi/TapgoAICoding/design-qa-zcode-model-settings-focus-comparison.png`（两侧模型主卡均裁切为 602 × 419 px）。
+
+## 同屏比较结论
+
+- 设置侧栏、标题区、模型主卡的起点、宽高、供应商栏分隔和 419 px 卡片高度均与参考同视口对齐。
+- 供应商栏、连接方式、剩余额度、三列额度卡、模型列表、模型行高及添加入口的视觉层级一致；最终模型三行与参考在聚焦图中同高收尾。
+- 字体、深色背景、圆角、边框、状态色与图标沿用 Tapgo AICoding 原生 SwiftUI 设计令牌；图标均为 SF Symbols，无占位或低清素材。
+- 额度使用真实智谱 ProviderRegistry Key 读取；本次验收恰逢 5 小时窗口于 08:30 重置，因此最终截图显示 100% 剩余，而参考截图是重置前 74%，属于实时数据差异。
+- Tapgo 只展示产品已有的设置入口，没有伪造 ZCode 的浏览器控制、子智能体等未实现页面；这是范围约束，不是模型页视觉缺失。
+
+## 交互与运行链路验证
+
+- 智谱、MiniMax、DeepSeek 供应商可切换；当前运行模型仍保持用户原有 MiniMax M3，浏览智谱详情不会改动会话模型。
+- 编辑模型、添加模型、添加供应商三个表单均由真实 AX 操作打开并取消；未填写、未保存、未删除任何用户配置。
+- ProviderRegistry 的供应商/模型选择真实进入 `thread/start` 的 `model` 与 `modelProvider`；GLM-5.3、GLM-5-Turbo 和自定义 Provider 不再被旧注册表回退到 MiniMax。
+- v0.5.53 迁移后的 0600 ProviderRegistry 可直接通过启动校验、会话鉴权和三家额度查询；MiniMax/智谱显示窗口剩余，DeepSeek 显示官方余额，无需恢复旧 auth 文件。
+
+## Findings
+
+- 三轮同视口比较已修复卡片纵向位置、主卡宽高、套餐区高度和模型行密度。
+- 无剩余 P0/P1/P2 视觉或核心交互问题。
+- 可接受差异：ZCode 专属 MCP 额度在 Tapgo 无对应真相源，不再占用额度卡；第三列改为真实套餐信息。ZCode 的“升级”按钮在 Tapgo 对应为真实可用的“管理”。
+
+final result: passed
+
+---
+
 # v0.5.46 电脑控制系统授权与 Helper 拖拽引导回归
 
 - 参考视觉真值：`/var/folders/z2/vmz80fpn1_j3bkp25xhym1140000gp/T/codex-clipboard-2e545212-cf1b-42c0-9db0-87edc2c3594f.png`（1187×732）

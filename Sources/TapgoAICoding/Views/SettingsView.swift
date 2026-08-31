@@ -10,6 +10,7 @@ struct SettingsView: View {
     @EnvironmentObject var workspace: WorkspaceStore
     @EnvironmentObject var authStore: AdminAuthStore
     @Environment(\.dismiss) private var dismiss
+    private let onDismiss: (() -> Void)?
     @State private var tab: Tab = .general
     @State private var addHostSheet = false
     @State private var testingHostId: String?
@@ -41,8 +42,9 @@ struct SettingsView: View {
     @AppStorage(TapgoConfig.computerUseShowInComposerKey) private var computerUseShowInComposer = true
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
-    init(initialTab: Tab = .general) {
+    init(initialTab: Tab = .general, onDismiss: (() -> Void)? = nil) {
         _tab = State(initialValue: initialTab)
+        self.onDismiss = onDismiss
     }
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -105,7 +107,7 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             settingsSidebar
-                .frame(width: 228)
+                .frame(width: 315)
             Divider()
             VStack(spacing: 0) {
                 pageHeader
@@ -115,7 +117,8 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(DSHTheme.bg)
         }
-        .frame(width: 1080, height: 720)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 1080, minHeight: 720)
         .background(DSHTheme.moduleBg)
         .sheet(isPresented: $addHostSheet) {
             AddRemoteHostSheet { host in
@@ -140,7 +143,7 @@ struct SettingsView: View {
 
     private var settingsSidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button { dismiss() } label: {
+            Button { closeSettings() } label: {
                 Label("返回工作区", systemImage: "chevron.left")
                     .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelDim)
@@ -231,7 +234,7 @@ struct SettingsView: View {
                     .foregroundStyle(DSHTheme.labelDim)
             }
             Spacer()
-            Button { dismiss() } label: {
+            Button { closeSettings() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title3)
                     .foregroundStyle(.tertiary)
@@ -239,9 +242,13 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("关闭设置")
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 58)
         .padding(.vertical, 22)
         .background(DSHTheme.bg)
+    }
+
+    private func closeSettings() {
+        if let onDismiss { onDismiss() } else { dismiss() }
     }
 
     @ViewBuilder
@@ -267,8 +274,9 @@ struct SettingsView: View {
                     case .projects, .remote, .plugins: EmptyView()
                     }
                 }
-                .frame(maxWidth: 760, alignment: .topLeading)
-                .padding(28)
+                .frame(maxWidth: 990, alignment: .topLeading)
+                .padding(.horizontal, 50)
+                .padding(.vertical, 72)
                 .frame(maxWidth: .infinity, alignment: .top)
             }
         }
@@ -1333,4 +1341,3 @@ private struct AddRemoteHostSheet: View {
 // 仿造 ZCode 「Provider / ProviderModel」双层结构。保留说明：
 //   * v0.5.42 起的「CustomModel 新增/编辑」单层表单已不再被 SettingsView 引用
 //   * 删除路径走 confirmationDialog 由 SettingsView 触发，业务流走 ProviderRegistry
-

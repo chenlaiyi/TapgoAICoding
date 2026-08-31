@@ -16,12 +16,22 @@ public final class DeepSeekQuotaClient {
     public static let balanceURL = URL(string: "https://api.deepseek.com/user/balance")!
 
     public let authPath: URL
+    private let apiKey: String?
     let session: URLSession
     /// 仅测试用：替换 `URLSession` 让解析逻辑在不依赖网络的情况下验证。
     private let _transportOverride: ((URLRequest) async throws -> (Data, HTTPURLResponse))?
 
     public init(authPath: URL, session: URLSession = .shared) {
         self.authPath = authPath
+        self.apiKey = nil
+        self.session = session
+        self._transportOverride = nil
+    }
+
+    /// ProviderRegistry 已接管凭据后的生产入口，不再依赖旧 auth 文件。
+    public init(apiKey: String, session: URLSession = .shared) {
+        self.authPath = URL(fileURLWithPath: "/dev/null")
+        self.apiKey = apiKey
         self.session = session
         self._transportOverride = nil
     }
@@ -29,6 +39,7 @@ public final class DeepSeekQuotaClient {
     /// 仅供单元测试使用：传入一个固定的 transport 闭包。
     init(authPath: URL, transport: @escaping (URLRequest) async throws -> (Data, HTTPURLResponse)) {
         self.authPath = authPath
+        self.apiKey = nil
         self.session = URLSession.shared
         self._transportOverride = transport
     }
@@ -110,6 +121,7 @@ public final class DeepSeekQuotaClient {
     // MARK: - Private
 
     private func loadAPIKey() throws -> String {
+        if let apiKey, !apiKey.isEmpty { return apiKey }
         guard FileManager.default.fileExists(atPath: authPath.path) else {
             throw QuotaError.missingAuthFile(authPath.path)
         }

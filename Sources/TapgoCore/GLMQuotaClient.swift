@@ -27,12 +27,23 @@ public final class GLMQuotaClient {
 
     public let authPath: URL
     let session: URLSession
+    private let apiKeyOverride: String?
     /// 仅测试用：替换 `URLSession` 让解析逻辑在不依赖网络的情况下验证。
     private let _transportOverride: ((URLRequest) async throws -> (Data, HTTPURLResponse))?
 
     public init(authPath: URL, session: URLSession = .shared) {
         self.authPath = authPath
         self.session = session
+        self.apiKeyOverride = nil
+        self._transportOverride = nil
+    }
+
+    /// ProviderRegistry 接管凭据后的运行入口：Key 只驻留内存，不回写旧
+    /// auth-glm.json，也不会出现在日志或请求 URL 中。
+    public init(apiKey: String, session: URLSession = .shared) {
+        self.authPath = URL(fileURLWithPath: "/dev/null")
+        self.session = session
+        self.apiKeyOverride = apiKey
         self._transportOverride = nil
     }
 
@@ -40,6 +51,15 @@ public final class GLMQuotaClient {
     init(authPath: URL, transport: @escaping (URLRequest) async throws -> (Data, HTTPURLResponse)) {
         self.authPath = authPath
         self.session = URLSession.shared
+        self.apiKeyOverride = nil
+        self._transportOverride = transport
+    }
+
+    /// ProviderRegistry Key 路径的可注入 transport 版本，仅供单元测试。
+    init(apiKey: String, transport: @escaping (URLRequest) async throws -> (Data, HTTPURLResponse)) {
+        self.authPath = URL(fileURLWithPath: "/dev/null")
+        self.session = URLSession.shared
+        self.apiKeyOverride = apiKey
         self._transportOverride = transport
     }
 
@@ -151,6 +171,7 @@ public final class GLMQuotaClient {
     // MARK: - Private
 
     private func loadAPIKey() throws -> String {
+        if let apiKeyOverride, !apiKeyOverride.isEmpty { return apiKeyOverride }
         guard FileManager.default.fileExists(atPath: authPath.path) else {
             throw QuotaError.missingAuthFile(authPath.path)
         }

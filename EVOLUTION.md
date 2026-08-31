@@ -19,6 +19,19 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.54 — ZCode 模型配置整窗复刻与运行链路统一
+**Date**: 2026-08-31
+**Tag**: v0.5.54
+**Test status**: 2467 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- 以 ZCode 实机 871×768 模型配置页为视觉真相源，设置页改为整窗导航；模型页按同一层级复刻供应商侧栏、连接方式、套餐/额度概览、模型行及新增/编辑/删除/测试交互。
+- `ProviderRegistry` 接管模型选中、API Key、Provider 端点、config.toml 与模型目录生成；GLM-5.3 / GLM-5-Turbo 和自定义 Provider 不再被旧扁平注册表回落到 MiniMax。
+- 修复 v0.5.53 迁移 auth 文件到备份后，启动校验、会话和额度查询仍读取旧 auth 路径而错误显示“尚未独立配置”的问题；凭据继续仅保存在 0600 注册表中。
+- 模型页统一显示“剩余额度”：MiniMax / 智谱读取真实 5 小时与每周窗口，DeepSeek 显示官方账户余额；自定义供应商无官方接口时明确显示暂不支持。三家查询均直接使用 ProviderRegistry 内存 Key，不恢复或复制旧凭据文件。
+- 新增 GLM ProviderRegistry Key 请求测试与参考图/实现图的同视口视觉 QA 证据。
+**Why**: 用户要求 1:1 复刻 ZCode 模型配置页；同时必须保证视觉上的模型选择会真实进入新会话，而不是只改变界面状态。
+**Next**: 在实际使用反馈基础上继续收紧非模型设置入口的细节，不扩展本次模型配置范围。
+
 ## v0.5.53 — 模型设置 1:1 仿造 ZCode（供应商/模型两层）
 **Date**: 2026-08-31
 **Tag**: v0.5.53

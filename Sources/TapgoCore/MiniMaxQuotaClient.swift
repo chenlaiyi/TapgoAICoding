@@ -51,6 +51,7 @@ public struct MiniMaxQuotaClient {
 
     public let region: Region
     public let authPath: URL
+    private let apiKey: String?
     public let modelName: String
     let session: URLSession
     /// 仅测试用：替换 `URLSession` 让解析逻辑在不依赖网络的情况下验证。
@@ -64,6 +65,22 @@ public struct MiniMaxQuotaClient {
     ) {
         self.region = region
         self.authPath = authPath
+        self.apiKey = nil
+        self.modelName = modelName
+        self.session = session
+        self._transportOverride = nil
+    }
+
+    /// ProviderRegistry 已接管凭据后的生产入口，不再依赖已迁移的 auth.json。
+    public init(
+        region: Region = .china,
+        apiKey: String,
+        modelName: String,
+        session: URLSession = .shared
+    ) {
+        self.region = region
+        self.authPath = URL(fileURLWithPath: "/dev/null")
+        self.apiKey = apiKey
         self.modelName = modelName
         self.session = session
         self._transportOverride = nil
@@ -78,6 +95,7 @@ public struct MiniMaxQuotaClient {
     ) {
         self.region = region
         self.authPath = authPath
+        self.apiKey = nil
         self.modelName = modelName
         self.session = URLSession.shared
         self._transportOverride = transport
@@ -173,6 +191,7 @@ public struct MiniMaxQuotaClient {
     // MARK: - Request
 
     private func loadAPIKey() throws -> String {
+        if let apiKey, !apiKey.isEmpty { return apiKey }
         guard FileManager.default.fileExists(atPath: authPath.path) else {
             throw QuotaError.missingAuthFile(authPath.path)
         }
