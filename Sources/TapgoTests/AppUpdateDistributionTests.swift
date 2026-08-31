@@ -34,8 +34,8 @@ func runAppUpdateDistribution(_ t: TestRunner) {
     t.expect(sidebar.contains(".help(\"检查并安装更新\")"), "update: 左上角检查更新按钮")
     t.expect(sidebar.contains(".disabled(!updater.canCheckForUpdates)"), "update: 按钮跟随可检查状态")
 
-    t.expectEqual(info["CFBundleShortVersionString"] as? String, "0.5.60", "update: 主 App 版本")
-    t.expectEqual(helperInfo["CFBundleShortVersionString"] as? String, "0.5.60", "update: Helper 版本")
+    t.expectEqual(info["CFBundleShortVersionString"] as? String, "0.5.61", "update: 主 App 版本")
+    t.expectEqual(helperInfo["CFBundleShortVersionString"] as? String, "0.5.61", "update: Helper 版本")
     t.expectEqual(info["SUFeedURL"] as? String,
                   "https://raw.githubusercontent.com/chenlaiyi/TapgoAICoding/main/appcast.xml",
                   "update: GitHub appcast 地址")
@@ -49,6 +49,6 @@ func runAppUpdateDistribution(_ t: TestRunner) {
     t.expect(build.contains("codesign --verify --deep --strict"), "update: 完整签名验证")
     t.expect(release.contains("--account com.tapgo.aicoding"), "update: 私钥只从 Keychain 读取")
     t.expect(release.contains("releases/download/$TAG/"), "update: Release 下载地址")
-    t.expect(appcast.contains("Tapgo-AICoding-0.5.60.zip"), "update: appcast 指向当前归档")
+    t.expect(appcast.contains("Tapgo-AICoding-0.5.61.zip"), "update: appcast 指向当前归档")
     t.expect(appcast.contains("sparkle:edSignature="), "update: 归档包含 EdDSA 签名")
 }

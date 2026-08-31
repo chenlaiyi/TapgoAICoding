@@ -612,16 +612,33 @@ struct ChatView: View {
                     .foregroundStyle(.tertiary)
             }
             if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }), !project.isRemote {
-                ControlGroup {
+                Button { NSWorkspace.shared.open(project.worktreeRoot) } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(.borderless)
+                .help("在 Finder 中打开")
+                .accessibilityLabel("在 Finder 中打开")
+                Menu {
                     Button { NSWorkspace.shared.open(project.worktreeRoot) } label: {
-                        Image(systemName: "folder")
+                        Label("Finder", systemImage: "folder")
                     }
                     Button { openInTerminal(project.worktreeRoot.path) } label: {
-                        Image(systemName: "terminal")
+                        Label("终端", systemImage: "terminal")
                     }
+                    Button {
+                        NotificationCenter.default.post(
+                            name: .tapgoOpenWorkbenchTab,
+                            object: WorkbenchLayoutState.TabKind.browser.rawValue
+                        )
+                    } label: {
+                        Label("侧边浏览器", systemImage: "globe")
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
                 }
-                .controlGroupStyle(.navigation)
-                .help("在访达或终端中打开项目")
+                .menuStyle(.borderlessButton)
+                .help("选择打开方式")
+                .accessibilityLabel("选择打开方式")
             }
             Button { showShortcuts = true } label: {
                 Image(systemName: "questionmark.circle")
@@ -629,12 +646,24 @@ struct ChatView: View {
             .buttonStyle(.borderless)
             .help("快捷键")
             Button {
+                NotificationCenter.default.post(
+                    name: .tapgoOpenWorkbenchTab,
+                    object: WorkbenchLayoutState.TabKind.terminal.rawValue
+                )
+            } label: {
+                Image(systemName: "terminal")
+            }
+            .buttonStyle(.borderless)
+            .help("切换终端")
+            .accessibilityLabel("切换终端")
+            Button {
                 NotificationCenter.default.post(name: .tapgoToggleTrajectory, object: nil)
             } label: {
                 Image(systemName: "sidebar.trailing")
             }
             .buttonStyle(.borderless)
-            .help("切换轨迹栏")
+            .help("切换侧边面板")
+            .accessibilityLabel("切换侧边面板")
             if thread.turns.last?.status == .running {
                 Button { store.cancelActiveTurn() } label: {
                     Image(systemName: "stop.circle.fill")

@@ -113,6 +113,7 @@ let allSections: [String] = [
     "AppUpdate: GitHub Releases distribution",
     "AdminLogin: selected split design",
     "Desktop: ZCode interaction design",
+    "Workbench: ZCode tab lifecycle",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -779,6 +780,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Desktop: ZCode interaction design") {
             runDesktopZCodeDesign(runner)
+        }
+        await runIfInScope(runner, "Workbench: ZCode tab lifecycle") {
+            runWorkbenchLayoutStateTests(runner)
         }
     }
 }

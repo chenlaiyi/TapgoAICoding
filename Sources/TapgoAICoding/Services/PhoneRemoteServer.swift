@@ -323,7 +323,8 @@ final class PhoneRemoteController: ObservableObject {
                                         lastActivityAt: $0.lastUsedAt,
                                         isLocal: $0.kind == .local)
             }
-            let snapshot = PhoneRemote.buildState(threads: store.liveThreads,
+            let snapshot = PhoneRemote.buildState(
+                                                  threads: store.liveThreads.filter { !$0.isAuxiliary },
                                                   activeId: store.activeThreadId,
                                                   rev: rev,
                                                   hostname: Self.displayName(),

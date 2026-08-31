@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var settingsPresentation: SettingsPresentation?
     @State private var showNewTask = false
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
+    @State private var requestedWorkbenchKind: WorkbenchLayoutState.TabKind?
     @State private var showShortcuts = false
     @State private var showCommandPalette = false
     @State private var sidebarVisible = true
@@ -48,6 +49,12 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoToggleTrajectory)) { _ in
             showTrajectory.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenWorkbenchTab)) { note in
+            guard let raw = note.object as? String,
+                  let kind = WorkbenchLayoutState.TabKind(rawValue: raw) else { return }
+            requestedWorkbenchKind = kind
+            showTrajectory = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenCommandPalette)) { _ in
             showCommandPalette = true
@@ -138,14 +145,15 @@ struct ContentView: View {
                     HSplitView {
                         ChatView()
                             .frame(minWidth: 420, idealWidth: 620)
-                        trajectoryDetail
-                            .frame(minWidth: 240, idealWidth: 300, maxWidth: 420)
+                        workbenchDetail
+                            .frame(minWidth: 340, idealWidth: 430, maxWidth: 1_120)
                     }
                 } else {
                     adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)
                         .frame(minWidth: 560)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.top, 18)
             .background(DSHTheme.bg)
             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 10))
@@ -180,16 +188,14 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var trajectoryDetail: some View {
+    private var workbenchDetail: some View {
         if let threadId = store.activeThreadId,
            let thread = store.liveThreads.first(where: { $0.id == threadId }) {
-            VStack(spacing: 0) {
-                // Environment info is its own collapsible block on top,
-                // separate from the execution trace below.
-                EnvironmentPanel(thread: thread)
-                Divider()
-                TrajectoryView(thread: thread)
-            }
+            RightWorkbenchView(
+                thread: thread,
+                requestedKind: $requestedWorkbenchKind,
+                closePanel: { showTrajectory = false }
+            )
         } else {
             Text(L10n.selectThreadHint)
                 .foregroundStyle(.secondary)
@@ -263,7 +269,7 @@ struct ShortcutsView: View {
             shortcutRow("重试上一回合", "⌘⇧R")
             shortcutRow("切换外观", "⌘⇧D")
             shortcutRow("命令面板", "⌘⇧P")
-            shortcutRow("切换到轨迹栏/收起", "⌘⇧T")
+            shortcutRow("切换侧边工作台/收起", "⌘⇧T")
             Text("这些快捷键在应用菜单中同样可用。")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
@@ -543,6 +549,7 @@ private struct CommandPaletteView: View {
     private var matchingThreads: [TapgoCore.Thread] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return store.liveThreads
+            .filter { !$0.isAuxiliary }
             .filter { thread in
                 if q.isEmpty { return true }
                 if thread.title.lowercased().contains(q) { return true }

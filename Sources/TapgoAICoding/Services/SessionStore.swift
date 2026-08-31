@@ -289,7 +289,7 @@ final class SessionStore: ObservableObject {
         // lands on useful context instead of an empty chat.
         if let id {
             if let t = liveThreads
-                .filter({ $0.projectId == id })
+                .filter({ $0.projectId == id && !$0.isAuxiliary })
                 .max(by: { $0.updatedAt < $1.updatedAt }) {
                 activeThreadId = t.id
             } else {
@@ -314,7 +314,8 @@ final class SessionStore: ObservableObject {
         // leaves the header stuck on a previously-active project A.
         // 自进化会话没有 projectId（独立于项目分组），进入它时保留
         // 当前项目不动，避免顺带把 composer 的项目条清空。
-        if let t = liveThreads.first(where: { $0.id == id }), !t.isEvolution {
+        if let t = liveThreads.first(where: { $0.id == id }),
+           !t.isEvolution, !t.isAuxiliary {
             workspace.setActiveProject(t.projectId)
         }
         persistActiveThread()
@@ -394,6 +395,34 @@ final class SessionStore: ObservableObject {
         NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil)
     }
 
+    /// Create a persisted, independent harness conversation owned by one
+    /// right-workbench tab. It inherits the parent task's project/cwd but does
+    /// not change the selected task or composer focus.
+    @discardableResult
+    func createAuxiliaryThread(parent: TapgoCore.Thread, title: String) -> String {
+        let thread = TapgoCore.Thread(
+            id: "aux-" + UUID().uuidString,
+            title: title,
+            createdAt: Date(),
+            updatedAt: Date(),
+            projectId: parent.projectId,
+            cwd: parent.cwd,
+            harnessThreadId: nil,
+            turns: [],
+            mode: TapgoCore.Thread.auxiliaryMode
+        )
+        liveThreads.insert(thread, at: 0)
+        threads.save(thread)
+        return thread.id
+    }
+
+    /// Delete only a workbench-owned auxiliary conversation. Primary tasks
+    /// can never be removed through a tab close action.
+    func deleteAuxiliaryThread(_ id: String) {
+        guard liveThreads.first(where: { $0.id == id })?.isAuxiliary == true else { return }
+        deleteThread(id)
+    }
+
     func deleteThread(_ id: String) {
         if runRegistry.isRunning(id) {
             return
@@ -409,7 +438,9 @@ final class SessionStore: ObservableObject {
                 .appendingPathComponent("attachments", isDirectory: true),
             threadId: id
         )
-        if activeThreadId == id { activeThreadId = liveThreads.first?.id }
+        if activeThreadId == id {
+            activeThreadId = liveThreads.first(where: { !$0.isAuxiliary })?.id
+        }
         persistActiveThread()
     }
 
@@ -529,6 +560,25 @@ final class SessionStore: ObservableObject {
             return
         }
         sendNow(text: trimmed, images: imagesToUse, threadId: targetThreadId)
+    }
+
+    /// Text-only send path for a workbench-owned auxiliary conversation.
+    /// It never consumes the main composer's image attachments and can run in
+    /// parallel with the selected task.
+    @discardableResult
+    func sendUserMessage(_ text: String, toThreadID threadID: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              setupError == nil,
+              liveThreads.first(where: { $0.id == threadID })?.isAuxiliary == true
+        else { return false }
+        queueActionErrorsByThreadId.removeValue(forKey: threadID)
+        if runRegistry.isRunning(threadID) {
+            queue.append(QueuedMessage(threadId: threadID, text: trimmed))
+        } else {
+            sendNow(text: trimmed, images: [], threadId: threadID)
+        }
+        return true
     }
 
     /// Start a new turn for `text` immediately (used by the composer when
@@ -909,6 +959,13 @@ final class SessionStore: ObservableObject {
         runsByThreadId[threadId]?.runner.cancel()
     }
 
+    /// Stop an explicitly addressed workbench conversation without changing
+    /// whichever primary task is selected in the main chat.
+    func cancelTurn(threadID: String) {
+        guard runRegistry.requestStop(threadID) else { return }
+        runsByThreadId[threadID]?.runner.cancel()
+    }
+
     /// Resolve a pending approval. Forwards the decision to the harness
     /// and updates the in-chat approval item so the user sees the outcome.
     func respondToApproval(_ request: ApprovalRequest, approve: Bool) {
@@ -943,6 +1000,10 @@ final class SessionStore: ObservableObject {
     var isRunning: Bool {
         guard let activeThreadId else { return false }
         return runRegistry.isRunning(activeThreadId)
+    }
+
+    func isThreadRunning(_ id: String) -> Bool {
+        runRegistry.isRunning(id)
     }
 
     var hasAnyRunningTasks: Bool { runRegistry.count > 0 }

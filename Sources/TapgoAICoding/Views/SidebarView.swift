@@ -1112,7 +1112,7 @@ struct SidebarView: View {
         let evolutionThreads = store.liveThreads.filter {
             $0.isEvolution && (!isSearching || threadMatchesSearch($0, query: trimmedQuery))
         }
-        for t in store.liveThreads where !t.isEvolution {
+        for t in store.liveThreads where !t.isEvolution && !t.isAuxiliary {
             // "仅当前项目" scope narrows to the active project's threads.
             if searchScope, t.projectId != workspace.state.activeProjectId { continue }
             // Match against title, first user input, and the project

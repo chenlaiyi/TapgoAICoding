@@ -3,6 +3,23 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.61</title>
+            <pubDate>Tue, 01 Sep 2026 02:52:38 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.61</link>
+            <sparkle:version>0.5.61</sparkle:version>
+            <sparkle:shortVersionString>0.5.61</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.61
+
+- 新增 ZCode 式独立右侧工作台：辅助对话、审查、多终端和浏览器标签可同时打开，支持标签检索、逐个关闭、关闭其他标签及整体收起；每个辅助标签拥有独立、可持久化且可并行运行的 Harness 会话。
+- 审查页展示真实文件 Diff；终端支持在当前项目目录运行及停止 zsh 命令；浏览器支持地址导航、前进、后退、刷新和外部打开。
+- 环境信息升级为右侧二级抽屉，可点按钮或从最右缘向右拖出；工作台宽度、环境宽度和标签状态会自动恢复。
+- 任务顶栏对齐 ZCode 的 Finder、打开方式、帮助、终端和侧边面板操作顺序。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.61/Tapgo-AICoding-0.5.61.zip" length="9323809" type="application/octet-stream" sparkle:edSignature="O0AXbVA3GBj0VQvO+NfSTETf4WEmCQhQ9XHX/ZsSXDl0sWRocgqxxH91Zgp1s/kRQ+f0hdc4z+PcFmqHWUXVAQ=="/>
+        </item>
+        <item>
             <title>0.5.60</title>
             <pubDate>Tue, 01 Sep 2026 00:53:23 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.60</link>
@@ -33,23 +50,6 @@
 - 新增桌面结构专项断言，并以 ZCode 与本机签名 App 的 871 × 768 同尺寸并排图完成视觉回归。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.59/Tapgo-AICoding-0.5.59.zip" length="9195041" type="application/octet-stream" sparkle:edSignature="xpamGCprJysJjqv8Qw5iRT6muZovyIBwKTDIwreu5EErEUj26L/SYRIMzWSH8AwMNX+XZqzpXD4H3DdkFsWXDw=="/>
-        </item>
-        <item>
-            <title>0.5.57</title>
-            <pubDate>Mon, 31 Aug 2026 22:29:51 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.57</link>
-            <sparkle:version>0.5.57</sparkle:version>
-            <sparkle:shortVersionString>0.5.57</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.57
-
-- 管理员微信扫码登录页升级为左右分栏品牌布局，信息层级和对比度更清晰。
-- 登录页直接使用主 App 的真实应用图标，确保 logo 与 App 图标完全一致。
-- 优化二维码尺寸、等待状态、刷新入口、底部版本信息与小窗口适配。
-- 保留原有扫码轮询、过期与失败重试逻辑，并新增登录页设计结构测试和视觉 QA。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.57/Tapgo-AICoding-0.5.57.zip" length="9172735" type="application/octet-stream" sparkle:edSignature="JteJfpO1ZIhpTv1QAY4aofEjXEUx+bcasmuyo6DLNs6E6Wibny47LoanoUT9g3+x5z8Ioi1exKtbxhXEXaEvBg=="/>
         </item>
     </channel>
 </rss>

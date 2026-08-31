@@ -13,6 +13,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     let theme = desktopDesignFile("Sources/TapgoAICoding/Resources/DSHTheme.swift")
     let app = desktopDesignFile("Sources/TapgoAICoding/App.swift")
     let content = desktopDesignFile("Sources/TapgoAICoding/Views/ContentView.swift")
+    let workbench = desktopDesignFile("Sources/TapgoAICoding/Views/RightWorkbenchView.swift")
 
     t.expect(sidebar.contains("menuItem(\"新建任务\""), "desktop-design: 新建任务位于一级导航")
     t.expect(sidebar.contains("menuItem(\"搜索\""), "desktop-design: 搜索位于一级导航")
@@ -35,6 +36,13 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(content.contains("HSplitView") && content.contains("UnevenRoundedRectangle"), "desktop-design: 灰色整窗底板承载右侧圆角覆盖层")
     t.expect(content.contains("ignoresSafeArea(.container, edges: .top)"), "desktop-design: 右侧覆盖层贯穿标题栏顶部")
     t.expect(content.contains("let showAdaptiveEnvironment = false"), "desktop-design: 环境卡仅由用户主动打开，不挤压 ZCode 主画布")
+    t.expect(content.contains("RightWorkbenchView") && content.contains("HSplitView"), "desktop-design: 右侧工作台是独立可拖拽分栏")
+    t.expect(content.contains(".frame(maxWidth: .infinity, maxHeight: .infinity)"), "desktop-design: 打开工作台后主画布保持全窗口高度")
+    t.expect(workbench.contains("搜索标签页") && workbench.contains("新增标签"), "desktop-design: 工作台具有 ZCode 标签检索和新增入口")
+    t.expect(workbench.contains("WorkbenchReview") && workbench.contains("WorkbenchTerminal") && workbench.contains("WorkbenchBrowser"), "desktop-design: 审查终端浏览器均为真实工作台内容")
+    t.expect(workbench.contains("向右拖动展开环境信息") && workbench.contains("workbench-environment-drawer"), "desktop-design: 右缘拖拽可展开环境信息")
+    t.expect(workbench.contains("layout.isEnvironmentVisible ? 590 : 340") && workbench.contains("ensureHostWindowFitsEnvironment"), "desktop-design: 环境展开时窗口与两级右栏保持可读最小宽度")
+    t.expect(workbench.contains("关闭其他标签") && workbench.contains("closePanel"), "desktop-design: 标签关闭与面板关闭是两级动作")
     t.expect(app.contains("windowStyle(.hiddenTitleBar)"), "desktop-design: 自绘分层背景贯穿窗口标题栏")
     t.expect(app.contains("windowToolbarStyle(.unifiedCompact)"), "desktop-design: 紧凑统一标题栏")
 }

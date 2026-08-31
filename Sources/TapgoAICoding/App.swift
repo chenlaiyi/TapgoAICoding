@@ -116,7 +116,7 @@ struct TapgoAICodingApp: App {
                 }
                 .disabled(!updater.canCheckForUpdates)
                 Divider()
-                Button("切换轨迹栏") {
+                Button("切换侧边工作台") {
                     NotificationCenter.default.post(name: .tapgoToggleTrajectory, object: nil)
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
@@ -187,6 +187,7 @@ extension Notification.Name {
     static let tapgoRequestOpenLocalFolder = Notification.Name("tapgo.openLocalFolder")
     static let tapgoRequestOpenSettings = Notification.Name("tapgo.openSettings")
     static let tapgoToggleTrajectory = Notification.Name("tapgo.toggleTrajectory")
+    static let tapgoOpenWorkbenchTab = Notification.Name("tapgo.openWorkbenchTab")
     static let tapgoFocusSearch = Notification.Name("tapgo.focusSearch")
     static let tapgoFocusComposer = Notification.Name("tapgo.focusComposer")
     static let tapgoCopyConversation = Notification.Name("tapgo.copyConversation")

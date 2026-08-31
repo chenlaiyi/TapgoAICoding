@@ -46,7 +46,9 @@ public struct Thread: Identifiable, Hashable, Codable {
     public var goalResumedAt: Date?
     /// Conversation mode. `nil` = ordinary user conversation;
     /// `"evolution"` = 自进化专属会话 (independent entry, own history,
-    /// fixed cwd on the Tapgo AICoding project itself).
+    /// fixed cwd on the Tapgo AICoding project itself); `"auxiliary"` =
+    /// ZCode-style workbench conversation, intentionally hidden from the
+    /// primary task list because its tab owns the entry point.
     public var mode: String?
 
     enum CodingKeys: String, CodingKey {
@@ -97,6 +99,8 @@ public struct Thread: Identifiable, Hashable, Codable {
 
     /// Conversation mode marker for 自进化 sessions.
     public static let evolutionMode = "evolution"
+    /// Conversation mode marker for right-workbench auxiliary sessions.
+    public static let auxiliaryMode = "auxiliary"
 
     public init(
         id: String,
@@ -136,6 +140,11 @@ public struct Thread: Identifiable, Hashable, Codable {
     /// project iterates on itself). UI reads this to render the
     /// evolution panel and keep these threads in their own group.
     public var isEvolution: Bool { mode == Self.evolutionMode }
+
+    /// True for a right-workbench auxiliary conversation. It still owns a
+    /// full independent harness thread and persisted turn history, but is not
+    /// presented as a primary task in the sidebar or phone remote.
+    public var isAuxiliary: Bool { mode == Self.auxiliaryMode }
 
     public static func newLocal(
         projectId: String? = nil,
