@@ -19,6 +19,16 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.60 — 移除输入器上方误加分隔线
+**Date**: 2026-09-01
+**Tag**: v0.5.60
+**Test status**: 2579 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- 移除活跃会话区与底部输入器之间贯穿右侧工作区的 `Divider`，恢复 ZCode 原图中的连续背景与自然留白。
+- 新增桌面结构回归断言，防止后续重新引入输入器上方全宽分隔线。
+**Why**: v0.5.59 框架已对齐 ZCode，但输入器上方仍残留 SwiftUI 分隔线，形成参考图中不存在的横向视觉切割。
+**Next**: 继续按同视口参考图逐项收紧桌面端细节，不改变已验证的整体层级。
+
 ## v0.5.59 — ZCode 桌面整体框架重新校正
 **Date**: 2026-09-01
 **Tag**: v0.5.59

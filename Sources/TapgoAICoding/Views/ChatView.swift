@@ -168,10 +168,6 @@ struct ChatView: View {
                     .padding(.bottom, 8)
             }
 
-            if hasConversation {
-                Divider()
-            }
-
             // Keep one structural ComposerView for the entire lifetime of
             // ChatView. Moving between the empty and active layouts must not
             // recreate NSTextView while the user is entering the next prompt.

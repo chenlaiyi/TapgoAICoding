@@ -1,3 +1,31 @@
+# 输入器上方分隔线修正验收（v0.5.60）
+
+- 视觉真值：`artifacts/zcode-desktop-reference/main.png`（ZCode 3.10.1，871 × 768 px）。
+- 最终实现：`artifacts/zcode-desktop-reference/tapgo-overlay-active-v0.5.60.jpg`（Tapgo AICoding 0.5.60，871 × 768 px）。
+- 全屏并排证据：`artifacts/zcode-desktop-reference/zcode-vs-tapgo-v0.5.60.png`（1742 × 768 px；两张原图直接横向拼接）。
+- 输入器聚焦证据：`artifacts/zcode-desktop-reference/zcode-vs-tapgo-composer-v0.5.60.png`（1376 × 210 px；两侧各裁切 688 × 210 px，未缩放）。
+- 视口与密度归一化：两款 App 均为深色模式、活跃会话、871 × 768 原始截图；源图与实现图像素尺寸一致，无缩放或密度换算。
+
+## Findings
+
+- P0：0；P1：0；P2：0。
+- 字体与文案：沿用 v0.5.59 已验收的系统字体、输入占位和真实会话内容，本次未改变。
+- 间距与布局：输入器上方已恢复连续背景和自然留白；没有贯穿右侧工作区的横向分隔线，输入器圆角边框仍完整。
+- 颜色与令牌：会话背景、输入器表面和边框继续使用现有深色令牌，无新增颜色或阴影。
+- 图像与图标：本次不新增或替换资产；既有 SF Symbols 与 App 素材未受影响。
+- 全屏图可判断整体层级；横线只有 1 px 左右，另用输入器聚焦图判断，因此不能只靠全屏图通过。
+- ZCode 与 Tapgo 的会话文字、项目数量和模型名称属于真实数据差异，不影响本次输入器边界比较。
+
+## 比较历史
+
+- 先前 v0.5.59 实现存在 P2：活跃会话分支在 `ComposerView` 前插入 `Divider()`，形成参考图中不存在的全宽横线。
+- 修复：移除该条件分隔线，并新增结构回归断言，禁止输入器上方重新出现同类 `Divider`。
+- 修复后证据：`tapgo-overlay-active-v0.5.60.jpg` 与聚焦并排图均显示输入器上方为连续深色背景；本机签名 Release App 的真实 AX 会话、输入器和相关按钮仍可访问。
+
+final result: passed
+
+---
+
 # ZCode 桌面整体框架重新验收（v0.5.59）
 
 - 参考图：`artifacts/zcode-desktop-reference/main.png`（ZCode 3.10.1，871 × 768 px）。

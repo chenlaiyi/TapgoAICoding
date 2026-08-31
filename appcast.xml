@@ -3,6 +3,21 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.60</title>
+            <pubDate>Tue, 01 Sep 2026 00:53:23 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.60</link>
+            <sparkle:version>0.5.60</sparkle:version>
+            <sparkle:shortVersionString>0.5.60</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.60
+
+- 移除活跃会话输入器上方误加的全宽分隔线，恢复与 ZCode 桌面端一致的连续背景和自然留白。
+- 新增对应桌面结构回归测试，避免后续版本重新出现这条横线。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.60/Tapgo-AICoding-0.5.60.zip" length="9194577" type="application/octet-stream" sparkle:edSignature="YvyLvh1pR/uoxRZGmIkkWVPSNWQV9AVHV5hKL0asezQc6Lv5kGOtLxHwDqYZYPaWw1LR2gBGrag/leh8WjDqDw=="/>
+        </item>
+        <item>
             <title>0.5.59</title>
             <pubDate>Tue, 01 Sep 2026 00:33:23 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.59</link>
@@ -35,23 +50,6 @@
 - 保留原有扫码轮询、过期与失败重试逻辑，并新增登录页设计结构测试和视觉 QA。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.57/Tapgo-AICoding-0.5.57.zip" length="9172735" type="application/octet-stream" sparkle:edSignature="JteJfpO1ZIhpTv1QAY4aofEjXEUx+bcasmuyo6DLNs6E6Wibny47LoanoUT9g3+x5z8Ioi1exKtbxhXEXaEvBg=="/>
-        </item>
-        <item>
-            <title>0.5.56</title>
-            <pubDate>Mon, 31 Aug 2026 15:57:49 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.56</link>
-            <sparkle:version>0.5.56</sparkle:version>
-            <sparkle:shortVersionString>0.5.56</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.56
-
-- 左上角新增“检查更新”按钮，并在应用菜单提供同名入口。
-- 接入 Sparkle 2.9.6；启动后立即后台检查，之后每小时检查 GitHub Releases。
-- 支持后台下载、EdDSA 签名校验和原子替换安装，自动更新偏好由 Sparkle 统一管理。
-- 更新主 App 时继续携带同版本、稳定签名身份的 Tapgo Computer Use Helper。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.56/Tapgo-AICoding-0.5.56.zip" length="8036688" type="application/octet-stream" sparkle:edSignature="05vVaJlGfJnMl7CczmCgTq2rGdjamzWxdOcBUub5Ae6QSBtllm4tfc/JPtvZ6t87Vo5ktkEu7bFqLnl7v5ZeDA=="/>
         </item>
     </channel>
 </rss>
