@@ -282,12 +282,12 @@ struct RightWorkbenchView: View {
         .contentShape(Rectangle())
         .onTapGesture { layout.isEnvironmentVisible = true }
         .gesture(
-            DragGesture(minimumDistance: 4)
+            DragGesture(minimumDistance: 2)
                 .onChanged { value in
                     // The window usually sits flush against the screen's
                     // right edge, so a rightward drag only has a few points
                     // of travel — any deliberate nudge must reveal.
-                    if value.translation.width > 6 {
+                    if value.translation.width > 3 {
                         layout.isEnvironmentVisible = true
                     }
                 }
@@ -324,21 +324,19 @@ struct RightWorkbenchView: View {
         }
     }
 
-    @State private var lastWorkbenchPaneWidth: CGFloat = 0
     @State private var lastHostWindowWidth: CGFloat = 0
     @State private var autoRevealArmed = true
 
     /// ZCode-style affordance: dragging the chat|workbench splitter wide
     /// enough pops the environment drawer open. Only a splitter drag counts —
-    /// the host window width must stay put — and a hysteresis latch keeps a
-    /// manual close from instantly re-opening until the pane narrows again.
+    /// the host window width must stay put, otherwise the pane change came
+    /// from resizing the window itself. A hysteresis latch keeps a manual
+    /// close from instantly re-opening until the pane narrows again. Splitter
+    /// drags arrive as many small steps, so there is no per-step growth test.
     private func noteWorkbenchWidthChange(_ width: CGFloat) {
         let hostWidth = (NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible))?
             .frame.width ?? lastHostWindowWidth
-        defer {
-            lastWorkbenchPaneWidth = width
-            lastHostWindowWidth = hostWidth
-        }
+        defer { lastHostWindowWidth = hostWidth }
         guard didRestore else { return }
         if layout.isEnvironmentVisible {
             autoRevealArmed = false
@@ -348,10 +346,8 @@ struct RightWorkbenchView: View {
             autoRevealArmed = true
             return
         }
-        guard autoRevealArmed, lastWorkbenchPaneWidth > 0 else { return }
-        let paneGrew = width - lastWorkbenchPaneWidth
-        let hostGrew = hostWidth - lastHostWindowWidth
-        if paneGrew > 6, hostGrew < 1, width >= Self.autoRevealWidthThreshold {
+        guard autoRevealArmed, lastHostWindowWidth > 0 else { return }
+        if hostWidth - lastHostWindowWidth < 1 {
             layout.isEnvironmentVisible = true
             autoRevealArmed = false
         }

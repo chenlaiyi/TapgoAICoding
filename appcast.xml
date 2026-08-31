@@ -3,6 +3,21 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.65</title>
+            <pubDate>Tue, 01 Sep 2026 05:13:55 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.65</link>
+            <sparkle:version>0.5.65</sparkle:version>
+            <sparkle:shortVersionString>0.5.65</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.65
+
+- 真机复验 v0.5.64 后的收口修正：贴边窗口下手柄拖拽阈值从 6pt 降到 3pt（窗口最外侧数 pt 是系统缩放边框，手柄中部起拖最多只有约 5pt 位移，6pt 阈值仍会漏）。
+- 修复拖宽自动弹出的步进误判：分隔条拖动以每步 3–5pt 的连续小步到达阈值，单步增量判定永远不满足；改为只要宿主窗口宽度未变（说明宽度变化来自分隔条拖动而非窗口缩放）且工作台宽度达到 560pt 即自动弹出环境抽屉。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.65/Tapgo-AICoding-0.5.65.zip" length="9422811" type="application/octet-stream" sparkle:edSignature="dbulHu8gttAtMNGbVuFSBtOo3WXfhVeh++JLjG4/ECt8OEHs1wYw6X1oLPWmM9sTrzCCs4WRcl3rYNNfrc1PAg=="/>
+        </item>
+        <item>
             <title>0.5.64</title>
             <pubDate>Tue, 01 Sep 2026 05:04:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.64</link>
@@ -32,22 +47,6 @@
 - 套餐信息（供应商·套餐·余量）移出账户菜单 label 单独成行，不再被系统菜单丢弃，恢复 v0.5.60 的灰色套餐行。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.63/Tapgo-AICoding-0.5.63.zip" length="9421025" type="application/octet-stream" sparkle:edSignature="8sTCKyjZ8yX6rXESA/F+xW4zoBaPwsMhiO14bw8Ozc8jw4H99s3OX8ei8ZT2bmbyDa9mI5RgcsELn6qbXV4NCg=="/>
-        </item>
-        <item>
-            <title>0.5.62</title>
-            <pubDate>Tue, 01 Sep 2026 03:25:42 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.62</link>
-            <sparkle:version>0.5.62</sparkle:version>
-            <sparkle:shortVersionString>0.5.62</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.62
-
-- 完整保留 v0.5.61 的 ZCode 式多标签右侧工作台：独立辅助对话、文件审查、多终端、浏览器和右缘环境抽屉。
-- 侧栏底部右侧按钮已移除，用户与套餐信息获得完整宽度。
-- 连接手机、自动化、自进化、检查更新、设置与退出登录统一收入头像账户菜单。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.62/Tapgo-AICoding-0.5.62.zip" length="9322443" type="application/octet-stream" sparkle:edSignature="rNnkPfdsYLBSoJoyEbkrdKMKSO5NYsbSJe/s2gXbtuIrUGqdQnvguehgtSOsXe+oFdX4lVxU6K67ICXNRVvHAA=="/>
         </item>
     </channel>
 </rss>
