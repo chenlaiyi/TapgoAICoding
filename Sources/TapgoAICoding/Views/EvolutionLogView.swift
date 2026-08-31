@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.63",
+                    date: "2026-09-01",
+                    commit: "随 v0.5.63",
+                    tag: "v0.5.63",
+                    summary: "修复侧栏头像被撑成大矩形",
+                    changes: [
+                        "头像改为渲染层预裁剪的 28pt 圆形小图并缓存，规避 macOS 26 菜单把 label 里的图片按原图尺寸抽走渲染的缺陷。",
+                        "套餐信息行移出账户菜单 label 单独渲染，恢复供应商·套餐·周余量灰色行。"
+                    ],
+                    why: "macOS 26 的 Menu 只保留 label 首个 Text 与 Image 且图片按位图原尺寸绘制，头像被撑成 132pt 原图、套餐行被丢弃。",
+                    next: "三机安装后确认不同头像与未登录态下的底栏表现。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.62",
                     date: "2026-09-01",
                     commit: "随 v0.5.62",

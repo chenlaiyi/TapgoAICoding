@@ -4,7 +4,7 @@
 
 Tapgo AICoding 是一个原生 macOS SwiftUI 编码 Agent 客户端。它以 [OpenAI Codex Harness](https://github.com/openai/codex) 的 `app-server` 为运行时，通过 JSON-RPC 持续管理对话、工具、审批、文件改动和命令执行，并把这些能力组织成适合多项目、长任务和多台 Mac 协同开发的桌面工作区。
 
-当前版本：**v0.5.62** · macOS 14+
+当前版本：**v0.5.63** · macOS 14+
 
 ## 当前能力
 
@@ -246,7 +246,7 @@ SHA-256。v0.5.55 及更早版本没有更新器，需要先手动安装一次 v
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
 ```
 
-v0.5.62 的最新验证结果为 **2608 passed / 0 failed**。该模式只跳过依赖真实 SSH 主机的远程环境段，其余 Core、Harness、模型、存储、队列、手机远程、电脑控制和自动更新分发测试都会执行。
+v0.5.63 的最新验证结果为 **2608 passed / 0 failed**。该模式只跳过依赖真实 SSH 主机的远程环境段，其余 Core、Harness、模型、存储、队列、手机远程、电脑控制和自动更新分发测试都会执行。
 
 正式产品构建：
 

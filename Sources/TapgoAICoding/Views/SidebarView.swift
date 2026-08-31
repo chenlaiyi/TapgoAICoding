@@ -954,91 +954,94 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var userBar: some View {
-        Menu {
-            Button {
-                showConnectPhone = true
-            } label: {
-                Label("连接手机", systemImage: "iphone.gen3.radiowaves.left.and.right")
-            }
-            Button {
-                showEvolutionLog = true
-            } label: {
-                Label("自动化", systemImage: "clock.arrow.circlepath")
-            }
-            Button {
-                if !store.openEvolution() { showEvolutionRootMissing = true }
-            } label: {
-                Label("自进化", systemImage: "sparkles")
-            }
-            Button {
-                updater.checkForUpdates()
-            } label: {
-                Label("检查更新", systemImage: "arrow.triangle.2.circlepath")
-            }
-            .disabled(!updater.canCheckForUpdates)
-            Button {
-                showSettings()
-            } label: {
-                Label("设置", systemImage: "gear")
-            }
-            if authStore.currentUser != nil {
-                Divider()
-                Button(role: .destructive) {
-                    authStore.logout()
+        VStack(alignment: .leading, spacing: 2) {
+            Menu {
+                Button {
+                    showConnectPhone = true
                 } label: {
-                    Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                    Label("连接手机", systemImage: "iphone.gen3.radiowaves.left.and.right")
                 }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                if let user = authStore.currentUser {
-                    UserAvatar(url: user.avatarURL, name: user.displayName, size: 28)
-                        .accessibilityLabel("当前登录用户")
-                    VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    showEvolutionLog = true
+                } label: {
+                    Label("自动化", systemImage: "clock.arrow.circlepath")
+                }
+                Button {
+                    if !store.openEvolution() { showEvolutionRootMissing = true }
+                } label: {
+                    Label("自进化", systemImage: "sparkles")
+                }
+                Button {
+                    updater.checkForUpdates()
+                } label: {
+                    Label("检查更新", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(!updater.canCheckForUpdates)
+                Button {
+                    showSettings()
+                } label: {
+                    Label("设置", systemImage: "gear")
+                }
+                if authStore.currentUser != nil {
+                    Divider()
+                    Button(role: .destructive) {
+                        authStore.logout()
+                    } label: {
+                        Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+            } label: {
+                // macOS 26 的 Menu 会把 label 抽成"首个 Text + Image"渲染，多余
+                // 文本会被静默丢弃，所以 label 只放头像和名字，套餐行见下方。
+                HStack(spacing: 8) {
+                    if let user = authStore.currentUser {
+                        UserAvatar(url: user.avatarURL, name: user.displayName, size: 28)
+                            .accessibilityLabel("当前登录用户")
                         Text(user.displayName)
                             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .lineLimit(1)
-                        Text(modelQuotaSummary)
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .task {
-                        // 进侧栏立即拉额度, 之后每 5 分钟刷新 (周余量/套餐名)。
-                        store.refreshRateLimits()
-                        while !Task.isCancelled {
-                            try? await Task.sleep(nanoseconds: 300_000_000_000)
-                            store.refreshRateLimits()
-                        }
-                    }
-                } else {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("当前用户")
-                    VStack(alignment: .leading, spacing: 0) {
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("当前用户")
                         Text(NSUserName())
                             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .lineLimit(1)
-                        Text("Tapgo AICoding")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help("账户与快捷操作")
+            .accessibilityLabel("用户与快捷操作菜单")
+
+            Text(userBarSubtitle)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .padding(.leading, 36) // 与名字对齐: 28pt 头像 + 8pt 间距
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .task {
+                    // 进侧栏立即拉额度, 之后每 5 分钟刷新 (周余量/套餐名)。
+                    store.refreshRateLimits()
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 300_000_000_000)
+                        store.refreshRateLimits()
+                    }
+                }
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .help("账户与快捷操作")
-        .accessibilityLabel("用户与快捷操作菜单")
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(DSHTheme.titlebarBg.opacity(0.45))
+    }
+
+    private var userBarSubtitle: String {
+        authStore.currentUser != nil ? modelQuotaSummary : "Tapgo AICoding"
     }
 
 
@@ -1216,43 +1219,94 @@ struct SidebarView: View {
 
 /// Circular user avatar with a graceful fallback (initial letter) when the
 /// image is missing, loading, or fails to load.
+///
+/// macOS 26 的 Menu 只保留 label 里的 Text 和 Image 节点、其余视图全部丢弃，
+/// 且 Image 按位图原尺寸绘制（frame/clipShape/overlay 一律被绕过，v0.5.62 侧栏
+/// 头像因此被撑成 132pt 原图）。所以头像必须在进视图树之前就由
+/// `UserAvatarRenderer` 渲染成目标尺寸的圆形小图。
 struct UserAvatar: View {
     let url: URL?
     let name: String
     let size: CGFloat
 
-    var body: some View {
-        if let url {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: size, height: size)
-                        .clipShape(Circle())
-                default:
-                    fallback
-                }
-            }
-            .frame(width: size, height: size)
-        } else {
-            fallback
-        }
-    }
+    @State private var rendered: NSImage?
 
-    private var fallback: some View {
+    var body: some View {
         ZStack {
-            Circle().fill(DSHTheme.brand.opacity(0.18))
-            Text(initial)
-                .font(.system(size: size * 0.45, weight: .semibold))
-                .foregroundStyle(DSHTheme.brand)
+            if let rendered {
+                Image(nsImage: rendered)
+                    .resizable()
+                    .interpolation(.high)
+            } else {
+                Color.clear
+            }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
+        .clipped()
+        .task(id: url) {
+            rendered = await UserAvatarRenderer.image(url: url, name: name, size: size)
+        }
+    }
+}
+
+/// 在视图树之外把头像（下载的原图或首字母占位）渲染成"最终尺寸 + 圆形"的
+/// NSImage，并对 (url, size) / (name, size) 做进程内缓存。
+@MainActor
+enum UserAvatarRenderer {
+    private static let cache = NSCache<NSString, NSImage>()
+
+    static func image(url: URL?, name: String, size: CGFloat) async -> NSImage {
+        if let url {
+            let key = "\(url.absoluteString)#\(Int(size))" as NSString
+            if let hit = cache.object(forKey: key) { return hit }
+            if let (data, response) = try? await URLSession.shared.data(from: url),
+               (response as? HTTPURLResponse)?.statusCode == 200,
+               let raw = NSImage(data: data),
+               let rendered = render(Image(nsImage: raw).resizable().scaledToFill(),
+                                     name: name, size: size) {
+                cache.setObject(rendered, forKey: key)
+                return rendered
+            }
+        }
+        let fallbackKey = "initial|\(name)|\(Int(size))" as NSString
+        if let hit = cache.object(forKey: fallbackKey) { return hit }
+        let rendered = render(fallback(name: name, size: size), name: name, size: size)
+            ?? placeholder(size: size)
+        cache.setObject(rendered, forKey: fallbackKey)
+        return rendered
     }
 
-    private var initial: String {
+    private static func render(_ content: some View, name: String, size: CGFloat) -> NSImage? {
+        let renderer = ImageRenderer(
+            content: content
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+        )
+        renderer.scale = 2
+        renderer.proposedSize = ProposedViewSize(width: size, height: size)
+        return renderer.nsImage
+    }
+
+    private static func fallback(name: String, size: CGFloat) -> some View {
+        ZStack {
+            Circle().fill(DSHTheme.brand.opacity(0.18))
+            Text(initial(of: name))
+                .font(.system(size: size * 0.45, weight: .semibold))
+                .foregroundStyle(DSHTheme.brand)
+        }
+    }
+
+    private static func placeholder(size: CGFloat) -> NSImage {
+        let image = NSImage(size: NSSize(width: size, height: size))
+        image.lockFocus()
+        NSColor.clear.setFill()
+        NSRect(x: 0, y: 0, width: size, height: size).fill()
+        image.unlockFocus()
+        return image
+    }
+
+    private static func initial(of name: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "?" : String(trimmed.prefix(1)).uppercased()
     }

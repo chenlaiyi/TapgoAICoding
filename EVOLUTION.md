@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.63 — 修复侧栏头像被撑成大矩形
+**Date**: 2026-09-01
+**Tag**: v0.5.63
+**Test status**: 2608 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- 侧栏底部头像改为渲染层预裁剪的 28pt 圆形小图（ImageRenderer + NSCache），修复 macOS 26 菜单把 label 里的 Image 按位图原尺寸抽走渲染、把 132pt 微信原图整个撑进侧栏的缺陷。
+- 账户菜单 label 只保留头像与名字；套餐信息（供应商·套餐·余量）移出 label 单独成行，恢复被丢弃的灰色套餐行。
+- 首字母占位头像与下载头像同路径渲染，菜单/设置页共享缓存。
+**Why**: macOS 26 的 SwiftUI Menu 会把 label 抽成“首个 Text + Image”的系统菜单表示，frame/clipShape/overlay 一律被绕过，头像与套餐行都被破坏。
+**Next**: 三机安装后确认不同头像与未登录态下的底栏表现。
+
 ## v0.5.62 — 侧栏底部收敛为账户菜单
 **Date**: 2026-09-01
 **Tag**: v0.5.62
