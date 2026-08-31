@@ -10,11 +10,11 @@ struct ContentView: View {
     @AppStorage("tapgo.showTrajectory") private var showTrajectory = false
     @State private var showShortcuts = false
     @State private var showCommandPalette = false
-    @AppStorage("tapgo.wideContent") private var wideContent = false
+    @State private var sidebarVisible = true
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             Group {
                 if let presentation = settingsPresentation {
                     SettingsView(initialTab: presentation.tab) {
@@ -25,7 +25,7 @@ struct ContentView: View {
                 } else if let err = store.setupError {
                     SetupView(error: err) { store.revalidateSetup() }
                 } else {
-                    mainSplit(availableWidth: geometry.size.width)
+                    mainSplit()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -77,13 +77,11 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func mainSplit(availableWidth: CGFloat) -> some View {
-        let showAdaptiveEnvironment = AdaptiveEnvironmentLayout.shouldShow(
-            windowWidth: Double(availableWidth),
-            preferredChatWidth: wideContent ? 980 : 720,
-            hasActiveThread: store.activeThreadId != nil,
-            manualDetailVisible: showTrajectory
-        )
+    private func mainSplit() -> some View {
+        // ZCode keeps the conversation as one uninterrupted canvas and opens
+        // its right detail panel only when the user asks for it.  Do not
+        // insert Tapgo's former automatic environment card into wide windows.
+        let showAdaptiveEnvironment = false
         Group {
             if showTrajectory {
                 split(showDetail: true, showAdaptiveEnvironment: false)
@@ -91,41 +89,69 @@ struct ContentView: View {
                 split(showDetail: false, showAdaptiveEnvironment: showAdaptiveEnvironment)
             }
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button {
+                    sidebarVisible.toggle()
+                } label: {
+                    Image(systemName: "sidebar.left")
+                }
+                .buttonStyle(.plain)
+                .help(sidebarVisible ? "隐藏侧边栏" : "显示侧边栏")
+                .accessibilityLabel(sidebarVisible ? "隐藏侧边栏" : "显示侧边栏")
+                Button {
+                    NotificationCenter.default.post(name: .tapgoSelectPrevThread, object: nil)
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.plain)
+                .help("上一个任务")
+                Button {
+                    NotificationCenter.default.post(name: .tapgoSelectNextThread, object: nil)
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.plain)
+                .help("下一个任务")
+            }
+        }
     }
 
     @ViewBuilder
     private func split(showDetail: Bool, showAdaptiveEnvironment: Bool) -> some View {
-        if showDetail {
-            NavigationSplitView {
+        // ZCode uses a flat, edge-to-edge split rather than macOS 26's
+        // floating glass NavigationSplitView sidebar. HSplitView preserves a
+        // real draggable divider while keeping both panes rectangular.
+        HSplitView {
+            if sidebarVisible {
                 SidebarView(
                     showNewTask: { showNewTask = true },
                     showSettings: {
                         settingsPresentation = SettingsPresentation(tab: .general)
                     }
                 )
-            } content: {
-                ChatView()
-            } detail: {
-                trajectoryDetail
+                .frame(minWidth: 200, idealWidth: 240, maxWidth: 252)
             }
-            .navigationSplitViewStyle(.balanced)
-            .navigationSplitViewColumnWidth(min: 205, ideal: 232, max: 300)
-            .navigationSplitViewColumnWidth(min: 380, ideal: 560)
-            .navigationSplitViewColumnWidth(min: 240, ideal: 300, max: 420)
-        } else {
-            NavigationSplitView {
-                SidebarView(
-                    showNewTask: { showNewTask = true },
-                    showSettings: {
-                        settingsPresentation = SettingsPresentation(tab: .general)
+
+            Group {
+                if showDetail {
+                    HSplitView {
+                        ChatView()
+                            .frame(minWidth: 420, idealWidth: 620)
+                        trajectoryDetail
+                            .frame(minWidth: 240, idealWidth: 300, maxWidth: 420)
                     }
-                )
-            } detail: {
-                adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)
+                } else {
+                    adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)
+                        .frame(minWidth: 560)
+                }
             }
-            .navigationSplitViewStyle(.balanced)
-            .navigationSplitViewColumnWidth(min: 205, ideal: 232, max: 300)
+            .padding(.top, 18)
+            .background(DSHTheme.bg)
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 10))
+            .ignoresSafeArea(.container, edges: .top)
         }
+        .background(DSHTheme.sidebarBg)
     }
 
     /// Keeps one structural ChatView while the window crosses the responsive

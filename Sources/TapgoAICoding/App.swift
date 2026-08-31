@@ -81,6 +81,12 @@ struct TapgoAICodingApp: App {
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1180, height: 780)
+        // ZCode paints its own split background all the way through the
+        // traffic-light/titlebar area: the left navigation remains gray and
+        // the right workspace remains the dark overlay.  A hidden native
+        // titlebar lets our HSplitView own that full-height surface while the
+        // toolbar controls and traffic lights stay available above it.
+        .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(replacing: .newItem) {

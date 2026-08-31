@@ -3,6 +3,23 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.59</title>
+            <pubDate>Tue, 01 Sep 2026 00:33:23 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.59</link>
+            <sparkle:version>0.5.59</sparkle:version>
+            <sparkle:shortVersionString>0.5.59</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.59
+
+- 按 ZCode 3.10.1 实机桌面端重新校正整体框架：灰色为整窗底板，右侧深色工作区作为贯穿标题栏与窗口底部的圆角覆盖层。
+- 侧栏改为平面滚动布局；“分组”展示扁平任务列表，“项目”展示项目树与独立任务分区，并保留搜索、更新、连接手机和设置等真实交互。
+- 统一同视口密度、侧栏宽度、标题区位置和底部输入器尺寸；移除自动环境卡与输入器下方指标条，避免挤压 ZCode 式主画布。
+- 新增桌面结构专项断言，并以 ZCode 与本机签名 App 的 871 × 768 同尺寸并排图完成视觉回归。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.59/Tapgo-AICoding-0.5.59.zip" length="9195041" type="application/octet-stream" sparkle:edSignature="xpamGCprJysJjqv8Qw5iRT6muZovyIBwKTDIwreu5EErEUj26L/SYRIMzWSH8AwMNX+XZqzpXD4H3DdkFsWXDw=="/>
+        </item>
+        <item>
             <title>0.5.57</title>
             <pubDate>Mon, 31 Aug 2026 22:29:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.57</link>

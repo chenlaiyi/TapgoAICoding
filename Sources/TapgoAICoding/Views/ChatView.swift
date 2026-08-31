@@ -175,7 +175,7 @@ struct ChatView: View {
             // Keep one structural ComposerView for the entire lifetime of
             // ChatView. Moving between the empty and active layouts must not
             // recreate NSTextView while the user is entering the next prompt.
-            ComposerView(contentWidth: wideContent ? 920 : 700)
+            ComposerView(contentWidth: wideContent ? 980 : 800)
                 .padding(.horizontal, hasConversation ? 0 : 16)
 
             if !hasConversation {
@@ -1551,7 +1551,6 @@ struct ComposerView: View {
             .zIndex(1)
             }
 
-            composerMetricsBar
         }
         .frame(maxWidth: contentWidth, alignment: .center)
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
@@ -2673,7 +2672,7 @@ struct ComposerView: View {
 private struct GrowingTextEditor: View {
     @Binding var text: String
     var placeholder: String = ""
-    var minHeight: CGFloat = 36
+    var minHeight: CGFloat = 60
     var maxHeight: CGFloat = 150
     @FocusState.Binding var focused: Bool
     var onSubmit: () -> Void

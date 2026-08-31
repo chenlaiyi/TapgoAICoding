@@ -171,7 +171,7 @@ struct SidebarView: View {
             .accessibilityLabel("插件市场")
         }
         .padding(.horizontal, 9)
-        .padding(.top, 9)
+        .padding(.top, 19)
         .padding(.bottom, 8)
     }
 
@@ -192,7 +192,7 @@ struct SidebarView: View {
                 }
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.vertical, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -232,18 +232,20 @@ struct SidebarView: View {
             .disabled(!updater.canCheckForUpdates)
             .help("检查并安装更新")
             .accessibilityLabel("检查更新")
-            Button {
-                let ids = Set(displayedGroups.map(\.id))
-                if ids.isSubset(of: collapsedGroups) {
-                    collapsedGroups.subtract(ids)
-                } else {
-                    collapsedGroups.formUnion(ids)
+            if sidebarViewMode == .projects {
+                Button {
+                    let ids = Set(grouped.filter { $0.project != nil }.map(\.id))
+                    if ids.isSubset(of: collapsedGroups) {
+                        collapsedGroups.subtract(ids)
+                    } else {
+                        collapsedGroups.formUnion(ids)
+                    }
+                } label: {
+                    Image(systemName: "rectangle.compress.vertical")
                 }
-            } label: {
-                Image(systemName: "rectangle.compress.vertical")
+                .buttonStyle(.borderless)
+                .help("全部展开或收起")
             }
-            .buttonStyle(.borderless)
-            .help("全部展开或收起")
             Button {
                 withAnimation(.easeOut(duration: 0.16)) { showSearchField.toggle() }
                 if showSearchField { searchFocused = true }
@@ -313,22 +315,62 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var threadList: some View {
-        List {
-            if displayedGroups.isEmpty {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 3) {
+            if grouped.isEmpty {
                 emptyState
+            } else if sidebarViewMode == .groups {
+                ForEach(flattenedThreads) { thread in
+                    Button {
+                        store.selectThread(thread.id)
+                    } label: {
+                        threadRow(thread, indented: false)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu { contextMenu(for: thread) }
+                }
             } else {
-                // 用 ThreadGroup.id 做 identity：自进化组与未分类组的
-                // project 都是 nil，按 project?.id 取 key 会撞车，List
-                // 会渲染出重复分组。
-                ForEach(displayedGroups, id: \.id) { group in
+                sidebarSectionHeading("项目", actionIcon: "folder.badge.plus") {
+                    showNewTask()
+                }
+                ForEach(grouped.filter { $0.project != nil }, id: \.id) { group in
                     threadSection(for: group)
                 }
+                sidebarSectionHeading("任务", actionIcon: "plus") {
+                    store.newThread()
+                }
+                ForEach(flatTaskThreads) { thread in
+                    Button {
+                        store.selectThread(thread.id)
+                    } label: {
+                        threadRow(thread, indented: false)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu { contextMenu(for: thread) }
+                }
             }
+            }
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
         }
-        .listStyle(.sidebar)
-        .tint(DSHTheme.labelDim)
-        .scrollContentBackground(.hidden)
         .background(DSHTheme.sidebarBg)
+    }
+
+    private func sidebarSectionHeading(_ title: String, actionIcon: String, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 5) {
+            Text(title)
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button(action: action) {
+                Image(systemName: actionIcon)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(title == "项目" ? "添加项目" : "新建任务")
+        }
+        .padding(.top, 6)
+        .padding(.horizontal, 2)
     }
 
     /// Render a single project (or the legacy "未分类" bucket) as a
@@ -338,7 +380,8 @@ struct SidebarView: View {
     private func threadSection(for group: ThreadGroup) -> some View {
         let visible = visibleThreads(in: group)
         let limit = threadLimit(for: group)
-        Section {
+        VStack(alignment: .leading, spacing: 2) {
+            projectGroupHeader(group)
             if !collapsedGroups.contains(group.id) {
                 // Keep project children visually flat and compact:
                 // one title per row, ordered by recency.
@@ -355,8 +398,6 @@ struct SidebarView: View {
                     expandThreadsButton(for: group)
                 }
             }
-        } header: {
-            projectGroupHeader(group)
         }
     }
 
@@ -681,7 +722,7 @@ struct SidebarView: View {
     }
 
     @ViewBuilder
-    private func threadRow(_ t: TapgoCore.Thread) -> some View {
+    private func threadRow(_ t: TapgoCore.Thread, indented: Bool = true) -> some View {
         HStack(alignment: .center, spacing: 6) {
             Text(t.title)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
@@ -700,8 +741,8 @@ struct SidebarView: View {
                 statusDot(t)
             }
         }
-        .padding(.vertical, 3)
-        .padding(.leading, Layout.threadTitleIndent)
+        .padding(.vertical, 7)
+        .padding(.leading, indented ? Layout.threadTitleIndent : 4)
         .padding(.trailing, 2)
         .contentShape(Rectangle())
         .background(store.activeThreadId == t.id ? DSHTheme.sidebarSelection :
@@ -1047,6 +1088,17 @@ struct SidebarView: View {
             customTitle: "任务",
             customId: "_tasks"
         )]
+    }
+
+    /// ZCode「分组」页的默认形态是无项目标题的扁平任务列表。
+    private var flattenedThreads: [TapgoCore.Thread] {
+        sortedThreads(grouped.flatMap(\.threads))
+    }
+
+    /// ZCode「项目」页把无项目任务放在独立的「任务」分区；Tapgo 的
+    /// 自进化任务也归在这里，而不是伪装成项目。
+    private var flatTaskThreads: [TapgoCore.Thread] {
+        sortedThreads(grouped.filter { $0.project == nil }.flatMap(\.threads))
     }
 
     private var grouped: [ThreadGroup] {

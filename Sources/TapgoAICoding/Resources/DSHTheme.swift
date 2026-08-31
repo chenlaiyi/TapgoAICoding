@@ -28,7 +28,7 @@ enum DSHTheme {
     /// ZCode-style desktop navigation chrome. The sidebar is deliberately
     /// lighter than the conversation canvas in dark mode, so the hierarchy
     /// stays visible without relying on separator lines.
-    static let sidebarBg = Color.dynamic(lightHex: 0xF3F3F4, darkHex: 0x303033)
+    static let sidebarBg = Color.dynamic(lightHex: 0xF3F3F4, darkHex: 0x39393B)
     static let titlebarBg = Color.dynamic(lightHex: 0xFAFAFB, darkHex: 0x1A1A1C)
     static let sidebarSelection = Color.dynamic(lightHex: 0xE5E5E7, darkHex: 0x444447)
     /// Layer-1 card. bluish-00 light, bluish-875 (#232324) dark.
