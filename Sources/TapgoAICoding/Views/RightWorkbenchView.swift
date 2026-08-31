@@ -280,19 +280,28 @@ struct RightWorkbenchView: View {
                 .frame(width: 3, height: 42)
         }
         .contentShape(Rectangle())
+        .onTapGesture { layout.isEnvironmentVisible = true }
         .gesture(
-            DragGesture(minimumDistance: 8)
+            DragGesture(minimumDistance: 4)
                 .onChanged { value in
-                    if value.translation.width > 24 {
+                    // The window usually sits flush against the screen's
+                    // right edge, so a rightward drag only has a few points
+                    // of travel — any deliberate nudge must reveal.
+                    if value.translation.width > 6 {
                         layout.isEnvironmentVisible = true
                     }
                 }
         )
-        .help("向右拖动展开环境信息")
+        .help("点击或向右拖动展开环境信息")
         .accessibilityLabel("展开环境信息")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { layout.isEnvironmentVisible = true }
     }
+
+    /// Width past which dragging the chat|workbench splitter auto-reveals the
+    /// environment drawer, and the narrower width that re-arms it.
+    private static let autoRevealWidthThreshold: CGFloat = 560
+    private static let autoRevealRearmWidth: CGFloat = 500
 
     private enum WidthTarget { case workbench, environment }
 
@@ -309,8 +318,42 @@ struct RightWorkbenchView: View {
         switch target {
         case .workbench:
             workbenchWidth = min(820, max(340, Double(width)))
+            noteWorkbenchWidthChange(width)
         case .environment:
             environmentWidth = min(460, max(250, Double(width)))
+        }
+    }
+
+    @State private var lastWorkbenchPaneWidth: CGFloat = 0
+    @State private var lastHostWindowWidth: CGFloat = 0
+    @State private var autoRevealArmed = true
+
+    /// ZCode-style affordance: dragging the chat|workbench splitter wide
+    /// enough pops the environment drawer open. Only a splitter drag counts —
+    /// the host window width must stay put — and a hysteresis latch keeps a
+    /// manual close from instantly re-opening until the pane narrows again.
+    private func noteWorkbenchWidthChange(_ width: CGFloat) {
+        let hostWidth = (NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible))?
+            .frame.width ?? lastHostWindowWidth
+        defer {
+            lastWorkbenchPaneWidth = width
+            lastHostWindowWidth = hostWidth
+        }
+        guard didRestore else { return }
+        if layout.isEnvironmentVisible {
+            autoRevealArmed = false
+            return
+        }
+        if width < Self.autoRevealRearmWidth {
+            autoRevealArmed = true
+            return
+        }
+        guard autoRevealArmed, lastWorkbenchPaneWidth > 0 else { return }
+        let paneGrew = width - lastWorkbenchPaneWidth
+        let hostGrew = hostWidth - lastHostWindowWidth
+        if paneGrew > 6, hostGrew < 1, width >= Self.autoRevealWidthThreshold {
+            layout.isEnvironmentVisible = true
+            autoRevealArmed = false
         }
     }
 

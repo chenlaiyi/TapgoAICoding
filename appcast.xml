@@ -3,6 +3,21 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.64</title>
+            <pubDate>Tue, 01 Sep 2026 05:04:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.64</link>
+            <sparkle:version>0.5.64</sparkle:version>
+            <sparkle:shortVersionString>0.5.64</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.64
+
+- 修复右缘拖拽展开环境信息在全屏宽窗口下失效的问题：窗口贴住屏幕右缘时向右位移不足 24pt 阈值，手势永远无法触发；现在点击手柄或小位移向右拖拽（>6pt）即可展开。
+- 新增 ZCode 式"拖宽自动弹出"：把主会话与工作台之间的分隔条向右拖、工作台宽度达到 560pt 时环境信息抽屉自动弹出；仅分隔条拖动触发（窗口整体拉宽不触发），并带防回弹闩锁，手动关闭后工作台收窄到 500pt 以内才重新武装。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.64/Tapgo-AICoding-0.5.64.zip" length="9422439" type="application/octet-stream" sparkle:edSignature="J0iSPyCCDyK4QAi45lNMTxmUUNW9wPZ6lcME9tUGMrU4ZMKhEiEturQ8f0jEV3G79Ba+uyx7UaUHvy/jNHLPAg=="/>
+        </item>
+        <item>
             <title>0.5.63</title>
             <pubDate>Tue, 01 Sep 2026 04:38:59 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.63</link>
@@ -33,23 +48,6 @@
 - 连接手机、自动化、自进化、检查更新、设置与退出登录统一收入头像账户菜单。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.62/Tapgo-AICoding-0.5.62.zip" length="9322443" type="application/octet-stream" sparkle:edSignature="rNnkPfdsYLBSoJoyEbkrdKMKSO5NYsbSJe/s2gXbtuIrUGqdQnvguehgtSOsXe+oFdX4lVxU6K67ICXNRVvHAA=="/>
-        </item>
-        <item>
-            <title>0.5.61</title>
-            <pubDate>Tue, 01 Sep 2026 02:52:38 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.61</link>
-            <sparkle:version>0.5.61</sparkle:version>
-            <sparkle:shortVersionString>0.5.61</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.61
-
-- 新增 ZCode 式独立右侧工作台：辅助对话、审查、多终端和浏览器标签可同时打开，支持标签检索、逐个关闭、关闭其他标签及整体收起；每个辅助标签拥有独立、可持久化且可并行运行的 Harness 会话。
-- 审查页展示真实文件 Diff；终端支持在当前项目目录运行及停止 zsh 命令；浏览器支持地址导航、前进、后退、刷新和外部打开。
-- 环境信息升级为右侧二级抽屉，可点按钮或从最右缘向右拖出；工作台宽度、环境宽度和标签状态会自动恢复。
-- 任务顶栏对齐 ZCode 的 Finder、打开方式、帮助、终端和侧边面板操作顺序。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.61/Tapgo-AICoding-0.5.61.zip" length="9323809" type="application/octet-stream" sparkle:edSignature="O0AXbVA3GBj0VQvO+NfSTETf4WEmCQhQ9XHX/ZsSXDl0sWRocgqxxH91Zgp1s/kRQ+f0hdc4z+PcFmqHWUXVAQ=="/>
         </item>
     </channel>
 </rss>
