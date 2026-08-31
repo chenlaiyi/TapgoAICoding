@@ -3,23 +3,6 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
-            <title>0.5.58</title>
-            <pubDate>Mon, 31 Aug 2026 23:55:04 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.58</link>
-            <sparkle:version>0.5.58</sparkle:version>
-            <sparkle:shortVersionString>0.5.58</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.58
-
-- 以 ZCode 3.10.1 实机桌面端为基准，复刻灰色侧栏、一级导航、分组/项目切换、紧凑任务树和相对日期。
-- 主工作区升级为独立任务顶栏、居中对话内容、低对比用户消息和 ZCode 式两层输入器。
-- 保留并重排 Tapgo 原有能力：左上角检查更新，账户区连接手机/自进化，设置、电脑操作、权限、模型与轨迹栏继续可用。
-- 新增 14 项桌面设计结构测试，并完成真实 ZCode 与本机 App 的同高度并排视觉验收。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.58/Tapgo-AICoding-0.5.58.zip" length="9186249" type="application/octet-stream" sparkle:edSignature="hwwRC5BSleKiNP7g2R6dBcdywzGEijFOg0crkzryMMBs3fX13pA8wn+JyujecYcJj3a9WkfOYd6tHxOJ0Aw8Bg=="/>
-        </item>
-        <item>
             <title>0.5.57</title>
             <pubDate>Mon, 31 Aug 2026 22:29:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.57</link>
