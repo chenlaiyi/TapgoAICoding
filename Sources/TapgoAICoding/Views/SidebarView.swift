@@ -954,98 +954,93 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var userBar: some View {
-        HStack(spacing: 8) {
-            if let user = authStore.currentUser {
-                // Logged-in Tapgo admin (from 扫码登录): show avatar + nickname.
-                UserAvatar(url: user.avatarURL, name: user.displayName, size: 28)
-                    .accessibilityLabel("当前登录用户")
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(user.displayName)
-                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                        .lineLimit(1)
-                    Text(modelQuotaSummary)
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
-                .task {
-                    // 进侧栏立即拉额度, 之后每 5 分钟刷新 (周余量/套餐名)。
-                    store.refreshRateLimits()
-                    while !Task.isCancelled {
-                        try? await Task.sleep(nanoseconds: 300_000_000_000)
-                        store.refreshRateLimits()
-                    }
-                }
-                .contextMenu {
-                    Button(role: .destructive) {
-                        authStore.logout()
-                    } label: {
-                        Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                    Button {
-                        showSettings()
-                    } label: {
-                        Label("设置", systemImage: "gear")
-                    }
-                }
-            } else {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("当前用户")
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(NSUserName())
-                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                        .lineLimit(1)
-                    Text("Tapgo AICoding")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
-            }
-            Spacer()
-            Menu {
-                Button {
-                    showConnectPhone = true
-                } label: {
-                    Label("连接手机", systemImage: "iphone.gen3.radiowaves.left.and.right")
-                }
-                Button {
-                    if !store.openEvolution() { showEvolutionRootMissing = true }
-                } label: {
-                    Label("自进化", systemImage: "sparkles")
-                }
-                Button {
-                    updater.checkForUpdates()
-                } label: {
-                    Label("检查更新", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(!updater.canCheckForUpdates)
+        Menu {
+            Button {
+                showConnectPhone = true
             } label: {
-                Image(systemName: "iphone")
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                Label("连接手机", systemImage: "iphone.gen3.radiowaves.left.and.right")
             }
-            .menuStyle(.borderlessButton)
-            .help("连接手机与应用工具")
-            Circle()
-                .fill(runnerStatusColor)
-                .frame(width: 8, height: 8)
-                .help(runnerStatusHelp)
-                .accessibilityLabel(runnerStatusHelp)
+            Button {
+                showEvolutionLog = true
+            } label: {
+                Label("自动化", systemImage: "clock.arrow.circlepath")
+            }
+            Button {
+                if !store.openEvolution() { showEvolutionRootMissing = true }
+            } label: {
+                Label("自进化", systemImage: "sparkles")
+            }
+            Button {
+                updater.checkForUpdates()
+            } label: {
+                Label("检查更新", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .disabled(!updater.canCheckForUpdates)
             Button {
                 showSettings()
             } label: {
-                Image(systemName: "gear")
-                    .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
+                Label("设置", systemImage: "gear")
             }
-            .buttonStyle(.borderless)
-            .help(L10n.tooltipSettings)
-            .accessibilityLabel(L10n.tooltipSettings)
+            if authStore.currentUser != nil {
+                Divider()
+                Button(role: .destructive) {
+                    authStore.logout()
+                } label: {
+                    Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if let user = authStore.currentUser {
+                    UserAvatar(url: user.avatarURL, name: user.displayName, size: 28)
+                        .accessibilityLabel("当前登录用户")
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(user.displayName)
+                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                            .lineLimit(1)
+                        Text(modelQuotaSummary)
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .task {
+                        // 进侧栏立即拉额度, 之后每 5 分钟刷新 (周余量/套餐名)。
+                        store.refreshRateLimits()
+                        while !Task.isCancelled {
+                            try? await Task.sleep(nanoseconds: 300_000_000_000)
+                            store.refreshRateLimits()
+                        }
+                    }
+                } else {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("当前用户")
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(NSUserName())
+                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                            .lineLimit(1)
+                        Text("Tapgo AICoding")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .contentShape(Rectangle())
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help("账户与快捷操作")
+        .accessibilityLabel("用户与快捷操作菜单")
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(DSHTheme.titlebarBg.opacity(0.45))
     }
+
 
     private var runnerStatusColor: Color {
         if store.hasAnyRunningTasks { return .blue }

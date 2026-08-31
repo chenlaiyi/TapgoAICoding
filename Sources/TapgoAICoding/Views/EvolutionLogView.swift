@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.62",
+                    date: "2026-09-01",
+                    commit: "随 v0.5.62",
+                    tag: "v0.5.62",
+                    summary: "侧栏底部收敛为账户菜单",
+                    changes: [
+                        "移除侧栏底部的手机工具菜单与设置按钮，套餐摘要获得完整宽度。",
+                        "连接手机、自动化、自进化、检查更新、设置和退出登录统一收入点击用户区后的上拉菜单。"
+                    ],
+                    why: "底部右侧控件挤占套餐信息，且常用入口分散在多个小按钮里。",
+                    next: "在真实窗口确认菜单展开方向与长套餐文案显示。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.57",
                     date: "2026-08-31",
                     commit: "随 v0.5.57",
