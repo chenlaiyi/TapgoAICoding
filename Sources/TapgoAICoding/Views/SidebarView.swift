@@ -11,6 +11,7 @@ struct SidebarView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     @EnvironmentObject var authStore: AdminAuthStore
+    @EnvironmentObject var updater: AppUpdateController
     @State private var isDropTargeted = false
     @State private var renamingThreadId: String?
     @State private var renameDraft: String = ""
@@ -141,6 +142,12 @@ struct SidebarView: View {
     @ViewBuilder
     private var topBar: some View {
         VStack(alignment: .leading, spacing: 2) {
+            menuItem("检查更新", "arrow.triangle.2.circlepath") {
+                updater.checkForUpdates()
+            }
+            .disabled(!updater.canCheckForUpdates)
+            .help("检查并安装 GitHub Releases 中的最新版本")
+            .accessibilityLabel("检查更新")
             menuItem("自进化", "sparkles") {
                 if !store.openEvolution() {
                     showEvolutionRootMissing = true

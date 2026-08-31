@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.56",
+                    date: "2026-08-31",
+                    commit: "随 v0.5.56",
+                    tag: "v0.5.56",
+                    summary: "GitHub Releases 自动更新",
+                    changes: [
+                        "左上角和应用菜单新增检查更新入口，并同步 Sparkle 的可检查状态。",
+                        "接入 Sparkle 2.9.6，启动立即后台检查，之后每小时检查、下载并安全安装 GitHub Release。",
+                        "更新归档使用 Keychain EdDSA 私钥签名，构建产物同时验证 Developer ID、Framework 嵌入和 SHA-256。"
+                    ],
+                    why: "旧版只能手工复制安装，缺少用户可见入口与可信的自动更新链路。",
+                    next: "用 v0.5.57 做首次跨版本自动替换验收。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.55",
                     date: "2026-08-31",
                     commit: "随 v0.5.55",

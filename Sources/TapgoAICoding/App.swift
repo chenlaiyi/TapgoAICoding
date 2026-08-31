@@ -3,6 +3,7 @@ import TapgoCore
 
 @main
 struct TapgoAICodingApp: App {
+    @StateObject private var updater = AppUpdateController()
     @StateObject private var workspace = WorkspaceStore()
     @StateObject private var threadStore: ThreadStore
     @StateObject private var store: SessionStore
@@ -65,6 +66,7 @@ struct TapgoAICodingApp: App {
                         .environmentObject(store)
                         .environmentObject(workspace)
                         .environmentObject(remote)
+                        .environmentObject(updater)
                         .task { remote.startIfNeeded() }
                 } else {
                     AdminLoginView(onComplete: {})
@@ -101,6 +103,11 @@ struct TapgoAICodingApp: App {
                 .keyboardShortcut(",", modifiers: [.command])
             }
             CommandGroup(after: .windowList) {
+                Button("检查更新…") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+                Divider()
                 Button("切换轨迹栏") {
                     NotificationCenter.default.post(name: .tapgoToggleTrajectory, object: nil)
                 }

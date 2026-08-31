@@ -11,6 +11,9 @@ let package = Package(
         .executable(name: "TapgoTests", targets: ["TapgoTests"]),
         .executable(name: "TapgoComputerUseMCP", targets: ["TapgoComputerUseMCP"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6")
+    ],
     targets: [
         // Pure logic: model + services that don't need AppKit/SwiftUI.
         // Shared by both the main app and the test runner so we test the
@@ -30,7 +33,11 @@ let package = Package(
         // The macOS app.
         .executableTarget(
             name: "TapgoAICoding",
-            dependencies: ["TapgoCore", "TapgoComputerUse"],
+            dependencies: [
+                "TapgoCore",
+                "TapgoComputerUse",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "Sources/TapgoAICoding"
         ),
         // MCP stdio server exposing computer-use tools to the model. Spawned

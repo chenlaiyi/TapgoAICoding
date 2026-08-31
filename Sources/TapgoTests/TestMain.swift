@@ -110,6 +110,7 @@ let allSections: [String] = [
     "PhoneRemote: 电脑控制快照与页面",
     "ComputerUseMCP: 协议分发",
     "ComputerUseMCP: config.toml 段写入",
+    "AppUpdate: GitHub Releases distribution",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -767,6 +768,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ComputerUseMCP: config.toml 段写入") {
             runComputerUseMCPConfigSection(runner)
+        }
+        await runIfInScope(runner, "AppUpdate: GitHub Releases distribution") {
+            runAppUpdateDistribution(runner)
         }
     }
 }

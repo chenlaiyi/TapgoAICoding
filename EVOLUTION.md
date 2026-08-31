@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.56 — GitHub Releases 自动更新
+**Date**: 2026-08-31
+**Tag**: v0.5.56
+**Test status**: 2544 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- 左上角和应用菜单新增“检查更新”，按钮状态与 Sparkle 的真实可检查状态同步。
+- 接入 Sparkle 2.9.6，启动时立即后台检查，之后每小时检查；支持后台下载、EdDSA 校验和原子替换安装。
+- `appcast.xml` 由 Keychain 内的独立 EdDSA 私钥签名，更新包发布到 GitHub Releases；构建脚本嵌入并签名 Sparkle.framework。
+- 新增 GitHub Release 归档/appcast/SHA-256 生成脚本和静态分发链路测试。
+**Why**: 旧版本只能通过三机手工复制安装，没有可见的检查更新入口，也无法从 GitHub Releases 安全自更新。
+**Next**: 从 v0.5.57 开始使用本次建立的 appcast 链路验证跨版本自动替换。
+
 ## v0.5.55 — Tapgo Computer Use 对齐 Codex Computer Use
 **Date**: 2026-08-31
 **Tag**: v0.5.55

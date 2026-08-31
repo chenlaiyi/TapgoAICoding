@@ -53,11 +53,14 @@ APP_BUNDLE_DIR="${ROOT}/${APP_DIR_NAME}.app"
 CONTENTS_DIR="${APP_BUNDLE_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+FRAMEWORKS_DIR="${CONTENTS_DIR}/Frameworks"
 HELPER_ROOT_DIR="${RESOURCES_DIR}/computer-use-helper"
 HELPER_APP_DIR="${HELPER_ROOT_DIR}/Tapgo Computer Use.app"
 HELPER_CONTENTS_DIR="${HELPER_APP_DIR}/Contents"
 HELPER_MACOS_DIR="${HELPER_CONTENTS_DIR}/MacOS"
 HELPER_RESOURCES_DIR="${HELPER_CONTENTS_DIR}/Resources"
+SPARKLE_FRAMEWORK_SRC="${ROOT}/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+SPARKLE_FRAMEWORK_DST="${FRAMEWORKS_DIR}/Sparkle.framework"
 
 BIN_NAME="TapgoAICoding"
 BIN_SRC="${ROOT}/.build/release/${BIN_NAME}"
@@ -99,10 +102,20 @@ fi
 
 echo "==> Assembling .app bundle at ${APP_BUNDLE_DIR}"
 mavis-trash "$APP_BUNDLE_DIR" 2>/dev/null || rm -rf "$APP_BUNDLE_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$HELPER_MACOS_DIR" "$HELPER_RESOURCES_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$FRAMEWORKS_DIR" "$HELPER_MACOS_DIR" "$HELPER_RESOURCES_DIR"
 
 cp "$BIN_SRC" "$MACOS_DIR/${BIN_NAME}"
 chmod +x "$MACOS_DIR/${BIN_NAME}"
+
+if [[ ! -d "$SPARKLE_FRAMEWORK_SRC" ]]; then
+  echo "ERROR: Sparkle.framework not found at $SPARKLE_FRAMEWORK_SRC" >&2
+  exit 8
+fi
+ditto "$SPARKLE_FRAMEWORK_SRC" "$SPARKLE_FRAMEWORK_DST"
+if ! otool -l "$MACOS_DIR/${BIN_NAME}" | grep -Fq 'path @executable_path/../Frameworks'; then
+  install_name_tool -add_rpath '@executable_path/../Frameworks' "$MACOS_DIR/${BIN_NAME}"
+fi
+echo "  embedded updater: Sparkle.framework"
 
 cp "$MCP_SRC" "$HELPER_MACOS_DIR/${MCP_NAME}"
 chmod +x "$HELPER_MACOS_DIR/${MCP_NAME}"
@@ -138,6 +151,19 @@ if command -v codesign >/dev/null 2>&1; then
     echo "==> Developer ID codesigning"
     TIMESTAMP_ARGS=(--timestamp)
   fi
+  SPARKLE_VERSION_DIR="$SPARKLE_FRAMEWORK_DST/Versions/B"
+  for COMPONENT in \
+    "$SPARKLE_VERSION_DIR/Autoupdate" \
+    "$SPARKLE_VERSION_DIR/XPCServices/Downloader.xpc" \
+    "$SPARKLE_VERSION_DIR/XPCServices/Installer.xpc" \
+    "$SPARKLE_VERSION_DIR/Updater.app" \
+    "$SPARKLE_FRAMEWORK_DST"; do
+    codesign --force --sign "$SIGNING_IDENTITY" \
+      "${TIMESTAMP_ARGS[@]}" \
+      --options runtime \
+      --preserve-metadata=identifier,entitlements,requirements \
+      "$COMPONENT" 2>&1 | sed 's/^/    /'
+  done
   codesign --force --sign "$SIGNING_IDENTITY" \
     "${TIMESTAMP_ARGS[@]}" \
     --entitlements "$ENTITLEMENTS_SRC" \
@@ -148,6 +174,7 @@ if command -v codesign >/dev/null 2>&1; then
     --entitlements "$ENTITLEMENTS_SRC" \
     --options runtime \
     "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+  codesign --verify --deep --strict "$APP_BUNDLE_DIR"
 else
   echo "WARN: codesign not found; Gatekeeper will require right-click → Open"
 fi

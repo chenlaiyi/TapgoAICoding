@@ -4,7 +4,7 @@
 
 Tapgo AICoding is a native macOS SwiftUI coding-agent client. It uses the [OpenAI Codex Harness](https://github.com/openai/codex) `app-server` as its runtime and manages conversations, tools, approvals, file changes, and command execution over persistent JSON-RPC. The desktop workspace is designed for multiple projects, long-running tasks, and development across several Macs.
 
-Current version: **v0.5.55** · macOS 14+
+Current version: **v0.5.56** · macOS 14+
 
 ## Current capabilities
 
@@ -224,13 +224,30 @@ Application logs     ~/Library/Logs/Tapgo AICoding/harness.log
 
 ## Tests and builds
 
+### Automatic updates
+
+Starting with v0.5.56, “Check for Updates” is available at the top of the
+sidebar and in the application menu. Sparkle checks GitHub Releases once at
+launch and then hourly. An archive must pass both EdDSA verification and Apple
+code-signature validation before Sparkle atomically replaces the current app.
+
+Generate the release archive and `appcast.xml` with:
+
+```bash
+./scripts/create-github-release-artifacts.sh
+```
+
+The Sparkle private key stays in the macOS login Keychain; the repository only
+contains the public key, signed appcast, and SHA-256 checksums. Versions up to
+v0.5.55 require one manual installation of v0.5.56 to bootstrap the updater.
+
 Canonical test command:
 
 ```bash
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
 ```
 
-The latest v0.5.55 verification is **2522 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, and computer-use tests still run.
+The latest v0.5.56 verification is **2544 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, computer-use, and automatic-update distribution tests still run.
 
 Release products:
 

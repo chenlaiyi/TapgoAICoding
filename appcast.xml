@@ -1,0 +1,23 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Tapgo AICoding</title>
+        <item>
+            <title>0.5.56</title>
+            <pubDate>Mon, 31 Aug 2026 15:57:49 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.56</link>
+            <sparkle:version>0.5.56</sparkle:version>
+            <sparkle:shortVersionString>0.5.56</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.56
+
+- 左上角新增“检查更新”按钮，并在应用菜单提供同名入口。
+- 接入 Sparkle 2.9.6；启动后立即后台检查，之后每小时检查 GitHub Releases。
+- 支持后台下载、EdDSA 签名校验和原子替换安装，自动更新偏好由 Sparkle 统一管理。
+- 更新主 App 时继续携带同版本、稳定签名身份的 Tapgo Computer Use Helper。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.56/Tapgo-AICoding-0.5.56.zip" length="8036688" type="application/octet-stream" sparkle:edSignature="05vVaJlGfJnMl7CczmCgTq2rGdjamzWxdOcBUub5Ae6QSBtllm4tfc/JPtvZ6t87Vo5ktkEu7bFqLnl7v5ZeDA=="/>
+        </item>
+    </channel>
+</rss>
