@@ -176,12 +176,12 @@ struct MessageBubble: View {
                     Spacer(minLength: 32)
                     if text != "(图片)" || userImagePaths.isEmpty {
                         Text(text)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .foregroundStyle(DSHTheme.label)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 7)
                             .background(
-                                DSHTheme.brand,
-                                in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                                DSHTheme.surfaceRaised,
+                                in: RoundedRectangle(cornerRadius: 8)
                             )
                             .textSelection(.enabled)
                             .contextMenu {

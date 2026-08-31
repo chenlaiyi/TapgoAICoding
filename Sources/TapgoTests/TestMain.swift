@@ -112,6 +112,7 @@ let allSections: [String] = [
     "ComputerUseMCP: config.toml 段写入",
     "AppUpdate: GitHub Releases distribution",
     "AdminLogin: selected split design",
+    "Desktop: ZCode interaction design",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -213,7 +214,7 @@ func runIfInScope(_ runner: TestRunner, _ name: String, _ body: @escaping @MainA
     let environment = ProcessInfo.processInfo.environment
     if environment["TAPGO_SKIP_REMOTE_TESTS"] == "1"
         || environment["TAPGO_SKIP_REMOTE_INTEGRATION"] == "1" {
-        if name.hasPrefix("protocol-") || name.hasPrefix("RemoteSSH:") || name.hasPrefix("RemoteCodexHomeSync:") || name.hasPrefix("RemoteDirectoryLister:") || name.hasPrefix("e2e:") {
+        if name.hasPrefix("protocol-") || name.hasPrefix("RemoteSSH:") || name.hasPrefix("RemoteCodexHomeSync:") || name.hasPrefix("RemoteDirectoryLister:") || name.hasPrefix("e2e:") || name.hasPrefix("local: JSON-RPC") {
             print("[skip-remote] \(name)")
             return
         }
@@ -775,6 +776,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "AdminLogin: selected split design") {
             runAdminLoginDesign(runner)
+        }
+        await runIfInScope(runner, "Desktop: ZCode interaction design") {
+            runDesktopZCodeDesign(runner)
         }
     }
 }

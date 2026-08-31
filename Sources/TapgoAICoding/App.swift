@@ -77,10 +77,11 @@ struct TapgoAICodingApp: App {
             .environmentObject(authStore)
             .preferredColorScheme(resolvedScheme)
             .appFontScale(resolvedFontScale)
-            .frame(minWidth: 1100, minHeight: 720)
+            .frame(minWidth: 920, minHeight: 640)
         }
         .windowResizability(.contentMinSize)
-        .defaultSize(width: 1280, height: 860)
+        .defaultSize(width: 1180, height: 780)
+        .windowToolbarStyle(.unifiedCompact)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button(L10n.newThreadCommand) { store.newThread() }

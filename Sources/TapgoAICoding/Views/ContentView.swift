@@ -31,7 +31,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .dynamicTypeSize(.xLarge)
-        .frame(minWidth: 1100, minHeight: 720)
+        .frame(minWidth: 920, minHeight: 640)
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenSettings)) { note in
             if let raw = note.object as? String,
                let requested = SettingsView.Tab(rawValue: raw) {
@@ -91,35 +91,6 @@ struct ContentView: View {
                 split(showDetail: false, showAdaptiveEnvironment: showAdaptiveEnvironment)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showCommandPalette = true
-                } label: {
-                    Image(systemName: "command")
-                }
-                .help("命令面板 (⌘⇧P)")
-                .accessibilityLabel("命令面板")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showShortcuts = true
-                } label: {
-                    Image(systemName: "questionmark.circle")
-                }
-                .help("快捷键")
-                .accessibilityLabel("快捷键")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showTrajectory.toggle()
-                } label: {
-                    Image(systemName: showTrajectory ? "sidebar.trailing" : "sidebar.right")
-                }
-                .help(showTrajectory ? "隐藏轨迹栏" : "显示轨迹栏")
-                .accessibilityLabel(showTrajectory ? "隐藏轨迹栏" : "显示轨迹栏")
-            }
-        }
     }
 
     @ViewBuilder
@@ -138,7 +109,7 @@ struct ContentView: View {
                 trajectoryDetail
             }
             .navigationSplitViewStyle(.balanced)
-            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
+            .navigationSplitViewColumnWidth(min: 205, ideal: 232, max: 300)
             .navigationSplitViewColumnWidth(min: 380, ideal: 560)
             .navigationSplitViewColumnWidth(min: 240, ideal: 300, max: 420)
         } else {
@@ -153,7 +124,7 @@ struct ContentView: View {
                 adaptiveChat(showEnvironmentCard: showAdaptiveEnvironment)
             }
             .navigationSplitViewStyle(.balanced)
-            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
+            .navigationSplitViewColumnWidth(min: 205, ideal: 232, max: 300)
         }
     }
 
@@ -240,7 +211,7 @@ struct ContentView: View {
 }
 
 /// Small "keyboard shortcuts" help sheet.
-private struct ShortcutsView: View {
+struct ShortcutsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 

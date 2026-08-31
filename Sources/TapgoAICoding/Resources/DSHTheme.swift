@@ -25,6 +25,12 @@ enum DSHTheme {
     // MARK: Backgrounds (base + surfacing layers)
     /// Window / content base. bluish-00 (#fff) light, bluish-950 (#151517) dark.
     static let bg = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x151517)
+    /// ZCode-style desktop navigation chrome. The sidebar is deliberately
+    /// lighter than the conversation canvas in dark mode, so the hierarchy
+    /// stays visible without relying on separator lines.
+    static let sidebarBg = Color.dynamic(lightHex: 0xF3F3F4, darkHex: 0x303033)
+    static let titlebarBg = Color.dynamic(lightHex: 0xFAFAFB, darkHex: 0x1A1A1C)
+    static let sidebarSelection = Color.dynamic(lightHex: 0xE5E5E7, darkHex: 0x444447)
     /// Layer-1 card. bluish-00 light, bluish-875 (#232324) dark.
     static let bgLayer1 = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x232324)
     /// Layer-2 card / dock. bluish-00 light, bluish-850 (#2C2C2E) dark.

@@ -141,6 +141,7 @@ struct ChatView: View {
     @State private var searchQuery = ""
     @State private var jumpToTurnId: String? = nil
     @State private var showEvolutionLog = false
+    @State private var showShortcuts = false
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
@@ -174,7 +175,7 @@ struct ChatView: View {
             // Keep one structural ComposerView for the entire lifetime of
             // ChatView. Moving between the empty and active layouts must not
             // recreate NSTextView while the user is entering the next prompt.
-            ComposerView(contentWidth: wideContent ? 980 : 720)
+            ComposerView(contentWidth: wideContent ? 920 : 700)
                 .padding(.horizontal, hasConversation ? 0 : 16)
 
             if !hasConversation {
@@ -187,8 +188,7 @@ struct ChatView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DSHTheme.bg)
-        .navigationTitle(currentTitle)
-        .navigationSubtitle(currentSubtitle)
+        .navigationTitle("")
         .alert("重命名会话", isPresented: Binding(
             get: { renamingCurrentId != nil },
             set: { if !$0 { renamingCurrentId = nil } }
@@ -219,6 +219,9 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showEvolutionLog) {
             EvolutionLogView()
+        }
+        .sheet(isPresented: $showShortcuts) {
+            ShortcutsView()
         }
     }
 
@@ -546,144 +549,108 @@ struct ChatView: View {
     }
 
     @ViewBuilder
-    private func threadHeader(thread: TapgoCore.Thread) -> some View {        // Codex-style compact top bar: project + (optional) cwd
-        // path on the left, status + interrupt on the right. The
-        // thread title moves into the chat body as the first line
-        // so it doesn't compete for header real estate.
-        HStack(alignment: .center, spacing: 8) {
-            HStack(spacing: 6) {
-                if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: project.isRemote ? "globe" : "folder.fill")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(project.isRemote ? .blue : .accentColor)
-                        Text(project.displayName)
-                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier)).bold()
-                    }
-                }
-            }
-            Spacer()
-            if thread.usageTotal > 0 || thread.durationTotalText != nil {
-                HStack(spacing: 4) {
-                    if thread.usageTotal > 0 {
-                        Text(TokenUsage.summary(of: thread.usageTotal))
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
-                    }
-                    if let d = thread.durationTotalText {
-                        Text(d)
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-            }
-            statusPill(thread: thread)
+    private func threadHeader(thread: TapgoCore.Thread) -> some View {
+        HStack(alignment: .center, spacing: 7) {
             Button {
                 renamingCurrentId = thread.id
                 renameDraft = thread.title
             } label: {
-                Image(systemName: "pencil")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Text(thread.title)
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier).weight(.semibold))
+                    .lineLimit(1)
             }
-            .buttonStyle(.borderless)
-            .help("重命名会话")
-            .accessibilityLabel("重命名会话")
-            if let proj = thread.projectId.flatMap({ workspace.project(byId: $0) }), !proj.isRemote {
-                Button {
-                    openInTerminal(proj.worktreeRoot.path)
-                } label: {
-                    Image(systemName: "terminal").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+            .buttonStyle(.plain)
+            .help("重命名任务")
+
+            if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }) {
+                HStack(spacing: 4) {
+                    Image(systemName: project.isRemote ? "globe" : "folder")
+                    Text(project.displayName).lineLimit(1)
                 }
-                .buttonStyle(.borderless)
-                .help("在终端中打开项目")
-                .accessibilityLabel("在终端中打开项目")
-                Button {
-                    NSWorkspace.shared.open(proj.worktreeRoot)
-                } label: {
-                    Image(systemName: "folder").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                }
-                .buttonStyle(.borderless)
-                .help("在访达中显示项目")
-                .accessibilityLabel("在访达中显示项目")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6))
             }
+
             Menu {
-                Button {
-                    NSWorkspace.shared.open(TapgoConfig.logFileURL)
-                } label: {
-                    Label("打开运行日志", systemImage: "doc.text.magnifyingglass")
+                Button { copyToPasteboard(thread.title) } label: {
+                    Label("复制标题", systemImage: "doc.on.doc")
                 }
-                Button {
-                    wideContent.toggle()
-                } label: {
-                    if wideContent {
-                        Label("内容宽度: 宽 (标准)", systemImage: "checkmark")
-                    } else {
-                        Label("内容宽度: 标准 (宽)", systemImage: "arrow.up.left.and.arrow.down.right.square")
-                    }
+                Button { copyConversation(thread) } label: {
+                    Label("复制为 Markdown", systemImage: "doc.on.doc")
+                }
+                Button { copyConversationAsText(thread) } label: {
+                    Label("复制为纯文本", systemImage: "text.alignleft")
+                }
+                Divider()
+                Button { wideContent.toggle() } label: {
+                    Label(wideContent ? "使用标准内容宽度" : "使用宽内容区", systemImage: "arrow.left.and.right")
                 }
                 Menu {
-                    ForEach(AppFontScale.allCases) { s in
-                        Button { fontScale = s.rawValue } label: {
-                            if s.rawValue == fontScale {
-                                Label(s.displayName, systemImage: "checkmark")
+                    ForEach(AppFontScale.allCases) { size in
+                        Button { fontScale = size.rawValue } label: {
+                            if size.rawValue == fontScale {
+                                Label(size.displayName, systemImage: "checkmark")
                             } else {
-                                Text(s.displayName)
+                                Text(size.displayName)
                             }
                         }
                     }
                 } label: {
                     Label("字体大小", systemImage: "textformat.size")
                 }
-                if !thread.turns.isEmpty {
-                    Divider()
-                    Button {
-                        copyToPasteboard(thread.title)
-                    } label: {
-                        Label("复制标题", systemImage: "doc.on.doc")
-                    }
-                    Button {
-                        copyConversation(thread)
-                    } label: {
-                        Label("复制为 Markdown", systemImage: "doc.on.doc")
-                    }
-                    Button {
-                        copyConversationAsText(thread)
-                    } label: {
-                        Label("复制为纯文本", systemImage: "text.alignleft")
-                    }
-                    Button {
-                        saveConversation(thread)
-                    } label: {
-                        Label("导出为 .md 文件…", systemImage: "square.and.arrow.down")
-                    }
-                    Button {
-                        saveConversationAsText(thread)
-                    } label: {
-                        Label("导出为 .txt 文件…", systemImage: "square.and.arrow.down")
-                    }
-                }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Image(systemName: "ellipsis")
+                    .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)
-            .help("更多操作")
-            .accessibilityLabel("更多操作")
-            if let last = thread.turns.last, last.status == .running {
-                Button {
-                    store.cancelActiveTurn()
-                } label: {
-                    Label(L10n.interrupt, systemImage: "stop.circle.fill")
-                        .labelStyle(.iconOnly)
+            .accessibilityLabel("任务更多操作")
+
+            Spacer(minLength: 8)
+
+            if thread.usageTotal > 0 {
+                Text(TokenUsage.summary(of: thread.usageTotal))
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+            }
+            if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }), !project.isRemote {
+                ControlGroup {
+                    Button { NSWorkspace.shared.open(project.worktreeRoot) } label: {
+                        Image(systemName: "folder")
+                    }
+                    Button { openInTerminal(project.worktreeRoot.path) } label: {
+                        Image(systemName: "terminal")
+                    }
+                }
+                .controlGroupStyle(.navigation)
+                .help("在访达或终端中打开项目")
+            }
+            Button { showShortcuts = true } label: {
+                Image(systemName: "questionmark.circle")
+            }
+            .buttonStyle(.borderless)
+            .help("快捷键")
+            Button {
+                NotificationCenter.default.post(name: .tapgoToggleTrajectory, object: nil)
+            } label: {
+                Image(systemName: "sidebar.trailing")
+            }
+            .buttonStyle(.borderless)
+            .help("切换轨迹栏")
+            if thread.turns.last?.status == .running {
+                Button { store.cancelActiveTurn() } label: {
+                    Image(systemName: "stop.circle.fill")
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.red)
                 .help(L10n.interrupt)
-                .accessibilityLabel("中断当前任务")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(DSHTheme.titlebarBg)
     }
 
     // MARK: - Status pill (running / failed / idle)
@@ -1368,7 +1335,7 @@ struct ComposerView: View {
                             .accessibilityLabel("自进化会话，工作目录 \(thread.cwd ?? repoName)")
                         }
                         .buttonStyle(.plain)
-                    } else if let p = workspace.state.activeProject {
+                    } else if activeThread == nil, let p = workspace.state.activeProject {
                         Menu {
                             Button {
                                 NotificationCenter.default.post(name: .tapgoRequestOpenLocalFolder, object: nil)
@@ -1446,7 +1413,7 @@ struct ComposerView: View {
                         }
                         .menuStyle(.borderlessButton)
                         .menuIndicator(.hidden)
-                    } else {
+                    } else if activeThread == nil {
                         Menu {
                             Button {
                                 NotificationCenter.default.post(name: .tapgoRequestOpenLocalFolder, object: nil)
