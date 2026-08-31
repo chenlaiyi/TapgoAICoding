@@ -69,6 +69,7 @@ ENTITLEMENTS_SRC="${ROOT}/AppBuilder/TapgoAICoding.entitlements"
 HELPER_PLIST_SRC="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
 PKGINFO_SRC="${ROOT}/AppBuilder/PkgInfo"
 ICNS_SRC="${ROOT}/AppBuilder/AppIcon.icns"
+LOGIN_BRAND_BG_SRC="${ROOT}/AppBuilder/LoginBrandBackground.png"
 
 echo "==> Building ${BIN_NAME} (release)"
 # Build only the app product — the TapgoTests target isn't part of the
@@ -130,6 +131,13 @@ if [[ -f "$ICNS_SRC" ]]; then
   cp "$ICNS_SRC" "${HELPER_RESOURCES_DIR}/AppIcon.icns"
   echo "  embedded icon: AppIcon.icns"
 fi
+
+if [[ ! -f "$LOGIN_BRAND_BG_SRC" ]]; then
+  echo "ERROR: login brand background missing at $LOGIN_BRAND_BG_SRC" >&2
+  exit 9
+fi
+cp "$LOGIN_BRAND_BG_SRC" "${RESOURCES_DIR}/LoginBrandBackground.png"
+echo "  embedded login artwork: LoginBrandBackground.png"
 
 # Prefer the stable Tapgo Developer ID so macOS TCC grants survive helper
 # binary updates. A caller may override this with TAPGO_SIGNING_IDENTITY; use

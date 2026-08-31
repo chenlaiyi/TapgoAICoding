@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.57",
+                    date: "2026-08-31",
+                    commit: "随 v0.5.57",
+                    tag: "v0.5.57",
+                    summary: "管理员登录页品牌化重设计",
+                    changes: [
+                        "管理员登录页改为用户选定的左右分栏布局，左侧品牌区、右侧高对比微信扫码区。",
+                        "登录页直接读取主 App 的真实应用图标，logo 与 App 图标保持一致。",
+                        "新增真实位图品牌背景、扫码状态与刷新入口，并完成同视口完整和聚焦视觉 QA。"
+                    ],
+                    why: "原登录页层级、对比度与留白失衡，品牌标志还可能与真实应用图标不一致。",
+                    next: "继续观察不同窗口尺寸与系统字号下的二维码可读性。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.56",
                     date: "2026-08-31",
                     commit: "随 v0.5.56",

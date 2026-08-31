@@ -11,6 +11,7 @@ struct TapgoAICodingApp: App {
     @StateObject private var authStore: AdminAuthStore
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
+    private let forceAdminLoginPreview = ProcessInfo.processInfo.environment["TAPGO_ADMIN_LOGIN_PREVIEW"] == "1"
 
     init() {
         TapgoConfig.migratePersistedSettings()
@@ -61,7 +62,7 @@ struct TapgoAICodingApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if authStore.isAuthenticated {
+                if authStore.isAuthenticated && !forceAdminLoginPreview {
                     ContentView()
                         .environmentObject(store)
                         .environmentObject(workspace)

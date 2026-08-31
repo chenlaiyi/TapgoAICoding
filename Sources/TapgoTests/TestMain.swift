@@ -111,6 +111,7 @@ let allSections: [String] = [
     "ComputerUseMCP: 协议分发",
     "ComputerUseMCP: config.toml 段写入",
     "AppUpdate: GitHub Releases distribution",
+    "AdminLogin: selected split design",
     "FakeHarnessTransport: start + send + exit",
     "FakeHarnessTransport: send after exit throws",
     "FakeHarnessTransport: simulateStartFailure is one-shot",
@@ -771,6 +772,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "AppUpdate: GitHub Releases distribution") {
             runAppUpdateDistribution(runner)
+        }
+        await runIfInScope(runner, "AdminLogin: selected split design") {
+            runAdminLoginDesign(runner)
         }
     }
 }
