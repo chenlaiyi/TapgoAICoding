@@ -30,14 +30,14 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
     t.expect(ComputerUseMCP.handle(requestData: Data(note.utf8), executor: noop) == nil,
              "mcp: initialized 通知不回包")
 
-    // tools/list: 全集 + schema 形态 + press_key 枚举
+    // tools/list: Codex Computer Use 1:1 主 API + 旧版兼容别名
     let listReq = #"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#
     if let data = ComputerUseMCP.handle(requestData: Data(listReq.utf8), executor: noop),
        let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
        let result = obj["result"] as? [String: Any],
        let tools = result["tools"] as? [[String: Any]] {
         t.expectEqual(tools.count, ComputerUseMCP.toolNames.count, "mcp: 工具数与注册表一致")
-        t.expectEqual(tools.count, 12, "mcp: 工具全集 12 个")
+        t.expectEqual(tools.count, 19, "mcp: 11 个 Codex 主工具 + 8 个旧版别名")
         let names = tools.compactMap { $0["name"] as? String }
         for required in ComputerUseMCP.toolNames {
             t.expect(names.contains(required), "mcp: 工具 \(required) 已注册")
@@ -50,18 +50,37 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
             t.expect((tool["description"] as? String)?.isEmpty == false,
                      "mcp: \(tool["name"] ?? "?") 有描述")
         }
-        // press_key 的 key 枚举复用 PhoneRemote.ControlKey 键名
+        t.expectEqual(ComputerUseMCP.codexCompatibleToolNames.count, 11,
+                      "mcp: Codex Computer Use API 11 个工具")
+        for required in ["click", "drag", "get_app_state", "list_apps", "paste",
+                         "perform_secondary_action", "press_key", "scroll", "select_text",
+                         "set_value", "type_text"] {
+            t.expect(ComputerUseMCP.codexCompatibleToolNames.contains(required),
+                     "mcp: Codex 主工具 \(required) 已注册")
+        }
+
+        // press_key 与 Codex 一样接受 xdotool 风格字符串，不再受旧枚举限制。
         let press = tools.first { ($0["name"] as? String) == "press_key" }
         let props = ((press?["inputSchema"] as? [String: Any])?["properties"] as? [String: Any])
-        let keyEnum = ((props?["key"] as? [String: Any])?["enum"] as? [String]) ?? []
-        t.expect(keyEnum.contains("return"), "mcp: press_key 枚举含 return")
-        t.expect(keyEnum.contains("volumeUp"), "mcp: press_key 枚举含媒体键")
-        t.expectEqual(keyEnum.count, PhoneRemote.ControlKey.allCases.count, "mcp: press_key 枚举全集")
+        t.expectEqual((props?["key"] as? [String: Any])?["type"] as? String,
+                      "string", "mcp: press_key 接受 xdotool 字符串")
+        t.expect((props?["key"] as? [String: Any])?["enum"] == nil,
+                 "mcp: press_key 不限制为旧枚举")
+        let pressRequired = ((press?["inputSchema"] as? [String: Any])?["required"] as? [String]) ?? []
+        t.expect(Set(pressRequired) == Set(["app", "key"]),
+                 "mcp: Codex press_key 强制绑定目标 app")
+
+        let typeText = tools.first { ($0["name"] as? String) == "type_text" }
+        let typeRequired = ((typeText?["inputSchema"] as? [String: Any])?["required"] as? [String]) ?? []
+        t.expect(Set(typeRequired) == Set(["app", "text"]),
+                 "mcp: Codex type_text 强制绑定目标 app")
 
         let state = tools.first { ($0["name"] as? String) == "get_app_state" }
         let stateProps = ((state?["inputSchema"] as? [String: Any])?["properties"] as? [String: Any])
         t.expectEqual((stateProps?["include_screenshot"] as? [String: Any])?["type"] as? String,
                       "boolean", "mcp: get_app_state 可同时请求应用窗口截图")
+        t.expectEqual((stateProps?["disableDiff"] as? [String: Any])?["type"] as? String,
+                      "boolean", "mcp: get_app_state 支持 Codex disableDiff")
 
         let screenshot = tools.first { ($0["name"] as? String) == "screenshot" }
         let screenshotProps = ((screenshot?["inputSchema"] as? [String: Any])?["properties"] as? [String: Any])
@@ -72,6 +91,17 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
         let setValueRequired = ((setValue?["inputSchema"] as? [String: Any])?["required"] as? [String]) ?? []
         t.expect(Set(setValueRequired) == Set(["app", "element_index", "text"]),
                  "mcp: 语义赋值要求 app/index/text")
+
+        let codexSetValue = tools.first { ($0["name"] as? String) == "set_value" }
+        let codexRequired = ((codexSetValue?["inputSchema"] as? [String: Any])?["required"] as? [String]) ?? []
+        t.expect(Set(codexRequired) == Set(["app", "element_index", "value"]),
+                 "mcp: Codex set_value 参数完全对齐")
+
+        let click = tools.first { ($0["name"] as? String) == "click" }
+        let clickProps = ((click?["inputSchema"] as? [String: Any])?["properties"] as? [String: Any]) ?? [:]
+        for key in ["app", "element_index", "x", "y", "mouse_button", "click_count"] {
+            t.expect(clickProps[key] != nil, "mcp: click 含参数 \(key)")
+        }
     } else {
         t.expect(false, "mcp: tools/list 可回包且可解析")
     }
@@ -177,10 +207,14 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
     t.expect(!ComputerUseMCP.boolArg(["include_screenshot": 1], "include_screenshot"),
              "bool: 数字不算 Bool")
     t.expect(!ComputerUseMCP.boolArg([:], "include_screenshot"), "bool: 缺省 false")
-    t.expect(ComputerUseMCP.agentInstructions.contains("get_app_state(app, include_screenshot=true)"),
-             "workflow: 强制先观察目标应用")
+    t.expect(ComputerUseMCP.agentInstructions.contains("list_apps"),
+             "workflow: 使用 Codex 同名应用发现")
+    t.expect(ComputerUseMCP.agentInstructions.contains("disableDiff=true"),
+             "workflow: 说明状态差量与完整树")
     t.expect(ComputerUseMCP.agentInstructions.contains("连续两次"),
              "workflow: 禁止反复盲点坐标")
+    t.expect(ComputerUseMCP.agentInstructions.contains("操作发生前始终确认"),
+             "workflow: 注入 Computer Use 风险确认策略")
     t.expectEqual(ComputerUseMCP.elementIndex(["element_index": 42]), 42,
                   "element: 非负整数合法")
     t.expect(ComputerUseMCP.elementIndex(["element_index": -1]) == nil,
@@ -196,6 +230,29 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
     t.expectEqual(ComputerUseMCP.modifierFlags(["modifiers": ["command", "bad", "shift"]]),
                   ["command", "shift"], "modifiers: 白名单过滤")
     t.expect(ComputerUseMCP.modifierFlags([:]).isEmpty, "modifiers: 缺省为空")
+    t.expectEqual(ComputerUseMCP.pointArg(["x": 144.5], "x"), 144.5,
+                  "codex point: 窗口点坐标合法")
+    t.expect(ComputerUseMCP.pointArg(["x": -1], "x") == nil,
+             "codex point: 负坐标拒绝")
+    t.expectEqual(ComputerUseMCP.clickCount(["click_count": 3]), 3,
+                  "codex click: 三击合法")
+    t.expect(ComputerUseMCP.clickCount(["click_count": 4]) == nil,
+             "codex click: 超过三击拒绝")
+    t.expectEqual(ComputerUseMCP.pagesArg(["pages": 10]), 10,
+                  "codex scroll: 十页上限合法")
+    t.expect(ComputerUseMCP.pagesArg(["pages": 0]) == nil,
+             "codex scroll: 零页拒绝")
+    t.expectEqual(ComputerUseMCP.stringArg(["value": ""], "value", allowEmpty: true), "",
+                  "codex set_value: 允许清空")
+
+    let previous = "App: Demo (com.example.demo)\n0 AXApplication\n1 AXButton title=\"旧\"\n2 AXTextField"
+    let current = "App: Demo (com.example.demo)\n0 AXApplication\n1 AXButton title=\"新\"\n3 AXCheckBox"
+    let diff = ComputerUseMCP.appStateDiff(previous: previous, current: current)
+    t.expect(diff.contains("~ 1 AXButton title=\"新\""), "codex diff: 输出当前变化值")
+    t.expect(diff.contains("- 2 AXTextField"), "codex diff: 输出移除元素")
+    t.expect(diff.contains("+ 3 AXCheckBox"), "codex diff: 输出新增元素")
+    t.expect(ComputerUseMCP.appStateDiff(previous: current, current: current).contains("未变化"),
+             "codex diff: 相同状态压缩")
 }
 
 // MARK: - config.toml 幂等写入

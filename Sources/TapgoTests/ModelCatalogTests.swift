@@ -68,8 +68,8 @@ func runModelCatalog(_ t: TestRunner) {
              "catalog: GLM base_instructions self-describes GLM-5.3-Flash")
     t.expect(catalog.contains("input_modalities"),
              "catalog: entries declare input modalities")
-    t.expect(catalog.contains("include_screenshot=true"),
-             "catalog: injects verified computer-use workflow")
+    t.expect(catalog.contains("list_apps") && catalog.contains("disableDiff=true"),
+             "catalog: injects Codex-compatible computer-use workflow")
 
     // 自定义字段来自用户输入：引号、反斜杠和换行必须安全编码，且 Key 绝不
     // 进入公开模型目录。

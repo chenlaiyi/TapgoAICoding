@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.55 — Tapgo Computer Use 对齐 Codex Computer Use
+**Date**: 2026-08-31
+**Tag**: v0.5.55
+**Test status**: 2522 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- 主 API 对齐 Codex Computer Use 的 11 个工具及参数语义：`click`、`drag`、`get_app_state`、`list_apps`、`paste`、`perform_secondary_action`、`press_key`、`scroll`、`select_text`、`set_value`、`type_text`；旧 8 个 Tapgo 工具继续作为兼容别名。
+- 补齐未运行应用自动启动、AX 树与窗口截图联合回读、默认内存态差量/`disableDiff` 完整状态、左/右/中键与连击、窗口拖拽、按元素或坐标横纵滚动、xdotool 风格按键。
+- 补齐 text/Markdown/HTML 粘贴并完整恢复原剪贴板、带 prefix/suffix 消歧的文本选择/光标定位，以及只执行元素明确暴露 action 的次级 AX 操作；AX 树会列出可用 actions，安全输入框继续脱敏。
+- 把 Codex Computer Use 的即时确认边界注入每个新会话，覆盖删除、账号权限、CAPTCHA、软件安装、对外沟通、支付、系统设置、敏感数据传输等 UI 风险动作；第三方内容不能代替用户授权。
+**Why**: v0.5.54 的 Tapgo 工具数量接近 Codex，但缺少拖拽、剪贴板恢复、文本精确选择、次级 AX 动作、三键点击、元素滚动和状态差量，名称与参数也不兼容，无法称为 1:1 能力。
+**Next**: 在三台 Mac 持续回归不同 App 的 AX 完整度；遇到应用不暴露语义元素时继续使用同一窗口截图与坐标闭环，不绕过 macOS TCC。
+
 ## v0.5.54 — ZCode 模型配置整窗复刻与运行链路统一
 **Date**: 2026-08-31
 **Tag**: v0.5.54

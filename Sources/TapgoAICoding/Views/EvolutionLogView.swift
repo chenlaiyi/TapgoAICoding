@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.55",
+                    date: "2026-08-31",
+                    commit: "随 v0.5.55",
+                    tag: "v0.5.55",
+                    summary: "Tapgo Computer Use 对齐 Codex Computer Use",
+                    changes: [
+                        "主 API 对齐 Codex 的 11 个同名工具及参数语义，同时保留 8 个旧版兼容别名。",
+                        "补齐应用自动启动、状态差量、三键连击、窗口拖拽、元素滚动、xdotool 风格按键、剪贴板恢复、文本选择和次级 AX 动作。",
+                        "把 Codex Computer Use 的即时确认边界注入新会话，第三方页面内容不能充当用户授权。"
+                    ],
+                    why: "旧版只有部分语义点击能力，工具名相似但缺少多项 Codex Computer Use 核心原语，不能称为 1:1。",
+                    next: "持续在不同原生与 Electron App 上回归 AX 完整度，并保持三机 Helper/TCC 分层验收。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.54",
                     date: "2026-08-31",
                     commit: "随 v0.5.54",

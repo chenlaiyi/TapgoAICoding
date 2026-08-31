@@ -62,6 +62,14 @@ let invalidCoordHint = "参数错误: x/y 必须是 0...1 的归一化坐标（�
 /// 工具执行器: MCP 协议层 → ComputerUse 原语。
 let executor: ComputerUseMCP.Executor = { tool, args in
     switch tool {
+    case "list_apps":
+        let descriptors = ComputerUse.applicationDescriptors()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let text = (try? encoder.encode(descriptors))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return ComputerUseMCP.ToolOutcome(isError: false, text: text)
+
     case "list_applications":
         return ComputerUseMCP.ToolOutcome(
             isError: false,
@@ -79,16 +87,20 @@ let executor: ComputerUseMCP.Executor = { tool, args in
                 isError: true,
                 text: "无法读取 \(app) 的辅助功能界面树。请先调用 list_applications，并确认辅助功能权限。")
         }
-        if ComputerUseMCP.boolArg(args, "include_screenshot") {
+        let explicitlyRequestedLegacyScreenshot = args["include_screenshot"] != nil
+        let includeScreenshot = explicitlyRequestedLegacyScreenshot
+            ? ComputerUseMCP.boolArg(args, "include_screenshot")
+            : true
+        if includeScreenshot {
             guard ComputerUse.screenCaptureAllowed else {
                 return ComputerUseMCP.ToolOutcome(
-                    isError: true,
+                    isError: false,
                     text: state + "\n\n" + screenPermissionHint
                 )
             }
             guard let capture = ComputerUse.applicationScreenshotJPEG(appName: app) else {
                 return ComputerUseMCP.ToolOutcome(
-                    isError: true,
+                    isError: false,
                     text: state + "\n\n应用窗口截图失败；目标窗口可能未显示在主桌面。"
                 )
             }
@@ -100,6 +112,71 @@ let executor: ComputerUseMCP.Executor = { tool, args in
             )
         }
         return ComputerUseMCP.ToolOutcome(isError: false, text: state)
+
+    case "click":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args) else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: click 需要非空 app。")
+        }
+        let index = ComputerUseMCP.elementIndex(args)
+        let x = ComputerUseMCP.pointArg(args, "x")
+        let y = ComputerUseMCP.pointArg(args, "y")
+        if args["element_index"] != nil, index == nil {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: element_index 必须是 0...999 的整数。")
+        }
+        guard index != nil || (x != nil && y != nil) else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: click 需要 element_index，或同时提供窗口内 x/y 点坐标。"
+            )
+        }
+        if (x == nil) != (y == nil) {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: x/y 必须成对提供。")
+        }
+        let parsedButton = ComputerUseMCP.stringArg(args, "mouse_button")
+        let button = parsedButton ?? "left"
+        if args["mouse_button"] != nil,
+           (parsedButton == nil || !["left", "right", "middle", "l", "r", "m"].contains(button)) {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: mouse_button 不受支持。")
+        }
+        if args["click_count"] != nil, ComputerUseMCP.clickCount(args) == nil {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: click_count 必须是 1...3 的整数。")
+        }
+        let count = ComputerUseMCP.clickCount(args) ?? 1
+        let result = ComputerUse.click(
+            appName: app,
+            elementIndex: index,
+            x: x,
+            y: y,
+            mouseButton: button,
+            clickCount: count
+        )
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
+    case "drag":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let fromX = ComputerUseMCP.pointArg(args, "from_x"),
+              let fromY = ComputerUseMCP.pointArg(args, "from_y"),
+              let toX = ComputerUseMCP.pointArg(args, "to_x"),
+              let toY = ComputerUseMCP.pointArg(args, "to_y") else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: drag 需要 app 与非负的 from_x/from_y/to_x/to_y。"
+            )
+        }
+        let result = ComputerUse.drag(
+            appName: app,
+            fromX: fromX,
+            fromY: fromY,
+            toX: toX,
+            toY: toY
+        )
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
 
     case "click_element":
         guard ComputerUse.accessibilityAllowed else {
@@ -127,6 +204,83 @@ let executor: ComputerUseMCP.Executor = { tool, args in
             )
         }
         let result = ComputerUse.setElementValue(appName: app, index: index, value: text)
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
+    case "set_value":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let index = ComputerUseMCP.elementIndex(args),
+              let value = ComputerUseMCP.stringArg(args, "value", allowEmpty: true) else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: set_value 需要 app、element_index 与字符串 value。"
+            )
+        }
+        let result = ComputerUse.setElementValue(appName: app, index: index, value: value)
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
+    case "perform_secondary_action":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let index = ComputerUseMCP.elementIndex(args),
+              let action = ComputerUseMCP.stringArg(args, "action") else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: perform_secondary_action 需要 app、element_index 与 action。"
+            )
+        }
+        let result = ComputerUse.performSecondaryAction(
+            appName: app,
+            index: index,
+            action: action
+        )
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
+    case "select_text":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let index = ComputerUseMCP.elementIndex(args),
+              let text = ComputerUseMCP.stringArg(args, "text") else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: select_text 需要 app、element_index 与非空 text。"
+            )
+        }
+        let parsedSelectionType = ComputerUseMCP.stringArg(args, "selection_type")
+        let selectionType = parsedSelectionType ?? "text"
+        guard args["selection_type"] == nil || (parsedSelectionType != nil
+                && ["text", "cursor_before", "cursor_after"].contains(selectionType)) else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: selection_type 不受支持。")
+        }
+        let result = ComputerUse.selectText(
+            appName: app,
+            index: index,
+            text: text,
+            prefix: ComputerUseMCP.stringArg(args, "prefix", allowEmpty: true),
+            suffix: ComputerUseMCP.stringArg(args, "suffix", allowEmpty: true),
+            selectionType: selectionType
+        )
+        return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
+
+    case "paste":
+        guard ComputerUse.accessibilityAllowed else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
+        }
+        guard let app = ComputerUseMCP.appNameArg(args),
+              let text = ComputerUseMCP.stringArg(args, "text", allowEmpty: true),
+              let format = ComputerUseMCP.stringArg(args, "format") else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: paste 需要 app、字符串 text 与 format(text/md/html)。"
+            )
+        }
+        let result = ComputerUse.paste(appName: app, text: text, format: format)
         return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
 
     case "screenshot":
@@ -185,9 +339,9 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         guard let text = ComputerUseMCP.textArg(args) else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: 需要非空 text 字符串。")
         }
-        if let app = ComputerUseMCP.appNameArg(args),
-           !ComputerUse.activateApplication(named: app) {
-            return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
+        if let app = ComputerUseMCP.appNameArg(args) {
+            let result = ComputerUse.typeText(text, appName: app)
+            return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
         }
         ComputerUse.typeText(text)
         return ComputerUseMCP.ToolOutcome(isError: false,
@@ -197,30 +351,71 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         guard ComputerUse.accessibilityAllowed else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
         }
-        guard let key = ComputerUseMCP.keyArg(args) else {
-            let names = PhoneRemote.ControlKey.allCases.map(\.rawValue).sorted().joined(separator: ", ")
-            return ComputerUseMCP.ToolOutcome(
-                isError: true,
-                text: "参数错误: key 必须是命名按键之一 (\(names))。")
+        guard let key = ComputerUseMCP.stringArg(args, "key") else {
+            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: key 必须是非空字符串。")
         }
         let modifiers = ComputerUseMCP.modifierFlags(args)
-        if let app = ComputerUseMCP.appNameArg(args),
-           !ComputerUse.activateApplication(named: app) {
-            return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
+        let syntaxModifiers = modifiers.map { $0 == "command" ? "super" : $0 }
+        let syntax = (syntaxModifiers + [key]).joined(separator: "+")
+        let result: ComputerUse.ElementActionResult
+        if let app = ComputerUseMCP.appNameArg(args) {
+            if let legacy = PhoneRemote.ControlKey(rawValue: key), legacy.mediaKeyType != nil {
+                guard ComputerUse.activateApplication(named: app) else {
+                    return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
+                }
+                let sent = ComputerUse.pressKey(name: key, modifiers: modifiers)
+                result = .init(success: sent, message: sent ? "已发送旧版媒体键 \(key)。" : "媒体键发送失败。")
+            } else {
+                result = ComputerUse.pressKeySyntax(syntax, appName: app)
+            }
+        } else {
+            let sent = ComputerUse.pressKeySyntax(syntax)
+            result = .init(success: sent, message: sent ? "已按键 \(syntax)。" : "按键发送失败。")
         }
-        ComputerUse.pressKey(name: key.rawValue, modifiers: modifiers)
-        let combo = modifiers.isEmpty ? key.rawValue : key.rawValue + " + " + modifiers.joined(separator: "+")
-        return ComputerUseMCP.ToolOutcome(isError: false, text: "已按键 \(combo)。")
+        guard result.success else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: result.message + " 支持 xdotool 风格，如 Return、super+c、Up、KP_0。"
+            )
+        }
+        return ComputerUseMCP.ToolOutcome(isError: false, text: result.message)
 
     case "scroll":
         guard ComputerUse.accessibilityAllowed else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
         }
-        guard let dy = ComputerUseMCP.lineDelta(args) else {
-            return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: dy 必须是非 0 数值 (行数, 正=向下)。")
+        if let direction = ComputerUseMCP.stringArg(args, "direction") {
+            guard let app = ComputerUseMCP.appNameArg(args) else {
+                return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: Codex 兼容 scroll 需要 app。")
+            }
+            let x = ComputerUseMCP.pointArg(args, "x")
+            let y = ComputerUseMCP.pointArg(args, "y")
+            if args["element_index"] != nil, ComputerUseMCP.elementIndex(args) == nil {
+                return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: element_index 必须是 0...999 的整数。")
+            }
+            if (x == nil) != (y == nil) {
+                return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: x/y 必须成对提供。")
+            }
+            if args["pages"] != nil, ComputerUseMCP.pagesArg(args) == nil {
+                return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: pages 必须是 1...10 的整数。")
+            }
+            let result = ComputerUse.scroll(
+                appName: app,
+                elementIndex: ComputerUseMCP.elementIndex(args),
+                x: x,
+                y: y,
+                direction: direction,
+                pages: ComputerUseMCP.pagesArg(args) ?? 1
+            )
+            return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
         }
-        if let app = ComputerUseMCP.appNameArg(args),
-           !ComputerUse.activateApplication(named: app) {
+        guard let dy = ComputerUseMCP.lineDelta(args) else {
+            return ComputerUseMCP.ToolOutcome(
+                isError: true,
+                text: "参数错误: 需要 direction（Codex 模式）或非 0 dy（旧版行滚动）。"
+            )
+        }
+        if let app = ComputerUseMCP.appNameArg(args), !ComputerUse.activateApplication(named: app) {
             return ComputerUseMCP.ToolOutcome(isError: true, text: "无法聚焦目标应用 \(app)。")
         }
         ComputerUse.scroll(lines: dy)
@@ -263,6 +458,47 @@ func bridgeFailureResponse(requestData: Data, message: String) -> Data? {
     ComputerUseMCP.handle(requestData: requestData) { _, _ in
         ComputerUseMCP.ToolOutcome(isError: true, text: message)
     }
+}
+
+/// The stdio bridge is persistent while privileged one-shot helper processes
+/// are intentionally short-lived. Keep AX state only in this process memory so
+/// Codex-compatible diffs work without persisting potentially sensitive UI
+/// text to disk.
+var previousAppStates: [String: String] = [:]
+
+func applyingAppStateDiff(requestData: Data, responseData: Data) -> Data {
+    guard let request = (try? JSONSerialization.jsonObject(with: requestData)) as? [String: Any],
+          request["method"] as? String == "tools/call",
+          let params = request["params"] as? [String: Any],
+          params["name"] as? String == "get_app_state",
+          let arguments = params["arguments"] as? [String: Any],
+          let app = ComputerUseMCP.appNameArg(arguments),
+          let response = (try? JSONSerialization.jsonObject(with: responseData)) as? [String: Any],
+          var result = response["result"] as? [String: Any],
+          result["isError"] as? Bool != true,
+          var content = result["content"] as? [[String: Any]],
+          let textIndex = content.firstIndex(where: { $0["type"] as? String == "text" }),
+          let fullText = content[textIndex]["text"] as? String else { return responseData }
+
+    let pieces = fullText.components(separatedBy: "\n\n")
+    guard let state = pieces.first, state.hasPrefix("App: ") else { return responseData }
+    let key = app.lowercased()
+    let legacyCall = arguments["include_screenshot"] != nil
+    let disableDiff = ComputerUseMCP.boolArg(arguments, "disableDiff")
+    defer { previousAppStates[key] = state }
+    guard !legacyCall, !disableDiff, let previous = previousAppStates[key] else {
+        return responseData
+    }
+
+    var replacement = ComputerUseMCP.appStateDiff(previous: previous, current: state)
+    if pieces.count > 1 {
+        replacement += "\n\n" + pieces.dropFirst().joined(separator: "\n\n")
+    }
+    content[textIndex]["text"] = replacement
+    result["content"] = content
+    var updated = response
+    updated["result"] = result
+    return (try? JSONSerialization.data(withJSONObject: updated, options: [.sortedKeys])) ?? responseData
 }
 
 /// Only accept bridge files created in the helper's own owner-only temporary
@@ -329,7 +565,7 @@ func launchServicesResponse(requestData: Data, helperAppURL: URL) -> Data? {
         let deadline = Date().addingTimeInterval(15)
         repeat {
             if let data = try? Data(contentsOf: responseURL), !data.isEmpty {
-                return data
+                return applyingAppStateDiff(requestData: requestData, responseData: data)
             }
             usleep(20_000)
         } while Date() < deadline

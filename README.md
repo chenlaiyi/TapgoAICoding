@@ -4,7 +4,7 @@
 
 Tapgo AICoding 是一个原生 macOS SwiftUI 编码 Agent 客户端。它以 [OpenAI Codex Harness](https://github.com/openai/codex) 的 `app-server` 为运行时，通过 JSON-RPC 持续管理对话、工具、审批、文件改动和命令执行，并把这些能力组织成适合多项目、长任务和多台 Mac 协同开发的桌面工作区。
 
-当前版本：**v0.5.51** · macOS 14+
+当前版本：**v0.5.55** · macOS 14+
 
 ## 当前能力
 
@@ -17,7 +17,7 @@ Tapgo AICoding 是一个原生 macOS SwiftUI 编码 Agent 客户端。它以 [Op
 | 模型用量 | MiniMax / GLM 套餐余量、DeepSeek 余额、上下文用量及统一的剩余量展示 |
 | 输入与内容 | 文本、截图和图片附件；Markdown、代码块、表格、任务列表、链接与图片渲染 |
 | 搜索与导出 | 对话内搜索、全局会话搜索、复制消息、导出完整对话为 Markdown |
-| 电脑控制 | 独立 `Tapgo Computer Use.app` Helper、11 个 MCP 工具、截图、语义元素读取与点击、鼠标、键盘、滚动和启动应用 |
+| 电脑控制 | 独立 `Tapgo Computer Use.app` Helper、11 个 Codex 同名主工具、8 个旧版兼容别名、AX 状态/截图、语义操作、鼠标键盘、剪贴板和拖拽 |
 | 手机远程 | 扫码打开 H5 控制页；支持同一 Wi-Fi、Tailscale 和可选公网中继；可切项目/会话、发消息、上传图片和控制电脑 |
 | 记忆 | USER / GLOBAL / KEY 三层持久记忆，读写开关、整理去重、容量限制和 iCloud Drive 跨 Mac 同步 |
 | 插件 | 浏览、安装、启停和卸载 Codex 官方插件及受支持的 DeepSeek Harness 插件 |
@@ -137,14 +137,15 @@ open 'Tapgo AICoding.app'
 
 v0.5.46 起，电脑控制由独立的 `Tapgo Computer Use.app` Helper 承载真实 macOS TCC 身份，不再借用主 App、Terminal 或其他宿主进程权限。
 
-当前 MCP 工具：
+v0.5.55 的主工具与 Codex Computer Use 同名、同参数语义：
 
 ```text
-list_applications   get_app_state    click_element
-screenshot          get_screen_size  left_click
-double_click        type_text        press_key
-scroll              open_application
+click   drag   get_app_state   list_apps   paste
+perform_secondary_action   press_key   scroll   select_text
+set_value   type_text
 ```
+
+能力包括：自动启动并绑定目标 App；AX 树与窗口截图联合读取；默认状态差量与 `disableDiff=true` 完整回读；按元素或窗口点坐标点击；左/右/中键与连击；拖拽；按元素/坐标横纵滚动；xdotool 风格按键；纯文本、Markdown、HTML 粘贴并恢复原剪贴板；精确文本选择/光标定位；执行元素明确暴露的次级 AX 动作。旧版 `list_applications`、`click_element`、`set_element_value`、`screenshot`、`get_screen_size`、`left_click`、`double_click`、`open_application` 继续可用。
 
 启用步骤：
 
@@ -229,7 +230,7 @@ Tapgo AICoding      ~/Library/Application Support/Tapgo AICoding/codex/
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
 ```
 
-v0.5.51 的最新验证结果为 **2411 passed / 0 failed**。该模式只跳过依赖真实 SSH 主机的远程环境段，其余 Core、Harness、模型、存储、队列、手机远程和电脑控制测试都会执行。
+v0.5.55 的最新验证结果为 **2522 passed / 0 failed**。该模式只跳过依赖真实 SSH 主机的远程环境段，其余 Core、Harness、模型、存储、队列、手机远程和电脑控制测试都会执行。
 
 正式产品构建：
 

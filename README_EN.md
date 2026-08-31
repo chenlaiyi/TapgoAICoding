@@ -4,7 +4,7 @@
 
 Tapgo AICoding is a native macOS SwiftUI coding-agent client. It uses the [OpenAI Codex Harness](https://github.com/openai/codex) `app-server` as its runtime and manages conversations, tools, approvals, file changes, and command execution over persistent JSON-RPC. The desktop workspace is designed for multiple projects, long-running tasks, and development across several Macs.
 
-Current version: **v0.5.48** · macOS 14+
+Current version: **v0.5.55** · macOS 14+
 
 ## Current capabilities
 
@@ -17,7 +17,7 @@ Current version: **v0.5.48** · macOS 14+
 | Model usage | MiniMax / GLM plan limits, DeepSeek balance, context usage, and consistent remaining-capacity presentation |
 | Input and content | Text, screenshots, image attachments, Markdown, code blocks, tables, task lists, links, and images |
 | Search and export | In-conversation search, global conversation search, message copy, and full Markdown export |
-| Computer use | Dedicated `Tapgo Computer Use.app` helper, 11 MCP tools, screenshots, semantic UI inspection and clicking, mouse, keyboard, scrolling, and app launching |
+| Computer use | Dedicated `Tapgo Computer Use.app` helper, 11 Codex-compatible primary tools, 8 legacy aliases, AX state/screenshots, semantic actions, mouse/keyboard, clipboard, and drag |
 | Phone remote | QR-launched H5 controller over LAN, Tailscale, or an optional public relay; project/thread switching, messaging, image upload, and computer control |
 | Memory | USER / GLOBAL / KEY durable memory layers, independent read/write controls, consolidation, size limits, and iCloud Drive sync across Macs |
 | Plugins | Browse, install, enable, disable, and remove official Codex plugins and supported DeepSeek Harness plugins |
@@ -137,14 +137,15 @@ Credential and configuration files use `0600` permissions. Never copy them into 
 
 Since v0.5.46, the dedicated `Tapgo Computer Use.app` helper owns the real macOS TCC identity. Computer-control permissions are no longer borrowed from the main app, Terminal, or another host process.
 
-Current MCP tools:
+Since v0.5.55, the primary tools match the Codex Computer Use names and argument semantics:
 
 ```text
-list_applications   get_app_state    click_element
-screenshot          get_screen_size  left_click
-double_click        type_text        press_key
-scroll              open_application
+click   drag   get_app_state   list_apps   paste
+perform_secondary_action   press_key   scroll   select_text
+set_value   type_text
 ```
+
+Capabilities include transparent app launching and targeting; combined AX-tree and window-screenshot state; differential state by default and full state with `disableDiff=true`; element- or window-point clicks; left/right/middle buttons and multi-click; drag; element/coordinate horizontal and vertical scrolling; xdotool-style keys; text/Markdown/HTML paste with clipboard restoration; exact text selection/cursor placement; and only the secondary AX actions explicitly exposed by an element. The legacy aliases `list_applications`, `click_element`, `set_element_value`, `screenshot`, `get_screen_size`, `left_click`, `double_click`, and `open_application` remain available.
 
 To enable computer use:
 
@@ -229,7 +230,7 @@ Canonical test command:
 TAPGO_SKIP_REMOTE_INTEGRATION=1 swift run TapgoTests
 ```
 
-The latest v0.5.48 verification is **2394 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, and computer-use tests still run.
+The latest v0.5.55 verification is **2522 passed / 0 failed**. This mode skips only integration sections that require real SSH hosts; Core, harness, model, storage, queue, phone-remote, and computer-use tests still run.
 
 Release products:
 
