@@ -53,6 +53,11 @@ let allSections: [String] = [
     "ThreadStore: drainPendingSaves writes pending snapshot",
     "ExecEvent: isPersistenceTerminal classifies streaming vs terminal",
     "HarnessSupervisor: onReconnected fires once per successful restart",
+    "SocketHarnessTransport: start fails when socket absent",
+    "SocketHarnessTransport: start + send round-trips to listening peer",
+    "HarnessDaemonLauncher: returns true when launcher socket file exists",
+    "HarnessDaemonLauncher: socketPath is the well-known Application Support path",
+    "HarnessDaemonLauncher: daemonBinaryPath resolves to installed binary",
     "RemoteCodexHomeSync: rendered config has no secret material",
     "RemoteCodexHomeSync: trusted projects are remote-only",
     "RemoteCodexHomeSync: harness wrapper script",
@@ -545,6 +550,21 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "HarnessSupervisor: onReconnected fires once per successful restart") {
             await runSupervisorFiresReconnectedAfterBackoff(runner)
+        }
+        await runIfInScope(runner, "SocketHarnessTransport: start fails when socket absent") {
+            runSocketHarnessTransportStartFailsWhenAbsent(runner)
+        }
+        await runIfInScope(runner, "SocketHarnessTransport: start + send round-trips to listening peer") {
+            await runSocketHarnessTransportStartAndSend(runner)
+        }
+        await runIfInScope(runner, "HarnessDaemonLauncher: returns true when launcher socket file exists") {
+            runHarnessDaemonLauncherReturnsTrueWhenSocketPresent(runner)
+        }
+        await runIfInScope(runner, "HarnessDaemonLauncher: socketPath is the well-known Application Support path") {
+            runHarnessDaemonLauncherSocketPathIsWellKnown(runner)
+        }
+        await runIfInScope(runner, "HarnessDaemonLauncher: daemonBinaryPath resolves to installed binary") {
+            runHarnessDaemonLauncherDaemonBinaryPathPrefersInstalledBinary(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: restart start failures consume retry budget") {
             await runHarnessSupervisorGivesUp(runner)

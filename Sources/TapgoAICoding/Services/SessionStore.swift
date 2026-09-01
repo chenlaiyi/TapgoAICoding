@@ -819,6 +819,13 @@ final class SessionStore: ObservableObject {
     /// projects get a `LocalHarnessTransport`; remote projects get
     /// a `RemoteSSHHarnessTransport` that spawns the harness on the
     /// remote host.
+    ///
+    /// For local projects we prefer the launchd-managed
+    /// `SocketHarnessTransport` (the daemon survives app restarts and
+    /// keeps the model warm) and fall back to `LocalHarnessTransport`
+    /// only when the daemon cannot be reached or spawned. See
+    /// `HarnessDaemonLauncher.ensureDaemonRunning` for the
+    /// spawn-and-poll contract.
     private func makeRunner(for project: Project?) -> CodexHarnessClient {
         let apiKey: String
         do {
@@ -845,6 +852,17 @@ final class SessionStore: ObservableObject {
                 apiKey: apiKey
             ))
         }
+        if HarnessDaemonLauncher.ensureDaemonRunning(
+            codexHome: TapgoConfig.codexHome,
+            apiKey: apiKey
+        ) {
+            return CodexHarnessClient(transport: SocketHarnessTransport(
+                socketPath: HarnessDaemonLauncher.socketPath,
+                codexHome: TapgoConfig.codexHome,
+                apiKey: apiKey
+            ))
+        }
+        TapgoConfig.log("[runner] daemon unreachable; falling back to LocalHarnessTransport")
         return CodexHarnessClient(transport: LocalHarnessTransport(
             harnessPath: Self.findHarness(),
             codexHome: TapgoConfig.codexHome,

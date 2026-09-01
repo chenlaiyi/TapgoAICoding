@@ -10,6 +10,11 @@ let package = Package(
         .executable(name: "TapgoAICoding", targets: ["TapgoAICoding"]),
         .executable(name: "TapgoTests", targets: ["TapgoTests"]),
         .executable(name: "TapgoComputerUseMCP", targets: ["TapgoComputerUseMCP"]),
+        // stdio↔Unix-socket bridge daemon. Spawned by launchd (registered
+        // via scripts/install-harness-daemon.sh) and shared across TapgoApp
+        // restarts. Never linked into the app's own process — only the
+        // Swift CLI binary.
+        .executable(name: "TapgoHarness", targets: ["TapgoHarness"]),
     ],
     dependencies: [
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6")
@@ -47,6 +52,15 @@ let package = Package(
             name: "TapgoComputerUseMCP",
             dependencies: ["TapgoComputerUse"],
             path: "Sources/TapgoComputerUseMCP"
+        ),
+        // Harness bridge daemon. Single `main.swift` (193 lines, only
+        // `import Foundation` + `import Darwin`). Spawns `codex app-server`
+        // and bridges its stdio to a Unix domain socket that the app
+        // talks to via `SocketHarnessTransport`. Independent of the
+        // TapgoComputerUse tree.
+        .executableTarget(
+            name: "TapgoHarness",
+            path: "Sources/TapgoHarness"
         ),
         // Standalone test runner. We do not use XCTest / swift-testing
         // because the CommandLineTools SDK on this machine ships neither

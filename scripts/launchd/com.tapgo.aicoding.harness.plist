@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.tapgo.aicoding.harness — launchd 守护的 harness daemon。
+
+  行为：
+    - RunAtLoad=true：launchd 加载时立即启动 TapgoHarness
+    - KeepAlive = { SuccessfulExit=false; ThrottleInterval=2 }
+        进程退出码 0 时 launchd 默认视为"完成工作"而不再拉起，
+        实际现象是 harness 干净退出后 socket 失联，App 永远连不上。
+        SuccessfulExit=false 让任何退出都视作失败，确保 exit 0 也
+        会被 2 秒节流后重启。ThrottleInterval=2 是兜底防抖。
+    - StandardOutPath/StandardErrorPath：日志写到 ~/Library/Logs/TapgoAICoding/
+    - ProcessType=Background：不参与前台 App 切换
+
+  注册：launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tapgo.aicoding.harness.plist
+        launchctl kickstart -k gui/$(id -u)/com.tapgo.aicoding.harness
+  卸载：launchctl bootout gui/$(id -u)/com.tapgo.aicoding.harness
+
+  占位符（由 scripts/install-harness-daemon.sh 替换）：
+    __HARNESS_BIN__ → ~/.tapgo-aicoding/bin/TapgoHarness
+    __SOCKET_PATH__ → ~/Library/Application Support/Tapgo AICoding/run/harness.sock
+    __CODEX_HOME__   → ~/Library/Application Support/Tapgo AICoding/codex
+    __API_KEY__      → 读自 $CODEX_HOME/config.toml 的 experimental_bearer_token
+    __LOG_DIR__      → ~/Library/Logs/TapgoAICoding
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tapgo.aicoding.harness</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__HARNESS_BIN__</string>
+        <string>__SOCKET_PATH__</string>
+        <string>/opt/homebrew/bin/codex</string>
+        <string>__CODEX_HOME__</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OPENAI_API_KEY</key>
+        <string>__API_KEY__</string>
+        <key>TERM</key>
+        <string>xterm-256color</string>
+        <key>LANG</key>
+        <string>C.UTF-8</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>ThrottleInterval</key>
+        <integer>2</integer>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/harness.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/harness.err.log</string>
+
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>4096</integer>
+    </dict>
+</dict>
+</plist>
