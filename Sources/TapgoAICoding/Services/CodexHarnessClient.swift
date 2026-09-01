@@ -77,6 +77,16 @@ final class CodexHarnessClient {
         supervisor.onGiveUp = { [weak self] reason in
             self?.supervisorGaveUp(reason: reason)
         }
+        // After the supervisor's exponential-backoff restart succeeds,
+        // reissue the server-required `initialize` handshake so the new
+        // process doesn't reject every subsequent request with
+        // "Not initialized". v0.5.71: distinct from `onRestart` (which
+        // fires earlier in the restart lifecycle) so the reissue runs
+        // *after* the transport is truly running, not while it is still
+        // being brought up.
+        supervisor.onReconnected = { [weak self] _ in
+            self?.supervisorReconnected()
+        }
         // A restarted process cannot contain the in-flight turn or pending RPCs
         // from the process that exited. Fail the current run immediately; the
         // SessionStore can then close this per-thread runner and safely retry.
@@ -126,6 +136,46 @@ final class CodexHarnessClient {
                 ]))
             } catch {
                 TapgoConfig.log("[harness] post-restart initialize failed: \(error.localizedDescription)")
+                self.serverStopped(code: -1)
+            }
+        }
+    }
+
+    /// v0.5.71: invoked after the supervisor's `onReconnected` callback
+    /// (post-`transport.start()` success) to reissue the server-required
+    /// `initialize` handshake against the fresh harness process.
+    ///
+    /// Differs from `supervisorRestarted` (the legacy `onRestart`
+    /// hook) in two ways:
+    ///   1. Fires after `state = .running` has already settled, not
+    ///      during the restart transition.
+    ///   2. Does not gate on the client-side `state` enum. By the time
+    ///      we get here, `onUnexpectedExit` has already failed every
+    ///      pending RPC via `serverStopped`, so a stale `.running`
+    ///      check would suppress the reissue.
+    ///
+    /// In-flight RPCs are deliberately NOT replayed — `serverStopped`
+    /// already surfaced them as failures and the user is expected to
+    /// resend. Only `initialize` is safe to reissue because the new
+    /// process requires it before accepting any other method.
+    private func supervisorReconnected() {
+        TapgoConfig.log("[harness] transport reconnected; re-initializing")
+        Task { @MainActor in
+            do {
+                _ = try await self.request(method: "initialize", params: [
+                    "clientInfo": .object([
+                        "name": .string(TapgoConfig.clientInfoName),
+                        "title": .string(TapgoConfig.clientInfoTitle),
+                        "version": .string(TapgoConfig.clientInfoVersion),
+                    ]),
+                ])
+                try? self.transport.send(frame: .object([
+                    "method": .string("initialized"),
+                    "params": .object([:]),
+                ]))
+                TapgoConfig.log("[harness] post-reconnect initialize ok")
+            } catch {
+                TapgoConfig.log("[harness] post-reconnect initialize failed: \(error.localizedDescription)")
                 self.serverStopped(code: -1)
             }
         }

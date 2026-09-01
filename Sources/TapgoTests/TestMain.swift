@@ -52,6 +52,7 @@ let allSections: [String] = [
     "ThreadStore: scheduleSave(immediate:true) bypasses debounce",
     "ThreadStore: drainPendingSaves writes pending snapshot",
     "ExecEvent: isPersistenceTerminal classifies streaming vs terminal",
+    "HarnessSupervisor: onReconnected fires once per successful restart",
     "RemoteCodexHomeSync: rendered config has no secret material",
     "RemoteCodexHomeSync: trusted projects are remote-only",
     "RemoteCodexHomeSync: harness wrapper script",
@@ -541,6 +542,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "HarnessSupervisor: unexpected exit fires onRestart after backoff") {
             await runHarnessSupervisorRestartAfterBackoff(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: onReconnected fires once per successful restart") {
+            await runSupervisorFiresReconnectedAfterBackoff(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: restart start failures consume retry budget") {
             await runHarnessSupervisorGivesUp(runner)
