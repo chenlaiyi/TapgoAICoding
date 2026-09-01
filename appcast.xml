@@ -3,6 +3,22 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.67</title>
+            <pubDate>Tue, 01 Sep 2026 17:24:44 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.67</link>
+            <sparkle:version>0.5.67</sparkle:version>
+            <sparkle:shortVersionString>0.5.67</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.67
+
+- 恢复聊天区右侧的自适应环境卡自动显示：有活跃会话、工作台面板未打开、且窗口宽到不挤压聊天区（标准输入 ≥1428pt，宽输入 ≥1688pt）时自动出现；窗口变窄或打开工作台时自动让位。
+- 卡片内容：环境信息（变更统计、来源、分支、提交或推送、比较分支）+ 图片来源区块，"打开完整轨迹栏"可一键进入右侧工作台。
+- 与 v0.5.66 的拖宽自动弹出共存不冲突：拖宽弹出的是工作台内的环境抽屉（打开工作台），此时自适应卡自动隐藏，二者不同时占据右侧。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.67/Tapgo-AICoding-0.5.67.zip" length="9435205" type="application/octet-stream" sparkle:edSignature="fHGhHdnP8fjf5xQRRd/sYG/3GBpQlJ3eXRtrXpW3sBVZzXCCXzt+IAttmFBCf6zC5fqtcplAC5KjlHJ/lyIzCw=="/>
+        </item>
+        <item>
             <title>0.5.66</title>
             <pubDate>Tue, 01 Sep 2026 05:50:32 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.66</link>
@@ -32,21 +48,6 @@
 - 修复拖宽自动弹出的步进误判：分隔条拖动以每步 3–5pt 的连续小步到达阈值，单步增量判定永远不满足；改为只要宿主窗口宽度未变（说明宽度变化来自分隔条拖动而非窗口缩放）且工作台宽度达到 560pt 即自动弹出环境抽屉。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.65/Tapgo-AICoding-0.5.65.zip" length="9422811" type="application/octet-stream" sparkle:edSignature="dbulHu8gttAtMNGbVuFSBtOo3WXfhVeh++JLjG4/ECt8OEHs1wYw6X1oLPWmM9sTrzCCs4WRcl3rYNNfrc1PAg=="/>
-        </item>
-        <item>
-            <title>0.5.64</title>
-            <pubDate>Tue, 01 Sep 2026 05:04:45 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.64</link>
-            <sparkle:version>0.5.64</sparkle:version>
-            <sparkle:shortVersionString>0.5.64</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.64
-
-- 修复右缘拖拽展开环境信息在全屏宽窗口下失效的问题：窗口贴住屏幕右缘时向右位移不足 24pt 阈值，手势永远无法触发；现在点击手柄或小位移向右拖拽（>6pt）即可展开。
-- 新增 ZCode 式"拖宽自动弹出"：把主会话与工作台之间的分隔条向右拖、工作台宽度达到 560pt 时环境信息抽屉自动弹出；仅分隔条拖动触发（窗口整体拉宽不触发），并带防回弹闩锁，手动关闭后工作台收窄到 500pt 以内才重新武装。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.64/Tapgo-AICoding-0.5.64.zip" length="9422439" type="application/octet-stream" sparkle:edSignature="J0iSPyCCDyK4QAi45lNMTxmUUNW9wPZ6lcME9tUGMrU4ZMKhEiEturQ8f0jEV3G79Ba+uyx7UaUHvy/jNHLPAg=="/>
         </item>
     </channel>
 </rss>

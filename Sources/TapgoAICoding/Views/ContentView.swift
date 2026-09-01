@@ -15,10 +15,13 @@ struct ContentView: View {
     @State private var showShortcuts = false
     @State private var showCommandPalette = false
     @State private var sidebarVisible = true
+    /// Mirrors ChatView's composer width preference; the adaptive environment
+    /// card needs it to know whether the window can fit the wide chat column.
+    @AppStorage("tapgo.wideContent") private var wideContent = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
-        GeometryReader { _ in
+        GeometryReader { proxy in
             Group {
                 if let presentation = settingsPresentation {
                     SettingsView(initialTab: presentation.tab) {
@@ -29,7 +32,7 @@ struct ContentView: View {
                 } else if let err = store.setupError {
                     SetupView(error: err) { store.revalidateSetup() }
                 } else {
-                    mainSplit()
+                    mainSplit(availableWidth: proxy.size.width)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -87,11 +90,17 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func mainSplit() -> some View {
-        // ZCode keeps the conversation as one uninterrupted canvas and opens
-        // its right detail panel only when the user asks for it.  Do not
-        // insert Tapgo's former automatic environment card into wide windows.
-        let showAdaptiveEnvironment = false
+    private func mainSplit(availableWidth: CGFloat) -> some View {
+        // The adaptive environment card returns: on wide windows (chat +
+        // sidebar + card + breathing room all fit) it glances beside the chat
+        // without squeezing it. It never coexists with the workbench panel,
+        // which owns the trailing edge whenever it is open.
+        let showAdaptiveEnvironment = AdaptiveEnvironmentLayout.shouldShow(
+            windowWidth: Double(availableWidth),
+            preferredChatWidth: wideContent ? 980 : 720,
+            hasActiveThread: store.activeThreadId != nil,
+            manualDetailVisible: showTrajectory
+        )
         Group {
             if showTrajectory {
                 split(showDetail: true, showAdaptiveEnvironment: false)

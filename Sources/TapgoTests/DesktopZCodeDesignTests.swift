@@ -41,7 +41,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg"), "desktop-design: 桌面导航层级色完整")
     t.expect(content.contains("HSplitView") && content.contains("UnevenRoundedRectangle"), "desktop-design: 灰色整窗底板承载右侧圆角覆盖层")
     t.expect(content.contains("ignoresSafeArea(.container, edges: .top)"), "desktop-design: 右侧覆盖层贯穿标题栏顶部")
-    t.expect(content.contains("let showAdaptiveEnvironment = false"), "desktop-design: 环境卡仅由用户主动打开，不挤压 ZCode 主画布")
+    t.expect(content.contains("AdaptiveEnvironmentLayout.shouldShow") && content.contains("manualDetailVisible: showTrajectory"), "desktop-design: 自适应环境卡在宽窗口自动出现且不与工作台共存")
     t.expect(content.contains("RightWorkbenchView") && content.contains("HSplitView"), "desktop-design: 右侧工作台是独立可拖拽分栏")
     t.expect(content.contains(".frame(maxWidth: .infinity, maxHeight: .infinity)"), "desktop-design: 打开工作台后主画布保持全窗口高度")
     t.expect(workbench.contains("搜索标签页") && workbench.contains("新增标签"), "desktop-design: 工作台具有 ZCode 标签检索和新增入口")
