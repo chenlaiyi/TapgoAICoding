@@ -3,6 +3,23 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.68</title>
+            <pubDate>Tue, 01 Sep 2026 19:02:51 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.68</link>
+            <sparkle:version>0.5.68</sparkle:version>
+            <sparkle:shortVersionString>0.5.68</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.68
+
+- 检查更新弹窗改为简体中文：此前 Sparkle 更新提示（检查更新/已是最新/安装更新等）始终显示英文。
+- 根因有二：应用 Info.plist 从未声明 `CFBundleLocalizations`，Sparkle 按声明语言回退英文；系统语言标记为 zh-Hans-US（现代写法），而 Sparkle 框架只带旧命名 zh_CN.lproj，两者对不上时同样回退英文。
+- 修复：Info.plist 声明 zh-Hans/zh_CN/en；构建脚本在嵌入 Sparkle 框架时把 zh_CN.lproj 镜像为 zh-Hans.lproj。系统菜单栏（文件/编辑等）也随之正确显示中文。
+- 真机验证：点击检查更新，弹窗显示"您使用的就是最新版！Tapgo AICoding 0.5.67 是当前的最新版本。"及"好"按钮。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.68/Tapgo-AICoding-0.5.68.zip" length="9441062" type="application/octet-stream" sparkle:edSignature="ByjNzPZ4QOxiwkcS7P6bt27GIAxYOEU6jN/LqDWLfqBqaJxUnl1YHDUEz6PXIwmDyM5/OuesEALC+3tTemaxDw=="/>
+        </item>
+        <item>
             <title>0.5.67</title>
             <pubDate>Tue, 01 Sep 2026 17:24:44 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.67</link>
@@ -33,21 +50,6 @@
 - 右缘环境手柄保持点击直接展开与贴边小位移（>3pt）向右拖拽展开；附带修复自绘分隔条的辅助功能声明。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.66/Tapgo-AICoding-0.5.66.zip" length="9434120" type="application/octet-stream" sparkle:edSignature="2K47fIj6xTmdHsOtx2olkAhYI7LPsJaPkheTux0vgk/zAWo8+SNZ9Gbl7dJINZGkD55UopoUa/DPLlz4GIHJAQ=="/>
-        </item>
-        <item>
-            <title>0.5.65</title>
-            <pubDate>Tue, 01 Sep 2026 05:13:55 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.65</link>
-            <sparkle:version>0.5.65</sparkle:version>
-            <sparkle:shortVersionString>0.5.65</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.65
-
-- 真机复验 v0.5.64 后的收口修正：贴边窗口下手柄拖拽阈值从 6pt 降到 3pt（窗口最外侧数 pt 是系统缩放边框，手柄中部起拖最多只有约 5pt 位移，6pt 阈值仍会漏）。
-- 修复拖宽自动弹出的步进误判：分隔条拖动以每步 3–5pt 的连续小步到达阈值，单步增量判定永远不满足；改为只要宿主窗口宽度未变（说明宽度变化来自分隔条拖动而非窗口缩放）且工作台宽度达到 560pt 即自动弹出环境抽屉。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.65/Tapgo-AICoding-0.5.65.zip" length="9422811" type="application/octet-stream" sparkle:edSignature="dbulHu8gttAtMNGbVuFSBtOo3WXfhVeh++JLjG4/ECt8OEHs1wYw6X1oLPWmM9sTrzCCs4WRcl3rYNNfrc1PAg=="/>
         </item>
     </channel>
 </rss>

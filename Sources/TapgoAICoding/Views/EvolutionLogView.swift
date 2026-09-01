@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.68",
+                    date: "2026-09-01",
+                    commit: "随 v0.5.68",
+                    tag: "v0.5.68",
+                    summary: "检查更新弹窗改简体中文",
+                    changes: [
+                        "Info.plist 声明 CFBundleLocalizations（zh-Hans/zh_CN/en），Sparkle 不再回退英文。",
+                        "构建时把 Sparkle 框架的 zh_CN.lproj 镜像为 zh-Hans.lproj，匹配现代系统语言标记 zh-Hans-US。"
+                    ],
+                    why: "Sparkle 界面语言 = 应用声明语言 ∩ 框架资源语言，声明缺失与新旧命名不匹配两处都断在中文。",
+                    next: "观察下次真实发版时两台机器的更新弹窗是否全程中文。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.67",
                     date: "2026-09-01",
                     commit: "随 v0.5.67",

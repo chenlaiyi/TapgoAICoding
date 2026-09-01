@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.68 — 检查更新弹窗改简体中文
+**Date**: 2026-09-01
+**Tag**: v0.5.68
+**Test status**: 2610 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- Info.plist 新增 CFBundleLocalizations（zh-Hans/zh_CN/en）：此前从未声明，Sparkle 按声明回退英文弹窗。
+- build-app.sh 嵌入 Sparkle 框架后把 zh_CN.lproj 镜像为 zh-Hans.lproj：系统语言标记是现代写法 zh-Hans-US，与框架里的旧命名 zh_CN.lproj 匹配不上， Sparkle 内部仍回退英文。
+- 真机验证：检查更新弹窗显示"您使用的就是最新版！…0.5.67 是当前的最新版本。"与"好"按钮；系统菜单栏（文件/编辑/显示/窗口）同步恢复中文。
+**Why**: Sparkle 的界面语言 = 应用声明语言 ∩ 框架自带资源语言，两个环节都断在中文上；只补声明或只改资源名都会在一侧回退英文。
+**Next**: 观察下次真实发版时两台机器的更新弹窗与自动更新流程是否全程中文。
+
 ## v0.5.67 — 恢复聊天右侧自适应环境卡自动显示
 **Date**: 2026-09-01
 **Tag**: v0.5.67

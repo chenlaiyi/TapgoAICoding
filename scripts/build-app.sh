@@ -118,6 +118,16 @@ if ! otool -l "$MACOS_DIR/${BIN_NAME}" | grep -Fq 'path @executable_path/../Fram
 fi
 echo "  embedded updater: Sparkle.framework"
 
+# Sparkle ships Simplified Chinese only under the legacy lproj name zh_CN,
+# but modern macOS reports zh-Hans… as the preferred language marker. Mirror
+# the folder under the modern name so Sparkle's dialogs stay Chinese when the
+# app's preferred localization resolves to zh-Hans.
+SPARKLE_RES_DIR="${SPARKLE_FRAMEWORK_DST}/Versions/B/Resources"
+if [[ -d "${SPARKLE_RES_DIR}/zh_CN.lproj" && ! -d "${SPARKLE_RES_DIR}/zh-Hans.lproj" ]]; then
+  cp -R "${SPARKLE_RES_DIR}/zh_CN.lproj" "${SPARKLE_RES_DIR}/zh-Hans.lproj"
+  echo "  mirrored Sparkle zh_CN.lproj -> zh-Hans.lproj"
+fi
+
 cp "$MCP_SRC" "$HELPER_MACOS_DIR/${MCP_NAME}"
 chmod +x "$HELPER_MACOS_DIR/${MCP_NAME}"
 cp "$HELPER_PLIST_SRC" "$HELPER_CONTENTS_DIR/Info.plist"
