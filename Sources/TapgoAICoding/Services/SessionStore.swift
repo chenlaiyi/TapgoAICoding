@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import AppKit
 import TapgoCore
 
 /// A user message queued while a turn is already running. Queued messages are
@@ -188,6 +189,7 @@ final class SessionStore: ObservableObject {
     }()
 
     private var cancellables = Set<AnyCancellable>()
+    private var terminationObserver: NSObjectProtocol?
 
     init(workspace: WorkspaceStore, threads: ThreadStore) {
         self.workspace = workspace
@@ -211,6 +213,20 @@ final class SessionStore: ObservableObject {
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] q in self?.persistQueue(q) }
             .store(in: &cancellables)
+
+        // Flush any pending debounced thread saves on App quit so the
+        // final in-memory state is durable. Added in v0.5.70 alongside
+        // `ThreadStore.scheduleSave(_:immediate:)`. macOS posts
+        // willTerminate synchronously on the main thread, so the
+        // synchronous drain inside `drainPendingSaves` runs to
+        // completion before `applicationWillTerminate(_:)` returns.
+        terminationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [threads] _ in
+            threads.drainPendingSaves()
+        }
     }
 
     /// Decode the previously persisted queue (if any) and drop any rows whose
@@ -727,7 +743,7 @@ final class SessionStore: ObservableObject {
                     completedTurn = self.liveThreads[currentThreadIdx].turns[currentTurnIdx]
                 }
                 self.liveThreads[currentThreadIdx].updatedAt = Date()
-                self.threads.save(self.liveThreads[currentThreadIdx])
+                self.threads.scheduleSave(self.liveThreads[currentThreadIdx], immediate: true)
             }
             // No approval from this runner remains actionable after its turn
             // terminates, regardless of whether the completion event already
@@ -1477,7 +1493,12 @@ final class SessionStore: ObservableObject {
 
         liveThreads[threadIdx].turns[turnIdx] = turn
         liveThreads[threadIdx].updatedAt = Date()
-        threads.save(liveThreads[threadIdx])
+        // Coalesce per-delta writes (assistant text, reasoning, command
+        // output, …) into a single save per debounce window. See
+        // `ThreadStore.scheduleSave(_:immediate:)` for the latency
+        // contract and `ExecEvent.isPersistenceTerminal` for which
+        // events bypass debouncing. v0.5.70.
+        threads.scheduleSave(liveThreads[threadIdx], immediate: event.isPersistenceTerminal)
         switch event {
         case .commandCompleted, .fileChange, .planUpdated:
             scheduleWorktreeStatsRefresh(threadId: threadId, turnId: turnId)
@@ -1515,7 +1536,7 @@ final class SessionStore: ObservableObject {
             }
             self.liveThreads[threadIdx].turns[turnIdx] = turn
             self.liveThreads[threadIdx].updatedAt = Date()
-            self.threads.save(self.liveThreads[threadIdx])
+            self.threads.scheduleSave(self.liveThreads[threadIdx], immediate: true)
         }
     }
 

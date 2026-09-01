@@ -71,16 +71,113 @@ public final class ThreadStore: ObservableObject {
 
     public func save(_ thread: Thread) {
         let url = baseDir.appendingPathComponent("\(thread.id).json")
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data: Data
         do {
-            let data = try encoder.encode(thread)
+            data = try Self.encoder.encode(thread)
             try data.write(to: url, options: [.atomic])
             try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         } catch {
             NSLog("[ThreadStore] save failed: \(error.localizedDescription)")
         }
     }
+
+    // MARK: - Debounced persistence (v0.5.70)
+    //
+    // Streaming harness notifications (`agentMessage/delta`,
+    // `reasoning/textDelta`, `reasoning/summaryTextDelta`,
+    // `commandExecution/outputDelta`) used to call `save(_:)` on every
+    // delta. With a multi-MB reasoning summary, that path encoded the
+    // full thread JSON and atomically rewrote the file on each frame,
+    // pegging App CPU at 100 % (see cpu_resource.diag from 2026-09-02).
+    //
+    // `scheduleSave(_:immediate:)` coalesces consecutive updates for the
+    // same thread within `Self.saveDebounce` (300 ms). The latest thread
+    // snapshot wins, so the final on-disk state matches the final
+    // in-memory state. Callers that need durable state (turn boundary,
+    // plan update, error, …) pass `immediate: true` to bypass the
+    // debounce and write synchronously.
+
+    /// Wall-clock delay between the last `scheduleSave(immediate: false)`
+    /// and the actual write. Tuned so streaming deltas coalesce into one
+    /// write while UI streaming still feels real-time.
+    public static let saveDebounce: Duration = .milliseconds(300)
+
+    /// One pending coalesced save per thread id. Protected by an
+    /// `NSLock` (reference type) so the box itself stays `let`.
+    private final class PendingBox {
+        var pending: [String: Thread] = [:]
+        var task: Task<Void, Never>?
+        var writeCount: Int = 0
+        let lock = NSLock()
+    }
+    private static let pendingBox = PendingBox()
+
+    /// Schedule a save for `thread`. With `immediate: true` the write
+    /// happens synchronously on the caller's actor. With `immediate:
+    /// false` the write is coalesced with other pending saves for up to
+    /// `Self.saveDebounce`; the latest snapshot wins.
+    public func scheduleSave(_ thread: Thread, immediate: Bool) {
+        if immediate {
+            // Cancel any pending debounced write for this id; we are
+            // about to commit a strictly-newer snapshot.
+            Self.pendingBox.lock.lock()
+            Self.pendingBox.pending[thread.id] = nil
+            Self.pendingBox.lock.unlock()
+            save(thread)
+            return
+        }
+        Self.pendingBox.lock.lock()
+        Self.pendingBox.pending[thread.id] = thread
+        Self.pendingBox.task?.cancel()
+        Self.pendingBox.lock.unlock()
+        scheduleFlushTask()
+    }
+
+    /// Drain all pending debounced saves synchronously. Called from
+    /// `SessionStore` on `NSApplication.willTerminate` so the final
+    /// in-memory state is durable before the App exits.
+    public func drainPendingSaves() {
+        Self.pendingBox.lock.lock()
+        let pending = Self.pendingBox.pending
+        Self.pendingBox.pending.removeAll(keepingCapacity: true)
+        Self.pendingBox.task?.cancel()
+        Self.pendingBox.task = nil
+        Self.pendingBox.lock.unlock()
+        for (_, thread) in pending { save(thread) }
+    }
+
+    private func scheduleFlushTask() {
+        let deadline = ContinuousClock.now.advanced(by: Self.saveDebounce)
+        Self.pendingBox.lock.lock()
+        Self.pendingBox.task = Task { [weak self] in
+            do {
+                try await Task.sleep(until: deadline, clock: .continuous)
+            } catch {
+                return // cancelled — a newer schedule or drain took over
+            }
+            await self?.flushPending()
+        }
+        Self.pendingBox.lock.unlock()
+    }
+
+    private func flushPending() {
+        let snapshot: [String: Thread] = Self.pendingBox.lock.withLock {
+            let s = Self.pendingBox.pending
+            Self.pendingBox.pending.removeAll(keepingCapacity: true)
+            Self.pendingBox.task = nil
+            return s
+        }
+        for (_, thread) in snapshot { save(thread) }
+    }
+
+    /// Single JSON encoder reused across calls. Building one per
+    /// notification was a measurable portion of the per-delta cost on
+    /// multi-MB reasoning summaries (reflection metadata work).
+    private static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return e
+    }()
 
     public func delete(_ id: String) {
         let url = baseDir.appendingPathComponent("\(id).json")

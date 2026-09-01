@@ -424,3 +424,72 @@ func runExecEventParserRateLimitsUpdated(_ t: TestRunner) {
         "rate-limits event: empty params → nil"
     )
 }
+
+// MARK: - v0.5.70 persistence classification
+//
+// `ExecEvent.isPersistenceTerminal` decides which events bypass the
+// debounced ThreadStore save. Streaming deltas return false; turn
+// boundary / error / approval / rate-limits / token-usage events
+// return true. If this classification drifts, the App either pins
+// CPU at 100 % during streaming or drops critical state on a crash.
+
+@MainActor
+func runExecEventIsPersistenceTerminal(_ t: TestRunner) {
+    // Streaming deltas — must coalesce.
+    t.expectEqual(
+        ExecEvent.reasoningSummaryDelta(id: "s1", index: nil, delta: "x").isPersistenceTerminal,
+        false,
+        "isPersistenceTerminal: reasoningSummaryDelta → debounced"
+    )
+    t.expectEqual(
+        ExecEvent.reasoningDelta(id: "r1", delta: "x").isPersistenceTerminal,
+        false,
+        "isPersistenceTerminal: reasoningDelta → debounced"
+    )
+    t.expectEqual(
+        ExecEvent.agentMessageDelta(id: "a1", delta: "x").isPersistenceTerminal,
+        false,
+        "isPersistenceTerminal: agentMessageDelta → debounced"
+    )
+    t.expectEqual(
+        ExecEvent.commandOutput(id: "c1", output: "x").isPersistenceTerminal,
+        false,
+        "isPersistenceTerminal: commandOutput → debounced"
+    )
+
+    // Terminal / structural events — must write through immediately.
+    t.expectEqual(
+        ExecEvent.turnCompleted(status: "completed", errorMessage: nil, usage: nil).isPersistenceTerminal,
+        true,
+        "isPersistenceTerminal: turnCompleted → immediate"
+    )
+    t.expectEqual(
+        ExecEvent.turnStarted(turnId: "t1").isPersistenceTerminal,
+        true,
+        "isPersistenceTerminal: turnStarted → immediate"
+    )
+    t.expectEqual(
+        ExecEvent.error(message: "boom").isPersistenceTerminal,
+        true,
+        "isPersistenceTerminal: error → immediate"
+    )
+    t.expectEqual(
+        ExecEvent.tokenUsageUpdated(usage: TokenUsage(total: 1, contextWindow: nil)).isPersistenceTerminal,
+        true,
+        "isPersistenceTerminal: tokenUsageUpdated → immediate"
+    )
+    t.expectEqual(
+        ExecEvent.rateLimitsUpdated(
+            snapshot: RateLimitsSnapshot(
+                primary: nil,
+                secondary: nil,
+                credits: nil,
+                planType: nil,
+                byLimitId: [],
+                fetchedAt: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        ).isPersistenceTerminal,
+        true,
+        "isPersistenceTerminal: rateLimitsUpdated → immediate"
+    )
+}
