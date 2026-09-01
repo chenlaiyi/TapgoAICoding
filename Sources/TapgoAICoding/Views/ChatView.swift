@@ -149,6 +149,15 @@ struct ChatView: View {
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
     @AppStorage("tapgo.fontScale") private var fontScale = "medium"
+    /// Global toggle for the ZCode-style "工作过程" work log (thinking,
+    /// terminal, file edit, file read cards inside a turn). Default off
+    /// because the per-row stream drowned the actual answer for users who
+    /// do not care about the agent's internal mechanics. The chip +
+    /// summary bar still appear; only the per-event rows hide.
+    /// Individual `expandedWork` ids are AND-ed with this flag, so
+    /// turning it off immediately collapses every expanded turn and
+    /// the per-row chip toggles are inert until it is back on.
+    @AppStorage("tapgo.showWorkProcess") private var showWorkProcess = false
     @FocusState private var searchFieldFocused: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
@@ -857,9 +866,14 @@ struct ChatView: View {
                 if isRunning || !isWorkBlock {
                     renderBlock(block, turn: turn)
                 } else if isWorkBlock {
-                    let revealed = expandedWork.contains(turn.id) || expandedFiles.contains(turn.id)
+                    // The per-row chip and individual activity rows are
+                    // gated by the global `tapgo.showWorkProcess` toggle
+                    // (default off) so non-technical users don't have to
+                    // wade through thinking / terminal / file-edit cards.
+                    let revealed = showWorkProcess
+                        && (expandedWork.contains(turn.id) || expandedFiles.contains(turn.id))
                     if revealed { renderBlock(block, turn: turn) }
-                    if index == firstWorkBlockIndex(blocks) {
+                    if showWorkProcess, index == firstWorkBlockIndex(blocks) {
                         workDurationChip(turn: turn)
                     }
                 }
