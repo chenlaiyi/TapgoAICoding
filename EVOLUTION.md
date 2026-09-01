@@ -19,6 +19,43 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.72 — harness 流式防抖 + 工作过程卡片隐藏 toggle + 自动重连 + 侧栏自进化日志下放
+**Date**: 2026-09-02
+**Commit**: 0436ae6
+**Tag**: v0.5.72
+**Test status**: 2673 passed / 13 failed（13 全是 pre-existing：12 个远程 SSH 集成 + 1 个 appcast 校验，无回归）
+**Changed**:
+- PR #1 (merged): 把 `fix/harness-streaming-save-throttle` 合到 main，三个原始 commit 全部入主线。
+- dfb161f `fix(core): debounce ThreadStore saves during harness streaming output` — `ThreadStore.scheduleSave(_:immediate:)` 300 ms 防抖 + `ExecEvent.isPersistenceTerminal` 分类 streaming vs terminal + JSONEncoder 单例 + `NSApplication.willTerminate` drain。修 App 在 2.2M tokens reasoning summary 上每条 deltas 都跑 `JSONEncoder.encode(整棵 thread)` + atomic write 导致 100 % CPU + 13.5 MB/s 盘写穿透（cpu_resource.diag 2026-09-02 00:09）。
+- 6b64c6f `fix(ui): hide ZCode-style work process cards by default; add global toggle` — `@AppStorage("tapgo.showWorkProcess")` 默认 false + Settings → 外观加 toggle。turnSection 把工作卡片 AND 短门、workDurationChip 也受开关控制。文件修改摘要条不受影响。
+- f05d542 `fix(core): auto-reconnect harness Unix socket; reissue initialize on reconnect` — `HarnessSupervisor.onReconnected(Int)` 回调 + `CodexHarnessClient.supervisorReconnected()` 重新 `initialize` + `LocalHarnessTransport` 修 EOF 静默吞掉。in-flight RPC 不重发，只重发 server-required `initialize`。
+- plist 修复 `~/Library/LaunchAgents/com.tapgo.aicoding.harness.plist`：`KeepAlive` 从 `<true/>` 改成 `{ SuccessfulExit=false; ThrottleInterval=2 }`，修注释。
+- bf5ded5 (v0.5.71 evolver): 侧栏「自进化日志」从一级导航下放到账户菜单（菜单/账户菜单路径更新）。
+- f648013 (v0.5.70 evolver): 侧栏「自动化」→「自进化日志」命名修正。
+**Why**: v0.5.69 引入的 ZCode-style 工作日志让用户卡死在思考/终端/读取/编辑卡片里；同时 long-running turn 把 App 推上 100 % CPU；daemon 死后 App 不知道重连。三个独立但同源的"用户视角崩溃"问题，一次合版本统一修。
+**Next**: 真机端到端验证"长 turn 流式输出过程中 daemon 死了 → App 不重启自动恢复 initialize → 用户继续发消息"。
+
+## v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单
+**Date**: 2026-09-02
+**Tag**: v0.5.71
+**Test status**: 2610 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- `SidebarView.swift` 一级导航移除「自进化日志」菜单项；「自进化日志」移到账户菜单（底部 user menu）。
+- `DesktopZCodeDesignTests.swift` 新增 `desktop-design: 自进化日志不在一级导航` 断言。
+- AppBuilder/Info.plist bump 0.5.70 → 0.5.71。
+**Why**: 「自进化日志」是只读历史页，不该和新建任务/搜索/插件市场混在一级导航；放账户菜单层级更合适。
+**Next**: 监控真机回归确认无布局错位。
+
+## v0.5.70 — 侧栏「自动化」→「自进化日志」命名修正
+**Date**: 2026-09-02
+**Tag**: v0.5.70
+**Test status**: 2610 passed / 0 failed（跳过远程环境段）
+**Changed**:
+- `SidebarView.swift`: 「自动化」一级菜单改名「自进化日志」，icon 从默认改成 `text.book.closed`，tooltip/a11y label 同步更新。
+- 「自动化 → 自进化日志」的命名纠正：ZCode 的 Automation 面板是定时任务调度，当前实现只是只读 Evolution 日志，按用户反馈避免歧义。
+**Why**: 用户反映侧栏菜单项「自动化」与 ZCode 同名「自动化」语义不符（ZCode Automation = 定时/闲时任务调度，本 App 自动化 = Evolution 历史），造成混淆。
+**Next**: 中长期：把「自动化」做成真任务调度面板（任务模型 + 定时/闲时调度 + 模板库 + UI + 持久化 + 测试）。
+
 ## v0.5.69 — 仿 ZCode 内容输出样式
 **Date**: 2026-09-01
 **Tag**: v0.5.69
