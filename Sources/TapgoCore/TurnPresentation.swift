@@ -20,30 +20,26 @@ public enum TurnPresentationBlock: Identifiable, Hashable {
     }
 }
 
-/// Consecutive internal activity between two user-relevant messages. While a
-/// turn is running the latest event replaces the row in place; once the
-/// segment closes, its semantic categories remain as one quiet summary row.
+/// One transcript activity row. ZCode-style: every reasoning / command /
+/// tool event renders as its own quiet line showing what actually happened
+/// (the command text, the search query…); consecutive search-like tool
+/// calls group into a single 查阅 row with counts.
 public struct TurnActivityRollup: Identifiable, Hashable {
     public let id: String
     public var latest: TurnItem
+    public var events: [TurnItem]
     public fileprivate(set) var isTail: Bool
-    fileprivate var facts: [TurnActivityFact]
 
     fileprivate init(firstItem: TurnItem) {
         id = "activity-" + firstItem.id
         latest = firstItem
+        events = [firstItem]
         isTail = true
-        facts = [TurnPresentation.semantic(for: firstItem).fact]
     }
 
     fileprivate mutating func append(_ item: TurnItem) {
         latest = item
-        let fact = TurnPresentation.semantic(for: item).fact
-        if let index = facts.firstIndex(where: { $0.key == fact.key }) {
-            facts[index] = fact
-        } else {
-            facts.append(fact)
-        }
+        events.append(item)
     }
 }
 
@@ -71,37 +67,37 @@ public struct TurnActivityDisplay: Hashable {
         self.isRunning = isRunning
         self.isFailure = isFailure
     }
-}
 
-fileprivate struct TurnActivityFact: Hashable {
-    let key: String
-    let kind: TurnActivityDisplay.Kind
-    let completedText: String
-    let continuationText: String
-    let systemImage: String?
-    let isFailure: Bool
+    fileprivate func appendingSuffix(_ suffix: String) -> TurnActivityDisplay {
+        TurnActivityDisplay(
+            kind: kind,
+            text: text + " · " + suffix,
+            systemImage: systemImage,
+            isRunning: isRunning,
+            isFailure: isFailure
+        )
+    }
 }
 
 fileprivate struct TurnActivitySemantic {
     let display: TurnActivityDisplay
-    let fact: TurnActivityFact
 }
 
 public enum TurnPresentation {
-    /// Collapse repetitive reasoning/command/tool events until the next
-    /// visible milestone. File edits, approvals, errors and real messages
-    /// remain explicit boundaries and retain their original order.
+    /// ZCode-style transcript: every reasoning / command / tool event keeps
+    /// its own quiet row (with the concrete command or query); consecutive
+    /// search-like tool calls group into one 查阅 row with counts. File
+    /// edits stay a separate batch; messages/approvals/errors stay items.
     public static func compactBlocks(_ items: [TurnItem]) -> [TurnPresentationBlock] {
         var blocks: [TurnPresentationBlock] = []
-        var activity: TurnActivityRollup?
+        var searchGroup: TurnActivityRollup?
         var files: [FileChange] = []
 
-        func flushActivity(isTail: Bool = false) {
-            if var activity {
-                activity.isTail = isTail
-                blocks.append(.activity(activity))
+        func flushSearches() {
+            if let group = searchGroup {
+                blocks.append(.activity(group))
             }
-            activity = nil
+            searchGroup = nil
         }
 
         func flushFiles() {
@@ -116,82 +112,145 @@ public enum TurnPresentation {
             && !item.isTurnDiffSnapshot
             && !item.isWorktreeStatsSnapshot {
             switch item {
-            case .reasoning, .reasoningSummary, .commandExecution, .toolCall:
-                flushFiles()
-                if activity == nil {
-                    activity = TurnActivityRollup(firstItem: item)
-                } else {
-                    activity?.append(item)
-                }
-
             case .fileChange(let file):
-                flushActivity()
+                flushSearches()
                 files.append(file)
 
+            case .toolCall(let call):
+                flushFiles()
+                if Self.isSearchToolCall(.toolCall(call)) {
+                    if searchGroup == nil {
+                        searchGroup = TurnActivityRollup(firstItem: item)
+                    } else {
+                        searchGroup?.append(item)
+                    }
+                } else {
+                    flushSearches()
+                    blocks.append(.activity(TurnActivityRollup(firstItem: item)))
+                }
+
+            case .reasoning, .reasoningSummary, .commandExecution:
+                flushSearches()
+                flushFiles()
+                blocks.append(.activity(TurnActivityRollup(firstItem: item)))
+
             default:
-                flushActivity()
+                flushSearches()
                 flushFiles()
                 blocks.append(.item(item))
             }
         }
 
-        flushActivity(isTail: true)
+        flushSearches()
         flushFiles()
         return blocks
     }
 
     /// Convert raw internal events into the quiet, semantic activity wording
-    /// used by Codex. Shell details and tool arguments stay in the model for
-    /// diagnostics but are not exposed in the normal chat transcript.
+    /// used by ZCode: the label (思考/查阅/终端/编辑/读取) plus the concrete
+    /// command or query, so the transcript reads like a real work log.
     public static func activityDisplay(for item: TurnItem) -> TurnActivityDisplay {
-        semantic(for: item).display
+        let running = itemRunningStatus(item)
+        return semantic(for: item, running: running).display
     }
 
-    /// Running tails show the current action. Closed segments and completed
-    /// turns show one durable, categorized summary assembled from the segment
-    /// without exposing shell commands, paths or tool arguments.
+    fileprivate static func itemRunningStatus(_ item: TurnItem) -> Bool {
+        switch item {
+        case .commandExecution(let e): return e.status == .pending || e.status == .running || e.status == .awaitingApproval
+        case .toolCall(let c): return c.status == .pending || c.status == .running || c.status == .awaitingApproval
+        case .fileChange(let f): return f.status == .pending || f.status == .awaitingApproval
+        default: return false
+        }
+    }
+
+    /// The running tail shows the current action with its concrete detail;
+    /// a closed 查阅 group shows counts ("查阅 · 2 搜索, 1 列表"); every
+    /// other closed row keeps the same concrete wording as while running.
     public static func activityDisplay(
         for activity: TurnActivityRollup,
         turnIsRunning: Bool
     ) -> TurnActivityDisplay {
-        if turnIsRunning && activity.isTail {
-            return activityDisplay(for: activity.latest)
-        }
+        let liveTail = turnIsRunning && activity.isTail
+        let latestRunning = isLiveLatest(in: activity)
 
-        if let failure = activity.facts.last(where: \.isFailure) {
-            return .init(
-                kind: failure.kind,
-                text: failure.completedText,
+        if let failure = activity.events.first(where: { isFailedEvent($0) }) {
+            var display = activityDisplay(for: failure)
+            if !display.text.hasSuffix("执行失败") { display = display.appendingSuffix("执行失败") }
+            return TurnActivityDisplay(
+                kind: display.kind,
+                text: display.text,
                 systemImage: "exclamationmark.triangle",
                 isRunning: false,
                 isFailure: true
             )
         }
 
-        let meaningful = activity.facts.filter { $0.kind != .reasoning }
-        let facts = meaningful.isEmpty ? activity.facts : meaningful
-        guard let last = facts.last else {
-            return .init(kind: .reasoning, text: "已完成思考", systemImage: nil, isRunning: false)
+        // While the turn is running, only the still-live tail gets the
+        // "正在 …" wording; completed siblings fold into a quiet summary.
+        if liveTail, latestRunning {
+            return activityDisplay(for: activity.latest)
         }
-        return .init(
-            kind: last.kind,
-            text: completedSummary(facts),
-            systemImage: facts.count == 1 ? last.systemImage : summaryIcon(for: facts),
-            isRunning: false
+        if turnIsRunning {
+            return completedTail(activity)
+        }
+        if activity.events.count > 1, activity.events.allSatisfy({ Self.isSearchToolCall($0) }) {
+            return .init(
+                kind: .search,
+                text: searchCountsText(activity.events),
+                systemImage: "magnifyingglass",
+                isRunning: false
+            )
+        }
+
+        return activityDisplay(for: activity.latest)
+    }
+
+    /// True only when the latest event is itself in a running state.
+    fileprivate static func isLiveLatest(in activity: TurnActivityRollup) -> Bool {
+        switch activity.latest {
+        case .commandExecution(let e):
+            return e.status == .pending || e.status == .running || e.status == .awaitingApproval
+        case .toolCall(let c):
+            return c.status == .pending || c.status == .running || c.status == .awaitingApproval
+        case .fileChange(let f):
+            return f.status == .pending || f.status == .awaitingApproval
+        default:
+            return false
+        }
+    }
+
+    /// While the turn is still running but the latest event has settled,
+    /// show a short completed summary of the most recent kind so the row
+    /// still reflects the work that just happened.
+    fileprivate static func completedTail(_ activity: TurnActivityRollup) -> TurnActivityDisplay {
+        var display = activityDisplay(for: activity.latest)
+        if display.kind != .reasoning, !display.text.hasSuffix("完成") {
+            display = display.appendingSuffix("完成")
+        }
+        return TurnActivityDisplay(
+            kind: display.kind,
+            text: display.text,
+            systemImage: display.systemImage,
+            isRunning: false,
+            isFailure: display.isFailure
         )
     }
 
     fileprivate static func semantic(for item: TurnItem) -> TurnActivitySemantic {
+        semantic(for: item, running: itemRunningStatus(item))
+    }
+
+    fileprivate static func semantic(for item: TurnItem, running: Bool) -> TurnActivitySemantic {
         switch item {
         case .reasoning(_, let text), .reasoningSummary(_, let text):
             return semantic(
                 key: "reasoning",
                 kind: .reasoning,
-                activeText: reasoningSnippet(text),
-                completedText: "已完成思考",
-                continuationText: "完成了思考",
-                icon: nil,
-                running: true,
+                activeText: "正在思考 · " + reasoningSnippet(text),
+                completedText: "思考",
+                continuationText: "思考",
+                icon: "brain",
+                running: running,
                 failed: false
             )
 
@@ -204,12 +263,13 @@ public enum TurnPresentation {
         case .fileChange(let change):
             let active = change.status == .pending || change.status == .awaitingApproval
             let failed = change.status == .failed || change.status == .denied
+            let label = fileChangeLabel(change)
             return semantic(
                 key: "edit",
                 kind: .edit,
-                activeText: "正在编辑文件",
-                completedText: failed ? "编辑文件失败" : "已编辑文件",
-                continuationText: failed ? "编辑文件失败" : "编辑了文件",
+                activeText: label,
+                completedText: failed ? label + " · 执行失败" : label,
+                continuationText: label,
                 icon: "pencil",
                 running: active,
                 failed: failed
@@ -230,44 +290,17 @@ public enum TurnPresentation {
     }
 
     private static func commandSemantic(_ execution: CommandExecution) -> TurnActivitySemantic {
-        let command = execution.command.lowercased()
         let running = execution.status == .pending || execution.status == .running || execution.status == .awaitingApproval
         let failed = execution.status == .failed || execution.status == .denied
-
-        let kind: TurnActivityDisplay.Kind
-        let key: String
-        let activeText: String
-        let finishedText: String
-        let continuationText: String
-        let icon: String
-
-        if let skill = skillName(in: execution.command) {
-            kind = .tool; key = "skill:" + skill.lowercased()
-            activeText = "正在读取 \(skill) 技能"
-            finishedText = "已读取 \(skill) 技能"
-            continuationText = "读取了 \(skill) 技能"
-            icon = "wrench"
-        } else if command.contains("swift test") || command.contains("tapgotests") || command.contains("xctest") {
-            kind = .command; key = "test"; activeText = "正在运行测试"; finishedText = "运行了测试"; continuationText = "运行了测试"; icon = "terminal"
-        } else if command.contains("swift build") || command.contains("xcodebuild") || command.contains("build-app") {
-            kind = .command; key = "build"; activeText = "正在构建 App"; finishedText = "构建了 App"; continuationText = "构建了 App"; icon = "terminal"
-        } else if containsCommand(command, names: ["rg", "grep", "find", "fd"]) {
-            kind = .search; key = "search"; activeText = "正在搜索文件"; finishedText = "已搜索文件"; continuationText = "搜索了文件"; icon = "magnifyingglass"
-        } else if containsCommand(command, names: ["cat", "head", "tail", "less", "wc"]) || command.contains("sed -n") {
-            kind = .read; key = "read"; activeText = "正在读取文件"; finishedText = "已读取文件"; continuationText = "读取了文件"; icon = "book"
-        } else if command.contains("apply_patch") || command.contains("sed -i") || command.contains("perl -pi") {
-            kind = .edit; key = "edit"; activeText = "正在编辑文件"; finishedText = "已编辑文件"; continuationText = "编辑了文件"; icon = "pencil"
-        } else {
-            kind = .command; key = "command"; activeText = "正在运行命令"; finishedText = "运行了命令"; continuationText = "运行了命令"; icon = "terminal"
-        }
+        let command = execution.command.replacingOccurrences(of: "\n", with: " ")
 
         return semantic(
-            key: key,
-            kind: kind,
-            activeText: activeText,
-            completedText: failed ? "命令运行失败" : finishedText,
-            continuationText: failed ? "命令运行失败" : continuationText,
-            icon: icon,
+            key: "command",
+            kind: .command,
+            activeText: "终端 · " + command,
+            completedText: failed ? "终端 · " + command + " · 执行失败" : "终端 · " + command,
+            continuationText: "终端 · " + command,
+            icon: "terminal",
             running: running,
             failed: failed
         )
@@ -275,51 +308,60 @@ public enum TurnPresentation {
 
     private static func toolSemantic(_ call: ToolCall) -> TurnActivitySemantic {
         let name = call.name.lowercased()
-        let running = call.status == .pending || call.status == .running || call.status == .awaitingApproval
-        let failed = call.status == .failed || call.status == .denied
 
-        let kind: TurnActivityDisplay.Kind
-        let key: String
-        let activeText: String
-        let finishedText: String
-        let continuationText: String
-        let icon: String
         if name.contains("上下文压缩") || name.contains("contextcompaction") || name.contains("context_compaction") {
-            kind = .compaction; key = "context-compaction"
-            activeText = "正在自动压缩上下文"
-            finishedText = "上下文已自动压缩"
-            continuationText = "自动压缩了上下文"
-            icon = "text.line.last.and.arrowtriangle.forward"
-        } else if let skill = skillName(in: call.arguments), name.contains("skill") {
-            kind = .tool; key = "skill:" + skill.lowercased()
-            activeText = "正在读取 \(skill) 技能"
-            finishedText = "已读取 \(skill) 技能"
-            continuationText = "读取了 \(skill) 技能"
-            icon = "wrench"
-        } else if name.contains("load") && (["read", "file"].contains(where: name.contains)) {
-            kind = .tool; key = "load-file-tool"
-            activeText = "正在加载工具读取文件"
-            finishedText = "加载了工具读取文件"
-            continuationText = "加载了工具读取文件"
-            icon = "wrench"
-        } else if ["search", "grep", "find", "query"].contains(where: name.contains) {
-            kind = .search; key = "search"; activeText = "正在搜索"; finishedText = "已完成搜索"; continuationText = "完成了搜索"; icon = "magnifyingglass"
-        } else if ["read", "open", "view", "get"].contains(where: name.contains) {
-            kind = .read; key = "read"; activeText = "正在读取文件"; finishedText = "已读取文件"; continuationText = "读取了文件"; icon = "book"
-        } else if ["edit", "write", "patch", "update"].contains(where: name.contains) {
-            kind = .edit; key = "edit"; activeText = "正在编辑文件"; finishedText = "已编辑文件"; continuationText = "编辑了文件"; icon = "pencil"
-        } else if ["shell", "bash", "command", "exec", "run"].contains(where: name.contains) {
-            kind = .command; key = "command"; activeText = "正在运行命令"; finishedText = "运行了命令"; continuationText = "运行了命令"; icon = "terminal"
-        } else {
-            kind = .tool; key = "tool"; activeText = "正在使用工具"; finishedText = "使用了工具"; continuationText = "使用了工具"; icon = "wrench"
+            return semantic(
+                key: "context-compaction",
+                kind: .compaction,
+                activeText: "正在自动压缩上下文",
+                completedText: "上下文已自动压缩",
+                continuationText: "自动压缩了上下文",
+                icon: "text.line.last.and.arrowtriangle.forward",
+                running: call.status == .running,
+                failed: call.status == .failed
+            )
         }
 
+        if let skill = skillName(in: call.arguments), name.contains("skill") {
+            return semantic(
+                key: "skill:" + skill.lowercased(),
+                kind: .tool,
+                activeText: "正在读取 \(skill) 技能",
+                completedText: "读取 \(skill) 技能",
+                continuationText: "读取 \(skill) 技能",
+                icon: "wrench",
+                running: call.status == .running || call.status == .pending,
+                failed: call.status == .failed || call.status == .denied
+            )
+        }
+
+        let running = call.status == .pending || call.status == .running || call.status == .awaitingApproval
+        let failed = call.status == .failed || call.status == .denied
+        let kind: TurnActivityDisplay.Kind
+        let label: String
+        let icon: String
+        if ["search", "grep", "query", "find", "glob"].contains(where: name.contains) {
+            kind = .search; label = "查阅"; icon = "magnifyingglass"
+        } else if ["list", "ls"].contains(where: name.contains) {
+            kind = .search; label = "查阅"; icon = "list.bullet"
+        } else if ["read", "open", "view", "get"].contains(where: name.contains) {
+            kind = .read; label = "读取"; icon = "book"
+        } else if ["edit", "write", "patch", "update"].contains(where: name.contains) {
+            kind = .edit; label = "编辑"; icon = "pencil"
+        } else if ["shell", "bash", "command", "exec", "run"].contains(where: name.contains) {
+            kind = .command; label = "终端"; icon = "terminal"
+        } else {
+            kind = .tool; label = "使用工具 · " + call.name; icon = "wrench"
+        }
+
+        let detail = argsSnippet(call.arguments)
+        let base = detail.isEmpty ? label : "\(label) · \(detail)"
         return semantic(
-            key: key,
+            key: "tool:" + name,
             kind: kind,
-            activeText: activeText,
-            completedText: failed ? "工具使用失败" : finishedText,
-            continuationText: failed ? "工具使用失败" : continuationText,
+            activeText: base,
+            completedText: failed ? base + " · 执行失败" : base,
+            continuationText: base,
             icon: icon,
             running: running,
             failed: failed
@@ -344,42 +386,68 @@ public enum TurnPresentation {
             isFailure: failed
         )
         return TurnActivitySemantic(
-            display: display,
-            fact: TurnActivityFact(
-                key: key,
-                kind: kind,
-                completedText: completedText,
-                continuationText: continuationText,
-                systemImage: icon,
-                isFailure: failed
-            )
+            display: display
         )
     }
 
-    private static func completedSummary(_ facts: [TurnActivityFact]) -> String {
-        guard let first = facts.first else { return "已完成处理" }
-        guard facts.count > 1 else { return first.completedText }
-        if facts.count == 2 {
-            return first.completedText + "并" + facts[1].continuationText
+    /// ZCode groups consecutive searches into one row whose text carries the
+    /// per-category counts, e.g. "查阅 · 2 搜索, 1 列表".
+    fileprivate static func searchCountsText(_ events: [TurnItem]) -> String {
+        var searches = 0
+        var listings = 0
+        var reads = 0
+        for event in events {
+            guard case .toolCall(let call) = event else { continue }
+            let name = call.name.lowercased()
+            if ["list", "ls", "glob"].contains(where: name.contains) { listings += 1 }
+            else if ["read", "open", "view", "get"].contains(where: name.contains) { reads += 1 }
+            else { searches += 1 }
         }
-        let middle = facts.dropFirst().dropLast().map(\.continuationText).joined(separator: "、")
-        return first.completedText + "、" + middle + "并" + facts.last!.continuationText
+        var parts: [String] = []
+        if searches > 0 { parts.append("\(searches) 搜索") }
+        if listings > 0 { parts.append("\(listings) 列表") }
+        if reads > 0 { parts.append("\(reads) 读取") }
+        return parts.isEmpty ? "查阅" : "查阅 · " + parts.joined(separator: ", ")
     }
 
-    private static func summaryIcon(for facts: [TurnActivityFact]) -> String? {
-        if facts.contains(where: { $0.kind == .compaction }) {
-            return "text.line.last.and.arrowtriangle.forward"
+    fileprivate static func isSearchToolCall(_ item: TurnItem) -> Bool {
+        guard case .toolCall(let call) = item else { return false }
+        let name = call.name.lowercased()
+        return ["search", "grep", "query", "find", "glob", "list", "ls"].contains(where: name.contains)
+    }
+
+    fileprivate static func isFailedEvent(_ item: TurnItem) -> Bool {
+        switch item {
+        case .commandExecution(let e): return e.status == .failed || e.status == .denied
+        case .toolCall(let c): return c.status == .failed || c.status == .denied
+        case .fileChange(let f): return f.status == .failed || f.status == .denied
+        default: return false
         }
-        if facts.contains(where: { $0.kind == .tool }) { return "wrench" }
-        if facts.contains(where: { $0.kind == .edit }) { return "pencil" }
-        if facts.contains(where: { $0.kind == .search }) { return "magnifyingglass" }
-        return facts.last?.systemImage
+    }
+
+    fileprivate static func argsSnippet(_ raw: String) -> String {
+        let firstLine = raw
+            .split(whereSeparator: \.isNewline)
+            .first?
+            .trimmingCharacters(in: .whitespaces) ?? ""
+        guard !firstLine.isEmpty else { return "" }
+        let flat = firstLine.replacingOccurrences(of: "\n", with: " ")
+        return flat.count > 96 ? String(flat.prefix(96)) + "…" : flat
+    }
+
+    public static func fileChangeLabel(_ change: FileChange) -> String {
+        let verb: String
+        switch change.kind {
+        case .create: verb = "新建"
+        case .update: verb = "编辑"
+        case .delete: verb = "删除"
+        }
+        return verb + " " + change.path
     }
 
     /// Extract only a safe, human-readable skill label. The source path and
     /// tool arguments remain private and never reach the transcript.
-    private static func skillName(in raw: String) -> String? {
-        let patterns = [
+    private static func skillName(in raw: String) -> String? {        let patterns = [
             #"(?i)/skills/([^/\s\"']+)/SKILL\.md"#,
             #"(?i)\"(?:skill_name|skill)\"\s*:\s*\"([^\"]+)\""#
         ]

@@ -18,6 +18,8 @@ func runTurnPresentationTests(_ t: TestRunner) {
         startedAt: Date()
     )
 
+    // ZCode-style transcript: every event keeps its own quiet row with the
+    // concrete command; prose messages do not collapse the rows around them.
     let blocks = TurnPresentation.compactBlocks([
         .userMessage(id: "user", text: "修复"),
         .reasoning(id: "think-1", text: "先读文件"),
@@ -26,38 +28,37 @@ func runTurnPresentationTests(_ t: TestRunner) {
         .commandExecution(buildCommand),
         .assistantMessage(id: "milestone", text: "修跨模块依赖问题"),
     ])
-
-    t.expectEqual(blocks.count, 3, "activity before a milestone collapses to one block")
-    if case .activity(let activity) = blocks[1] {
-        t.expectEqual(activity.latest.id, "cmd-build", "only the latest live activity remains visible")
-        t.expect(!activity.isTail, "activity before a key message is a closed segment")
-        let display = TurnPresentation.activityDisplay(for: activity, turnIsRunning: true)
-        t.expectEqual(display.text, "已读取文件并构建了 App", "closed segment keeps categorized completed summary")
-        t.expect(!display.isRunning, "closed segment no longer looks active")
+    t.expectEqual(blocks.count, 6, "each event is its own row; milestone stays a separate item block")
+    if case .activity(let reasoningRow) = blocks[1] {
+        let display = TurnPresentation.activityDisplay(for: reasoningRow, turnIsRunning: false)
+        t.expectEqual(display.text, "思考", "completed reasoning reads as a plain 思考 row")
     } else {
-        t.expect(false, "middle block is compact activity")
+        t.expect(false, "second block is reasoning")
+    }
+    if case .activity(let commandRow) = blocks[2] {
+        let display = TurnPresentation.activityDisplay(for: commandRow, turnIsRunning: false)
+        t.expectEqual(display.text, "终端 · head SettingsView.swift", "terminal row shows the concrete command")
+    } else {
+        t.expect(false, "third block is command")
     }
 
-    let segmented = TurnPresentation.compactBlocks([
-        .reasoning(id: "think-a", text: "A"),
-        .commandExecution(readCommand),
-        .assistantMessage(id: "progress", text: "关键进度"),
-        .reasoning(id: "think-b", text: "B"),
-        .commandExecution(buildCommand),
+    let runningBuild = TurnPresentation.activityDisplay(for: .commandExecution(buildCommand))
+    t.expectEqual(runningBuild.text, "终端 · swift build", "running terminal row shows the live command")
+
+    // Consecutive search-like tool calls group into one 查阅 row with counts.
+    let searchOne = ToolCall(id: "s-1", name: "web_search", arguments: "{}", status: .succeeded)
+    let searchTwo = ToolCall(id: "s-2", name: "grep", arguments: "{}", status: .succeeded)
+    let searchGroup = TurnPresentation.compactBlocks([
+        .toolCall(searchOne),
+        .toolCall(searchTwo),
+        .assistantMessage(id: "after-search", text: "搜索完成"),
     ])
-    t.expectEqual(segmented.count, 3, "a visible progress message starts a new activity segment")
-    if case .activity(let first) = segmented[0],
-       case .activity(let second) = segmented[2] {
-        t.expectEqual(first.latest.id, "cmd-read", "first segment keeps its final event")
-        t.expectEqual(second.latest.id, "cmd-build", "second segment rolls independently")
-        t.expect(!first.isTail, "first segment is closed")
-        t.expect(second.isTail, "last activity segment is the live tail")
-        let live = TurnPresentation.activityDisplay(for: second, turnIsRunning: true)
-        t.expectEqual(live.text, "正在构建 App", "live tail updates in place")
-        let completed = TurnPresentation.activityDisplay(for: second, turnIsRunning: false)
-        t.expectEqual(completed.text, "构建了 App", "completed turn changes tail to past tense")
+    t.expectEqual(searchGroup.count, 2, "consecutive searches group into one 查阅 row")
+    if case .activity(let group) = searchGroup[0] {
+        let display = TurnPresentation.activityDisplay(for: group, turnIsRunning: false)
+        t.expectEqual(display.text, "查阅 · 2 搜索", "search group carries per-category counts")
     } else {
-        t.expect(false, "activity remains on both sides of the milestone")
+        t.expect(false, "search group becomes one activity row")
     }
 
     let contextCompaction = ToolCall(
@@ -76,44 +77,27 @@ func runTurnPresentationTests(_ t: TestRunner) {
         t.expectEqual(display.text, "上下文已自动压缩", "context compaction has dedicated completed wording")
         t.expectEqual(display.kind, .compaction, "context compaction has its own semantic category")
     } else {
-        t.expect(false, "context compaction becomes an activity summary")
-    }
-
-    let skillCommand = CommandExecution(
-        id: "skill-read",
-        command: "sed -n '1,200p' /tmp/product-design/skills/image-to-code/SKILL.md",
-        status: .succeeded,
-        startedAt: Date()
-    )
-    let skillBlocks = TurnPresentation.compactBlocks([
-        .commandExecution(skillCommand),
-        .assistantMessage(id: "skill-done", text: "已理解截图规范"),
-    ])
-    if case .activity(let skill) = skillBlocks[0] {
-        let display = TurnPresentation.activityDisplay(for: skill, turnIsRunning: false)
-        t.expectEqual(display.text, "已读取 Image to Code 技能", "skill path becomes a safe skill label")
-        t.expect(!display.text.contains("/tmp/"), "skill summary does not expose its source path")
-    } else {
-        t.expect(false, "skill read becomes an activity summary")
+        t.expect(false, "context compaction becomes an activity row")
     }
 
     let command = CommandExecution(
         id: "cmd-run",
         command: "git status --short",
-        status: .succeeded,
+        status: .failed,
+        stderr: "error",
         startedAt: Date()
     )
-    let combined = TurnPresentation.compactBlocks([
-        .commandExecution(readCommand),
+    let failedBlocks = TurnPresentation.compactBlocks([
         .commandExecution(command),
-        .assistantMessage(id: "combined-done", text: "检查完成"),
+        .assistantMessage(id: "failed-done", text: "检查完成"),
     ])
-    if case .activity(let rollup) = combined[0] {
-        let display = TurnPresentation.activityDisplay(for: rollup, turnIsRunning: false)
-        t.expectEqual(display.text, "已读取文件并运行了命令", "multiple tool categories compose one gray summary")
-        t.expect(!display.text.contains("git status"), "combined summary hides raw command arguments")
+    if case .activity(let failedRow) = failedBlocks[0] {
+        let display = TurnPresentation.activityDisplay(for: failedRow, turnIsRunning: false)
+        t.expect(display.text.contains("终端 · git status --short"), "failed terminal row still shows the command")
+        t.expect(display.text.contains("执行失败"), "failed terminal row carries the failure suffix")
+        t.expect(display.isFailure, "failed row is marked as failure")
     } else {
-        t.expect(false, "combined read and command become one activity summary")
+        t.expect(false, "failed command becomes a terminal row")
     }
 
     let file1 = FileChange(id: "file-1", kind: .update, path: "A.swift", status: .applied)
@@ -130,19 +114,15 @@ func runTurnPresentationTests(_ t: TestRunner) {
         t.expect(false, "file batch remains visible")
     }
 
-    let read = TurnPresentation.activityDisplay(for: .commandExecution(readCommand))
-    t.expectEqual(read.kind, .read, "head command is recognized as reading")
-    t.expectEqual(read.text, "已读取文件", "completed read uses quiet past tense")
-
     let searchCommand = CommandExecution(
         id: "search", command: "rg -n foo Sources", status: .running, startedAt: Date()
     )
     let search = TurnPresentation.activityDisplay(for: .commandExecution(searchCommand))
-    t.expectEqual(search.kind, .search, "rg command is recognized as search")
-    t.expectEqual(search.text, "正在搜索文件", "running search hides raw command")
+    t.expectEqual(search.kind, .command, "rg stays a terminal command row")
+    t.expectEqual(search.text, "终端 · rg -n foo Sources", "terminal search shows the concrete command")
 
     let reasoning = TurnPresentation.activityDisplay(
         for: .reasoning(id: "reasoning", text: "分析中\nInvestigating editor refresh")
     )
-    t.expectEqual(reasoning.text, "Investigating editor refresh", "latest reasoning line becomes gray activity")
+    t.expectEqual(reasoning.text, "思考", "a plain reasoning read shows the quiet label")
 }

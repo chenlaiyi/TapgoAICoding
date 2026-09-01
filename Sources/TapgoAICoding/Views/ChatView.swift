@@ -141,6 +141,10 @@ struct ChatView: View {
     @State private var searchQuery = ""
     @State private var jumpToTurnId: String? = nil
     @State private var showEvolutionLog = false
+    /// ZCode-style fold state: completed turns collapse their work log into
+    /// an "已工作 …" chip and their file edits into a summary bar.
+    @State private var expandedWork: Set<String> = []
+    @State private var expandedFiles: Set<String> = []
     @State private var showShortcuts = false
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
@@ -836,36 +840,41 @@ struct ChatView: View {
 
     @ViewBuilder
     private func turnSection(turn: Turn, isLast: Bool = false) -> some View {
+        let isRunning = turn.status == .running
+        let blocks = TurnPresentation.compactBlocks(turn.items)
+        let fileSummary = turn.fileChangeSummary
         VStack(alignment: .leading, spacing: 10) {
-            if turn.status == .running {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("已处理 \(DurationFormatter.string(seconds: max(0, context.date.timeIntervalSince(turn.startedAt))))")
-                            .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                        Divider()
+            // ZCode-style work log. While the turn runs, every activity row
+            // streams visibly; once it completes the rows fold into an
+            // "已工作 …" chip and file edits fold into a summary bar.
+            ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
+                let isWorkBlock: Bool = {
+                    switch block {
+                    case .activity, .fileBatch: return true
+                    case .item: return false
+                    }
+                }()
+                if isRunning || !isWorkBlock {
+                    renderBlock(block, turn: turn)
+                } else if isWorkBlock {
+                    let revealed = expandedWork.contains(turn.id) || expandedFiles.contains(turn.id)
+                    if revealed { renderBlock(block, turn: turn) }
+                    if index == firstWorkBlockIndex(blocks) {
+                        workDurationChip(turn: turn)
                     }
                 }
             }
-            ForEach(TurnPresentation.compactBlocks(turn.items)) { block in
-                switch block {
-                case .item(let item):
-                    MessageRow(item: item,
-                               isRunning: turn.status == .running,
-                               userImagePaths: turn.userImagePaths,
-                               startedAt: turn.startedAt,
-                               onReply: userReplyClosure(item),
-                               onEdit: { store.sendUserMessage($0) })
-                case .activity(let activity):
-                    ActivityRollupView(
-                        activity: activity,
-                        turnIsRunning: turn.status == .running
-                    )
-                case .fileBatch(let files):
-                    FileEditBatchView(files: files)
-                }
+            if !isRunning, let summary = fileSummary {
+                FileChangeSummaryBar(
+                    count: summary.count,
+                    additions: summary.additions,
+                    deletions: summary.deletions,
+                    isExpanded: expandedFiles.contains(turn.id),
+                    onToggle: { toggleFiles(turn.id) }
+                )
+                .padding(.leading, 4)
             }
-            if turn.status == .running && !hasRollingActivityTail(turn) {
+            if isRunning && !hasRollingActivityTail(turn) {
                 runningActivityLine(turn: turn)
             }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
@@ -934,6 +943,75 @@ struct ChatView: View {
                 }
                 .padding(.leading, 8)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func renderBlock(_ block: TurnPresentationBlock, turn: Turn) -> some View {
+        switch block {
+        case .item(let item):
+            MessageRow(item: item,
+                       isRunning: turn.status == .running,
+                       userImagePaths: turn.userImagePaths,
+                       startedAt: turn.startedAt,
+                       onReply: userReplyClosure(item),
+                       onEdit: { store.sendUserMessage($0) })
+        case .activity(let activity):
+            ActivityRollupView(
+                activity: activity,
+                turnIsRunning: turn.status == .running
+            )
+        case .fileBatch(let files):
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(files) { file in
+                    FileChangeRowView(change: file)
+                }
+            }
+        }
+    }
+
+    /// "已工作 8 分 53 秒 >" — the collapsed work-log toggle that ZCode
+    /// shows once a turn finishes; clicking reveals the activity rows.
+    private func workDurationChip(turn: Turn) -> some View {
+        let expanded = expandedWork.contains(turn.id)
+        return Button {
+            toggleWork(turn.id)
+        } label: {
+            HStack(spacing: 6) {
+                Text("已工作 \(turn.durationText ?? "0s")")
+                Image(systemName: "chevron.right")
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+            }
+            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expanded ? "折叠工作过程" : "展开工作过程")
+    }
+
+    private func firstWorkBlockIndex(_ blocks: [TurnPresentationBlock]) -> Int? {
+        blocks.firstIndex { block in
+            switch block {
+            case .activity, .fileBatch: return true
+            case .item: return false
+            }
+        }
+    }
+
+    private func toggleWork(_ id: String) {
+        if expandedWork.contains(id) {
+            expandedWork.remove(id)
+        } else {
+            expandedWork.insert(id)
+        }
+    }
+
+    private func toggleFiles(_ id: String) {
+        if expandedFiles.contains(id) {
+            expandedFiles.remove(id)
+        } else {
+            expandedFiles.insert(id)
         }
     }
 

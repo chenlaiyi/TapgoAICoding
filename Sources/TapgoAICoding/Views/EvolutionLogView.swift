@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.69",
+                    date: "2026-09-01",
+                    commit: "随 v0.5.69",
+                    tag: "v0.5.69",
+                    summary: "仿 ZCode 内容输出样式",
+                    changes: [
+                        "回合内每个事件（思考/查阅/终端/编辑/读取）各占一行安静灰底短行，显示具体内容；连续搜索类合并为查阅计数行；失败事件标执行失败。",
+                        "文件编辑改成安静单行 +A -B 摘要；完成后折叠为已工作芯片 + N 个文件已更改横条。"
+                    ],
+                    why: "原 ZCode-style 折叠把工作日志藏得太深，每个事件都该让用户看到具体内容。",
+                    next: "登录模型账号后真机看 UI 视觉与展开交互。"
+                ),
+
+                EvolutionEntry(
                     version: "v0.5.68",
                     date: "2026-09-01",
                     commit: "随 v0.5.68",

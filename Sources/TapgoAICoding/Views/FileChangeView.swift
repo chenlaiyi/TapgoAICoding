@@ -1,6 +1,182 @@
 import SwiftUI
 import TapgoCore
 
+// MARK: - ZCode-style quiet file-change row
+//
+// A single muted transcript line: "编辑 Info.plist AppBuilder +8 -2", with
+// the diff available on click and a failure suffix when the edit failed.
+
+struct FileChangeRowView: View {
+    let change: FileChange
+    @EnvironmentObject private var workspace: WorkspaceStore
+    @State private var showDiff = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    private var added: Int { Self.addedLines(in: change.diff) }
+    private var removed: Int { Self.removedLines(in: change.diff) }
+    private var failed: Bool { change.status == .failed || change.status == .denied }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 16)
+                Text(verb)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                Text(basename)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(directory)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                if added > 0 {
+                    Text("+\(added)")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.green)
+                }
+                if removed > 0 {
+                    Text("-\(removed)")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.red)
+                }
+                if failed {
+                    Text("执行失败")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { showDiff.toggle() }
+            .contextMenu {
+                Button { copy(change.path) } label: {
+                    Label("复制路径", systemImage: "doc.on.doc")
+                }
+                Button { openFile() } label: {
+                    Label("打开文件", systemImage: "doc")
+                }
+                Button { revealInFinder() } label: {
+                    Label("在访达中显示", systemImage: "folder")
+                }
+                if !change.diff.isEmpty {
+                    Button { copy(change.diff) } label: {
+                        Label("复制差异", systemImage: "doc.on.doc")
+                    }
+                }
+            }
+
+            if showDiff, !change.diff.isEmpty {
+                DiffView(change: change)
+                    .frame(maxHeight: 320)
+            }
+        }
+        .padding(.vertical, 3)
+        .accessibilityLabel(change.path)
+    }
+
+    private var icon: String {
+        switch change.kind {
+        case .create: return "doc.badge.plus"
+        case .update: return "pencil"
+        case .delete: return "trash"
+        }
+    }
+    private var iconColor: Color {
+        switch change.kind {
+        case .create: return .green
+        case .update: return .orange
+        case .delete: return .red
+        }
+    }
+    private var verb: String {
+        switch change.kind {
+        case .create: return "新建"
+        case .update: return "编辑"
+        case .delete: return "删除"
+        }
+    }
+    private var basename: String {
+        (change.path as NSString).lastPathComponent
+    }
+    private var directory: String {
+        let dir = (change.path as NSString).deletingLastPathComponent
+        return dir.isEmpty ? "" : dir
+    }
+
+    private func copy(_ s: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(s, forType: .string)
+    }
+    private func openFile() {
+        let url = FileEditBatchView.resolve(change.path, in: workspace)
+        if FileManager.default.fileExists(atPath: url.path) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    private func revealInFinder() {
+        NSWorkspace.shared.activateFileViewerSelecting(
+            [FileEditBatchView.resolve(change.path, in: workspace)]
+        )
+    }
+
+    static func addedLines(in diff: String) -> Int {
+        diff.components(separatedBy: "\n").filter { line in
+            line.hasPrefix("+") && !line.hasPrefix("+++")
+        }.count
+    }
+    static func removedLines(in diff: String) -> Int {
+        diff.components(separatedBy: "\n").filter { line in
+            line.hasPrefix("-") && !line.hasPrefix("---")
+        }.count
+    }
+}
+
+/// End-of-turn summary bar: "5 个文件已更改 +47 -8" with an expand toggle,
+/// mirroring ZCode's collapsed change summary.
+struct FileChangeSummaryBar: View {
+    let count: Int
+    let additions: Int
+    let deletions: Int
+    let isExpanded: Bool
+    let onToggle: () -> Void
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                Text("\(count) 个文件已更改")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                if additions > 0 {
+                    Text("+\(additions)")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.green)
+                }
+                if deletions > 0 {
+                    Text("-\(deletions)")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.red)
+                }
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(count) 个文件已更改")
+        .accessibilityHint(isExpanded ? "折叠文件列表" : "展开文件列表")
+    }
+}
+
 /// Codex-style batched file-edit block: a single "已编辑 N 个文件" card that
 /// folds a run of consecutive file changes into one collapsible list, with
 /// an applied/awaiting badge and a "再显示 N 个文件" expander for long runs.

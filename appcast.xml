@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.69</title>
+            <pubDate>Tue, 01 Sep 2026 20:11:02 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.69</link>
+            <sparkle:version>0.5.69</sparkle:version>
+            <sparkle:shortVersionString>0.5.69</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.69
+
+- 仿 ZCode 内容输出样式：
+  - 回合里的每个事件（思考/查阅/终端/编辑/读取等）各占一行安静灰底短行，每行都显示具体内容（"终端 · swift build"、"查阅 · 2 搜索"等），不再被助手文字触发就折叠成"已完成 …"。
+  - 连续搜索类工具调用合并为一行"查阅 · N 搜索, M 列表"，仅在末尾继续扩展。
+  - 工具调用/命令执行失败时整行变成"…执行失败"+"⚠️"。
+  - 文件编辑也变成安静的单行："编辑 Sources/A.swift AppBuilder +8 -2"（含 +/- 行数），失败加"执行失败"；点击展开 diff。
+  - 回合完成后所有工作行折叠为"已工作 X 分 Y 秒 ⌄"芯片 + 顶部的"N 个文件已更改 +A -B"摘要条；点击展开原活动行。
+- 2610 测试全绿，新增结构测试覆盖新样式语义。
+- 真机回归受限于沙箱模型账号都被锁住，ChatView 的新样式会在你登录账号后触发回合即可直接看到。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.69/Tapgo-AICoding-0.5.69.zip" length="9444065" type="application/octet-stream" sparkle:edSignature="FYXXpvr+FptjNiqIekThnL7bwgLz0aAwG2SN7GOh0gtseP2lrZvo33W3uF84qtxGSLtwJrvmxcNuEuvtMkDOBw=="/>
+        </item>
+        <item>
             <title>0.5.68</title>
             <pubDate>Tue, 01 Sep 2026 19:02:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.68</link>
@@ -34,22 +55,6 @@
 - 与 v0.5.66 的拖宽自动弹出共存不冲突：拖宽弹出的是工作台内的环境抽屉（打开工作台），此时自适应卡自动隐藏，二者不同时占据右侧。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.67/Tapgo-AICoding-0.5.67.zip" length="9435205" type="application/octet-stream" sparkle:edSignature="fHGhHdnP8fjf5xQRRd/sYG/3GBpQlJ3eXRtrXpW3sBVZzXCCXzt+IAttmFBCf6zC5fqtcplAC5KjlHJ/lyIzCw=="/>
-        </item>
-        <item>
-            <title>0.5.66</title>
-            <pubDate>Tue, 01 Sep 2026 05:50:32 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.66</link>
-            <sparkle:version>0.5.66</sparkle:version>
-            <sparkle:shortVersionString>0.5.66</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.66
-
-- 新增 ZCode 式"拖宽自动弹出环境信息"：主会话与工作台之间的分隔条改为自绘实现，向左拖动把工作台拉宽到 560pt 以上时环境信息抽屉自动弹出；以松手时的最终宽度判定，连续小段拖动可累计达标。
-- 仅向加宽方向拖动触发；向右收窄工作台（例如刚手动关闭抽屉后回收空间）不会误触发，重复弹出无回弹。
-- 右缘环境手柄保持点击直接展开与贴边小位移（>3pt）向右拖拽展开；附带修复自绘分隔条的辅助功能声明。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.66/Tapgo-AICoding-0.5.66.zip" length="9434120" type="application/octet-stream" sparkle:edSignature="2K47fIj6xTmdHsOtx2olkAhYI7LPsJaPkheTux0vgk/zAWo8+SNZ9Gbl7dJINZGkD55UopoUa/DPLlz4GIHJAQ=="/>
         </item>
     </channel>
 </rss>

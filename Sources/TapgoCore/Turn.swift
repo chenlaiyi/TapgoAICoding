@@ -104,4 +104,24 @@ public extension Turn {
         if userInput.lowercased().contains(q) { return true }
         return items.contains { $0.searchableText.lowercased().contains(q) }
     }
+
+    /// Aggregate of every file change in the turn: unique count plus total
+    /// +/- line counts parsed from the unified diffs. Nil when the turn
+    /// touched no files (so the summary bar stays hidden).
+    var fileChangeSummary: (count: Int, additions: Int, deletions: Int)? {
+        let changes = items.compactMap { item -> FileChange? in
+            guard case .fileChange(let change) = item else { return nil }
+            return change
+        }
+        guard !changes.isEmpty else { return nil }
+        var additions = 0
+        var deletions = 0
+        for change in changes {
+            for line in change.diff.components(separatedBy: "\n") {
+                if line.hasPrefix("+") && !line.hasPrefix("+++") { additions += 1 }
+                if line.hasPrefix("-") && !line.hasPrefix("---") { deletions += 1 }
+            }
+        }
+        return (changes.count, additions, deletions)
+    }
 }

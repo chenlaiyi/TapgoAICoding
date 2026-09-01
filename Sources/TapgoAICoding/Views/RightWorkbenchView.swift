@@ -615,7 +615,11 @@ private struct WorkbenchAuxiliaryConversation: View {
                 case .activity(let activity):
                     ActivityRollupView(activity: activity, turnIsRunning: turn.status == .running)
                 case .fileBatch(let files):
-                    FileEditBatchView(files: files)
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(files) { file in
+                            FileChangeRowView(change: file)
+                        }
+                    }
                 }
             }
             if turn.status == .running {
