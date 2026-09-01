@@ -17,7 +17,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
 
     t.expect(sidebar.contains("menuItem(\"新建任务\""), "desktop-design: 新建任务位于一级导航")
     t.expect(sidebar.contains("menuItem(\"搜索\""), "desktop-design: 搜索位于一级导航")
-    t.expect(sidebar.contains("menuItem(\"自动化\""), "desktop-design: 自动化位于一级导航")
+    t.expect(sidebar.contains("menuItem(\"自进化日志\""), "desktop-design: 自进化日志位于一级导航")
     t.expect(sidebar.contains("menuItem(\"插件市场\""), "desktop-design: 插件市场位于一级导航")
     t.expect(sidebar.contains("case groups") && sidebar.contains("case projects"), "desktop-design: 分组与项目视图可切换")
     t.expect(sidebar.contains("flattenedThreads") && sidebar.contains("flatTaskThreads"), "desktop-design: 分组扁平列表与项目层级分别渲染")
@@ -27,7 +27,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(sidebar.contains("showConnectPhone = true"), "desktop-design: 连接手机入口保留")
     t.expect(sidebar.contains("updater.checkForUpdates()"), "desktop-design: 更新入口保留")
     t.expect(sidebar.contains("Label(\"连接手机\""), "desktop-design: 连接手机收进账户菜单")
-    t.expect(sidebar.contains("Label(\"自动化\""), "desktop-design: 自动化收进账户菜单")
+    t.expect(sidebar.contains("Label(\"自进化日志\""), "desktop-design: 自进化日志收进账户菜单")
     t.expect(sidebar.contains("Label(\"检查更新\""), "desktop-design: 检查更新收进账户菜单")
     t.expect(sidebar.contains("Label(\"设置\""), "desktop-design: 设置收进账户菜单")
     t.expect(!sidebar.contains(".help(\"连接手机与应用工具\""), "desktop-design: 底部工具菜单移除")
