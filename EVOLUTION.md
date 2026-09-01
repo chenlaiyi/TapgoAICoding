@@ -938,3 +938,16 @@
 - 新增 21 项 `AgentOutputPolicy` 回归测试；总测试数 685 → 706。
 **Why**: v0.5.1 只包含一句宽泛提示；仅加强 Prompt 的首次原生回归中，模型仍把三个工具并行执行后集中总结，因此增加 App 事件层保证。
 **Next**: 继续用安装版长任务验证模型在多次工具调用之间真实产生用户可见进度，并跟进 Harness 的原生进度事件能力。
+
+## v0.5.70 — 2026-09-02
+
+侧栏一级菜单与账户菜单的旧标签「自动化」实际指向 EvolutionLogView（自进化历史），
+与项目未来计划新增的「任务调度面板」是两个不同概念——后者目前还没有实现，应作为
+独立 backlog 跟踪。本次只修命名错位：
+
+- SidebarView.swift 一级菜单 label/help/accessibility 三处 + 账户菜单 Label 1 处共 4 处
+  全部从「自动化」改回「自进化日志」
+- DesktopZCodeDesignTests 同步更新两条相关断言
+
+构建：swift build -c release 通过；测试中失败的远程 SSH / auth.json 集成用例为环境
+依赖，与本次改动无关，本地断言全部通过。

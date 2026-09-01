@@ -4,16 +4,6 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<!-- Sparkle picks its update-UI language from the app's declared
-	     localizations. zh-Hans matches modern system language markers
-	     (e.g. zh-Hans-US); the build script mirrors Sparkle's zh_CN.lproj
-	     under the zh-Hans name so its dialogs resolve to Chinese. -->
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>zh-Hans</string>
-		<string>zh_CN</string>
-		<string>en</string>
-	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Tapgo AICoding</string>
 	<key>CFBundleExecutable</key>
@@ -26,14 +16,20 @@
 	<string>com.tapgo.aicoding</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>zh-Hans</string>
+		<string>zh_CN</string>
+		<string>en</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>Tapgo AICoding</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5.69</string>
+	<string>0.5.70</string>
 	<key>CFBundleVersion</key>
-	<string>0.5.69</string>
+	<string>70</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
 	<key>LSMinimumSystemVersion</key>
@@ -46,14 +42,14 @@
 	<string>允许同一 Wi-Fi 下的手机通过浏览器访问本机远程控制页面。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/chenlaiyi/TapgoAICoding/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>5A1goaZJbt/pwAcSnRMTXx/odqiHKL79cFgs30qnF7I=</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUAutomaticallyUpdate</key>
-	<true/>
 	<key>SUScheduledCheckInterval</key>
 	<integer>3600</integer>
 </dict>
