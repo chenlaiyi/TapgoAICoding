@@ -40,6 +40,12 @@ struct SettingsView: View {
     @AppStorage("tapgo.memory.cloudSync") private var cloudSyncEnabled = true
     @AppStorage(TapgoConfig.computerUseEnabledKey) private var computerUseEnabled = true
     @AppStorage(TapgoConfig.computerUseShowInComposerKey) private var computerUseShowInComposer = true
+    /// Global toggle for the ZCode-style "工作过程" work log (thinking,
+    /// terminal, file edit, file read cards inside a turn). Default off —
+    /// see `ChatView.showWorkProcess` for the matching flag. Kept here
+    /// so users can flip it back on without digging through a hidden
+    /// settings path.
+    @AppStorage("tapgo.showWorkProcess") private var showWorkProcess = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(initialTab: Tab = .general, onDismiss: (() -> Void)? = nil) {
@@ -626,6 +632,17 @@ struct SettingsView: View {
                         .labelsHidden()
                         .pickerStyle(.segmented)
                         .frame(width: 250)
+                    }
+
+                    Divider()
+
+                    settingsControlRow(
+                        title: "显示工作过程",
+                        description: "关闭后已完成回合只保留最终回复与文件修改摘要；每条思考、终端、读取、编辑卡片默认隐藏。"
+                    ) {
+                        Toggle("显示工作过程", isOn: $showWorkProcess)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
                     }
                 }
             }

@@ -305,3 +305,59 @@ func runHarnessSupervisorRetryBookkeeping(_ t: TestRunner) {
     sup.resetIdempotentAttempts(method: "initialize")
     t.expectEqual(sup.idempotentAttempts["initialize"], nil, "reset clears")
 }
+
+// MARK: - v0.5.71 auto-reconnect
+
+/// After the supervisor's exponential-backoff restart cycle
+/// finally succeeds, `onReconnected` fires exactly once with the
+/// cumulative restart count. Distinct from `onRestart` (which is
+/// the supervisor's state-transition signal) — `onReconnected` is
+/// the transport-level "I am running and ready" hook that
+/// `CodexHarnessClient` uses to reissue `initialize`.
+@MainActor
+func runSupervisorFiresReconnectedAfterBackoff(_ t: TestRunner) async {
+    t.section("HarnessSupervisor: onReconnected fires once per successful restart")
+    let fake = ScriptedSupervisorTransport()
+    // Attempt-numbering in `ScriptedSupervisorTransport.start()` and
+    // the supervisor's `handleExit`:
+    //   attempt 1 = initial `sup.start()`               (must succeed)
+    //   attempt 2 = first restart after `simulateExit`   (must fail)
+    //   attempt 3 = second restart after auto-retry     (must fail)
+    //   attempt 4 = third restart after auto-retry      (must succeed)
+    // → `restartCount` ends at 3 and `onReconnected` fires once with 3.
+    fake.failingStartAttempts = [2, 3]
+    let cfg = HarnessSupervisor.Config(
+        maxAutoRestarts: 5,
+        restartBackoffLowerBound: 0.05,
+        restartBackoffUpperBound: 0.05
+    )
+    let sup = HarnessSupervisor(transport: fake, config: cfg)
+    var restarts = 0
+    var reconnects: [Int] = []
+    sup.onRestart = { restarts += 1 }
+    sup.onReconnected = { attempt in reconnects.append(attempt) }
+
+    try? sup.start()
+    fake.simulateExit(code: 134)
+    let deadline = Date().addingTimeInterval(2.0)
+    while Date() < deadline && reconnects.isEmpty {
+        try? await Task.sleep(nanoseconds: 20_000_000)
+    }
+
+    t.expectEqual(reconnects.count, 1,
+                  "onReconnected fired exactly once after reconnect")
+    t.expectEqual(reconnects.first, 3,
+                  "onReconnected received cumulative restart attempt count = 3")
+    t.expectEqual(restarts, 1,
+                  "onRestart and onReconnected share the same restart slot")
+    t.expectEqual(fake.successfulStarts, 2,
+                  "transport start() succeeded twice (initial + reconnect)")
+    t.expectEqual(sup.restartCount, 3,
+                  "restartCount reflects all attempts including the failures")
+    if case .running = sup.state {
+        t.expect(true, "supervisor state is .running after reconnect")
+    } else {
+        t.expect(false, "supervisor state should be .running, got \(sup.state)")
+    }
+    sup.stop()
+}

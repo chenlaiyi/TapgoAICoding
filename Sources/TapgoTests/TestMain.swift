@@ -48,6 +48,11 @@ let allSections: [String] = [
     "ThreadStore: turns + items round-trip",
     "UserImageAttachmentStore: durable thumbnail copies",
     "ThreadStore: legacy file without turns decodes",
+    "ThreadStore: scheduleSave debounces streaming deltas",
+    "ThreadStore: scheduleSave(immediate:true) bypasses debounce",
+    "ThreadStore: drainPendingSaves writes pending snapshot",
+    "ExecEvent: isPersistenceTerminal classifies streaming vs terminal",
+    "HarnessSupervisor: onReconnected fires once per successful restart",
     "RemoteCodexHomeSync: rendered config has no secret material",
     "RemoteCodexHomeSync: trusted projects are remote-only",
     "RemoteCodexHomeSync: harness wrapper script",
@@ -325,6 +330,18 @@ struct TapgoTestMain {
         await runIfInScope(runner, "ThreadStore: legacy file without turns decodes") {
             runThreadStoreDecodesLegacyWithoutTurns(runner)
         }
+        await runIfInScope(runner, "ThreadStore: scheduleSave debounces streaming deltas") {
+            await runThreadStoreScheduleSaveDebounces(runner)
+        }
+        await runIfInScope(runner, "ThreadStore: scheduleSave(immediate:true) bypasses debounce") {
+            await runThreadStoreScheduleSaveImmediate(runner)
+        }
+        await runIfInScope(runner, "ThreadStore: drainPendingSaves writes pending snapshot") {
+            await runThreadStoreDrainPendingSaves(runner)
+        }
+        await runIfInScope(runner, "ExecEvent: isPersistenceTerminal classifies streaming vs terminal") {
+            runExecEventIsPersistenceTerminal(runner)
+        }
         await runIfInScope(runner, "Thread: auto-title from first user message") {
             runThreadAutoTitle(runner)
         }
@@ -525,6 +542,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "HarnessSupervisor: unexpected exit fires onRestart after backoff") {
             await runHarnessSupervisorRestartAfterBackoff(runner)
+        }
+        await runIfInScope(runner, "HarnessSupervisor: onReconnected fires once per successful restart") {
+            await runSupervisorFiresReconnectedAfterBackoff(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: restart start failures consume retry budget") {
             await runHarnessSupervisorGivesUp(runner)

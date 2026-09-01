@@ -92,6 +92,16 @@ public final class HarnessSupervisor {
     /// succeed). Useful for telemetry / "harness recovered" UI toasts.
     public var onUnexpectedExit: (@MainActor (Int32) -> Void)?
 
+    /// Fired after a successful transport `start()` following an
+    /// unexpected exit — i.e. the harness is back online and ready
+    /// for traffic. Distinct from `onRestart`, which is fired earlier
+    /// in the restart lifecycle (some owners wire UI toasts here).
+    /// The argument is the cumulative restart attempt count for this
+    /// generation (1 the first time we reconnect, 2 the second, etc.).
+    /// Added in v0.5.71 to let `CodexHarnessClient` reissue the server-
+    /// required `initialize` after the Unix socket auto-reconnects.
+    public var onReconnected: (@MainActor (Int) -> Void)?
+
     private var restartTask: Task<Void, Never>?
     private var generation: Int = 0
 
@@ -226,6 +236,7 @@ public final class HarnessSupervisor {
                 self.restartTask = nil
                 self.state = .running
                 self.onRestart?()
+                self.onReconnected?(self.restartCount)
             } catch {
                 // Restart itself failed. Treat it as another unexpected
                 // lifecycle failure so it consumes the next retry slot;

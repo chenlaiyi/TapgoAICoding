@@ -77,6 +77,46 @@ public enum ExecEvent: Hashable {
             self.status = status
         }
     }
+
+    /// True if receiving this event should bypass any debounced disk save
+    /// and force the latest `Thread` snapshot to disk immediately. Added
+    /// in v0.5.70 after the cpu_resource.diag from 2026-09-02 showed
+    /// every per-delta save pegging App CPU at 100 %.
+    ///
+    /// Streaming deltas (assistant text, reasoning, reasoning summary,
+    /// command output) return `false` so they coalesce into one write
+    /// per debounce window. Turn boundary, plan, diff, error, rate limit,
+    /// token usage and approval events all return `true` because the
+    /// UI depends on them being durable the moment they happen.
+    public var isPersistenceTerminal: Bool {
+        switch self {
+        case .threadStarted,
+             .turnStarted,
+             .turnCompleted,
+             .planUpdated,
+             .turnDiffUpdated,
+             .fileChange,
+             .mcpToolCallCompleted,
+             .contextCompaction,
+             .approvalRequested,
+             .approvalExpired,
+             .rateLimitsUpdated,
+             .tokenUsageUpdated,
+             .error:
+            return true
+        case .agentMessageDelta,
+             .agentMessage,
+             .reasoningDelta,
+             .reasoning,
+             .reasoningSummaryDelta,
+             .commandStarted,
+             .commandOutput,
+             .commandCompleted,
+             .mcpToolCallStarted,
+             .webSearch:
+            return false
+        }
+    }
 }
 
 /// Map a single app-server notification into an ExecEvent, or nil if we

@@ -127,13 +127,29 @@ public final class LocalHarnessTransport: HarnessTransport {
 
         outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
-            Task { @MainActor in self?.consumeStdout(data) }
+            guard let self else { return }
+            if data.isEmpty {
+                // EOF on stdout — the child process closed its write
+                // end. Surface it as a transport close so the
+                // supervisor can re-attach via the same path the
+                // socket transport does, instead of waiting on
+                // `proc.terminationHandler` (which is unreliable
+                // once the process is already gone).
+                handle.readabilityHandler = nil
+                Task { @MainActor in self.handleClose(code: -1) }
+                return
+            }
+            Task { @MainActor in self.consumeStdout(data) }
         }
         errorPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
-            Task { @MainActor in self?.consumeStderr(data) }
+            guard let self else { return }
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+                Task { @MainActor in self.handleClose(code: -1) }
+                return
+            }
+            Task { @MainActor in self.consumeStderr(data) }
         }
         proc.terminationHandler = { [weak self] p in
             let code = p.terminationStatus
