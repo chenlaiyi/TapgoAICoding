@@ -951,3 +951,15 @@
 
 构建：swift build -c release 通过；测试中失败的远程 SSH / auth.json 集成用例为环境
 依赖，与本次改动无关，本地断言全部通过。
+
+
+## v0.5.71 — chore(release): v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单
+**Date**: 2026-09-02
+**Commit**: _(see )_
+**Tag**: v0.5.71
+**Test status**: — 2601 passed, 0 failed —
+**Changed**:
+- chore(release): v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单
+「自进化日志」是只读历史页，放在左上角一级导航太抢眼；下放到底部用户头像菜单，与「连接手机/检查更新/设置/退出登录」同级。源码侧只删 SidebarView topBar 中的一项 + 测试断言翻转；用户菜单里的入口保留，所有现有入口路径（点击头像、⌘⌥E、EvolutionPanel「自进化日志」按钮、tapgoOpenEvolution 通知）继续生效。Desktop-design 23 条断言全过，未引入新依赖。顺手修复 AppUpdateDistributionTests 的版本号 hardcode（0.5.69 → git tag/env var），解决发版流程每次 bump 都要改的 pre-existing bug。Evolve.sh 同时补 bump ComputerUseHelper-Info.plist（之前漏改导致 helper 版本长期停在 0.5.69）。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

@@ -17,7 +17,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
 
     t.expect(sidebar.contains("menuItem(\"新建任务\""), "desktop-design: 新建任务位于一级导航")
     t.expect(sidebar.contains("menuItem(\"搜索\""), "desktop-design: 搜索位于一级导航")
-    t.expect(sidebar.contains("menuItem(\"自进化日志\""), "desktop-design: 自进化日志位于一级导航")
+    t.expect(!sidebar.contains("menuItem(\"自进化日志\""), "desktop-design: 自进化日志不在一级导航")
     t.expect(sidebar.contains("menuItem(\"插件市场\""), "desktop-design: 插件市场位于一级导航")
     t.expect(sidebar.contains("case groups") && sidebar.contains("case projects"), "desktop-design: 分组与项目视图可切换")
     t.expect(sidebar.contains("flattenedThreads") && sidebar.contains("flatTaskThreads"), "desktop-design: 分组扁平列表与项目层级分别渲染")

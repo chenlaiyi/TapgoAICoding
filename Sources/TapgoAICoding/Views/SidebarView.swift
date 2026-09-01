@@ -159,11 +159,7 @@ struct SidebarView: View {
             }
             .help("搜索任务 (⌘K)")
             .accessibilityLabel("搜索, 快捷键 ⌘K")
-            menuItem("自进化日志", "clock.arrow.circlepath") {
-                showEvolutionLog = true
-            }
-            .help("查看自进化日志与历史版本")
-            .accessibilityLabel("自进化日志")
+            // 「自进化日志」是只读历史页，不进一级导航；保留在底部用户菜单里就够了。
             menuItem("插件市场", "shippingbox") {
                 showPluginManager = true
             }

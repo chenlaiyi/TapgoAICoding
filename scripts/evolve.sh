@@ -87,6 +87,7 @@ fi
 
 # ---------- 1. Compute next version ----------
 PLIST="${ROOT}/AppBuilder/Info.plist"
+HELPER_PLIST="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
 # Source the version from the LATEST git tag (if any), falling back to
 # Info.plist. This way manually-tagged baselines (e.g. v0.3.1 introduced
 # before evolve.sh existed) don't get re-used by the script.
@@ -112,12 +113,16 @@ echo "==> Version: ${MAJ}.${MIN}.${PAT} → ${NEW_VERSION}  (${BUMP})"
 # ---------- 2. Patch Info.plist ----------
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$PLIST" >/dev/null
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW_VERSION}" "$PLIST" >/dev/null
+if [[ -f "$HELPER_PLIST" ]]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$HELPER_PLIST" >/dev/null
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW_VERSION}" "$HELPER_PLIST" >/dev/null
+fi
 
 # ---------- 3. Build ----------
 echo "==> Building release"
 if ! "${SWIFT[@]}" build -c release --product TapgoAICoding; then
   echo "BUILD FAILED — reverting Info.plist" >&2
-  git checkout -- "$PLIST"
+  git checkout -- "$PLIST" "$HELPER_PLIST"
   exit 4
 fi
 
@@ -129,15 +134,19 @@ WITH_INTEGRATION="${WITH_INTEGRATION:-}"
 TEST_ENV=()
 TEST_ARGS=()
 if [[ -z "$WITH_INTEGRATION" ]]; then
-  TEST_ENV+=(env "TAPGO_SKIP_REMOTE_INTEGRATION=1")
+  TEST_ENV+=("TAPGO_SKIP_REMOTE_INTEGRATION=1")
   echo "==> Running tests (skipping SSH-integration: TAPGO_SKIP_REMOTE_INTEGRATION=1)"
 else
   echo "==> Running tests (WITH integration — needs real SSH host at 203.0.113.10)"
 fi
+# Info.plist 已经是即将发布的 ${NEW_VERSION}，但 git tag 还没打——
+# 让 AppUpdateDistributionTests 用我们预期的版本号而不是回退去匹配
+# 上一版 tag，避免假阳性 fail。
+TEST_ENV+=("TAPGO_EXPECTED_VERSION=${NEW_VERSION}")
 TEST_LOG="$(mktemp -t tapgo-evolve-tests.XXXXXX)"
-if ! "${TEST_ENV[@]}" swift run TapgoTests ${TEST_ARGS[@]+"${TEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"; then
+if ! env "${TEST_ENV[@]}" swift run TapgoTests ${TEST_ARGS[@]+"${TEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"; then
   echo "TESTS FAILED — reverting Info.plist" >&2
-  git checkout -- "$PLIST"
+  git checkout -- "$PLIST" "$HELPER_PLIST"
   rm -f "$TEST_LOG"
   exit 5
 fi
@@ -175,7 +184,7 @@ printf '\n%s\n' "$ENTRY" >> EVOLUTION.md
 # untracked files, so the user has to explicitly git add those if they
 # want them in this commit.
 git add -u
-git add EVOLUTION.md "$PLIST"
+git add EVOLUTION.md "$PLIST" "$HELPER_PLIST"
 git commit -m "${MSG} (v${NEW_VERSION})" >/dev/null
 SHA="$(git rev-parse --short HEAD)"
 # NOTE: The commit SHA is sourced from `git log -1 v${NEW_VERSION}`.
