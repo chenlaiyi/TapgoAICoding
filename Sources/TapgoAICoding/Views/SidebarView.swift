@@ -159,11 +159,11 @@ struct SidebarView: View {
             }
             .help("搜索任务 (⌘K)")
             .accessibilityLabel("搜索, 快捷键 ⌘K")
-            menuItem("自动化", "clock.arrow.circlepath") {
+            menuItem("自进化日志", "clock.arrow.circlepath") {
                 showEvolutionLog = true
             }
-            .help("查看自动化与自进化记录")
-            .accessibilityLabel("自动化")
+            .help("查看自进化日志与历史版本")
+            .accessibilityLabel("自进化日志")
             menuItem("插件市场", "shippingbox") {
                 showPluginManager = true
             }
@@ -964,7 +964,7 @@ struct SidebarView: View {
                 Button {
                     showEvolutionLog = true
                 } label: {
-                    Label("自动化", systemImage: "clock.arrow.circlepath")
+                    Label("自进化日志", systemImage: "clock.arrow.circlepath")
                 }
                 Button {
                     if !store.openEvolution() { showEvolutionRootMissing = true }
