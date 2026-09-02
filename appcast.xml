@@ -3,6 +3,22 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.81</title>
+            <pubDate>Wed, 02 Sep 2026 23:44:26 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.81</link>
+            <sparkle:version>0.5.81</sparkle:version>
+            <sparkle:shortVersionString>0.5.81</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.81
+
+- 修正上一版更新徽章的位置：头像、姓名、更新图标现在在同一行，图标位于姓名右侧（此前掉到了下一行）。
+- 徽章行为不变：有新版本时蓝色实心下载图标，无新版本时灰色向上箭头，点击即检查更新。
+- 测试：界面设计相关断言 53 项全部通过。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.81/Tapgo-AICoding-0.5.81.zip" length="9493616" type="application/octet-stream" sparkle:edSignature="PlXHtEiHJKZlAnEgU6ssBbufKuq9uyFXPJSDNTch8osWOn2YGnDJ8GWGmOcV19/1zduM8ZREaLIBfHjOc2YjAA=="/>
+        </item>
+        <item>
             <title>0.5.80</title>
             <pubDate>Wed, 02 Sep 2026 23:37:02 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.80</link>
@@ -42,27 +58,6 @@
 - 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.79/Tapgo-AICoding-0.5.79.zip" length="9491375" type="application/octet-stream" sparkle:edSignature="5RLyPdWpLXuLfyXp75yo86SG+Cbz73mE62auie7zhgWPPCekNu9w5cbsQxriFN3HuNETHJjYAHnSAcEbotKtBQ=="/>
-        </item>
-        <item>
-            <title>0.5.77</title>
-            <pubDate>Wed, 02 Sep 2026 22:50:42 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.77</link>
-            <sparkle:version>0.5.77</sparkle:version>
-            <sparkle:shortVersionString>0.5.77</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.77
-
-- 界面向 ZCode 风格又贴近了一步，并第一次给出了可量化的贴近度数字：
-  - 侧栏接受拖拽时的虚线高亮环改为 ZCode 风格的天空蓝。
-  - 辅助对话发送失败时的提示用 ZCode 风格的高饱和红。
-  - 文件列表里"执行失败"的徽章用 ZCode 风格的琥珀色。
-  - 以上三处取色全部来自 ZCode 安装包内的官方样式表，颜色值 1:1 一致。
-- 自动量化对比：把 Tapgo 与 ZCode 的主窗口截图做逐像素比对，中央区域差异 13.4%；其中标题栏、侧栏顶部、状态栏三处的颜色与 ZCode 几乎完全一致（差值 ≤ 4/255），其余差异来自窗口里显示的内容不同（登录状态不同），不是颜色问题。
-- 测试：2689 通过 / 13 失败（13 个为预先存在的远程 SSH 集成测试，与本次改动无关）。
-- 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.77/Tapgo-AICoding-0.5.77.zip" length="9488805" type="application/octet-stream" sparkle:edSignature="BcqKfBZxnyacJTqk4spUzTFgEzPqmrbHy8GU/eet04x1sbWMOnfBe1E/hGj54TBnkRpqM8GbBL20B73skM9cAw=="/>
         </item>
     </channel>
 </rss>

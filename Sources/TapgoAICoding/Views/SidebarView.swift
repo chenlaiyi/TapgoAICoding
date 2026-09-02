@@ -955,6 +955,7 @@ struct SidebarView: View {
     @ViewBuilder
     private var userBar: some View {
         VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: 6) {
             Menu {
                 Button {
                     showConnectPhone = true
@@ -1013,6 +1014,7 @@ struct SidebarView: View {
             .accessibilityLabel("用户与快捷操作菜单")
 
             updateBadgeButton
+        }
 
             Text(userBarSubtitle)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))

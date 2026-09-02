@@ -33,6 +33,9 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(sidebar.contains("updateBadgeButton") && sidebar.contains("arrow.down.circle.fill") && sidebar.contains("arrow.up.circle"),
              "desktop-design: 昵称右侧常驻更新徽章（有新版蓝色实心 / 无新版灰色向上箭头）")
     t.expect(sidebar.contains("updater.updateFound"), "desktop-design: 徽章状态由 AppUpdateController.updateFound 驱动")
+    // 徽章与 Menu 同处一个 HStack（头像/姓名/更新按钮同一行），而不是 VStack 里的独立一行
+    t.expect(sidebar.contains("HStack(alignment: .center, spacing: 6) {\n            Menu {"),
+             "desktop-design: 头像姓名与更新徽章同一行（Menu+徽章共 HStack）")
     t.expect(sidebar.contains("Label(\"设置\""), "desktop-design: 设置收进账户菜单")
     t.expect(!sidebar.contains(".help(\"连接手机与应用工具\""), "desktop-design: 底部工具菜单移除")
     t.expect(!sidebar.contains(".help(L10n.tooltipSettings)\n            .accessibilityLabel(L10n.tooltipSettings)"), "desktop-design: 底部设置按钮移除")
