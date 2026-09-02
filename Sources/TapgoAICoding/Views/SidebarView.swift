@@ -972,12 +972,6 @@ struct SidebarView: View {
                     Label("自进化", systemImage: "sparkles")
                 }
                 Button {
-                    updater.checkForUpdates()
-                } label: {
-                    Label("检查更新", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(!updater.canCheckForUpdates)
-                Button {
                     showSettings()
                 } label: {
                     Label("设置", systemImage: "gear")
@@ -1000,7 +994,6 @@ struct SidebarView: View {
                         Text(user.displayName)
                             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         Image(systemName: "person.crop.circle.fill")
                             .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
@@ -1009,7 +1002,6 @@ struct SidebarView: View {
                         Text(NSUserName())
                             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                             .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 .contentShape(Rectangle())
@@ -1019,6 +1011,8 @@ struct SidebarView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("账户与快捷操作")
             .accessibilityLabel("用户与快捷操作菜单")
+
+            updateBadgeButton
 
             Text(userBarSubtitle)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
@@ -1038,6 +1032,22 @@ struct SidebarView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(DSHTheme.titlebarBg.opacity(0.45))
+    }
+
+    /// ZCode 风格的更新入口：昵称右侧常驻图标。有新版本时是蓝色的"可更新"
+    /// 图标，否则是灰色的向上箭头；点击执行检查更新。不放进账户菜单。
+    private var updateBadgeButton: some View {
+        Button {
+            updater.checkForUpdates()
+        } label: {
+            Image(systemName: updater.updateFound ? "arrow.down.circle.fill" : "arrow.up.circle")
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                .foregroundStyle(updater.updateFound ? DSHTheme.brand : Color.secondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(!updater.canCheckForUpdates)
+        .help(updater.updateFound ? "有可用更新，点击查看" : "检查更新")
+        .accessibilityLabel(updater.updateFound ? "有可用更新" : "检查更新")
     }
 
     private var userBarSubtitle: String {

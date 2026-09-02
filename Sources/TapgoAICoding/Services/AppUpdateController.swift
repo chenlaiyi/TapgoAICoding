@@ -7,6 +7,9 @@ import Sparkle
 @MainActor
 final class AppUpdateController: ObservableObject {
     @Published private(set) var canCheckForUpdates = false
+    /// True when the latest background check found a newer release. Drives the
+    /// sidebar update badge: blue "update available" icon vs grey "check" arrow.
+    @Published private(set) var updateFound = false
 
     private let updaterController: SPUStandardUpdaterController
 
@@ -28,6 +31,19 @@ final class AppUpdateController: ObservableObject {
         if controller.updater.automaticallyChecksForUpdates {
             controller.updater.checkForUpdatesInBackground()
         }
+
+        // Track the outcome of every check so the sidebar badge can reflect
+        // "update available" without the user having to open a menu.
+        // Sparkle 2.x only exports these as ObjC NSString constants (no Swift
+        // Notification.Name overlay), so reference them by literal name.
+        NotificationCenter.default.publisher(for: Notification.Name("SUUpdaterDidFindValidUpdateNotification"))
+            .receive(on: RunLoop.main)
+            .map { _ in true }
+            .assign(to: &$updateFound)
+        NotificationCenter.default.publisher(for: Notification.Name("SUUpdaterDidNotFindUpdateNotification"))
+            .receive(on: RunLoop.main)
+            .map { _ in false }
+            .assign(to: &$updateFound)
     }
 
     func checkForUpdates() {

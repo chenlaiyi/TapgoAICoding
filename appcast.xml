@@ -3,6 +3,26 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.79</title>
+            <pubDate>Wed, 02 Sep 2026 23:17:43 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.79</link>
+            <sparkle:version>0.5.79</sparkle:version>
+            <sparkle:shortVersionString>0.5.79</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.79
+
+- 左下角账户菜单不再放"检查更新"；改为昵称右侧的常驻小图标：
+  - 有新版本时显示蓝色实心下载图标，看到就知道可以更新。
+  - 没有新版本时是灰色的向上箭头。
+  - 点击图标即执行检查更新。
+- App 启动时会自动在后台检查一次更新，所以有新版本时图标会自动变蓝，无需手动点。
+- 测试：2689 通过 / 13 失败（13 个为预先存在的远程 SSH 集成测试，与本次改动无关）；界面设计相关断言 48 项全部通过。
+- 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.79/Tapgo-AICoding-0.5.79.zip" length="9491375" type="application/octet-stream" sparkle:edSignature="5RLyPdWpLXuLfyXp75yo86SG+Cbz73mE62auie7zhgWPPCekNu9w5cbsQxriFN3HuNETHJjYAHnSAcEbotKtBQ=="/>
+        </item>
+        <item>
             <title>0.5.77</title>
             <pubDate>Wed, 02 Sep 2026 22:50:42 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.77</link>
@@ -23,7 +43,6 @@
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.77/Tapgo-AICoding-0.5.77.zip" length="9488805" type="application/octet-stream" sparkle:edSignature="BcqKfBZxnyacJTqk4spUzTFgEzPqmrbHy8GU/eet04x1sbWMOnfBe1E/hGj54TBnkRpqM8GbBL20B73skM9cAw=="/>
         </item>
-        
         <item>
             <title>0.5.69</title>
             <pubDate>Tue, 01 Sep 2026 20:11:02 +0800</pubDate>

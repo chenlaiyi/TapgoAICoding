@@ -29,7 +29,10 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(sidebar.contains("updater.checkForUpdates()"), "desktop-design: 更新入口保留")
     t.expect(sidebar.contains("Label(\"连接手机\""), "desktop-design: 连接手机收进账户菜单")
     t.expect(sidebar.contains("Label(\"自进化日志\""), "desktop-design: 自进化日志收进账户菜单")
-    t.expect(sidebar.contains("Label(\"检查更新\""), "desktop-design: 检查更新收进账户菜单")
+    t.expect(!sidebar.contains("Label(\"检查更新\", systemImage"), "desktop-design: 账户菜单不再放检查更新项（改为昵称右侧常驻徽章）")
+    t.expect(sidebar.contains("updateBadgeButton") && sidebar.contains("arrow.down.circle.fill") && sidebar.contains("arrow.up.circle"),
+             "desktop-design: 昵称右侧常驻更新徽章（有新版蓝色实心 / 无新版灰色向上箭头）")
+    t.expect(sidebar.contains("updater.updateFound"), "desktop-design: 徽章状态由 AppUpdateController.updateFound 驱动")
     t.expect(sidebar.contains("Label(\"设置\""), "desktop-design: 设置收进账户菜单")
     t.expect(!sidebar.contains(".help(\"连接手机与应用工具\""), "desktop-design: 底部工具菜单移除")
     t.expect(!sidebar.contains(".help(L10n.tooltipSettings)\n            .accessibilityLabel(L10n.tooltipSettings)"), "desktop-design: 底部设置按钮移除")
