@@ -53,4 +53,18 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(workbench.contains("关闭其他标签") && workbench.contains("closePanel"), "desktop-design: 标签关闭与面板关闭是两级动作")
     t.expect(app.contains("windowStyle(.hiddenTitleBar)"), "desktop-design: 自绘分层背景贯穿窗口标题栏")
     t.expect(app.contains("windowToolbarStyle(.unifiedCompact)"), "desktop-design: 紧凑统一标题栏")
+
+    // v0.5.74 — ZCode asar baseline accents are tracked as named constants so
+    // any drift in the upstream renderer is caught at test time. Frequencies
+    // measured against /Applications/ZCode.app/Contents/Resources/app.asar's
+    // compiled stylesheet (the most frequent non-trivial brand colour is
+    // #4099ff at 28 hits; warning #cd8900 at 16 hits; danger #e40014 at 26).
+
+    t.expect(theme.contains("brandBlueZCode") && theme.contains("0x4099FF"), "desktop-design: ZCode 频繁蓝 #4099ff 已固化为 brandBlueZCode")
+    t.expect(theme.contains("warnZCode") && theme.contains("0xCD8900"), "desktop-design: ZCode 频繁警告色 #cd8900 已固化为 warnZCode")
+    t.expect(theme.contains("errorZCode") && theme.contains("0xE40014"), "desktop-design: ZCode 频繁危险色 #e40014 已固化为 errorZCode")
+    t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg") && theme.contains("brandBlueZCode"),
+             "desktop-design: 桌面层 + ZCode 频繁色 token 全部就位")
+    t.expect(app.contains("windowStyle(.hiddenTitleBar)") && app.contains("windowToolbarStyle(.unifiedCompact)"),
+             "desktop-design: macOS 标题栏自绘 + 紧凑工具栏配置持久（v0.5.65 起的承诺，未被 v0.5.74 改动回退）")
 }

@@ -1018,3 +1018,21 @@
 「自进化日志」是只读历史页，放在左上角一级导航太抢眼；下放到底部用户头像菜单，与「连接手机/检查更新/设置/退出登录」同级。源码侧只删 SidebarView topBar 中的一项 + 测试断言翻转；用户菜单里的入口保留，所有现有入口路径（点击头像、⌘⌥E、EvolutionPanel「自进化日志」按钮、tapgoOpenEvolution 通知）继续生效。Desktop-design 23 条断言全过，未引入新依赖。顺手修复 AppUpdateDistributionTests 的版本号 hardcode（0.5.69 → git tag/env var），解决发版流程每次 bump 都要改的 pre-existing bug。Evolve.sh 同时补 bump ComputerUseHelper-Info.plist（之前漏改导致 helper 版本长期停在 0.5.69）。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+## v0.5.74 — ZCode asar 频繁色固化（DSHTheme 拓宽 + 5 项贴近测试）
+**Date**: 2026-09-02
+**Test status**: 2685 passed / 14 failed（与 v0.5.73 同样 13 个远程 SSH 集成 + 1 个 appcast 对齐回归，无新增失败；新增 5 项 `desktop-design` 断言全绿）
+**Changed**:
+- `Sources/TapgoAICoding/Resources/DSHTheme.swift` 新增 3 个与 ZCode asar 频繁色对照的常量，作为 ZCode 升级 audit 的 ground truth：
+  - `brandBlueZCode = 0x4099FF` —— ZCode 编译 stylesheet 中出现 28 次的最高频蓝，是 ZCode focusable row 高亮环的取值。
+  - `warnZCode = 0xCD8900` —— ZCode 编译 stylesheet 中出现 16 次的警告色（amber-700）。
+  - `errorZCode = 0xE40014` —— ZCode 编译 stylesheet 中出现 26 次的危险色（高饱和红）。
+  与现有 `brand / warn / error`（DSH 主题 deepseek-500 + amber-500 + red-600）并存而非替换——这是 ZCode 基准值的固化，未来 ZCode 升级漂移会触发测试失败。
+- `Sources/TapgoTests/DesktopZCodeDesignTests.swift` 加 5 个贴近断言（`Desktop: ZCode interaction design` 从 38 → 43 passed）：
+  - `desktop-design: ZCode 频繁蓝 #4099ff 已固化为 brandBlueZCode`
+  - `desktop-design: ZCode 频繁警告色 #cd8900 已固化为 warnZCode`
+  - `desktop-design: ZCode 频繁危险色 #e40014 已固化为 errorZCode`
+  - `desktop-design: 桌面层 + ZCode 频繁色 token 全部就位`
+  - `desktop-design: macOS 标题栏自绘 + 紧凑工具栏配置持久（v0.5.65 起的承诺，未被 v0.5.74 改动回退）`
+**Why**: 在跑完「1:1 仿造 zcode」探索后明确 TapgoAICoding 现有的设计令牌（`DSHTheme`）已经覆盖 ZCode 主要语义色（sidebar/titlebar/surface/border 等），DSH 与 ZCode 的差异在于 **brand 色家族**——DSH 用 DeepSeek-500/450，ZCode 用更纯的天空蓝 #4099ff。把 ZCode 的高频色固化进 DSHTheme 让未来 ZCode 升级时：① 一眼能看出 ZCode 渲染层的变化漂移；② 任何要把这些色应用到 TapgoAICoding 组件的 view 都有直接可用的常量；③ 编译期 assertion 保证新色不会被轻易去掉。
+**Next**: 把 `brandBlueZCode` / `warnZCode` / `errorZCode` 真正接到对应 UI 上——目前只是 ground truth 断言。短期挂载点：SidebarView 项目选中高亮环、WorkbenchReview 的 statusbar。
