@@ -1127,3 +1127,14 @@
 - 顺便 commit 之前漏的 `AppBuilder/release-notes-0.5.74.md`（v0.5.74 release notes 当初写好了但没 commit）
 **Why**: 用户原话"请更新好了，发布上线"——v0.5.74/75/76/77 只 commit 代码 + release + 远端 tag，没重打 .app 也没重装到 /Applications。本版本是 v0.5.77 的二进制收尾：build → zip → 本机装 → 远端装 → release asset 上传 → git 留痕。
 **Next**: 1) 你登录 codex 账号完成首次会话（AGENT_MEMORY 提到 `~/Library/Application Support/Tapgo AICoding/codex/` 需要跑 `scripts/init-tapgo.sh`）；2) v0.5.78 build 出来是 v0.5.77 commit（8925cdc + 2912ba6 + a91afc9 + fcd1cc2）的 .app，登录后看到的 UI = 全部 v0.5.74/75 加的东西（drop-target 环 = brandBlueZCode、sendError = errorZCode、失败徽章 = warnZCode）；3) Harness daemon 已经在本机 + 远端都跑着，下一次启动会自动接 SocketHarnessTransport（v0.5.73 的链路）。
+
+## v0.5.79 — 更新入口改为昵称右侧常驻徽章（ZCode 风格）
+**Date**: 2026-09-02
+**Test status**: 2689 passed / 13 failed（13 个为预存在远程 SSH 集成；`Desktop: ZCode interaction design` 48 passed / 0 failed）
+**Changed**:
+- 侧栏账户菜单移除「检查更新」项；改为昵称右侧常驻徽章按钮：有新版本时 `arrow.down.circle.fill` + DSHTheme.brand 蓝色实心，无新版本时 `arrow.up.circle` 灰色箭头，点击执行检查更新。
+- `AppUpdateController` 新增 `@Published updateFound`：监听 Sparkle `SUUpdaterDidFindValidUpdateNotification` / `SUUpdaterDidNotFindUpdateNotification`（Sparkle 2.x 未提供 Swift Notification.Name overlay，按字面名字符串引用；上游 Output 需 `.map { _ in Bool }` 才能进 `assign(to:)`）。启动时后台检查自动驱动徽章。
+- DesktopZCodeDesignTests：菜单不再含检查更新项 + 徽章存在 + updateFound 驱动（46 → 48 passed）。
+- 发布链路：CFBundleVersion/ShortVersionString = 0.5.79；appcast 3 条目（0.5.79/0.5.77/0.5.69）；zip 上传 release assets；本机 PID 81661、fafamacmini PID 68207 回读通过。
+**Why**: 用户指出 ZCode 的更新交互是「昵称右侧蓝色更新图标（有新版）/ 灰色向上箭头（无新版），点击即检查」，账户菜单不放该项。同时上一轮发现 Sparkle appcast 停在 0.5.69 导致所有旧客户端收不到更新——本次发布链路（appcast + CFBundleVersion + assets）完整走通作为回归样板。
+**Next**: 观察 updateFound 在真实有新版时的表现（当前 appcast 最新即自身，徽章应为灰色箭头；下次发 0.5.80 后 0.5.79 客户端应自动变蓝）。
