@@ -1036,3 +1036,17 @@
   - `desktop-design: macOS 标题栏自绘 + 紧凑工具栏配置持久（v0.5.65 起的承诺，未被 v0.5.74 改动回退）`
 **Why**: 在跑完「1:1 仿造 zcode」探索后明确 TapgoAICoding 现有的设计令牌（`DSHTheme`）已经覆盖 ZCode 主要语义色（sidebar/titlebar/surface/border 等），DSH 与 ZCode 的差异在于 **brand 色家族**——DSH 用 DeepSeek-500/450，ZCode 用更纯的天空蓝 #4099ff。把 ZCode 的高频色固化进 DSHTheme 让未来 ZCode 升级时：① 一眼能看出 ZCode 渲染层的变化漂移；② 任何要把这些色应用到 TapgoAICoding 组件的 view 都有直接可用的常量；③ 编译期 assertion 保证新色不会被轻易去掉。
 **Next**: 把 `brandBlueZCode` / `warnZCode` / `errorZCode` 真正接到对应 UI 上——目前只是 ground truth 断言。短期挂载点：SidebarView 项目选中高亮环、WorkbenchReview 的 statusbar。
+
+## v0.5.75 — ZCode 频繁色挂到 UI（drop-target + sendError + 工具失败徽章）
+**Date**: 2026-09-02
+**Test status**: 2689 passed / 13 failed（与 v0.5.74 基线 2685/14 比：+4 passed, -1 failed；3 个新增挂载点 assertion 全绿，1 个 `auth.json not present` skipped 测试在 Swift 5.9 下不再计入 failed，所以净 -1）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift` 的侧栏 drop-target 虚线环 `stroke(...)` 从 `DSHTheme.brand` 换为 `DSHTheme.brandBlueZCode`，匹配 ZCode 编译 stylesheet 中 28 次的 `#4099ff`。
+- `Sources/TapgoAICoding/Views/RightWorkbenchView.swift` 的辅助对话 `sendError` 文案 `foregroundStyle` 从 `DSHTheme.error` 换为 `DSHTheme.errorZCode`，匹配 ZCode 26 次的 `#e40014`。
+- `Sources/TapgoAICoding/Views/FileChangeView.swift` 的工具调用/命令执行「执行失败」徽章 `foregroundStyle` 从 `.tertiary`（灰）换为 `DSHTheme.warnZCode`，匹配 ZCode 16 次的 `#cd8900`，让失败标记在 review 列表里不再融入背景。
+- `Sources/TapgoTests/DesktopZCodeDesignTests.swift` 加 3 个挂载点断言（`Desktop: ZCode interaction design` 从 43 → 46 passed）：
+  - `desktop-design: 侧栏 drop-target 虚线环用 brandBlueZCode（取代 DSHTheme.brand）`
+  - `desktop-design: 辅助对话 sendError 用 errorZCode 高饱和红`
+  - `desktop-design: 文件变更「执行失败」用 warnZCode 替代 .tertiary 灰`
+**Why**: v0.5.74 把 ZCode 频繁色 token 固化为 DSHTheme 字段后只是 ground truth，没有任何 view 在用；不挂 UI 的话下一次 refactor 极易把 token 删掉。本版本把它接上 3 个最有视觉冲击的位置：侧栏拖拽、辅助对话发送、工具失败标记——这些场景下颜色承担「这是危险/操作可见」的语义，颜色对不对肉眼可验。`DSHTheme.brand` 仍承担主品牌色（搜索 toggle / 选中环 / 链接），避免把整套主题色全替换成 ZCode 基准。
+**Next**: 1) 评审 PR 截图，确认 drop-target 环颜色与 ZCode 真机一致；2) 在 EVOLUTION/PR 截图里贴一张 FileChangeView 「执行失败」徽章与 ZCode 真机对照图，作为 v0.5.75 的视觉证据。

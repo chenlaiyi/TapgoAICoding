@@ -14,6 +14,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     let app = desktopDesignFile("Sources/TapgoAICoding/App.swift")
     let content = desktopDesignFile("Sources/TapgoAICoding/Views/ContentView.swift")
     let workbench = desktopDesignFile("Sources/TapgoAICoding/Views/RightWorkbenchView.swift")
+    let fileChangeView = desktopDesignFile("Sources/TapgoAICoding/Views/FileChangeView.swift")
 
     t.expect(sidebar.contains("menuItem(\"新建任务\""), "desktop-design: 新建任务位于一级导航")
     t.expect(sidebar.contains("menuItem(\"搜索\""), "desktop-design: 搜索位于一级导航")
@@ -67,4 +68,12 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 桌面层 + ZCode 频繁色 token 全部就位")
     t.expect(app.contains("windowStyle(.hiddenTitleBar)") && app.contains("windowToolbarStyle(.unifiedCompact)"),
              "desktop-design: macOS 标题栏自绘 + 紧凑工具栏配置持久（v0.5.65 起的承诺，未被 v0.5.74 改动回退）")
+
+    // v0.5.74 — ZCode asar 频繁色 token 真正挂到 UI 上
+    t.expect(sidebar.contains("DSHTheme.brandBlueZCode") && sidebar.contains("stroke"),
+             "desktop-design: 侧栏 drop-target 虚线环用 brandBlueZCode（取代 DSHTheme.brand）")
+    t.expect(workbench.contains("DSHTheme.errorZCode") && workbench.contains("sendError"),
+             "desktop-design: 辅助对话 sendError 用 errorZCode 高饱和红")
+    t.expect(fileChangeView.contains("DSHTheme.warnZCode") && fileChangeView.contains("执行失败"),
+             "desktop-design: 文件变更「执行失败」用 warnZCode 替代 .tertiary 灰")
 }

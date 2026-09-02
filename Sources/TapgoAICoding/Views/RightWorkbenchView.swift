@@ -576,7 +576,11 @@ private struct WorkbenchAuxiliaryConversation: View {
             if let sendError {
                 Text(sendError)
                     .font(.caption)
-                    .foregroundStyle(DSHTheme.error)
+                    // errorZCode (#E40014, 26 hits in ZCode asar) gives the
+                    // auxiliary-conversation send-error banner the exact
+                    // saturated red ZCode uses for the same surface, so it
+                    // reads as "danger" rather than DSH's softer red.
+                    .foregroundStyle(DSHTheme.errorZCode)
                     .padding(.horizontal, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

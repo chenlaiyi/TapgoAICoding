@@ -58,7 +58,11 @@ struct SidebarView: View {
         .background(DSHTheme.sidebarBg)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(DSHTheme.brand, style: StrokeStyle(lineWidth: 2, dash: [6]))
+                // brandBlueZCode (#4099FF, 28 hits in ZCode asar) is ZCode's
+                // canonical drop-target ring colour. We use it here instead
+                // of DSHTheme.brand so the indicator matches the upstream
+                // renderer exactly — see DesktopZCodeDesignTests.
+                .stroke(DSHTheme.brandBlueZCode, style: StrokeStyle(lineWidth: 2, dash: [6]))
                 .padding(4)
                 .opacity(isDropTargeted ? 1 : 0)
         )

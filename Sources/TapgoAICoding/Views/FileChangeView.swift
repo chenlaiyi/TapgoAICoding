@@ -48,7 +48,12 @@ struct FileChangeRowView: View {
                 if failed {
                     Text("执行失败")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
+                        // warnZCode (#CD8900, 16 hits in ZCode asar) is the
+                        // ZCode-amber tone for "tool failure" badges. The
+                        // previous `.tertiary` grey blended into the row
+                        // background and made failed edits easy to miss
+                        // during review.
+                        .foregroundStyle(DSHTheme.warnZCode)
                 }
                 Spacer(minLength: 0)
             }
