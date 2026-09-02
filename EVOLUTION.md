@@ -1111,3 +1111,19 @@
 - v0.5.76 EVOLUTION 描述"沙箱抓不到 Tapgo 主窗口"被本版本取代为"通过限定 layer=0 过滤后主窗口可截"。
 **Why**: Verifier 多次指出 1000x740 中央 pixelmatch % 数字缺失。本版本提供该数字。13.4% 中至少 9-15 来自主区对话内容差异（空 vs 满），不算"贴近度差距"——结构上 4 项指标里 3 项 100%，只有 1 项 13.4% — 这是「v0.5.77 的量化上限」。
 **Next**: 1) 你登录 codex 账号完成首次会话后，从 Tapgo 主窗口截一张有内容的图（运行 `screencapture -l64836 tapgo-active.png`，注意 wid 可能因窗口尺寸变化而改变）— 主区会从 rgb(21,21,22) 变成对话气泡，pixelmatch % 会有不同分布；2) 评审 `diff-overlay.png` 看主区差异像素是否集中在"无内容"位置而非"颜色不对"位置；3) 视结果决定 v0.5.78 走"再贴近一档"还是收尾。
+
+## v0.5.78 — 重打 v0.5.77 .app 并部署本机 + fafamacmini
+**Date**: 2026-09-02
+**Test status**: 2689 passed / 13 failed（与 v0.5.77 基线相同；本版本只重打 .app + 部署，零代码改动）
+**Changed**:
+- 重打 `Tapgo AICoding.app`：v0.5.75 → **v0.5.77**（`AppBuilder/Info.plist` `CFBundleShortVersionString` bump 0.5.75 → 0.5.77）
+  - `xcrun -sdk macosx26.5 swift build -c release --product TapgoAICoding` 0.15s
+  - `xcrun -sdk macosx26.5 swift build -c release --product TapgoComputerUseMCP` 0.09s
+  - Developer ID 签名 + Sparkle framework + computer-use-helper 重新嵌入
+  - 产物：`Tapgo AICoding.app` 17MB（无源码变化，只是同一 commit 重出包）
+- zip：`/tmp/Tapgo-AICoding-0.5.77.zip` 9.5MB，上传 release v0.5.77 assets
+- **本机部署**：`/Applications/Tapgo AICoding.app` v0.5.77，App PID **73238** + HarnessDaemon PID **73643** alive
+- **fafamacmini 部署**：scp zip + 远端 ditto 安装到 `/Applications/Tapgo AICoding.app` v0.5.77，App PID **66479** + HarnessDaemon PID **65950** alive
+- 顺便 commit 之前漏的 `AppBuilder/release-notes-0.5.74.md`（v0.5.74 release notes 当初写好了但没 commit）
+**Why**: 用户原话"请更新好了，发布上线"——v0.5.74/75/76/77 只 commit 代码 + release + 远端 tag，没重打 .app 也没重装到 /Applications。本版本是 v0.5.77 的二进制收尾：build → zip → 本机装 → 远端装 → release asset 上传 → git 留痕。
+**Next**: 1) 你登录 codex 账号完成首次会话（AGENT_MEMORY 提到 `~/Library/Application Support/Tapgo AICoding/codex/` 需要跑 `scripts/init-tapgo.sh`）；2) v0.5.78 build 出来是 v0.5.77 commit（8925cdc + 2912ba6 + a91afc9 + fcd1cc2）的 .app，登录后看到的 UI = 全部 v0.5.74/75 加的东西（drop-target 环 = brandBlueZCode、sendError = errorZCode、失败徽章 = warnZCode）；3) Harness daemon 已经在本机 + 远端都跑着，下一次启动会自动接 SocketHarnessTransport（v0.5.73 的链路）。
