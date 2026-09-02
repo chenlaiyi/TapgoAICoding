@@ -1,0 +1,33 @@
+{
+  "version": "v0.5.76",
+  "date": "2026-09-02T14:20:35Z",
+  "metrics": {
+    "color_token_precision": {
+      "description": "DSHTheme 中固化的 ZCode asar 频繁色 token 与 asar 期望 hex 的 1:1 匹配度",
+      "brandBlueZCode":   { "expected": "0x4099FF", "actual": "0x4099FF",     "match": "true" },
+      "warnZCode":        { "expected": "0xCD8900",  "actual": "0xCD8900",       "match": "true" },
+      "errorZCode":       { "expected": "0xE40014", "actual": "0xE40014",      "match": "true" }
+    },
+    "desktop_design_assertions": {
+      "description": "Desktop: ZCode interaction design 测试段通过数（v0.5.74 加 5、v0.5.75 加 3 = 8 个新 assertion）",
+      "passed": 46,
+      "failed": 0
+    },
+    "zcode_window_sampled_regions": {
+      "description": "ZCode 3.10.2 主窗口 1220x1287 区域色（用作颜色取样基准）",
+      "source": "01-zcode-baseline.png"
+    }
+  },
+  "evidence_artifacts": [
+    "01-zcode-baseline.png (ZCode 3.10.2 主窗口)",
+    "01-zcode-sidebar-droptarget.png (侧栏顶部 — brandBlueZCode 挂载点)",
+    "02-zcode-main-bottom-error.png (主区底部 — errorZCode 挂载点)",
+    "03-zcode-toolbar-status.png (顶栏 — warnZCode 挂载点)",
+    "fidelity-report.json (本报告机器可读版)"
+  ],
+  "limitations": [
+    "screencapture 在沙箱可用, 但 Tapgo AICoding v0.5.75 主窗口需登录 codex 后才创建, 沙箱无登录态只能截到空 AXWindow (1 个 hidden window), 因此未能产出 Tapgo vs ZCode 的同区域像素对照图",
+    "远端 fafamacmini 同样无登录态, 也无法截 Tapgo 主窗口",
+    "ZCode 主窗口由 ZCode 进程 45818/45827/45830 启动后获取, 但因 1220x1287 是 ZCode 标准窗口尺寸之一, 与 ZCode asar 内嵌 stylesheet 频繁色基线可对照"
+  ]
+}

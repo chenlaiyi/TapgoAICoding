@@ -1,0 +1,7 @@
+/Users/chanlaiyi/TapgoAICoding/artifacts/zcode-vs-tapgo-0.5.75/01-zcode-baseline.png 1220x1287
+  titlebar        rgb(35,35,35) n=9000
+  sidebar_top     rgb(58,59,59) n=13200
+  sidebar_mid     rgb(74,75,75) n=13200
+  main_canvas     rgb(30,30,29) n=200000
+  rightbar_top    rgb(33,33,32) n=15000
+  statusbar       rgb(27,27,27) n=5600

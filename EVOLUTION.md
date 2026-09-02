@@ -1050,3 +1050,32 @@
   - `desktop-design: 文件变更「执行失败」用 warnZCode 替代 .tertiary 灰`
 **Why**: v0.5.74 把 ZCode 频繁色 token 固化为 DSHTheme 字段后只是 ground truth，没有任何 view 在用；不挂 UI 的话下一次 refactor 极易把 token 删掉。本版本把它接上 3 个最有视觉冲击的位置：侧栏拖拽、辅助对话发送、工具失败标记——这些场景下颜色承担「这是危险/操作可见」的语义，颜色对不对肉眼可验。`DSHTheme.brand` 仍承担主品牌色（搜索 toggle / 选中环 / 链接），避免把整套主题色全替换成 ZCode 基准。
 **Next**: 1) 评审 PR 截图，确认 drop-target 环颜色与 ZCode 真机一致；2) 在 EVOLUTION/PR 截图里贴一张 FileChangeView 「执行失败」徽章与 ZCode 真机对照图，作为 v0.5.75 的视觉证据。
+
+## v0.5.76 — ZCode 贴近度量化报告（沙箱视觉证据受限下的可验证代替）
+**Date**: 2026-09-02
+**Test status**: 2689 passed / 13 failed（与 v0.5.75 基线相同；本版本无代码改动，仅产出量化报告 + scripts/）
+**Changed**:
+- 新增 `scripts/zcode-fidelity-report.sh`（一键产出 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.{json,md}` + 区域色采样文本）。
+- 新增 6 个 evidence artifacts 在 `artifacts/zcode-vs-tapgo-0.5.75/`：
+  - `01-zcode-baseline.png`（ZCode 3.10.2 主窗口 1220×1287，screencapture -l<wid> 抓取）
+  - `01-zcode-sidebar-droptarget.png`（侧栏顶部 — brandBlueZCode 挂载点对照区）
+  - `02-zcode-main-bottom-error.png`（主区底部 — errorZCode 挂载点对照区）
+  - `03-zcode-toolbar-status.png`（顶栏 — warnZCode 挂载点对照区）
+  - `fidelity-report.json`（机器可读）
+  - `fidelity-report.md`（人类可读）
+- 三项独立可验证量化指标（详见报告）：
+  - **DSHTheme token hex 精度**：3 个 ZCode asar 频繁色 token（brandBlueZCode 0x4099FF、warnZCode 0xCD8900、errorZCode 0xE40014）**100% 1:1 匹配** asar 期望值。
+  - **Desktop: ZCode interaction design assertion 通过率**：v0.5.75 加完 3 个挂载点断言后为 **46 passed / 0 failed**（v0.5.73 基线 38 passed，+8 = +5 token + +3 挂载点）。
+  - **ZCode 3.10.2 主窗口区域实测色**（取自 1220×1287 主窗口截图）：
+    - titlebar rgb(35,35,35) — vs DSHTheme.titlebarBg darkHex 0x1A1A1C = rgb(26,26,28) — Δ 9
+    - sidebar_top rgb(58,59,59) — vs DSHTheme.sidebarBg darkHex 0x39393B = rgb(57,57,59) — Δ 1 ✅
+    - sidebar_mid rgb(74,75,75) — sidebarBg — Δ 17（ZCode sidebar 在中部含 selection 状态）
+    - main_canvas rgb(30,30,29) — vs DSHTheme.bg darkHex 0x151517 = rgb(21,21,23) — Δ 9
+    - rightbar_top rgb(33,33,32) — vs DSHTheme.surface darkHex 0x2C2C2E = rgb(44,44,46) — Δ 11
+    - statusbar rgb(27,27,27) — vs DSHTheme.bg — Δ 6
+- 沙箱受限的视觉证据（**未做**）：
+  - Tapgo AICoding v0.5.75 主窗口需登录 codex 后才创建；沙箱无登录态，AXUIElement 树仅有 1 个 hidden window（无 title / role=AXWindow），**screencapture 抓不到 Tapgo 主窗口**。
+  - ZCode 3.10.2 也受同样影响——只是它自带登录态 cache，所以能拿到 1220×1287 主窗口；Tapgo v0.5.75 安装是干净的（`~/Library/Application Support/Tapgo AICoding/codex/` 在沙箱里是空），所以只启动了一个 0×0 hidden window。
+  - 因此 3 个 ZCode 频繁色 token 真正挂到 Tapgo 视图后的视觉对照（drop-target 环 / sendError 红 / 失败徽章）**没有可截屏证据**，需你登录账号后人工 review。
+**Why**: Verifier 多次指「尽可能贴近」没有定量上限 + 没有 Tapgo vs ZCode 的逐像素对照。本版本做「诚实量化」：在沙箱限制下能产出的 3 个独立可验证指标全部产出（颜色 hex 精度 100% + 46 项结构 assertion + ZCode 主窗口区域色采样），剩下的视觉对照以「已知限制」明确写进报告 + EVOLUTION，**不假装做了**。Verifier 要求的「1000x740 中央 pixelmatch %」是真正视觉证据，受无登录态限制无法在沙箱内完成；下一步是真人登录后 review PR 截图完成最后一步。
+**Next**: 1) 真人登录 codex 账号后用 `screencapture -x -l<wid>` 截 Tapgo 主窗口（已经知道 wid 在 swift /tmp/winswift3.swift 里），跑 `node /tmp/qp-region.cjs <tapgo-window.png>` 得到同区域色，与 `01-zcode-baseline.png` 对比；2) v0.5.74/75 的 3 个挂载点视觉验证（drop-target 环、sendError 横幅、失败徽章）由真人 review PR 截图。
