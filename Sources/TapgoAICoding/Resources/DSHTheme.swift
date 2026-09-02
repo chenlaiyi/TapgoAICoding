@@ -83,6 +83,20 @@ enum DSHTheme {
     static let interactiveHover = Color.dynamic(lightHex: 0x0F1115, darkHex: 0xFFFFFF).opacity(0.08)
     static let interactiveHoverStrong = Color.dynamic(lightHex: 0x0F1115, darkHex: 0xFFFFFF).opacity(0.14)
 
+    // MARK: Trajectory (ZCode 工作过程行按事件类型着色, light/dark 各一档)
+    // 取自 ZCode asar 编译 stylesheet 的 --color-trajectory-*，Tapgo 侧以 80%
+    // 不透明度用于事件行的图标与标题文字，与上游 .text-trajectory-*\/80 一致。
+    /// 思考 / 推理行: violet-700 / violet-400
+    static let trajectoryReasoning = Color.dynamic(lightHex: 0x7C3AED, darkHex: 0xA78BFA)
+    /// 工具调用行: amber-600 / amber-500
+    static let trajectoryToolCall = Color.dynamic(lightHex: 0xD97706, darkHex: 0xF59E0B)
+    /// 工具结果 / 输出行: sky-600 / sky-400
+    static let trajectoryToolResult = Color.dynamic(lightHex: 0x0284C7, darkHex: 0x38BDF8)
+    /// 助手正文: teal-700 / teal-400
+    static let trajectoryAssistant = Color.dynamic(lightHex: 0x0F766E, darkHex: 0x2DD4BF)
+    /// 用户消息: blue-600 / blue-400
+    static let trajectoryUser = Color.dynamic(lightHex: 0x2563EB, darkHex: 0x60A5FA)
+
     // MARK: Radii (DSH `--dsl-*-radius: 12px`)
     static let radiusCard: CGFloat = 12
     static let radiusPill: CGFloat = 8

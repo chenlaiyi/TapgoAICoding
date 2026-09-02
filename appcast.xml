@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.80</title>
+            <pubDate>Wed, 02 Sep 2026 23:37:02 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.80</link>
+            <sparkle:version>0.5.80</sparkle:version>
+            <sparkle:shortVersionString>0.5.80</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.80
+
+- 工作过程输出样式向 ZCode 再贴近一步：过程行按事件类型着色（此前全部是灰色）：
+  - 思考 / 推理行 → 紫色
+  - 编辑文件、执行命令行 → 琥珀色
+  - 搜索、读取文件、工具结果行 → 天蓝色
+  - 颜色取自 ZCode 安装包内官方样式表的工作过程色板，深浅色模式各一档，文字以 80% 不透明度呈现，与 ZCode 渲染一致。
+- 助手正文与用户消息保留原有样式，未做改动。
+- 测试：2695 通过 / 13 失败（13 个为预先存在的远程 SSH 集成测试）；界面设计相关断言 52 项全部通过。
+- 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.80/Tapgo-AICoding-0.5.80.zip" length="9491663" type="application/octet-stream" sparkle:edSignature="U7fenCkONjxqVQ0Rg380SqtaOX/vm9t5IwWfEsx2EGteRboUNPflwt1rqgVDNJAL7wCHJyTAq5mahM8tQ+96AQ=="/>
+        </item>
+        <item>
             <title>0.5.79</title>
             <pubDate>Wed, 02 Sep 2026 23:17:43 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.79</link>
@@ -42,27 +63,6 @@
 - 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.77/Tapgo-AICoding-0.5.77.zip" length="9488805" type="application/octet-stream" sparkle:edSignature="BcqKfBZxnyacJTqk4spUzTFgEzPqmrbHy8GU/eet04x1sbWMOnfBe1E/hGj54TBnkRpqM8GbBL20B73skM9cAw=="/>
-        </item>
-        <item>
-            <title>0.5.69</title>
-            <pubDate>Tue, 01 Sep 2026 20:11:02 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.69</link>
-            <sparkle:version>0.5.69</sparkle:version>
-            <sparkle:shortVersionString>0.5.69</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.69
-
-- 仿 ZCode 内容输出样式：
-  - 回合里的每个事件（思考/查阅/终端/编辑/读取等）各占一行安静灰底短行，每行都显示具体内容（"终端 · swift build"、"查阅 · 2 搜索"等），不再被助手文字触发就折叠成"已完成 …"。
-  - 连续搜索类工具调用合并为一行"查阅 · N 搜索, M 列表"，仅在末尾继续扩展。
-  - 工具调用/命令执行失败时整行变成"…执行失败"+"⚠️"。
-  - 文件编辑也变成安静的单行："编辑 Sources/A.swift AppBuilder +8 -2"（含 +/- 行数），失败加"执行失败"；点击展开 diff。
-  - 回合完成后所有工作行折叠为"已工作 X 分 Y 秒 ⌄"芯片 + 顶部的"N 个文件已更改 +A -B"摘要条；点击展开原活动行。
-- 2610 测试全绿，新增结构测试覆盖新样式语义。
-- 真机回归受限于沙箱模型账号都被锁住，ChatView 的新样式会在你登录账号后触发回合即可直接看到。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.69/Tapgo-AICoding-0.5.69.zip" length="9444065" type="application/octet-stream" sparkle:edSignature="FYXXpvr+FptjNiqIekThnL7bwgLz0aAwG2SN7GOh0gtseP2lrZvo33W3uF84qtxGSLtwJrvmxcNuEuvtMkDOBw=="/>
         </item>
     </channel>
 </rss>

@@ -69,10 +69,24 @@ struct ActivityRollupView: View {
                     active: turnIsRunning && activity.isTail && display.isRunning
                 )
         }
-        .foregroundStyle(.secondary)
+        // ZCode trajectory 语义着色: 每行事件按类型取 --color-trajectory-*，
+        // 80% 不透明度与上游 .text-trajectory-*/80 一致；失败行保持警示红。
+        .foregroundStyle(
+            display.isFailure ? DSHTheme.error : Self.trajectoryColor(for: display.kind)
+        )
         .opacity(turnIsRunning && display.isRunning ? 0.78 : 0.68)
         .animation(nil, value: activity.latest.id)
         .accessibilityLabel(display.text)
+    }
+
+    /// ZCode --color-trajectory-* 语义: 思考=紫, 编辑/执行=琥珀,
+    /// 搜索/读取/结果=天蓝, 其余兜底天蓝。
+    private static func trajectoryColor(for kind: TurnActivityDisplay.Kind) -> Color {
+        switch kind {
+        case .reasoning: return DSHTheme.trajectoryReasoning
+        case .edit, .command: return DSHTheme.trajectoryToolCall
+        case .search, .read, .tool, .compaction: return DSHTheme.trajectoryToolResult
+        }
     }
 }
 
@@ -403,10 +417,10 @@ struct ReasoningDisclosure: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DSHTheme.trajectoryReasoning.opacity(0.8))
             Text("Think")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DSHTheme.trajectoryReasoning.opacity(0.8))
             Text("·")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
@@ -440,7 +454,7 @@ struct ToolCallRow: View {
                     .foregroundStyle(toolIconColor)
                 Text(toolCall.name)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(toolCallAccent.opacity(0.8))
                 Text("·")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
@@ -494,13 +508,18 @@ struct ToolCallRow: View {
         default: return "wrench.adjustable"
         }
     }
-    private var toolIconColor: Color {
+    private var toolIconColor: Color { toolCallAccent }
+
+    /// ZCode trajectory 语义: 读=天蓝(结果侧), 写/改=琥珀(调用侧), 执行=琥珀,
+    /// 搜索=天蓝。色值统一走 DSHTheme.trajectory*, 与上游 --color-trajectory-* 对齐。
+    private var toolCallAccent: Color {
         switch toolCall.name.lowercased() {
-        case "read", "readfile": return .blue
-        case "edit", "write", "writefile": return .orange
-        case "shell", "bash", "command", "run": return .green
-        case "watch", "grep", "search": return .indigo
-        default: return .indigo
+        case "read", "readfile", "watch", "grep", "search":
+            return DSHTheme.trajectoryToolResult
+        case "edit", "write", "writefile", "shell", "bash", "command", "run":
+            return DSHTheme.trajectoryToolCall
+        default:
+            return DSHTheme.trajectoryToolResult
         }
     }
 }

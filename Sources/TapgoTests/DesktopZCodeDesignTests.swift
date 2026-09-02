@@ -79,4 +79,14 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 辅助对话 sendError 用 errorZCode 高饱和红")
     t.expect(fileChangeView.contains("DSHTheme.warnZCode") && fileChangeView.contains("执行失败"),
              "desktop-design: 文件变更「执行失败」用 warnZCode 替代 .tertiary 灰")
+
+    // v0.5.80 — ZCode 工作过程行按事件类型着色（--color-trajectory-*）
+    t.expect(theme.contains("trajectoryReasoning") && theme.contains("0x7C3AED") && theme.contains("0xA78BFA"),
+             "desktop-design: 思考行 trajectoryReasoning 紫（light 0x7C3AED / dark 0xA78BFA）")
+    t.expect(theme.contains("trajectoryToolCall") && theme.contains("0xD97706"),
+             "desktop-design: 工具调用 trajectoryToolCall 琥珀")
+    t.expect(theme.contains("trajectoryToolResult") && theme.contains("0x0284C7"),
+             "desktop-design: 工具结果 trajectoryToolResult 天蓝")
+    t.expect(message.contains("trajectoryReasoning.opacity(0.8)") && message.contains("trajectoryColor(for: display.kind)"),
+             "desktop-design: 思考行与汇总行按事件类型着色（80% 不透明度对齐上游）")
 }
