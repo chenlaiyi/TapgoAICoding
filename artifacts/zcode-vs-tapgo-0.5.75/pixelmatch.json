@@ -1,0 +1,28 @@
+{
+  "source": {
+    "tapgo": "/Users/chanlaiyi/TapgoAICoding/artifacts/zcode-vs-tapgo-0.5.75/tapgo-main.png",
+    "zcode": "/Users/chanlaiyi/TapgoAICoding/artifacts/zcode-vs-tapgo-0.5.75/01-zcode-baseline.png"
+  },
+  "original": {
+    "tapgo": {
+      "w": 963,
+      "h": 1344
+    },
+    "zcode": {
+      "w": 1220,
+      "h": 1287
+    }
+  },
+  "region": {
+    "topSkip": 36,
+    "bottomSkip": 24,
+    "rightSkip": 280,
+    "width": 683,
+    "height": 740
+  },
+  "sampledPixels": 505420,
+  "mismatchedPixels": 67711,
+  "percentDifferent": 13.4,
+  "verdict": "1:1-fidelity-moderate",
+  "threshold": 0.08
+}

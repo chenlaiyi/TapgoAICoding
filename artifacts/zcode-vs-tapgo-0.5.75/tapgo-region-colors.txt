@@ -1,0 +1,7 @@
+/Users/chanlaiyi/TapgoAICoding/artifacts/zcode-vs-tapgo-0.5.75/tapgo-main.png 963x1344
+  titlebar        rgb(35,36,36) n=9000
+  sidebar_top     rgb(58,58,60) n=13200
+  sidebar_mid     rgb(60,60,62) n=13200
+  main_canvas     rgb(21,21,22) n=200000
+  rightbar_top    rgb(22,22,23) n=15000
+  statusbar       rgb(30,30,31) n=5600
