@@ -264,6 +264,170 @@ struct EvolutionLogView: View {
                     why: "原 ZCode-style 折叠把工作日志藏得太深，每个事件都该让用户看到具体内容。",
                     next: "登录模型账号后真机看 UI 视觉与展开交互。"
                 ),
+                EvolutionEntry(
+                    version: "v0.5.81",
+                    date: "2026-09-02",
+                    commit: "c61118",
+                    tag: "v0.5.81",
+                    summary: "—。",
+                    changes: [
+                        "修正 v0.5.79 引入的布局错误：更新徽章按钮原本被插进 userBar 的 VStack，掉到头像/姓名行下方；现与 Menu 包进同一 `HStack(alignment: .center, spacing: 6)`，徽章位于姓名右侧，头像/姓名/徽章同行。",
+                        "DesktopZCodeDesignTests +1 断言（52 → 53）：Menu 与 updateBadgeButton 共 HStack。",
+                        "像素验证：对本机主窗口截图做底部行带聚类，内容行带 ≤ 2（用户行 + 副标题行），确认无掉行；截图存 `artifacts/zcode-vs-tapgo-0.5.75/tapgo-main-0.5.81.png`。",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.80",
+                    date: "2026-09-02",
+                    commit: "a7b0d7",
+                    tag: "v0.5.80",
+                    summary: "—。",
+                    changes: [
+                        "`DSHTheme` 新增 ZCode trajectory 色板（取自 asar 编译 stylesheet 的 `--color-trajectory-*`，light/dark 各一档）：trajectoryReasoning 0x7C3AED/0xA78BFA（紫）、trajectoryToolCall 0xD",
+                        "`MessageRow`：思考行（Think）图标与标题改 trajectoryReasoning 80%；工具行名称与图标改按类别取 trajectoryToolCall（写/改/执行）或 trajectoryToolResult（读/搜索），替换原 ad-hoc 的 .blue/.orange/.green/.in",
+                        "`ActivityRollupView` 汇总行按 `TurnActivityDisplay.Kind` 映射着色（reasoning=紫、edit/command=琥珀、search/read/tool/compaction=天蓝），失败行保持警示红；80% 不透明度对齐上游 `.text-trajectory-*/",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.79",
+                    date: "2026-09-02",
+                    commit: "59fcce",
+                    tag: "v0.5.79",
+                    summary: "—。",
+                    changes: [
+                        "侧栏账户菜单移除「检查更新」项；改为昵称右侧常驻徽章按钮：有新版本时 `arrow.down.circle.fill` + DSHTheme.brand 蓝色实心，无新版本时 `arrow.up.circle` 灰色箭头，点击执行检查更新。",
+                        "`AppUpdateController` 新增 `@Published updateFound`：监听 Sparkle `SUUpdaterDidFindValidUpdateNotification` / `SUUpdaterDidNotFindUpdateNotification`（Sparkle 2.x 未提供",
+                        "DesktopZCodeDesignTests：菜单不再含检查更新项 + 徽章存在 + updateFound 驱动（46 → 48 passed）。",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.78",
+                    date: "2026-09-02",
+                    commit: "7499a7",
+                    tag: "v0.5.78",
+                    summary: "—。",
+                    changes: [
+                        "重打 `Tapgo AICoding.app`：v0.5.75 → **v0.5.77**（`AppBuilder/Info.plist` `CFBundleShortVersionString` bump 0.5.75 → 0.5.77）",
+                        "zip：`/tmp/Tapgo-AICoding-0.5.77.zip` 9.5MB，上传 release v0.5.77 assets",
+                        "**本机部署**：`/Applications/Tapgo AICoding.app` v0.5.77，App PID **73238** + HarnessDaemon PID **73643** alive",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.77",
+                    date: "2026-09-02",
+                    commit: "a91afc",
+                    tag: "v0.5.77",
+                    summary: "| 区域 | ZCode (1220×1287) | Tapgo (963×1344) | Δ (max channel) |。",
+                    changes: [
+                        "重新查询 Tapgo AICoding v0.5.75 主窗口（限定 `CGWindowList` 查询的 `layer=0` 排除 system chrome），找到 wid=64836 bounds={X:41, Y:30, W:963, H:1344}（**onScreen=true**），`screencapt",
+                        "`pixelmatch.json`（独立可读文件）记录中央 683×740 区域 Tapgo vs ZCode 像素对比：",
+                        "区域色差对比表（`region-color-diff.md`）：",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.76",
+                    date: "2026-09-02",
+                    commit: "fcd1cc",
+                    tag: "v0.5.76",
+                    summary: "—。",
+                    changes: [
+                        "新增 `scripts/zcode-fidelity-report.sh`（一键产出 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.{json,md}` + 区域色采样文本）。",
+                        "新增 6 个 evidence artifacts 在 `artifacts/zcode-vs-tapgo-0.5.75/`：",
+                        "三项独立可验证量化指标（详见报告）：",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.75",
+                    date: "2026-09-02",
+                    commit: "2912b6",
+                    tag: "v0.5.75",
+                    summary: "—。",
+                    changes: [
+                        "`Sources/TapgoAICoding/Views/SidebarView.swift` 的侧栏 drop-target 虚线环 `stroke(...)` 从 `DSHTheme.brand` 换为 `DSHTheme.brandBlueZCode`，匹配 ZCode 编译 stylesheet 中 28 次的",
+                        "`Sources/TapgoAICoding/Views/RightWorkbenchView.swift` 的辅助对话 `sendError` 文案 `foregroundStyle` 从 `DSHTheme.error` 换为 `DSHTheme.errorZCode`，匹配 ZCode 26 次的 `#e4001",
+                        "`Sources/TapgoAICoding/Views/FileChangeView.swift` 的工具调用/命令执行「执行失败」徽章 `foregroundStyle` 从 `.tertiary`（灰）换为 `DSHTheme.warnZCode`，匹配 ZCode 16 次的 `#cd8900`，让失败标记在 ",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.74",
+                    date: "2026-09-02",
+                    commit: "8925cd",
+                    tag: "v0.5.74",
+                    summary: "与现有 `brand / warn / error`（DSH 主题 deepseek-500 + amber-500 + red-600）并存而非替换——这是 ZCode 基准值的固化，未来 ZCode 升级漂移会触发测试失败。",
+                    changes: [
+                        "`Sources/TapgoAICoding/Resources/DSHTheme.swift` 新增 3 个与 ZCode asar 频繁色对照的常量，作为 ZCode 升级 audit 的 ground truth：",
+                        "`Sources/TapgoTests/DesktopZCodeDesignTests.swift` 加 5 个贴近断言（`Desktop: ZCode interaction design` 从 38 → 43 passed）：",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.73",
+                    date: "2026-09-02",
+                    commit: "73d2b9",
+                    tag: "v0.5.73",
+                    summary: "—。",
+                    changes: [
+                        "接入 evolver 已实现的 harness 解耦：TapgoHarness daemon 二进制（Sources/TapgoHarness/main.swift，193 行 stdio↔Unix socket bridge）+ HarnessDaemonLauncher（自启动逻辑）+ SocketHarnessT",
+                        "`Package.swift` 注册 `TapgoHarness` target + product；`build-app.sh` 链路完整（依赖只是 Foundation + Darwin）。",
+                        "`SessionStore.makeRunner(for:)` 在 `HarnessDaemonLauncher.ensureDaemonRunning` 成功时优先 `SocketHarnessTransport`；失败降级到 `LocalHarnessTransport` 并记日志。",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.72",
+                    date: "2026-09-02",
+                    commit: "f05d54",
+                    tag: "v0.5.72",
+                    summary: "—。",
+                    changes: [
+                        "PR #1 (merged): 把 `fix/harness-streaming-save-throttle` 合到 main，三个原始 commit 全部入主线。",
+                        "dfb161f `fix(core): debounce ThreadStore saves during harness streaming output` — `ThreadStore.scheduleSave(_:immediate:)` 300 ms 防抖 + `ExecEvent.isPersistenceT",
+                        "6b64c6f `fix(ui): hide ZCode-style work process cards by default; add global toggle` — `@AppStorage(\"tapgo.showWorkProcess\")` 默认 false + Settings → 外观加 toggle。t",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.71",
+                    date: "2026-09-02",
+                    commit: "bf5ded",
+                    tag: "v0.5.71",
+                    summary: "「自进化日志」是只读历史页，放在左上角一级导航太抢眼；下放到底部用户头像菜单，与「连接手机/检查更新/设置/退出登录」同级。源码侧只删 SidebarView topBar 中的一项 + 测试断言翻转；用户菜单里的入口保留，所有现有入口路径",
+                    changes: [
+                        "chore(release): v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.70",
+                    date: "2026-09-02",
+                    commit: "8a137e",
+                    tag: "v0.5.70",
+                    summary: "侧栏一级菜单与账户菜单的旧标签「自动化」实际指向 EvolutionLogView（自进化历史），。",
+                    changes: [
+                        "SidebarView.swift 一级菜单 label/help/accessibility 三处 + 账户菜单 Label 1 处共 4 处",
+                        "DesktopZCodeDesignTests 同步更新两条相关断言",
+                    ],
+                    why: "—",
+                    next: "—"
+                ),
 
                 EvolutionEntry(
                     version: "v0.5.68",
