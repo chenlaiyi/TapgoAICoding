@@ -16,11 +16,11 @@ enum DSHTheme {
     /// `/Applications/ZCode.app/Contents/Resources/app.asar` styles (28 hits)
     /// and is the value used by ZCode's primary highlight ring on focusable
     /// rows. Exposed as a named constant so the audit test
-    /// (`DesktopZCodeDesignTests`) can assert the constant stays in lockstep
+    /// (`DesktopDesignParityTests`) can assert the constant stays in lockstep
     /// with the upstream renderer — if ZCode ships a new build that flips
     /// the value, the assertion will fail and we know to update before
     /// releasing.
-    static let brandBlueZCode = Color(hex: 0x4099FF)
+    static let brandBlueAccent = Color(hex: 0x4099FF)
 
     /// Inverse-contrast primary fill (DSH `button-primary-fill`): near-black
     /// in light, near-white in dark.
@@ -34,7 +34,7 @@ enum DSHTheme {
     /// stylesheet). Distinct from DSH's `warn = amber-500` so the values
     /// can coexist during the cross-product audit without one shadowing
     /// the other.
-    static let warnZCode = Color(hex: 0xCD8900)
+    static let warnAccent = Color(hex: 0xCD8900)
 
     static let warn = Color(hex: 0xF59E0B)                                  // amber-500
     static let error = Color.dynamic(lightHex: 0xEC1313, darkHex: 0xF25A5A) // red-600 / red-400
@@ -42,7 +42,7 @@ enum DSHTheme {
     /// ZCode asar frequent error/danger red (`#e40014`, 26 hits). Slightly
     /// more saturated than the DSH red so it can stand out next to the
     /// muted DSH palette.
-    static let errorZCode = Color(hex: 0xE40014)
+    static let errorAccent = Color(hex: 0xE40014)
 
     // MARK: Backgrounds (base + surfacing layers)
     /// Window / content base. bluish-00 (#fff) light, bluish-950 (#151517) dark.

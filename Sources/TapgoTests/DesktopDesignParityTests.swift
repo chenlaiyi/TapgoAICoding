@@ -67,21 +67,21 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     // compiled stylesheet (the most frequent non-trivial brand colour is
     // #4099ff at 28 hits; warning #cd8900 at 16 hits; danger #e40014 at 26).
 
-    t.expect(theme.contains("brandBlueZCode") && theme.contains("0x4099FF"), "desktop-design: ZCode 频繁蓝 #4099ff 已固化为 brandBlueZCode")
-    t.expect(theme.contains("warnZCode") && theme.contains("0xCD8900"), "desktop-design: ZCode 频繁警告色 #cd8900 已固化为 warnZCode")
-    t.expect(theme.contains("errorZCode") && theme.contains("0xE40014"), "desktop-design: ZCode 频繁危险色 #e40014 已固化为 errorZCode")
-    t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg") && theme.contains("brandBlueZCode"),
+    t.expect(theme.contains("brandBlueAccent") && theme.contains("0x4099FF"), "desktop-design: ZCode 频繁蓝 #4099ff 已固化为 brandBlueAccent")
+    t.expect(theme.contains("warnAccent") && theme.contains("0xCD8900"), "desktop-design: ZCode 频繁警告色 #cd8900 已固化为 warnAccent")
+    t.expect(theme.contains("errorAccent") && theme.contains("0xE40014"), "desktop-design: ZCode 频繁危险色 #e40014 已固化为 errorAccent")
+    t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg") && theme.contains("brandBlueAccent"),
              "desktop-design: 桌面层 + ZCode 频繁色 token 全部就位")
     t.expect(app.contains("windowStyle(.hiddenTitleBar)") && app.contains("windowToolbarStyle(.unifiedCompact)"),
              "desktop-design: macOS 标题栏自绘 + 紧凑工具栏配置持久（v0.5.65 起的承诺，未被 v0.5.74 改动回退）")
 
     // v0.5.74 — ZCode asar 频繁色 token 真正挂到 UI 上
-    t.expect(sidebar.contains("DSHTheme.brandBlueZCode") && sidebar.contains("stroke"),
-             "desktop-design: 侧栏 drop-target 虚线环用 brandBlueZCode（取代 DSHTheme.brand）")
-    t.expect(workbench.contains("DSHTheme.errorZCode") && workbench.contains("sendError"),
-             "desktop-design: 辅助对话 sendError 用 errorZCode 高饱和红")
-    t.expect(fileChangeView.contains("DSHTheme.warnZCode") && fileChangeView.contains("执行失败"),
-             "desktop-design: 文件变更「执行失败」用 warnZCode 替代 .tertiary 灰")
+    t.expect(sidebar.contains("DSHTheme.brandBlueAccent") && sidebar.contains("stroke"),
+             "desktop-design: 侧栏 drop-target 虚线环用 brandBlueAccent（取代 DSHTheme.brand）")
+    t.expect(workbench.contains("DSHTheme.errorAccent") && workbench.contains("sendError"),
+             "desktop-design: 辅助对话 sendError 用 errorAccent 高饱和红")
+    t.expect(fileChangeView.contains("DSHTheme.warnAccent") && fileChangeView.contains("执行失败"),
+             "desktop-design: 文件变更「执行失败」用 warnAccent 替代 .tertiary 灰")
 
     // v0.5.80 — ZCode 工作过程行按事件类型着色（--color-trajectory-*）
     t.expect(theme.contains("trajectoryReasoning") && theme.contains("0x7C3AED") && theme.contains("0xA78BFA"),

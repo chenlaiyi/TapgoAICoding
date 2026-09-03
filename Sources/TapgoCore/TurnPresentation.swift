@@ -20,7 +20,7 @@ public enum TurnPresentationBlock: Identifiable, Hashable {
     }
 }
 
-/// One transcript activity row. ZCode-style: every reasoning / command /
+/// One transcript activity row. 目标 IDE 风格: every reasoning / command /
 /// tool event renders as its own quiet line showing what actually happened
 /// (the command text, the search query…); consecutive search-like tool
 /// calls group into a single 查阅 row with counts.
@@ -84,7 +84,7 @@ fileprivate struct TurnActivitySemantic {
 }
 
 public enum TurnPresentation {
-    /// ZCode-style transcript: every reasoning / command / tool event keeps
+    /// 目标 IDE 风格 transcript: every reasoning / command / tool event keeps
     /// its own quiet row (with the concrete command or query); consecutive
     /// search-like tool calls group into one 查阅 row with counts. File
     /// edits stay a separate batch; messages/approvals/errors stay items.
@@ -147,7 +147,7 @@ public enum TurnPresentation {
     }
 
     /// Convert raw internal events into the quiet, semantic activity wording
-    /// used by ZCode: the label (思考/查阅/终端/编辑/读取) plus the concrete
+    /// used by 目标 IDE: the label (思考/查阅/终端/编辑/读取) plus the concrete
     /// command or query, so the transcript reads like a real work log.
     public static func activityDisplay(for item: TurnItem) -> TurnActivityDisplay {
         let running = itemRunningStatus(item)
@@ -390,7 +390,7 @@ public enum TurnPresentation {
         )
     }
 
-    /// ZCode groups consecutive searches into one row whose text carries the
+    /// 目标 IDE groups consecutive searches into one row whose text carries the
     /// per-category counts, e.g. "查阅 · 2 搜索, 1 列表".
     fileprivate static func searchCountsText(_ events: [TurnItem]) -> String {
         var searches = 0

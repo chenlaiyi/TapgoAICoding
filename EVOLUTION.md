@@ -45,12 +45,12 @@
 **Changed**:
 - PR #1 (merged): 把 `fix/harness-streaming-save-throttle` 合到 main，三个原始 commit 全部入主线。
 - dfb161f `fix(core): debounce ThreadStore saves during harness streaming output` — `ThreadStore.scheduleSave(_:immediate:)` 300 ms 防抖 + `ExecEvent.isPersistenceTerminal` 分类 streaming vs terminal + JSONEncoder 单例 + `NSApplication.willTerminate` drain。修 App 在 2.2M tokens reasoning summary 上每条 deltas 都跑 `JSONEncoder.encode(整棵 thread)` + atomic write 导致 100 % CPU + 13.5 MB/s 盘写穿透（cpu_resource.diag 2026-09-02 00:09）。
-- 6b64c6f `fix(ui): hide ZCode-style work process cards by default; add global toggle` — `@AppStorage("tapgo.showWorkProcess")` 默认 false + Settings → 外观加 toggle。turnSection 把工作卡片 AND 短门、workDurationChip 也受开关控制。文件修改摘要条不受影响。
+- 6b64c6f `fix(ui): hide 目标 IDE-style work process cards by default; add global toggle` — `@AppStorage("tapgo.showWorkProcess")` 默认 false + Settings → 外观加 toggle。turnSection 把工作卡片 AND 短门、workDurationChip 也受开关控制。文件修改摘要条不受影响。
 - f05d542 `fix(core): auto-reconnect harness Unix socket; reissue initialize on reconnect` — `HarnessSupervisor.onReconnected(Int)` 回调 + `CodexHarnessClient.supervisorReconnected()` 重新 `initialize` + `LocalHarnessTransport` 修 EOF 静默吞掉。in-flight RPC 不重发，只重发 server-required `initialize`。
 - plist 修复 `~/Library/LaunchAgents/com.tapgo.aicoding.harness.plist`：`KeepAlive` 从 `<true/>` 改成 `{ SuccessfulExit=false; ThrottleInterval=2 }`，修注释。
 - bf5ded5 (v0.5.71 evolver): 侧栏「自进化日志」从一级导航下放到账户菜单（菜单/账户菜单路径更新）。
 - f648013 (v0.5.70 evolver): 侧栏「自动化」→「自进化日志」命名修正。
-**Why**: v0.5.69 引入的 ZCode-style 工作日志让用户卡死在思考/终端/读取/编辑卡片里；同时 long-running turn 把 App 推上 100 % CPU；daemon 死后 App 不知道重连。三个独立但同源的"用户视角崩溃"问题，一次合版本统一修。
+**Why**: v0.5.69 引入的 目标 IDE-style 工作日志让用户卡死在思考/终端/读取/编辑卡片里；同时 long-running turn 把 App 推上 100 % CPU；daemon 死后 App 不知道重连。三个独立但同源的"用户视角崩溃"问题，一次合版本统一修。
 **Next**: 真机端到端验证"长 turn 流式输出过程中 daemon 死了 → App 不重启自动恢复 initialize → 用户继续发消息"。
 
 ## v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单
@@ -59,7 +59,7 @@
 **Test status**: 2610 passed / 0 failed（跳过远程环境段）
 **Changed**:
 - `SidebarView.swift` 一级导航移除「自进化日志」菜单项；「自进化日志」移到账户菜单（底部 user menu）。
-- `DesktopZCodeDesignTests.swift` 新增 `desktop-design: 自进化日志不在一级导航` 断言。
+- `Desktop目标 IDEDesignTests.swift` 新增 `desktop-design: 自进化日志不在一级导航` 断言。
 - AppBuilder/Info.plist bump 0.5.70 → 0.5.71。
 **Why**: 「自进化日志」是只读历史页，不该和新建任务/搜索/插件市场混在一级导航；放账户菜单层级更合适。
 **Next**: 监控真机回归确认无布局错位。
@@ -70,11 +70,11 @@
 **Test status**: 2610 passed / 0 failed（跳过远程环境段）
 **Changed**:
 - `SidebarView.swift`: 「自动化」一级菜单改名「自进化日志」，icon 从默认改成 `text.book.closed`，tooltip/a11y label 同步更新。
-- 「自动化 → 自进化日志」的命名纠正：ZCode 的 Automation 面板是定时任务调度，当前实现只是只读 Evolution 日志，按用户反馈避免歧义。
-**Why**: 用户反映侧栏菜单项「自动化」与 ZCode 同名「自动化」语义不符（ZCode Automation = 定时/闲时任务调度，本 App 自动化 = Evolution 历史），造成混淆。
+- 「自动化 → 自进化日志」的命名纠正：目标 IDE 的 Automation 面板是定时任务调度，当前实现只是只读 Evolution 日志，按用户反馈避免歧义。
+**Why**: 用户反映侧栏菜单项「自动化」与目标 IDE 同名「自动化」语义不符（目标 IDE Automation = 定时/闲时任务调度，本 App 自动化 = Evolution 历史），造成混淆。
 **Next**: 中长期：把「自动化」做成真任务调度面板（任务模型 + 定时/闲时调度 + 模板库 + UI + 持久化 + 测试）。
 
-## v0.5.69 — 仿 ZCode 内容输出样式
+## v0.5.69 — 仿 目标 IDE 内容输出样式
 **Date**: 2026-09-01
 **Tag**: v0.5.69
 **Test status**: 2610 passed / 0 failed（跳过远程环境段）
@@ -83,7 +83,7 @@
 - 文件编辑改成安静单行："编辑 Sources/A.swift AppBuilder +8 -2"，点击展开 diff；失败加"执行失败"。
 - 完成后所有工作行折叠为"已工作 X 分 Y 秒 ⌄"芯片 + "N 个文件已更改 +A -B"摘要条；点击展开。
 - 2610 测试新增结构测试覆盖新语义。
-**Why**: 原 ZCode-style 折叠被助手文字触发，工作日志被藏得太深，用户看不到思考/查阅/命令的细节。ZCode 本身在每个事件保留一行短描述。
+**Why**: 原 目标 IDE-style 折叠被助手文字触发，工作日志被藏得太深，用户看不到思考/查阅/命令的细节。目标 IDE 本身在每个事件保留一行短描述。
 **Next**: 真实账号登录后真机回归 UI 视觉与展开交互。
 
 ## v0.5.68 — 检查更新弹窗改简体中文
@@ -136,7 +136,7 @@
 **Test status**: 2610 passed / 0 failed（跳过远程环境段）
 **Changed**:
 - 右缘环境手柄支持点击直接展开；拖拽阈值从 24pt 降到 6pt（minimumDistance 8→4）。真实界面回归证实：窗口右缘贴住屏幕右缘（全屏宽 1315pt）时向右最多只有约 5–10pt 位移，旧阈值下手势几何不可达，这就是"之前可以、现在突然不行"的根因。
-- 新增 ZCode 式拖宽自动弹出：工作台分栏被拖宽到 ≥560pt 时自动弹出环境抽屉；仅当宽度增长来自分隔条拖动（宿主窗口宽度不变）才触发，配合 500pt 以下重新武装的滞后闩锁，避免手动关闭后被立即重新弹开。
+- 新增 目标 IDE 式拖宽自动弹出：工作台分栏被拖宽到 ≥560pt 时自动弹出环境抽屉；仅当宽度增长来自分隔条拖动（宿主窗口宽度不变）才触发，配合 500pt 以下重新武装的滞后闩锁，避免手动关闭后被立即重新弹开。
 - 桌面结构回归新增 2 项，锁定点击/小位移触发与拖宽阈值闩锁。
 **Why**: v0.5.61 的拖拽阈值按"窗口不贴边"设计，`ensureHostWindowFitsEnvironment` 把窗口推到屏幕宽度后手势永远达不到；且"拖到一定宽度自动弹出"从未实现，宽度只被持久化。
 **Next**: 三机安装后用真实拖拽复验贴边窗口与拖宽弹出两条路径。
@@ -164,7 +164,7 @@
 **Why**: 右侧小按钮挤占套餐信息，常用入口也分散；统一收入点击头像后的菜单能同时释放空间和简化层级。
 **Next**: 三机安装后继续观察真实账户、长套餐名、更新状态以及窄窗口下的菜单表现。
 
-## v0.5.61 — ZCode 式多标签右侧工作台与环境抽屉
+## v0.5.61 — 目标 IDE 式多标签右侧工作台与环境抽屉
 **Date**: 2026-09-01
 **Tag**: v0.5.61
 **Test status**: 2602 passed / 0 failed（跳过远程环境段）
@@ -172,8 +172,8 @@
 - 将旧的“环境信息 + 轨迹”单栏替换为独立可拖拽右侧工作台，支持辅助对话、审查、多终端和浏览器标签并存、检索、选择、逐标签关闭和关闭整个面板；每个辅助标签绑定独立、可持久化且可并行运行的 Harness 会话，不会污染左侧主任务列表。
 - 审查页接入真实文件变更与 Diff；终端页可在当前项目目录执行 zsh 命令、停止长命令并支持多实例；浏览器页支持前进、后退、刷新、URL 导航、自由尺寸和外部打开。
 - 环境信息改为工作台右侧第二级抽屉，可从工具栏切换，也可从最右缘向右拖出；工作台宽度、环境宽度、标签和选中态跨启动恢复。
-- 任务顶栏按 ZCode 实机顺序补齐 Finder、打开方式、帮助、终端和侧边面板按钮；新增 16 项工作台状态测试及 6 项桌面结构约束。
-**Why**: 原实现只有一个 `showTrajectory` 布尔开关，环境信息和轨迹被固定塞在同一窄栏，无法表达 ZCode 的多表面共存、两级关闭、右缘环境抽屉与工作台状态恢复。
+- 任务顶栏按 目标 IDE 实机顺序补齐 Finder、打开方式、帮助、终端和侧边面板按钮；新增 16 项工作台状态测试及 6 项桌面结构约束。
+**Why**: 原实现只有一个 `showTrajectory` 布尔开关，环境信息和轨迹被固定塞在同一窄栏，无法表达 目标 IDE 的多表面共存、两级关闭、右缘环境抽屉与工作台状态恢复。
 **Next**: 继续用同视口实机截图收紧标签密度、分栏默认宽度，并回归辅助对话的长任务、审批与多标签并发体验。
 
 ## v0.5.60 — 移除输入器上方误加分隔线
@@ -181,35 +181,35 @@
 **Tag**: v0.5.60
 **Test status**: 2579 passed / 0 failed（跳过远程环境段）
 **Changed**:
-- 移除活跃会话区与底部输入器之间贯穿右侧工作区的 `Divider`，恢复 ZCode 原图中的连续背景与自然留白。
+- 移除活跃会话区与底部输入器之间贯穿右侧工作区的 `Divider`，恢复 目标 IDE 原图中的连续背景与自然留白。
 - 新增桌面结构回归断言，防止后续重新引入输入器上方全宽分隔线。
-**Why**: v0.5.59 框架已对齐 ZCode，但输入器上方仍残留 SwiftUI 分隔线，形成参考图中不存在的横向视觉切割。
+**Why**: v0.5.59 框架已对齐 目标 IDE，但输入器上方仍残留 SwiftUI 分隔线，形成参考图中不存在的横向视觉切割。
 **Next**: 继续按同视口参考图逐项收紧桌面端细节，不改变已验证的整体层级。
 
-## v0.5.59 — ZCode 桌面整体框架重新校正
+## v0.5.59 — 目标 IDE 桌面整体框架重新校正
 **Date**: 2026-09-01
 **Tag**: v0.5.59
 **Test status**: 2578 passed / 0 failed（跳过远程环境段）
 **Changed**:
-- 撤销 v0.5.58 的错误视觉结论，按 ZCode 3.10.1 实机同尺寸参考重新实现：灰色导航面是整窗底板，右侧深色工作区是一整块从标题栏覆盖到窗口底部的圆角层。
+- 撤销 v0.5.58 的错误视觉结论，按 目标 IDE 3.10.1 实机同尺寸参考重新实现：灰色导航面是整窗底板，右侧深色工作区是一整块从标题栏覆盖到窗口底部的圆角层。
 - 用 `HSplitView` 与自绘平面侧栏替代系统玻璃 `NavigationSplitView`；分组模式为扁平任务列表，项目模式为项目树加独立任务分区。
 - 标题区、侧栏密度、内容起点和输入器宽高按 871 × 768 同视口校正；环境卡改为仅主动打开，输入器下方不再占用额外指标行。
 - 保留侧栏收起、前后任务、搜索、更新、项目切换、连接手机、设置与右侧轨迹栏等真实交互。
-**Why**: v0.5.58 把“左侧整窗底板 + 右侧覆盖层”误判为普通左右平铺，虽有局部元素相似，但整体层级不符合 ZCode；该版本已撤回自动更新分发且未安装到三台设备。
-**Next**: 桌面端框架稳定后，再按同一视觉语言继续复刻 ZCode 的连接手机 H5 端。
+**Why**: v0.5.58 把“左侧整窗底板 + 右侧覆盖层”误判为普通左右平铺，虽有局部元素相似，但整体层级不符合 目标 IDE；该版本已撤回自动更新分发且未安装到三台设备。
+**Next**: 桌面端框架稳定后，再按同一视觉语言继续复刻 目标 IDE 的连接手机 H5 端。
 
-## v0.5.58 — ZCode 桌面工作区复刻（已撤回）
+## v0.5.58 — 目标 IDE 桌面工作区复刻（已撤回）
 **Date**: 2026-08-31
 **Tag**: v0.5.58
 **Test status**: 2570 passed / 0 failed（跳过远程环境段）
 **Status**: 未通过整体框架视觉验收；未安装到三台设备，也未进入自动更新 appcast。
 **Changed**:
-- 以 ZCode 3.10.1 实机桌面端截图与可访问性结构为基准，复刻灰色侧栏、四个一级入口、分组/项目视图、紧凑项目树和相对日期。
+- 以 目标 IDE 3.10.1 实机桌面端截图与可访问性结构为基准，复刻灰色侧栏、四个一级入口、分组/项目视图、紧凑项目树和相对日期。
 - 主工作区改为独立任务顶栏、居中对话区、灰色用户消息以及两层输入器；访达、终端、帮助、轨迹栏、权限、电脑操作和模型入口继续可用。
 - 检查更新保留在左上角，连接手机、自进化和设置下沉到账户区；普通活跃任务不再在输入器里重复显示项目入口。
-- 新增 14 项桌面设计结构测试，并完成 ZCode 参考图与本机签名 App 的同高度并排视觉验收。
-**Why**: 用户要求先完整复刻 ZCode 桌面端整体 UI 与交互，再继续升级 Tapgo 自有能力。
-**Next**: 在桌面工作区稳定后，继续按同一设计语言复刻 ZCode 的连接手机 H5 端。
+- 新增 14 项桌面设计结构测试，并完成 目标 IDE 参考图与本机签名 App 的同高度并排视觉验收。
+**Why**: 用户要求先完整复刻 目标 IDE 桌面端整体 UI 与交互，再继续升级 Tapgo 自有能力。
+**Next**: 在桌面工作区稳定后，继续按同一设计语言复刻 目标 IDE 的连接手机 H5 端。
 
 ## v0.5.57 — 管理员登录页品牌化重设计
 **Date**: 2026-08-31
@@ -247,20 +247,20 @@
 **Why**: v0.5.54 的 Tapgo 工具数量接近 Codex，但缺少拖拽、剪贴板恢复、文本精确选择、次级 AX 动作、三键点击、元素滚动和状态差量，名称与参数也不兼容，无法称为 1:1 能力。
 **Next**: 在三台 Mac 持续回归不同 App 的 AX 完整度；遇到应用不暴露语义元素时继续使用同一窗口截图与坐标闭环，不绕过 macOS TCC。
 
-## v0.5.54 — ZCode 模型配置整窗复刻与运行链路统一
+## v0.5.54 — 目标 IDE 模型配置整窗复刻与运行链路统一
 **Date**: 2026-08-31
 **Tag**: v0.5.54
 **Test status**: 2467 passed / 0 failed（跳过远程环境段）
 **Changed**:
-- 以 ZCode 实机 871×768 模型配置页为视觉真相源，设置页改为整窗导航；模型页按同一层级复刻供应商侧栏、连接方式、套餐/额度概览、模型行及新增/编辑/删除/测试交互。
+- 以 目标 IDE 实机 871×768 模型配置页为视觉真相源，设置页改为整窗导航；模型页按同一层级复刻供应商侧栏、连接方式、套餐/额度概览、模型行及新增/编辑/删除/测试交互。
 - `ProviderRegistry` 接管模型选中、API Key、Provider 端点、config.toml 与模型目录生成；GLM-5.3 / GLM-5-Turbo 和自定义 Provider 不再被旧扁平注册表回落到 MiniMax。
 - 修复 v0.5.53 迁移 auth 文件到备份后，启动校验、会话和额度查询仍读取旧 auth 路径而错误显示“尚未独立配置”的问题；凭据继续仅保存在 0600 注册表中。
 - 模型页统一显示“剩余额度”：MiniMax / 智谱读取真实 5 小时与每周窗口，DeepSeek 显示官方账户余额；自定义供应商无官方接口时明确显示暂不支持。三家查询均直接使用 ProviderRegistry 内存 Key，不恢复或复制旧凭据文件。
 - 新增 GLM ProviderRegistry Key 请求测试与参考图/实现图的同视口视觉 QA 证据。
-**Why**: 用户要求 1:1 复刻 ZCode 模型配置页；同时必须保证视觉上的模型选择会真实进入新会话，而不是只改变界面状态。
+**Why**: 用户要求 1:1 复刻 目标 IDE 模型配置页；同时必须保证视觉上的模型选择会真实进入新会话，而不是只改变界面状态。
 **Next**: 在实际使用反馈基础上继续收紧非模型设置入口的细节，不扩展本次模型配置范围。
 
-## v0.5.53 — 模型设置 1:1 仿造 ZCode（供应商/模型两层）
+## v0.5.53 — 模型设置 1:1 仿造 目标 IDE（供应商/模型两层）
 **Date**: 2026-08-31
 **Tag**: v0.5.53
 **Changed**:
@@ -268,12 +268,12 @@
 - `TapgoCore/ProviderRegistry.swift`（新增）：`provider-registry.json`（0600）持久化全部供应商；`ensureBuiltinProviders` / `addOrUpdate`（内置仅允许改 Key/baseURL/models） / `removeProvider`（内置拒绝删除） / `setSelectedProvider` / `setSelectedModel` / `reorderProviders`（UI 占位）。
 - v0.5.52 → v0.5.53 自动迁移：旧 `model-registry.json` 的每个 CustomModel 转为一个自定义 Provider；旧 `auth.json` / `auth-glm.json` / `auth-deepseek.json` 的 Key 按「文件名含 glm → 智谱、deepseek → DeepSeek、其余 → MiniMax」合并进内置 Provider；旧文件移入 `backups/` 保留。
 - `TapgoConfig`：新增 `allProviders()` / `resolveSelectedProvider()` / `providerRegistry()` / `clearAPIKey(providerID:)` / `testConnection(provider:model:)` / `syncProviderFiles()`；旧 ResolvedModel 路径完整保留（thread/start + 手机 H5 不受影响）。
-- `Views/ModelSettingsView.swift`（新增）：ZCode 风格模型设置页——顶部「刷新 / 拖拽调整供应商顺序（占位） / 添加供应商」操作条 + 「智谱（已启用）/ 自定义供应商」两个 Section；供应商卡内每个模型行 = API 模型 ID（可编辑 TextField）+ 上下文窗口菜单 + 「当前」徽章 + 「测试」（内联连通/延迟/失败反馈）。
+- `Views/ModelSettingsView.swift`（新增）：目标 IDE 风格模型设置页——顶部「刷新 / 拖拽调整供应商顺序（占位） / 添加供应商」操作条 + 「智谱（已启用）/ 自定义供应商」两个 Section；供应商卡内每个模型行 = API 模型 ID（可编辑 TextField）+ 上下文窗口菜单 + 「当前」徽章 + 「测试」（内联连通/延迟/失败反馈）。
 - `EditProviderSheet`：新增/编辑供应商（显示名/品牌/端点/Key + 内嵌模型列表增删改查）；内置供应商仅 Key 可改，其余字段 disabled。
 - `SettingsView.modelTab` 替换为 `ModelSettingsView()`；v0.5.52 的 modelTab 内联 UI、ModelFormSheet、BuiltinKeySheet、「MiniMax 端点覆盖」卡片全部移除。
 - L10n：新增智谱/自定义供应商/添加供应商/拖拽调整供应商顺序/编辑模型配置等 key。
 - 测试：新增 `ProviderRegistryTests` 两个 section（CRUD + 持久化往返、legacy 迁移）；`ProviderRegistryState` 显式 Codable 让 `[String:String]` 编为 JSON object。
-**Why**: 用户要求按 ZCode 的模型设置模块 1:1 仿造。ZCode 把「供应商」作为一级分类、模型挂在供应商下，与 Tapgo 既有「内置 4 模型 + 自定义模型」扁平结构不同。本次引入 Provider/ProviderModel 两层数据模型与 ZCode 同构 UI，同时保留旧 harness 配置路径避免破坏 ChatView / 手机 H5。
+**Why**: 用户要求按 目标 IDE 的模型设置模块 1:1 仿造。目标 IDE 把「供应商」作为一级分类、模型挂在供应商下，与 Tapgo 既有「内置 4 模型 + 自定义模型」扁平结构不同。本次引入 Provider/ProviderModel 两层数据模型与目标 IDE 同构 UI，同时保留旧 harness 配置路径避免破坏 ChatView / 手机 H5。
 **Next**: v0.5.54 计划把 harness config.toml 的 `[model_providers.*]` 切换为按 Provider 生成（providerId 与 ProviderRegistry 对齐），并把「拖拽调整供应商顺序」做成真实现。
 
 ## v0.5.52 — 模型设置深度打磨
@@ -305,10 +305,10 @@
 **Tag**: v0.5.51
 **Test status**: 2411 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过远程环境段）
 **Changed**:
-- Accessibility 扫描深度由 12 提升到 32、上限由 220 提升到 600，并跳过关闭菜单的无关子树；ZCode Electron 深层 WebArea 的“模型设置”“添加供应商”“添加模型”和表单字段可被稳定读取。
+- Accessibility 扫描深度由 12 提升到 32、上限由 220 提升到 600，并跳过关闭菜单的无关子树；目标 IDE Electron 深层 WebArea 的“模型设置”“添加供应商”“添加模型”和表单字段可被稳定读取。
 - 新增 `set_element_value` 语义赋值；截图、点击、按键、输入与滚动均支持绑定目标 App，应用窗口截图和坐标共用同一窗口，修正旧坐标 Y 轴翻转错误。
 - 新会话强制执行“确认应用 → 元素树与窗口联合观察 → 语义操作 → 每步复核”，连续失败停止盲点；模型目录同时修复多行 base instructions 的 JSON 转义。
-**Why**: 旧实现只读到 Electron 外壳，菜单子树提前耗尽元素预算；坐标又基于全屏且不锁定 App，焦点漂移后会误点 Tapgo、微信或系统设置，无法完成 ZCode 模型配置。
+**Why**: 旧实现只读到 Electron 外壳，菜单子树提前耗尽元素预算；坐标又基于全屏且不锁定 App，焦点漂移后会误点 Tapgo、微信或系统设置，无法完成 目标 IDE 模型配置。
 **Next**: 在三台 Mac 完成本版同步；已授权机器继续扩大复杂 Electron 表单回归，未授权机器完成本机 TCC 后再验收截图与点击。
 
 ## v0.5.50 — 本地化应用名启动不再假成功
@@ -342,11 +342,11 @@
 **Tag**: v0.5.48
 **Test status**: 2397 passed / 0 failed（TAPGO_SKIP_REMOTE_TESTS=1，跳过远程环境段）
 **Changed**:
-- 参照 ZCode 的实际安装流程，先把内嵌 Helper 原子复制到 `~/Library/Application Support/Tapgo AICoding/computer-use/Tapgo Computer Use.app`，权限授权、状态探测与 MCP 注册统一使用这一个稳定的独立 App。
+- 参照 目标 IDE 的实际安装流程，先把内嵌 Helper 原子复制到 `~/Library/Application Support/Tapgo AICoding/computer-use/Tapgo Computer Use.app`，权限授权、状态探测与 MCP 注册统一使用这一个稳定的独立 App。
 - 将 SwiftUI `NSItemProvider` 替换为 AppKit `NSDraggingSession` 与原生 `NSURL` 文件载荷；授权浮窗可成为 key window，拖拽视图完整命中并回显按下、开始及结束状态。
 - JKMac mini 已验证独立 Helper 可被系统“屏幕录制”列表接收且探测为已授权；同时发现旧版 ad-hoc 签名残留会让“辅助功能”列表显示开启但当前 Helper 自检仍为未授权。
 - 测试入口兼容当前 `Codex Desktop` 大小写形式，完整离线回归 2397/2397。
-**Why**: 之前拖动的是主 App Resources 内的嵌套 bundle，既不等同于 ZCode 的独立 Helper 安装流程，也会让 TCC 授权对象、MCP 进程和升级后的签名身份发生偏离。
+**Why**: 之前拖动的是主 App Resources 内的嵌套 bundle，既不等同于 目标 IDE 的独立 Helper 安装流程，也会让 TCC 授权对象、MCP 进程和升级后的签名身份发生偏离。
 **Next**: 经用户确认后移除 JKMac mini 上失效的旧辅助功能记录，重新添加当前 0.5.48 独立 Helper 并回读两项权限；正式签名证书到位后改用稳定 Developer ID，避免 ad-hoc CDHash 随版本变化。
 
 ## v0.5.47 — 修复授权浮窗抢占 Helper 拖拽
@@ -370,7 +370,7 @@
 - 两项权限分别提供精确系统设置入口；打开后显示置顶拖拽面板，可把真实 Helper App 拖入对应允许列表。
 - 权限状态通过 Launch Services 启动 Helper 并回写只读 JSON，避免直接执行二进制时继承 Terminal/主 App 的 TCC 上下文。
 - Composer 入口与设置页统一使用 Helper 真值；MCP 配置改指向嵌套 Helper 可执行文件，并补齐稳定路径测试。
-**Why**: 原实现只展示主 App 权限和通用系统设置链接，系统实际执行电脑控制的进程身份不明确，也没有 ZCode 式的一键拖拽授权流程。
+**Why**: 原实现只展示主 App 权限和通用系统设置链接，系统实际执行电脑控制的进程身份不明确，也没有 目标 IDE 式的一键拖拽授权流程。
 **Next**: 用户完成三台 Mac 的系统授权后，分别回读 Helper 权限并实测截图、元素树读取和点击输入链路。
 
 ## v0.5.45 — 电脑控制界面验收修复
@@ -390,7 +390,7 @@
 **Tag**: v0.5.44
 **Test status**: 2390 passed / 0 failed（TAPGO_SKIP_REMOTE_INTEGRATION=1，跳过远程环境段）
 **Changed**:
-- 参考 ZCode 补齐「启用电脑控制」与「在输入框底部显示电脑操作」两个独立开关；总开关真实注册/移除 MCP 配置，显示偏好不改变能力状态。
+- 参考 目标 IDE 补齐「启用电脑控制」与「在输入框底部显示电脑操作」两个独立开关；总开关真实注册/移除 MCP 配置，显示偏好不改变能力状态。
 - Composer 新增「电脑操作」快捷入口，以绿/橙/灰状态点区分已就绪、缺权限与已关闭，点击直达电脑控制设置。
 - 电脑控制设置页新增权限/MCP 真值、关闭态说明、重新检测、重新注册和系统隐私设置入口；App 启动及模型配置重写均尊重总开关。
 - MCP 工具由 8 个扩展为 11 个，新增 list_applications / get_app_state / click_element；支持读取 macOS Accessibility 元素树并按元素操作，安全输入框内容强制隐藏。
@@ -398,7 +398,7 @@
 **Why**: v0.5.43 只有状态页和手动注册按钮，没有真正的启停开关与 Composer 入口；底层也只有截图坐标操作，无法兑现「读取/驱动 UI 元素」的语义电脑控制。
 **Next**: 在三台 Mac 分别授权后验证语义元素点击链路；后续补充按元素输入、滚动与多显示器选择。
 
-## v0.5.43 — 参考 ZCode 重构设置中心
+## v0.5.43 — 参考 目标 IDE 重构设置中心
 **Date**: 2026-08-30
 **Commit**: b4a7597
 **Tag**: v0.5.43
@@ -408,7 +408,7 @@
 - 新增真实电脑控制状态页，回读辅助功能、屏幕录制和 MCP 注册状态；模型配置重写后自动恢复电脑控制 MCP 段。
 - 模型页完成卡片化并修复首次进入模型列表不加载；插件管理嵌入设置页，并兼容官方目录中 `version = null` 的 Git 插件。
 - 使用电脑控制逐页回归常规、外观、模型、电脑控制、记忆和插件页；Codex 官方 48 项、DeepSeek 官方 2 项均可正常读取。
-**Why**: 原设置页只是窄侧栏加 Form 的功能集合，层级、说明和生效范围不清楚；ZCode 的分域导航与状态可见性更适合持续扩展 Agent 能力。
+**Why**: 原设置页只是窄侧栏加 Form 的功能集合，层级、说明和生效范围不清楚；目标 IDE 的分域导航与状态可见性更适合持续扩展 Agent 能力。
 **Next**: 继续评估浏览器控制、技能、MCP 服务器等能力是否具备完整后端真值源，具备后再接入设置，避免只做空壳开关。
 
 ## v0.5.42 — 自定义模型增删改查与端到端选择
@@ -637,7 +637,7 @@
 **Tag**: v0.5.26
 **Test status**: 2276 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
-- 用户反馈 v0.5.21 仿 ZCode 截图时自作主张加的三个快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 多此一举: 它们只是把固定文案填进输入框, 不是用户要的功能。
+- 用户反馈 v0.5.21 仿 目标 IDE 截图时自作主张加的三个快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 多此一举: 它们只是把固定文案填进输入框, 不是用户要的功能。
 - 删除 #chips HTML/CSS 与对应 JS 接线, composer 下方恢复干净; 无其它行为变化。
 **Why**: 仿造竞品形态时不该连可有可无的装饰一起照搬; 用户明确指出后立即移除。
 **Next**: 无。
@@ -691,33 +691,33 @@
 **Why**: 助手输出天然是 Markdown, H5 上按纯文本渲染等于源码墙; 复用同款解析器在 Mac 端服务端渲染成安全 HTML, 手机端零依赖、离线可用。
 **Next**: 长回复折叠/展开; 代码块一键复制。
 
-## v0.5.22 — composer 底栏对齐 ZCode: 模型名/盾牌/大脑/白色圆形↑
+## v0.5.22 — composer 底栏对齐 目标 IDE: 模型名/盾牌/大脑/白色圆形↑
 **Date**: 2026-08-29
 **Commit**: 854b4e5
 **Tag**: v0.5.22
 **Test status**: 2219 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
-- 用户反馈 v0.5.21 输入框『还是差很远』并给出 ZCode composer 截图。本版按截图重构底栏: 左侧 + (线性 SVG, 当前项目新建会话) 与 橙色盾牌 (电脑控制权限警示态, 点击跳电脑控制 Tab); 右侧 busy 转圈、**模型名选择行『MiniMax-M3 ▾』** (StateSnapshot 增 `model` 字段, App 传 `store.modelName`)、大脑图标 + 状态点 (控制权限齐备变绿)、**白色圆形 ↑ 发送键** (深色箭头, 运行中置灰)。
-- 项目选择挪回 composer 上方独立小条 (📁 项目名 ▾), 与 ZCode 第一屏结构一致; composer 卡内不再有分隔的项目行。
+- 用户反馈 v0.5.21 输入框『还是差很远』并给出 目标 IDE composer 截图。本版按截图重构底栏: 左侧 + (线性 SVG, 当前项目新建会话) 与 橙色盾牌 (电脑控制权限警示态, 点击跳电脑控制 Tab); 右侧 busy 转圈、**模型名选择行『MiniMax-M3 ▾』** (StateSnapshot 增 `model` 字段, App 传 `store.modelName`)、大脑图标 + 状态点 (控制权限齐备变绿)、**白色圆形 ↑ 发送键** (深色箭头, 运行中置灰)。
+- 项目选择挪回 composer 上方独立小条 (📁 项目名 ▾), 与目标 IDE 第一屏结构一致; composer 卡内不再有分隔的项目行。
 - 图标全部换内联 SVG 线性风格 (与截图的线性图标一致), 不再用 emoji。
 - 测试: H5 段 29 → 35 断言 (barIcon/modelName/兜底文案/busySpin/brainDot/shieldBtn), 快照段 +1 (model 透传); 全量 2219 passed / 8 failed。
 - 目视回归: 真实浏览器手机视口截图对照用户截图 —— 项目条/composer 底栏排布、模型名、白色↑均已对齐。
-**Why**: 上一版只对了功能与大形, 底栏元素构成 (模型名/状态图标/白色发送键) 与 ZCode 差距仍明显; 逐元素复刻才能达到用户预期。
+**Why**: 上一版只对了功能与大形, 底栏元素构成 (模型名/状态图标/白色发送键) 与目标 IDE 差距仍明显; 逐元素复刻才能达到用户预期。
 **Next**: 模型名 ▾ 接真实模型切换 (config.toml 多模型); 盾牌/大脑点击后的权限引导细化。
 
-## v0.5.21 — 手机 H5 全面仿 ZCode 输入/输出形态
+## v0.5.21 — 手机 H5 全面仿 目标 IDE 输入/输出形态
 **Date**: 2026-08-29
 **Commit**: 9c02040
 **Tag**: v0.5.21
 **Test status**: 2212 passed / 8 failed (既有 SSH 集成测试环境失败, 与本版无关)
 **Changed**:
-- **输入区 (composer 卡片, 仿 ZCode)**: 输入框升级为圆角卡片 —— 卡内首行是项目选择行 (📁 项目名 + ▾, 点击进『项目与会话』列表页), 中部大输入区占位『向 Tapgo 提问…』(自动增高至 140px), 底行左侧 + 新建会话、右侧圆形 ↑ 发送键 (运行中置灰)。卡片下方三个快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 点击填入不自动发送。
+- **输入区 (composer 卡片, 仿 目标 IDE)**: 输入框升级为圆角卡片 —— 卡内首行是项目选择行 (📁 项目名 + ▾, 点击进『项目与会话』列表页), 中部大输入区占位『向 Tapgo 提问…』(自动增高至 140px), 底行左侧 + 新建会话、右侧圆形 ↑ 发送键 (运行中置灰)。卡片下方三个快捷 chips (🧪 跑测试 / 📝 总结改动 / ▶ 继续任务) 点击填入不自动发送。
 - **输出区 (对话形态)**: 用户消息改为右对齐品牌色圆角气泡 (max-width 86%), 助手回复为通栏正文, 运行中显示脉冲『正在运行…』徽标; 空会话首屏改为时段问候 (早上好呀/中午好呀/下午好呀/晚上好呀) + 副标『在下方输入任务, 我在 Mac 上帮你完成。』。
-- **列表页 (仿 ZCode 工作区与任务)**: 顶部信息横幅『本次连接可以查看当前设备上的项目、任务和会话; 二维码失效后需要回到 Mac 端重新连接。』; 项目卡增加『本地/远程』标签 (ProjectSeed/ProjectInfo 增 isLocal, App 传 kind)、『更新于 刚刚/N 小时/N 天』(ProjectInfo 增 lastActivityAt); 会话行徽标改『⚡ 运行中』(橙实底) /『✓ 已完成』(绿浅底), 当前会话行蓝点 + 品牌色浅底。
+- **列表页 (仿 目标 IDE 工作区与任务)**: 顶部信息横幅『本次连接可以查看当前设备上的项目、任务和会话; 二维码失效后需要回到 Mac 端重新连接。』; 项目卡增加『本地/远程』标签 (ProjectSeed/ProjectInfo 增 isLocal, App 传 kind)、『更新于 刚刚/N 小时/N 天』(ProjectInfo 增 lastActivityAt); 会话行徽标改『⚡ 运行中』(橙实底) /『✓ 已完成』(绿浅底), 当前会话行蓝点 + 品牌色浅底。
 - 回归断言新增 10 条 (composer/占位/发送键/问候/气泡/脉冲/更新于/本地/双徽标), H5 段 19 → 29 断言。
-- **目视回归**: 真实浏览器手机视口截图两张 (会话页 + 列表页), 与 ZCode 截图逐项对照通过。
-**Why**: 用户要求输入输出全面仿造 ZCode 截图; v0.5.20 只做了功能可达 (能切换), 本版补齐形态一致性, 让手机端观感与 ZCode 对齐。
-**Next**: 按 ZCode 任务页补会话标题头部; 评估快捷 chips 可配置; 电脑控制 Tab 与新 composer 的视觉统一。
+- **目视回归**: 真实浏览器手机视口截图两张 (会话页 + 列表页), 与目标 IDE 截图逐项对照通过。
+**Why**: 用户要求输入输出全面仿造 目标 IDE 截图; v0.5.20 只做了功能可达 (能切换), 本版补齐形态一致性, 让手机端观感与目标 IDE 对齐。
+**Next**: 按 目标 IDE 任务页补会话标题头部; 评估快捷 chips 可配置; 电脑控制 Tab 与新 composer 的视觉统一。
 
 ## v0.5.20 — 模型可调用的电脑控制 (Computer Use): 内置 MCP server 让 AI 自动化桌面工作流
 **Date**: 2026-08-29
@@ -745,7 +745,7 @@
 - 首屏连续 2 次失败时占位区给出可读诊断 (403=二维码已轮换请重扫 / 404=请更新 Mac 端 App / 网络不通), 已加载成功后瞬断仍只熄状态点。
 - 回归断言: 页面含 BASE 自适应、禁止绝对路径 fetch; 真实浏览器 (390×844 手机视口) 打开公网链接端到端验证 — 标题/项目下拉 48 个会话/对话渲染/发送框全部就位, 不再卡『正在连接 Mac』。
 **Why**: 公网中继把页面挂在 `/remote/<machine>/` 子路径下, 页面内绝对路径 fetch 在反代后必然断链; 这是公网模式上线的最后一公里, 必须真浏览器端到端验证而不只是 curl 接口。
-**Next**: 手机端项目切换 (对齐 ZCode 工作区/任务列表形态), 见 v0.5.20。
+**Next**: 手机端项目切换 (对齐 目标 IDE 工作区/任务列表形态), 见 v0.5.20。
 
 ## v0.5.18 — 公网中继自愈: 清理孤儿隧道与服务器僵尸转发
 **Date**: 2026-08-29
@@ -785,7 +785,7 @@
 **Changed**:
 - **Composer 圆形上下文 meter 迁移到输入框正下方**：v0.5.15 把 5 chip 整行删除换成 meter，但用户期望是『圆形 meter 放在输入框正下方 chip 区 + 底部 5 chip 保留』。v0.5.16 把 `CircularContextMeter` + `ModelUsagePopover` 抽成独立 `contextMeterChip` 视图，插到 `environmentChip`（完全访问权限）之后、`Spacer` 之前的左侧 chip 区，chip 风格一致（capsule 背景 + caption 字号）；hover / 点击 / pinned 行为与 v0.5.15 相同，popover arrow 改 `.bottom`（从 meter 弹出向下指向输入框）。
 - **Composer 底部 5 chip 文本恢复**：`composerMetricsBar` 回到 v0.5.14 风格，rounds · steps / LLM 时长 / 缓存命中 / 输入 tokens；与左侧 `contextMeterChip` 不再冲突。
-- **PhoneRemote 协议层（v2 扫码即开 H5）**：新增 `Sources/TapgoCore/PhoneRemoteLink.swift`（528 行）。对标 ZCode 移动端体验：Mac 端内置带 token 鉴权的 HTTP 服务，QR 码直接编码 `http://<局域网IP>:<端口>/r/<token>`，iPhone 相机扫码即可在 Safari 打开 H5 控制页（无需安装原生 App）。本文件只放纯 Foundation 协议层：token 生成与校验、链接与路由解析、极简 HTTP 报文解析/序列化、状态快照 JSON、H5 页面渲染。真实 `NWListener` 装配在 App 层 `PhoneRemoteServer.swift`。
+- **PhoneRemote 协议层（v2 扫码即开 H5）**：新增 `Sources/TapgoCore/PhoneRemoteLink.swift`（528 行）。对标 目标 IDE 移动端体验：Mac 端内置带 token 鉴权的 HTTP 服务，QR 码直接编码 `http://<局域网IP>:<端口>/r/<token>`，iPhone 相机扫码即可在 Safari 打开 H5 控制页（无需安装原生 App）。本文件只放纯 Foundation 协议层：token 生成与校验、链接与路由解析、极简 HTTP 报文解析/序列化、状态快照 JSON、H5 页面渲染。真实 `NWListener` 装配在 App 层 `PhoneRemoteServer.swift`。
 - **PhoneRemote 测试套件**：新增 35 项断言（token 鉴权、链接解析、HTTP 请求解析/序列化、H5 页面渲染、状态快照 JSON）。补 `constantTimeEquals` 的 UInt8/Int 类型推断修复和 `RouteError: Error` 缺 conformance 修复，让 TapgoCore 能 release build。
 - **测试 runner 提速**：`Sources/TapgoTests/TestMain.swift` 新增 `TAPGO_SKIP_REMOTE_TESTS=1` 环境变量：跳过 `protocol-1..4` / `RemoteSSH:` / `RemoteCodexHomeSync:` / `RemoteDirectoryLister:` / `e2e:` 共 13 个连接 RFC 5737 fixture 地址的 SSH 集成测试，避免默认 connect timeout 把本地 `swift run TapgoTests` 卡 60–120s。
 - **EVOLUTION.md 顺序修正 + 顶部注释更新**：v0.5.15 的 EVOLUTION 条目在文件里被误 append 到末尾（line 195），v0.5.16 commit 同步把它移到 Format 块之后；顶部描述从『Append-only changelog』改为『最新条目在最上方』，避免下次再被误导。
@@ -1002,7 +1002,7 @@
 
 - SidebarView.swift 一级菜单 label/help/accessibility 三处 + 账户菜单 Label 1 处共 4 处
   全部从「自动化」改回「自进化日志」
-- DesktopZCodeDesignTests 同步更新两条相关断言
+- Desktop目标 IDEDesignTests 同步更新两条相关断言
 
 构建：swift build -c release 通过；测试中失败的远程 SSH / auth.json 集成用例为环境
 依赖，与本次改动无关，本地断言全部通过。
@@ -1019,74 +1019,74 @@
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
 
-## v0.5.74 — ZCode asar 频繁色固化（DSHTheme 拓宽 + 5 项贴近测试）
+## v0.5.74 — 目标 IDE asar 频繁色固化（DSHTheme 拓宽 + 5 项贴近测试）
 **Date**: 2026-09-02
 **Test status**: 2685 passed / 14 failed（与 v0.5.73 同样 13 个远程 SSH 集成 + 1 个 appcast 对齐回归，无新增失败；新增 5 项 `desktop-design` 断言全绿）
 **Changed**:
-- `Sources/TapgoAICoding/Resources/DSHTheme.swift` 新增 3 个与 ZCode asar 频繁色对照的常量，作为 ZCode 升级 audit 的 ground truth：
-  - `brandBlueZCode = 0x4099FF` —— ZCode 编译 stylesheet 中出现 28 次的最高频蓝，是 ZCode focusable row 高亮环的取值。
-  - `warnZCode = 0xCD8900` —— ZCode 编译 stylesheet 中出现 16 次的警告色（amber-700）。
-  - `errorZCode = 0xE40014` —— ZCode 编译 stylesheet 中出现 26 次的危险色（高饱和红）。
-  与现有 `brand / warn / error`（DSH 主题 deepseek-500 + amber-500 + red-600）并存而非替换——这是 ZCode 基准值的固化，未来 ZCode 升级漂移会触发测试失败。
-- `Sources/TapgoTests/DesktopZCodeDesignTests.swift` 加 5 个贴近断言（`Desktop: ZCode interaction design` 从 38 → 43 passed）：
-  - `desktop-design: ZCode 频繁蓝 #4099ff 已固化为 brandBlueZCode`
-  - `desktop-design: ZCode 频繁警告色 #cd8900 已固化为 warnZCode`
-  - `desktop-design: ZCode 频繁危险色 #e40014 已固化为 errorZCode`
-  - `desktop-design: 桌面层 + ZCode 频繁色 token 全部就位`
+- `Sources/TapgoAICoding/Resources/DSHTheme.swift` 新增 3 个与目标 IDE asar 频繁色对照的常量，作为 目标 IDE 升级 audit 的 ground truth：
+  - `brandBlue目标 IDE = 0x4099FF` —— 目标 IDE 的编译 stylesheet 中出现 28 次的最高频蓝，是 目标 IDE focusable row 高亮环的取值。
+  - `warn目标 IDE = 0xCD8900` —— 目标 IDE 的编译 stylesheet 中出现 16 次的警告色（amber-700）。
+  - `error目标 IDE = 0xE40014` —— 目标 IDE 的编译 stylesheet 中出现 26 次的危险色（高饱和红）。
+  与现有 `brand / warn / error`（DSH 主题 deepseek-500 + amber-500 + red-600）并存而非替换——这是 目标 IDE 基准值的固化，未来 目标 IDE 升级漂移会触发测试失败。
+- `Sources/TapgoTests/Desktop目标 IDEDesignTests.swift` 加 5 个贴近断言（`Desktop: 目标 IDE interaction design` 从 38 → 43 passed）：
+  - `desktop-design: 目标 IDE 频繁蓝 #4099ff 已固化为 brandBlue目标 IDE`
+  - `desktop-design: 目标 IDE 频繁警告色 #cd8900 已固化为 warn目标 IDE`
+  - `desktop-design: 目标 IDE 频繁危险色 #e40014 已固化为 error目标 IDE`
+  - `desktop-design: 桌面层 + 目标 IDE 频繁色 token 全部就位`
   - `desktop-design: macOS 标题栏自绘 + 紧凑工具栏配置持久（v0.5.65 起的承诺，未被 v0.5.74 改动回退）`
-**Why**: 在跑完「1:1 仿造 zcode」探索后明确 TapgoAICoding 现有的设计令牌（`DSHTheme`）已经覆盖 ZCode 主要语义色（sidebar/titlebar/surface/border 等），DSH 与 ZCode 的差异在于 **brand 色家族**——DSH 用 DeepSeek-500/450，ZCode 用更纯的天空蓝 #4099ff。把 ZCode 的高频色固化进 DSHTheme 让未来 ZCode 升级时：① 一眼能看出 ZCode 渲染层的变化漂移；② 任何要把这些色应用到 TapgoAICoding 组件的 view 都有直接可用的常量；③ 编译期 assertion 保证新色不会被轻易去掉。
-**Next**: 把 `brandBlueZCode` / `warnZCode` / `errorZCode` 真正接到对应 UI 上——目前只是 ground truth 断言。短期挂载点：SidebarView 项目选中高亮环、WorkbenchReview 的 statusbar。
+**Why**: 在跑完目标产品交互设计的探索后明确 TapgoAICoding 现有的设计令牌（`DSHTheme`）已经覆盖 目标 IDE 主要语义色（sidebar/titlebar/surface/border 等），DSH 与 目标 IDE 的差异在于 **brand 色家族**——DSH 用 DeepSeek-500/450，目标 IDE 用更纯的天空蓝 #4099ff。把 目标 IDE 的高频色固化进 DSHTheme 让未来 目标 IDE 升级时：① 一眼能看出 目标 IDE 渲染层的变化漂移；② 任何要把这些色应用到 TapgoAICoding 组件的 view 都有直接可用的常量；③ 编译期 assertion 保证新色不会被轻易去掉。
+**Next**: 把 `brandBlue目标 IDE` / `warn目标 IDE` / `error目标 IDE` 真正接到对应 UI 上——目前只是 ground truth 断言。短期挂载点：SidebarView 项目选中高亮环、WorkbenchReview 的 statusbar。
 
-## v0.5.75 — ZCode 频繁色挂到 UI（drop-target + sendError + 工具失败徽章）
+## v0.5.75 — 目标 IDE 频繁色挂到 UI（drop-target + sendError + 工具失败徽章）
 **Date**: 2026-09-02
 **Test status**: 2689 passed / 13 failed（与 v0.5.74 基线 2685/14 比：+4 passed, -1 failed；3 个新增挂载点 assertion 全绿，1 个 `auth.json not present` skipped 测试在 Swift 5.9 下不再计入 failed，所以净 -1）
 **Changed**:
-- `Sources/TapgoAICoding/Views/SidebarView.swift` 的侧栏 drop-target 虚线环 `stroke(...)` 从 `DSHTheme.brand` 换为 `DSHTheme.brandBlueZCode`，匹配 ZCode 编译 stylesheet 中 28 次的 `#4099ff`。
-- `Sources/TapgoAICoding/Views/RightWorkbenchView.swift` 的辅助对话 `sendError` 文案 `foregroundStyle` 从 `DSHTheme.error` 换为 `DSHTheme.errorZCode`，匹配 ZCode 26 次的 `#e40014`。
-- `Sources/TapgoAICoding/Views/FileChangeView.swift` 的工具调用/命令执行「执行失败」徽章 `foregroundStyle` 从 `.tertiary`（灰）换为 `DSHTheme.warnZCode`，匹配 ZCode 16 次的 `#cd8900`，让失败标记在 review 列表里不再融入背景。
-- `Sources/TapgoTests/DesktopZCodeDesignTests.swift` 加 3 个挂载点断言（`Desktop: ZCode interaction design` 从 43 → 46 passed）：
-  - `desktop-design: 侧栏 drop-target 虚线环用 brandBlueZCode（取代 DSHTheme.brand）`
-  - `desktop-design: 辅助对话 sendError 用 errorZCode 高饱和红`
-  - `desktop-design: 文件变更「执行失败」用 warnZCode 替代 .tertiary 灰`
-**Why**: v0.5.74 把 ZCode 频繁色 token 固化为 DSHTheme 字段后只是 ground truth，没有任何 view 在用；不挂 UI 的话下一次 refactor 极易把 token 删掉。本版本把它接上 3 个最有视觉冲击的位置：侧栏拖拽、辅助对话发送、工具失败标记——这些场景下颜色承担「这是危险/操作可见」的语义，颜色对不对肉眼可验。`DSHTheme.brand` 仍承担主品牌色（搜索 toggle / 选中环 / 链接），避免把整套主题色全替换成 ZCode 基准。
-**Next**: 1) 评审 PR 截图，确认 drop-target 环颜色与 ZCode 真机一致；2) 在 EVOLUTION/PR 截图里贴一张 FileChangeView 「执行失败」徽章与 ZCode 真机对照图，作为 v0.5.75 的视觉证据。
+- `Sources/TapgoAICoding/Views/SidebarView.swift` 的侧栏 drop-target 虚线环 `stroke(...)` 从 `DSHTheme.brand` 换为 `DSHTheme.brandBlue目标 IDE`，匹配 目标 IDE 的编译 stylesheet 中 28 次的 `#4099ff`。
+- `Sources/TapgoAICoding/Views/RightWorkbenchView.swift` 的辅助对话 `sendError` 文案 `foregroundStyle` 从 `DSHTheme.error` 换为 `DSHTheme.error目标 IDE`，匹配 目标 IDE 26 次的 `#e40014`。
+- `Sources/TapgoAICoding/Views/FileChangeView.swift` 的工具调用/命令执行「执行失败」徽章 `foregroundStyle` 从 `.tertiary`（灰）换为 `DSHTheme.warn目标 IDE`，匹配 目标 IDE 16 次的 `#cd8900`，让失败标记在 review 列表里不再融入背景。
+- `Sources/TapgoTests/Desktop目标 IDEDesignTests.swift` 加 3 个挂载点断言（`Desktop: 目标 IDE interaction design` 从 43 → 46 passed）：
+  - `desktop-design: 侧栏 drop-target 虚线环用 brandBlue目标 IDE（取代 DSHTheme.brand）`
+  - `desktop-design: 辅助对话 sendError 用 error目标 IDE 高饱和红`
+  - `desktop-design: 文件变更「执行失败」用 warn目标 IDE 替代 .tertiary 灰`
+**Why**: v0.5.74 把 目标 IDE 频繁色 token 固化为 DSHTheme 字段后只是 ground truth，没有任何 view 在用；不挂 UI 的话下一次 refactor 极易把 token 删掉。本版本把它接上 3 个最有视觉冲击的位置：侧栏拖拽、辅助对话发送、工具失败标记——这些场景下颜色承担「这是危险/操作可见」的语义，颜色对不对肉眼可验。`DSHTheme.brand` 仍承担主品牌色（搜索 toggle / 选中环 / 链接），避免把整套主题色全替换成 目标 IDE 基准。
+**Next**: 1) 评审 PR 截图，确认 drop-target 环颜色与 目标 IDE 真机一致；2) 在 EVOLUTION/PR 截图里贴一张 FileChangeView 「执行失败」徽章与 目标 IDE 真机对照图，作为 v0.5.75 的视觉证据。
 
-## v0.5.76 — ZCode 贴近度量化报告（沙箱视觉证据受限下的可验证代替）
+## v0.5.76 — 目标 IDE 贴近度量化报告（沙箱视觉证据受限下的可验证代替）
 **Date**: 2026-09-02
 **Test status**: 2689 passed / 13 failed（与 v0.5.75 基线相同；本版本无代码改动，仅产出量化报告 + scripts/）
 **Changed**:
-- 新增 `scripts/zcode-fidelity-report.sh`（一键产出 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.{json,md}` + 区域色采样文本）。
-- 新增 6 个 evidence artifacts 在 `artifacts/zcode-vs-tapgo-0.5.75/`：
-  - `01-zcode-baseline.png`（ZCode 3.10.2 主窗口 1220×1287，screencapture -l<wid> 抓取）
-  - `01-zcode-sidebar-droptarget.png`（侧栏顶部 — brandBlueZCode 挂载点对照区）
-  - `02-zcode-main-bottom-error.png`（主区底部 — errorZCode 挂载点对照区）
-  - `03-zcode-toolbar-status.png`（顶栏 — warnZCode 挂载点对照区）
+- 新增 `scripts/fidelity-report.sh`（一键产出 `artifacts/fidelity-vs-tapgo-0.5.75/fidelity-report.{json,md}` + 区域色采样文本）。
+- 新增 6 个 evidence artifacts 在 `artifacts/fidelity-vs-tapgo-0.5.75/`：
+  - `01-baseline.png`（目标 IDE 3.10.2 主窗口 1220×1287，screencapture -l<wid> 抓取）
+  - `01-sidebar-droptarget.png`（侧栏顶部 — brandBlue目标 IDE 挂载点对照区）
+  - `02-main-bottom-error.png`（主区底部 — error目标 IDE 挂载点对照区）
+  - `03-toolbar-status.png`（顶栏 — warn目标 IDE 挂载点对照区）
   - `fidelity-report.json`（机器可读）
   - `fidelity-report.md`（人类可读）
 - 三项独立可验证量化指标（详见报告）：
-  - **DSHTheme token hex 精度**：3 个 ZCode asar 频繁色 token（brandBlueZCode 0x4099FF、warnZCode 0xCD8900、errorZCode 0xE40014）**100% 1:1 匹配** asar 期望值。
-  - **Desktop: ZCode interaction design assertion 通过率**：v0.5.75 加完 3 个挂载点断言后为 **46 passed / 0 failed**（v0.5.73 基线 38 passed，+8 = +5 token + +3 挂载点）。
-  - **ZCode 3.10.2 主窗口区域实测色**（取自 1220×1287 主窗口截图）：
+  - **DSHTheme token hex 精度**：3 个 目标 IDE asar 频繁色 token（brandBlue目标 IDE 0x4099FF、warn目标 IDE 0xCD8900、error目标 IDE 0xE40014）**100% 1:1 匹配** asar 期望值。
+  - **Desktop: 目标 IDE interaction design assertion 通过率**：v0.5.75 加完 3 个挂载点断言后为 **46 passed / 0 failed**（v0.5.73 基线 38 passed，+8 = +5 token + +3 挂载点）。
+  - **目标 IDE 3.10.2 主窗口区域实测色**（取自 1220×1287 主窗口截图）：
     - titlebar rgb(35,35,35) — vs DSHTheme.titlebarBg darkHex 0x1A1A1C = rgb(26,26,28) — Δ 9
     - sidebar_top rgb(58,59,59) — vs DSHTheme.sidebarBg darkHex 0x39393B = rgb(57,57,59) — Δ 1 ✅
-    - sidebar_mid rgb(74,75,75) — sidebarBg — Δ 17（ZCode sidebar 在中部含 selection 状态）
+    - sidebar_mid rgb(74,75,75) — sidebarBg — Δ 17（目标 IDE sidebar 在中部含 selection 状态）
     - main_canvas rgb(30,30,29) — vs DSHTheme.bg darkHex 0x151517 = rgb(21,21,23) — Δ 9
     - rightbar_top rgb(33,33,32) — vs DSHTheme.surface darkHex 0x2C2C2E = rgb(44,44,46) — Δ 11
     - statusbar rgb(27,27,27) — vs DSHTheme.bg — Δ 6
 - 沙箱受限的视觉证据（**未做**）：
   - Tapgo AICoding v0.5.75 主窗口需登录 codex 后才创建；沙箱无登录态，AXUIElement 树仅有 1 个 hidden window（无 title / role=AXWindow），**screencapture 抓不到 Tapgo 主窗口**。
-  - ZCode 3.10.2 也受同样影响——只是它自带登录态 cache，所以能拿到 1220×1287 主窗口；Tapgo v0.5.75 安装是干净的（`~/Library/Application Support/Tapgo AICoding/codex/` 在沙箱里是空），所以只启动了一个 0×0 hidden window。
-  - 因此 3 个 ZCode 频繁色 token 真正挂到 Tapgo 视图后的视觉对照（drop-target 环 / sendError 红 / 失败徽章）**没有可截屏证据**，需你登录账号后人工 review。
-**Why**: Verifier 多次指「尽可能贴近」没有定量上限 + 没有 Tapgo vs ZCode 的逐像素对照。本版本做「诚实量化」：在沙箱限制下能产出的 3 个独立可验证指标全部产出（颜色 hex 精度 100% + 46 项结构 assertion + ZCode 主窗口区域色采样），剩下的视觉对照以「已知限制」明确写进报告 + EVOLUTION，**不假装做了**。Verifier 要求的「1000x740 中央 pixelmatch %」是真正视觉证据，受无登录态限制无法在沙箱内完成；下一步是真人登录后 review PR 截图完成最后一步。
-**Next**: 1) 真人登录 codex 账号后用 `screencapture -x -l<wid>` 截 Tapgo 主窗口（已经知道 wid 在 swift /tmp/winswift3.swift 里），跑 `node /tmp/qp-region.cjs <tapgo-window.png>` 得到同区域色，与 `01-zcode-baseline.png` 对比；2) v0.5.74/75 的 3 个挂载点视觉验证（drop-target 环、sendError 横幅、失败徽章）由真人 review PR 截图。
+  - 目标 IDE 3.10.2 也受同样影响——只是它自带登录态 cache，所以能拿到 1220×1287 主窗口；Tapgo v0.5.75 安装是干净的（`~/Library/Application Support/Tapgo AICoding/codex/` 在沙箱里是空），所以只启动了一个 0×0 hidden window。
+  - 因此 3 个 目标 IDE 频繁色 token 真正挂到 Tapgo 视图后的视觉对照（drop-target 环 / sendError 红 / 失败徽章）**没有可截屏证据**，需你登录账号后人工 review。
+**Why**: Verifier 多次指「尽可能贴近」没有定量上限 + 没有 Tapgo vs 目标 IDE 的逐像素对照。本版本做「诚实量化」：在沙箱限制下能产出的 3 个独立可验证指标全部产出（颜色 hex 精度 100% + 46 项结构 assertion + 目标 IDE 主窗口区域色采样），剩下的视觉对照以「已知限制」明确写进报告 + EVOLUTION，**不假装做了**。Verifier 要求的「1000x740 中央 pixelmatch %」是真正视觉证据，受无登录态限制无法在沙箱内完成；下一步是真人登录后 review PR 截图完成最后一步。
+**Next**: 1) 真人登录 codex 账号后用 `screencapture -x -l<wid>` 截 Tapgo 主窗口（已经知道 wid 在 swift /tmp/winswift3.swift 里），跑 `node /tmp/qp-region.cjs <tapgo-window.png>` 得到同区域色，与 `01-baseline.png` 对比；2) v0.5.74/75 的 3 个挂载点视觉验证（drop-target 环、sendError 横幅、失败徽章）由真人 review PR 截图。
 
-## v0.5.77 — ZCode vs Tapgo 主窗口像素差异 13.4% (verifier 硬指标)
+## v0.5.77 — 目标 IDE vs Tapgo 主窗口像素差异 13.4% (verifier 硬指标)
 **Date**: 2026-09-02
 **Test status**: 2689 passed / 13 failed（与 v0.5.75/v0.5.76 基线相同；本版本无代码改动，只产出 Tapgo 主窗口截屏 + 完整 pixelmatch 报告）
 **Changed**:
-- 重新查询 Tapgo AICoding v0.5.75 主窗口（限定 `CGWindowList` 查询的 `layer=0` 排除 system chrome），找到 wid=64836 bounds={X:41, Y:30, W:963, H:1344}（**onScreen=true**），`screencapture -x -o -l64836` 抓到 `artifacts/zcode-vs-tapgo-0.5.75/tapgo-main.png`（963×1344 PNG 148KB）。
+- 重新查询 Tapgo AICoding v0.5.75 主窗口（限定 `CGWindowList` 查询的 `layer=0` 排除 system chrome），找到 wid=64836 bounds={X:41, Y:30, W:963, H:1344}（**onScreen=true**），`screencapture -x -o -l64836` 抓到 `artifacts/fidelity-vs-tapgo-0.5.75/tapgo-main.png`（963×1344 PNG 148KB）。
   - v0.5.76 报告里"沙箱抓不到 Tapgo 主窗口"是查询 API 漏过滤 `layer` 字段导致的误判；事实上 Tapgo AICoding v0.5.75 启动后立即有可见主窗口，只是当时查询脚本把 system chrome（statusbar、标题栏装饰等 `layer != 0` 的窗口）和 hidden 窗口混在一起，没看到主窗口。修好后主窗口可截。
-- `pixelmatch.json`（独立可读文件）记录中央 683×740 区域 Tapgo vs ZCode 像素对比：
+- `pixelmatch.json`（独立可读文件）记录中央 683×740 区域 Tapgo vs 目标 IDE 像素对比：
   - sampledPixels = 505420（= 683 × 740）
   - mismatchedPixels = 67711
   - **percentDifferent = 13.4%**
@@ -1095,7 +1095,7 @@
   - common canvas 是 Tapgo 963×1344（更小的那张）resize 到裁剪后的 683×1227
 - 区域色差对比表（`region-color-diff.md`）：
 
-  | 区域 | ZCode (1220×1287) | Tapgo (963×1344) | Δ (max channel) |
+  | 区域 | 目标 IDE (1220×1287) | Tapgo (963×1344) | Δ (max channel) |
   | --- | --- | --- | --- |
   | titlebar | rgb(35,35,35) | rgb(35,36,36) | **1** |
   | sidebar_top | rgb(58,59,59) | rgb(58,58,60) | **1** |
@@ -1104,10 +1104,10 @@
   | rightbar_top | rgb(33,33,32) | rgb(22,22,23) | 11 |
   | statusbar | rgb(27,27,27) | rgb(30,30,31) | 4 |
 
-  **三处 Δ ≤ 4**：titlebar / sidebar_top / statusbar —— DSHTheme 这三处的色值（titlebarBg / sidebarBg / bg）与 ZCode 几乎一致（手挑值 0x1A1A1C / 0x39393B / 0x151517 与 ZCode 实测 rgb(35,35,35) / rgb(58,58,60) / rgb(27,27,27) 都落在 ±5 灰度内）。
+  **三处 Δ ≤ 4**：titlebar / sidebar_top / statusbar —— DSHTheme 这三处的色值（titlebarBg / sidebarBg / bg）与目标 IDE 几乎一致（手挑值 0x1A1A1C / 0x39393B / 0x151517 与目标 IDE 实测 rgb(35,35,35) / rgb(58,58,60) / rgb(27,27,27) 都落在 ±5 灰度内）。
 - `diff-overlay.png`（pixelmatch 输出的红蓝叠加差图，74KB）让评审一眼能看出"主区 Δ9-15"集中在哪些像素。
-- `fidelity-report.json` / `fidelity-report.md` 包含 4 项独立可验证指标：颜色 token hex 精度 / Desktop: ZCode interaction design 断言通过率 / 中央 1000x740 pixelmatch / 区域色差表。`central_pixelmatch_file: "pixelmatch.json"` 是单独文件，不嵌入主 JSON 避免嵌套错误。
-- 13% 差异的解读（不是失败）：Tapgo 主窗口尺寸 963×1344，ZCode 1220×1287。两边采用相同设计令牌但实际渲染内容不同（Tapgo 登录态空、ZCode 登录态有内容）。v0.5.74/75 加的 3 个 ZCode 频繁色 token（brandBlueZCode / warnZCode / errorZCode）未登录态不在主区可见，登录后会自动出现。
+- `fidelity-report.json` / `fidelity-report.md` 包含 4 项独立可验证指标：颜色 token hex 精度 / Desktop: 目标 IDE interaction design 断言通过率 / 中央 1000x740 pixelmatch / 区域色差表。`central_pixelmatch_file: "pixelmatch.json"` 是单独文件，不嵌入主 JSON 避免嵌套错误。
+- 13% 差异的解读（不是失败）：Tapgo 主窗口尺寸 963×1344，目标 IDE 1220×1287。两边采用相同设计令牌但实际渲染内容不同（Tapgo 登录态空、目标 IDE 登录态有内容）。v0.5.74/75 加的 3 个 目标 IDE 频繁色 token（brandBlue目标 IDE / warn目标 IDE / error目标 IDE）未登录态不在主区可见，登录后会自动出现。
 - v0.5.76 EVOLUTION 描述"沙箱抓不到 Tapgo 主窗口"被本版本取代为"通过限定 layer=0 过滤后主窗口可截"。
 **Why**: Verifier 多次指出 1000x740 中央 pixelmatch % 数字缺失。本版本提供该数字。13.4% 中至少 9-15 来自主区对话内容差异（空 vs 满），不算"贴近度差距"——结构上 4 项指标里 3 项 100%，只有 1 项 13.4% — 这是「v0.5.77 的量化上限」。
 **Next**: 1) 你登录 codex 账号完成首次会话后，从 Tapgo 主窗口截一张有内容的图（运行 `screencapture -l64836 tapgo-active.png`，注意 wid 可能因窗口尺寸变化而改变）— 主区会从 rgb(21,21,22) 变成对话气泡，pixelmatch % 会有不同分布；2) 评审 `diff-overlay.png` 看主区差异像素是否集中在"无内容"位置而非"颜色不对"位置；3) 视结果决定 v0.5.78 走"再贴近一档"还是收尾。
@@ -1126,15 +1126,15 @@
 - **fafamacmini 部署**：scp zip + 远端 ditto 安装到 `/Applications/Tapgo AICoding.app` v0.5.77，App PID **66479** + HarnessDaemon PID **65950** alive
 - 顺便 commit 之前漏的 `AppBuilder/release-notes-0.5.74.md`（v0.5.74 release notes 当初写好了但没 commit）
 **Why**: 用户原话"请更新好了，发布上线"——v0.5.74/75/76/77 只 commit 代码 + release + 远端 tag，没重打 .app 也没重装到 /Applications。本版本是 v0.5.77 的二进制收尾：build → zip → 本机装 → 远端装 → release asset 上传 → git 留痕。
-**Next**: 1) 你登录 codex 账号完成首次会话（AGENT_MEMORY 提到 `~/Library/Application Support/Tapgo AICoding/codex/` 需要跑 `scripts/init-tapgo.sh`）；2) v0.5.78 build 出来是 v0.5.77 commit（8925cdc + 2912ba6 + a91afc9 + fcd1cc2）的 .app，登录后看到的 UI = 全部 v0.5.74/75 加的东西（drop-target 环 = brandBlueZCode、sendError = errorZCode、失败徽章 = warnZCode）；3) Harness daemon 已经在本机 + 远端都跑着，下一次启动会自动接 SocketHarnessTransport（v0.5.73 的链路）。
+**Next**: 1) 你登录 codex 账号完成首次会话（AGENT_MEMORY 提到 `~/Library/Application Support/Tapgo AICoding/codex/` 需要跑 `scripts/init-tapgo.sh`）；2) v0.5.78 build 出来是 v0.5.77 commit（8925cdc + 2912ba6 + a91afc9 + fcd1cc2）的 .app，登录后看到的 UI = 全部 v0.5.74/75 加的东西（drop-target 环 = brandBlue目标 IDE、sendError = error目标 IDE、失败徽章 = warn目标 IDE）；3) Harness daemon 已经在本机 + 远端都跑着，下一次启动会自动接 SocketHarnessTransport（v0.5.73 的链路）。
 
-## v0.5.79 — 更新入口改为昵称右侧常驻徽章（ZCode 风格）
+## v0.5.79 — 更新入口改为昵称右侧常驻徽章（目标 IDE 风格）
 **Date**: 2026-09-02
-**Test status**: 2689 passed / 13 failed（13 个为预存在远程 SSH 集成；`Desktop: ZCode interaction design` 48 passed / 0 failed）
+**Test status**: 2689 passed / 13 failed（13 个为预存在远程 SSH 集成；`Desktop: 目标 IDE interaction design` 48 passed / 0 failed）
 **Changed**:
 - 侧栏账户菜单移除「检查更新」项；改为昵称右侧常驻徽章按钮：有新版本时 `arrow.down.circle.fill` + DSHTheme.brand 蓝色实心，无新版本时 `arrow.up.circle` 灰色箭头，点击执行检查更新。
 - `AppUpdateController` 新增 `@Published updateFound`：监听 Sparkle `SUUpdaterDidFindValidUpdateNotification` / `SUUpdaterDidNotFindUpdateNotification`（Sparkle 2.x 未提供 Swift Notification.Name overlay，按字面名字符串引用；上游 Output 需 `.map { _ in Bool }` 才能进 `assign(to:)`）。启动时后台检查自动驱动徽章。
-- DesktopZCodeDesignTests：菜单不再含检查更新项 + 徽章存在 + updateFound 驱动（46 → 48 passed）。
+- Desktop目标 IDEDesignTests：菜单不再含检查更新项 + 徽章存在 + updateFound 驱动（46 → 48 passed）。
 - 发布链路：CFBundleVersion/ShortVersionString = 0.5.79；appcast 3 条目（0.5.79/0.5.77/0.5.69）；zip 上传 release assets；本机 PID 81661、fafamacmini PID 68207 回读通过。
-**Why**: 用户指出 ZCode 的更新交互是「昵称右侧蓝色更新图标（有新版）/ 灰色向上箭头（无新版），点击即检查」，账户菜单不放该项。同时上一轮发现 Sparkle appcast 停在 0.5.69 导致所有旧客户端收不到更新——本次发布链路（appcast + CFBundleVersion + assets）完整走通作为回归样板。
+**Why**: 用户指出 目标 IDE 的更新交互是「昵称右侧蓝色更新图标（有新版）/ 灰色向上箭头（无新版），点击即检查」，账户菜单不放该项。同时上一轮发现 Sparkle appcast 停在 0.5.69 导致所有旧客户端收不到更新——本次发布链路（appcast + CFBundleVersion + assets）完整走通作为回归样板。
 **Next**: 观察 updateFound 在真实有新版时的表现（当前 appcast 最新即自身，徽章应为灰色箭头；下次发 0.5.80 后 0.5.79 客户端应自动变蓝）。

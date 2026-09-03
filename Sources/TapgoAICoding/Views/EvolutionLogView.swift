@@ -272,8 +272,8 @@ struct EvolutionLogView: View {
                     summary: "—。",
                     changes: [
                         "修正 v0.5.79 引入的布局错误：更新徽章按钮原本被插进 userBar 的 VStack，掉到头像/姓名行下方；现与 Menu 包进同一 `HStack(alignment: .center, spacing: 6)`，徽章位于姓名右侧，头像/姓名/徽章同行。",
-                        "DesktopZCodeDesignTests +1 断言（52 → 53）：Menu 与 updateBadgeButton 共 HStack。",
-                        "像素验证：对本机主窗口截图做底部行带聚类，内容行带 ≤ 2（用户行 + 副标题行），确认无掉行；截图存 `artifacts/zcode-vs-tapgo-0.5.75/tapgo-main-0.5.81.png`。",
+                        "DesktopDesignParityTests +1 断言（52 → 53）：Menu 与 updateBadgeButton 共 HStack。",
+                        "像素验证：对本机主窗口截图做底部行带聚类，内容行带 ≤ 2（用户行 + 副标题行），确认无掉行；截图存 `artifacts/fidelity-vs-tapgo-0.5.75/tapgo-main-0.5.81.png`。",
                     ],
                     why: "—",
                     next: "—"
@@ -301,7 +301,7 @@ struct EvolutionLogView: View {
                     changes: [
                         "侧栏账户菜单移除「检查更新」项；改为昵称右侧常驻徽章按钮：有新版本时 `arrow.down.circle.fill` + DSHTheme.brand 蓝色实心，无新版本时 `arrow.up.circle` 灰色箭头，点击执行检查更新。",
                         "`AppUpdateController` 新增 `@Published updateFound`：监听 Sparkle `SUUpdaterDidFindValidUpdateNotification` / `SUUpdaterDidNotFindUpdateNotification`（Sparkle 2.x 未提供",
-                        "DesktopZCodeDesignTests：菜单不再含检查更新项 + 徽章存在 + updateFound 驱动（46 → 48 passed）。",
+                        "DesktopDesignParityTests：菜单不再含检查更新项 + 徽章存在 + updateFound 驱动（46 → 48 passed）。",
                     ],
                     why: "—",
                     next: "—"
@@ -341,8 +341,8 @@ struct EvolutionLogView: View {
                     tag: "v0.5.76",
                     summary: "—。",
                     changes: [
-                        "新增 `scripts/zcode-fidelity-report.sh`（一键产出 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.{json,md}` + 区域色采样文本）。",
-                        "新增 6 个 evidence artifacts 在 `artifacts/zcode-vs-tapgo-0.5.75/`：",
+                        "新增 `scripts/fidelity-report.sh`（一键产出 `artifacts/fidelity-vs-tapgo-0.5.75/fidelity-report.{json,md}` + 区域色采样文本）。",
+                        "新增 6 个 evidence artifacts 在 `artifacts/fidelity-vs-tapgo-0.5.75/`：",
                         "三项独立可验证量化指标（详见报告）：",
                     ],
                     why: "—",
@@ -355,9 +355,9 @@ struct EvolutionLogView: View {
                     tag: "v0.5.75",
                     summary: "—。",
                     changes: [
-                        "`Sources/TapgoAICoding/Views/SidebarView.swift` 的侧栏 drop-target 虚线环 `stroke(...)` 从 `DSHTheme.brand` 换为 `DSHTheme.brandBlueZCode`，匹配 ZCode 编译 stylesheet 中 28 次的",
-                        "`Sources/TapgoAICoding/Views/RightWorkbenchView.swift` 的辅助对话 `sendError` 文案 `foregroundStyle` 从 `DSHTheme.error` 换为 `DSHTheme.errorZCode`，匹配 ZCode 26 次的 `#e4001",
-                        "`Sources/TapgoAICoding/Views/FileChangeView.swift` 的工具调用/命令执行「执行失败」徽章 `foregroundStyle` 从 `.tertiary`（灰）换为 `DSHTheme.warnZCode`，匹配 ZCode 16 次的 `#cd8900`，让失败标记在 ",
+                        "`Sources/TapgoAICoding/Views/SidebarView.swift` 的侧栏 drop-target 虚线环 `stroke(...)` 从 `DSHTheme.brand` 换为 `DSHTheme.brandBlueAccent`，匹配 ZCode 编译 stylesheet 中 28 次的",
+                        "`Sources/TapgoAICoding/Views/RightWorkbenchView.swift` 的辅助对话 `sendError` 文案 `foregroundStyle` 从 `DSHTheme.error` 换为 `DSHTheme.errorAccent`，匹配 ZCode 26 次的 `#e4001",
+                        "`Sources/TapgoAICoding/Views/FileChangeView.swift` 的工具调用/命令执行「执行失败」徽章 `foregroundStyle` 从 `.tertiary`（灰）换为 `DSHTheme.warnAccent`，匹配 ZCode 16 次的 `#cd8900`，让失败标记在 ",
                     ],
                     why: "—",
                     next: "—"
@@ -370,7 +370,7 @@ struct EvolutionLogView: View {
                     summary: "与现有 `brand / warn / error`（DSH 主题 deepseek-500 + amber-500 + red-600）并存而非替换——这是 ZCode 基准值的固化，未来 ZCode 升级漂移会触发测试失败。",
                     changes: [
                         "`Sources/TapgoAICoding/Resources/DSHTheme.swift` 新增 3 个与 ZCode asar 频繁色对照的常量，作为 ZCode 升级 audit 的 ground truth：",
-                        "`Sources/TapgoTests/DesktopZCodeDesignTests.swift` 加 5 个贴近断言（`Desktop: ZCode interaction design` 从 38 → 43 passed）：",
+                        "`Sources/TapgoTests/DesktopDesignParityTests.swift` 加 5 个贴近断言（`Desktop: design parity` 从 38 → 43 passed）：",
                     ],
                     why: "—",
                     next: "—"
@@ -423,7 +423,7 @@ struct EvolutionLogView: View {
                     summary: "侧栏一级菜单与账户菜单的旧标签「自动化」实际指向 EvolutionLogView（自进化历史），。",
                     changes: [
                         "SidebarView.swift 一级菜单 label/help/accessibility 三处 + 账户菜单 Label 1 处共 4 处",
-                        "DesktopZCodeDesignTests 同步更新两条相关断言",
+                        "DesktopDesignParityTests 同步更新两条相关断言",
                     ],
                     why: "—",
                     next: "—"
