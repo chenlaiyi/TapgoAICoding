@@ -1186,3 +1186,15 @@ ChatView composer 工具栏 / SidebarView 底栏 / RightWorkbenchView 工具栏 
 fidelity patch 3/3 (ChatView L199 / RightWorkbenchView L32+L52+L178 切到 fidelityMainCanvas / fidelityRightbarTop, 关闭 13.4% 像素差主体); evolve.sh 推 tag 后自动 gh release create + 刷 appcast.xml 推到 main, 已装客户端 Sparkle 自动升级; project.yml 的 MARKETING_VERSION/CURRENT_PROJECT_VERSION 改为 evolve.sh 注入, 不再硬编码漂移; AgentOutputPolicy 文案层加状态前缀 + 禁 markdown 装饰 + 列表≤3 + 默认≤6 行 + 失败1行说影响
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.88 — fix(design): v0.5.88 — fidelity patch 4/4 (sidebar_mid 单点差) + 用户消息 zcode 风格左缘蓝色 accent
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.88
+**Test status**: — 2708 passed, 0 failed —
+**Changed**:
+- fix(design): v0.5.88 — fidelity patch 4/4 (sidebar_mid 单点差) + 用户消息 zcode 风格左缘蓝色 accent
+fidelity patch 4/4: SidebarView L224 .background(DSHTheme.bg.opacity(0.34)) → DSHTheme.fidelitySidebarMid, 关闭 sidebar_mid 单点 delta -15/255 的最大残差; MessageBubble 用户气泡加 2pt 高 18pt trajectoryUser.opacity(0.65) 左缘胶囊 (ZCode 用户消息左侧色条语义)
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

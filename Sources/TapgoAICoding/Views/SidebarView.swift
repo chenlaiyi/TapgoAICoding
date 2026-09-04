@@ -221,7 +221,7 @@ struct SidebarView: View {
                 }
             }
             .padding(2)
-            .background(DSHTheme.bg.opacity(0.34), in: RoundedRectangle(cornerRadius: 7))
+            .background(DSHTheme.fidelitySidebarMid, in: RoundedRectangle(cornerRadius: 7))
 
             Button {
                 updater.checkForUpdates()

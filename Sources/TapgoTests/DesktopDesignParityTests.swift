@@ -111,6 +111,11 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: ChatView 主体背景切到 fidelityMainCanvas token")
     t.expect(workbench.contains("DSHTheme.fidelityRightbarTop"),
              "desktop-design: RightWorkbenchView 外层 + 顶栏背景切到 fidelityRightbarTop token (>=2 处)")
+    // v0.5.88 — sidebar_mid + 用户消息 zcode 风格左缘蓝色 accent
+    t.expect(sidebar.contains("DSHTheme.fidelitySidebarMid"),
+             "desktop-design: SidebarView 视图模式切换器背景切到 fidelitySidebarMid token (closes sidebar_mid -15/255)")
+    t.expect(message.contains("DSHTheme.trajectoryUser"),
+             "desktop-design: MessageBubble 用户消息左缘 2pt blue accent 使用 trajectoryUser token")
     // v0.5.86 — fidelity patch 2/2: 视图 .background 切到 DSHTheme.fidelityTitlebar
     t.expect(chat.contains("DSHTheme.fidelityTitlebar"),
              "desktop-design: ChatView composer 工具栏背景切到 fidelityTitlebar token")

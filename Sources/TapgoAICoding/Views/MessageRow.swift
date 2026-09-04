@@ -197,6 +197,17 @@ struct MessageBubble: View {
                                 DSHTheme.surfaceRaised,
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
+                            // ZCode-style left accent: subtle 2pt blue strip using the
+                            // trajectoryUser token (blue-600/blue-400) at 65% so it reads
+                            // as a hint, not a hard outline. Caps the accent vertically to
+                            // the bubble body, mirroring zcode's user-message treatment.
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(DSHTheme.trajectoryUser.opacity(0.65))
+                                    .frame(width: 2, height: 18)
+                                    .padding(.leading, 5)
+                                    .allowsHitTesting(false)
+                            }
                             .textSelection(.enabled)
                             .contextMenu {
                                 Button {
