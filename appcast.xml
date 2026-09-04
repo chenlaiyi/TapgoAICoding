@@ -3,6 +3,23 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.99</title>
+            <pubDate>Sat, 05 Sep 2026 02:28:20 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.99</link>
+            <sparkle:version>0.5.99</sparkle:version>
+            <sparkle:shortVersionString>0.5.99</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.99
+
+- 延续 0.5.98 的 Web Remote 模型切换和权限配置闭环。
+- 修复手机端 Markdown 表格单元格内加粗、行内代码、删除线和安全链接显示为源码的问题。
+- 窄屏表格改为保持可读列宽并横向滚动，不再把 `validCode` 等标识符逐字拆行。
+- 新增表头行内代码、单元格加粗和 Markdown 源码不泄露回归。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.99/Tapgo-AICoding-0.5.99.zip" length="11164171" type="application/octet-stream" sparkle:edSignature="Vh0yfYvV9g8ZL41qXy2FvCqA3QjEycEKQF3fZD3b3/Pcj6sN0DXX/cZf8wevbppgtkd0fU3GJ71T4/pRBeL4CQ=="/>
+        </item>
+        <item>
             <title>0.5.98</title>
             <pubDate>Sat, 05 Sep 2026 02:21:39 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.98</link>
@@ -37,24 +54,6 @@
 - 新增 cwd 子目录匹配、历史目录分组、无目录兜底和活动项目归类回归，完整测试为 2731 passed、0 failed。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.97/Tapgo-AICoding-0.5.97.zip" length="11138664" type="application/octet-stream" sparkle:edSignature="ijgXqxD2GCh2Ou8JC4MRXce22yKJSrocAs8pETSzd96A+BMa5yGXqFHkj5H2CfoCGW1ZmH0+24s440blYxibDw=="/>
-        </item>
-        <item>
-            <title>0.5.96</title>
-            <pubDate>Sat, 05 Sep 2026 02:02:45 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.96</link>
-            <sparkle:version>0.5.96</sparkle:version>
-            <sparkle:shortVersionString>0.5.96</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.96
-
-- 手机 Web Remote 按 ZCode 的真实移动端结构重做：设备状态、工作区总览、卡片内任务和任务会话形成清晰的两级导航。
-- 修复任务首页错误显示底部输入器的问题，释放完整首屏空间；工作区补齐路径、本地/远程标识、任务数、展开、新建、折叠和排序入口。
-- 消息页改为 ZCode 式双层紧凑顶栏、平铺正文和悬浮输入器，统一长文、标题、列表、代码块、表格、运行状态及附件的窄屏阅读节奏。
-- 主题、项目/任务切换、新建任务、图片附件、模型入口和电脑控制能力全部保留，并补齐图标按钮的辅助功能标签。
-- 同一 393×852 视口完成 ZCode 与 Tapgo 的首页、展开任务、长消息和输入区视觉对照；完整回归为 2728 passed、0 failed。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.96/Tapgo-AICoding-0.5.96.zip" length="11131587" type="application/octet-stream" sparkle:edSignature="ug7KVo3aef2Tcw7AHQO4bpzI4vn7MaYAMCR7zKJzG5Ljt0SOZ1BHTjDAWy7L2hX65nh0dwnfySlA2idDBJE8DA=="/>
         </item>
     </channel>
 </rss>
