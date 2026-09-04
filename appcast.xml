@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.88</title>
+            <pubDate>Fri, 04 Sep 2026 21:31:17 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.88</link>
+            <sparkle:version>0.5.88</sparkle:version>
+            <sparkle:shortVersionString>0.5.88</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.88
+
+- 「参照目标 IDE 风格」fidelity patch 4/4：剩余最大单点色差 `sidebar_mid` 修复：
+  - `SidebarView.swift` L224 视图模式切换器（Projects / Chats / Agents 按钮外层）`.background(DSHTheme.bg.opacity(0.34))` → `.background(DSHTheme.fidelitySidebarMid)`（0x39393B+bg 0.34 混合 ≈ rgb(60,60,62) → 直接 rgb(74,75,75)）
+  - 关闭 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md` 中 `sidebar_mid` 单点 delta −15/255 的最大残差，预期中央 1000×740 像素差从 13.4% 进一步收敛。
+- 用户消息 zcode 风格左缘蓝色 accent：
+  - `MessageRow.swift` `MessageBubble` 用户气泡叠加 `.overlay(alignment: .leading)` 加 2pt 高 18pt `DSHTheme.trajectoryUser.opacity(0.65)` 胶囊（ZCode 用户消息的"左侧色条"语义）
+  - 用 `trajectoryUser` 而非新 token，与 `trajectoryReasoning/ToolCall/ToolResult/Assistant` 5 色板一致，dark mode 0x60A5FA、light 0x2563EB
+- 测试：2708 通过 / 0 失败（TAPGO_SKIP_REMOTE_INTEGRATION=1）；`DesktopDesignParityTests` 新增 2 条断言（`fidelitySidebarMid` 视图引用 + `trajectoryUser` 用户气泡引用），全量从 66/66 扩到 68/68 设计对等断言。
+- 已知限制：自动 pixelmatch 验证仍未跑（需要 screencapture + ImageMagick + region mask 链路）；当前依赖 `DSHTheme.fidelitySidebarMid` token 值与目标 IDE 实测 1:1 锁定，色差收敛可由下次手动对比验证。
+- 发版流程沿用 v0.5.87 自动化：`evolve.sh` 推 tag → `create-github-release-artifacts.sh` 签 zip + `gh release create` + 刷 `appcast.xml` 推 main；本次 push 命令收紧为只推新 tag（不再 `--tags`），避免本地历史重复 tag 阻断。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.88/Tapgo-AICoding-0.5.88.zip" length="9508003" type="application/octet-stream" sparkle:edSignature="uJYjQLXKW2T7JqO80DA5wtyppGCCeTgjzMS6i8dTdlHzWRnXgL5zqqJgci8nQde6PPGMOmCUUm5cL80KYhS2BA=="/>
+        </item>
+        <item>
             <title>0.5.87</title>
             <pubDate>Fri, 04 Sep 2026 21:25:02 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.87</link>
@@ -49,31 +71,6 @@
 - 已知限制：未跑自动 pixelmatch 验证（需要 screencapture + ImageMagick 链路，下次 patch 接入）；用户可对比本地 main canvas 区域色是否更接近目标 IDE 1220x1287 实机截图。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.86/Tapgo-AICoding-0.5.86.zip" length="9504713" type="application/octet-stream" sparkle:edSignature="bbD0P7fREDdlS+pqhBHqyDOtZj90EQl22WyVCRe4ywOLxg1pY+gt5NA3jU/YP9Q5SEsvjjlRo7XaQ2P8sKR6CQ=="/>
-        </item>
-        <item>
-            <title>0.5.85</title>
-            <pubDate>Fri, 04 Sep 2026 12:54:53 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.85</link>
-            <sparkle:version>0.5.85</sparkle:version>
-            <sparkle:shortVersionString>0.5.85</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.85
-
-- 「参照目标 IDE 风格」fidelity region token 化（patch）：
-  - `DSHTheme.swift` 新增 6 个 `fidelityXxx` 静态常量，对应目标 IDE 主窗口 6 处实测区域色：
-    - `fidelityTitlebar` = `#232323` (rgb 35,35,35)
-    - `fidelitySidebarTop` = `#3A3B3B` (rgb 58,59,59)
-    - `fidelitySidebarMid` = `#4A4B4B` (rgb 74,75,75) — 旧无对应 token，新提供
-    - `fidelityMainCanvas` = `#1E1E1D` (rgb 30,30,29)
-    - `fidelityRightbarTop` = `#212120` (rgb 33,33,32)
-    - `fidelityStatusbar` = `#1B1B1B` (rgb 27,27,27) — 旧无对应 token，新提供
-  - **本次不改任何视图 `.background(...)`** — 仅 token 化 + 锁定值。目的：让后续 patch 调色只动 DSHTheme 6 行常量，不需要 grep 全文找 hardcode；同时把当前与目标 IDE 的差异范围固化下来（titlebar 旧 0x1A1A1C 偏暗、main_canvas 旧 0x151517 偏暗、sidebar_mid / statusbar 旧无 token）。
-  - `DesktopDesignParityTests.swift` 新增 6 个 `t.expect` 断言：未来谁误删/误改这 6 个 token 或 hex，CI 立即失败。
-- 测试：2719 通过 / 13 失败（新增 6 个 fidelity token 断言；13 个失败仍为预存在远程 SSH 集成 + auth.json 缺失，零新回归）。
-- 已知限制：token 化是 patch 1/2，patch 2/2 将把 4 处视图的 `.background` 切换到新 token，并验证 pixelmatch < 0.08 的目标 IDE 阈值。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.85/Tapgo-AICoding-0.5.85.zip" length="9504853" type="application/octet-stream" sparkle:edSignature="B53eFVnqxKmS5gWVgqMpKt/CV6iVrJl3E3W76kz500UCuhSIxunOpOKx7B9/d1L/WmwvIsYVwQtxnKUsx9KZAQ=="/>
         </item>
     </channel>
 </rss>
