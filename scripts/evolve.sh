@@ -211,9 +211,11 @@ echo "==> Commit + tag created locally: ${SHA} → v${NEW_VERSION}"
 
 # ---------- 7. Push ----------
 echo "==> Pushing to origin (main + tag v${NEW_VERSION})"
-if ! git push origin main --tags; then
+# Push main + ONLY the new tag (avoid duplicates like a local v0.5.82 pointing
+# to a different commit than origin/v0.5.82 -- --tags rejects those).
+if ! git push origin main "v${NEW_VERSION}"; then
   echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
-  echo "Re-run with network to retry, or:  git push origin main --tags" >&2
+  echo "Re-run with network to retry, or:  git push origin main v${NEW_VERSION}" >&2
   exit 6
 fi
 
