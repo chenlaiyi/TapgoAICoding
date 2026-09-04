@@ -4,7 +4,7 @@
         <title>Tapgo AICoding</title>
         <item>
             <title>0.5.83</title>
-            <pubDate>Fri, 04 Sep 2026 11:31:12 +0800</pubDate>
+            <pubDate>Fri, 04 Sep 2026 11:49:33 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.83</link>
             <sparkle:version>0.5.83</sparkle:version>
             <sparkle:shortVersionString>0.5.83</sparkle:shortVersionString>
@@ -19,10 +19,7 @@
 - 测试：2684 通过 / 14 失败（13 个预存在远程 SSH 集成 + 1 个 appcast 对齐；token 重命名未引入新失败）。
 - 已知限制：release body / EVOLUTION / 代码注释 已全面中性化；commit msg 历史项需在未来的 `git filter-repo` 重写历史 + force-push 时一起处理（v0.5.84+ 视情）。
 ]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.83/Tapgo-AICoding-0.5.83.zip" length="9497309" type="application/octet-stream" sparkle:edSignature="p3iR2kWvgcsxs36OrwrUw+04VOZzXKg+GWkBP6RKaAfLLZhJQXiQI9C2jaqb6A2Ut0Z3ZOnId+DVwrl2mKg5DQ=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.83/Tapgo%20AICoding0.5.83-0.5.82.delta" sparkle:deltaFrom="0.5.82" length="358094" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,zh-Hans,ja,fa" sparkle:edSignature="7UNK1cFJ6wxALZZJ87FbbPzVFOHBHO0fAYGWOkbB2/cCwqiSjEJhs3DbZhtWCQO1hqx4c0reFBnJwFWRjVdLCg=="/>
-            </sparkle:deltas>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.83/Tapgo-AICoding-0.5.83.zip" length="9504828" type="application/octet-stream" sparkle:edSignature="n3la+sFZj6tU4b9HMq1RRw6AiqWT+wwBoTu7zQRfQHsq2I0MJf+YUJhBm+pTKGYroUaP4Xap7NFDBEIxtX0oBA=="/>
         </item>
     </channel>
 </rss>
