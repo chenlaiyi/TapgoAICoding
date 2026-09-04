@@ -50,6 +50,12 @@
 - Disabling computer control takes effect immediately. Re-enabling from the phone deliberately requires an explicit confirmation dialog on the Mac, and macOS TCC consent can never be granted by the phone.
 - Mobile interaction QA switched the preview from GLM-5.3 to GLM-5.3-Flash, then disabled computer control and verified that screen, keyboard, media and system actions all became unavailable.
 
+### Pass 5 — passed
+
+- Final installed-App QA used a real long conversation and exposed raw `**bold**` markers inside Markdown table cells plus forced mid-word wrapping for identifiers such as `validCode`.
+- Table headers and cells now reuse the same safe inline Markdown renderer as ordinary prose, so bold, inline code, strikethrough and safe links render instead of leaking source markers.
+- Dense tables keep a readable minimum cell width and scroll horizontally on narrow screens rather than breaking identifiers character-by-character.
+
 ## Functional checks
 
 - Return to task home: passed.
@@ -63,7 +69,7 @@
 - Remote-control disable confirmation and disabled-action state: passed.
 - macOS Screen Recording / Accessibility guidance and status UI: passed.
 - JavaScript syntax: passed (`node --check`).
-- Swift regression suite: passed (`2745 passed, 0 failed`) after model, permission and control-setting route assertions are included.
+- Swift regression suite: passed (`2749 passed, 0 failed`) after model, permission, control-setting and inline-table assertions are included.
 
 ## Final result
 

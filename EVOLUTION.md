@@ -1323,3 +1323,16 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - Web Remote 直接使用 ProviderRegistry 的模型白名单，按供应商分组并支持真实切换。\n- 手机端新增电脑控制总开关、屏幕录制和辅助功能状态及 Mac 设置入口。\n- 关闭控制立即生效；重新开启必须在 Mac 弹窗确认，系统 TCC 授权仍由 Mac 用户完成。\n- 模型快照不下发 API Key 或端点，并拒绝未配置或不存在的模型。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.99 — fix(remote): render readable mobile tables
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.99`)_
+**Tag**: v0.5.99
+**Test status**: — 2749 passed, 0 failed —
+**Changed**:
+- fix(remote): render readable mobile tables
+- Web Remote 表格复用安全行内 Markdown 渲染，加粗与代码不再显示源码。
+- 窄屏表格保持最小列宽并横向滚动，避免标识符逐字拆行。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

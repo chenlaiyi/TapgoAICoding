@@ -410,8 +410,11 @@ func runPhoneRemoteMarkdown(_ t: TestRunner) {
     t.expect(code.contains("let x = \"&lt;b&gt;\""), "md: 代码内部转义")
 
     // 表格
-    let table = PhoneRemote.markdownHTML("| 列A | 列B |\n| --- | --- |\n| 1 | 2 |")
+    let table = PhoneRemote.markdownHTML("| 列A | `validCode` |\n| --- | --- |\n| 1 | **2** |")
     t.expect(table.contains("<table>") && table.contains("<th>列A</th>"), "md: 表格")
+    t.expect(table.contains("<th><code>validCode</code></th>"), "md: 表头渲染行内代码")
+    t.expect(table.contains("<td><strong>2</strong></td>"), "md: 单元格渲染行内加粗")
+    t.expect(!table.contains("**2**"), "md: 表格不暴露 Markdown 源码")
 
     // 引用 + 分隔线
     let misc = PhoneRemote.markdownHTML("> 引用一句\n\n---")

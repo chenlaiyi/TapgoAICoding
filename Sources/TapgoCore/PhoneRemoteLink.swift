@@ -874,9 +874,13 @@ public enum PhoneRemote {
             }.joined()
             return "<ul class=\"tasks\">\(lis)</ul>"
         case .table(let headers, let rows):
-            let ths = headers.map { "<th>\(escapeText($0))</th>" }.joined()
+            let ths = headers.map {
+                "<th>\(inlineHTML(MarkdownLite.parseInline($0)))</th>"
+            }.joined()
             let trs = rows.map { row in
-                "<tr>" + row.map { "<td>\(escapeText($0))</td>" }.joined() + "</tr>"
+                "<tr>" + row.map {
+                    "<td>\(inlineHTML(MarkdownLite.parseInline($0)))</td>"
+                }.joined() + "</tr>"
             }.joined()
             return "<div class=\"tblWrap\"><table><thead><tr>\(ths)</tr></thead><tbody>\(trs)</tbody></table></div>"
         case .bold(let s):
