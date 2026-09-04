@@ -866,16 +866,15 @@ struct ChatView: View {
                 if isRunning || !isWorkBlock {
                     renderBlock(block, turn: turn)
                 } else if isWorkBlock {
-                    // The per-row chip and individual activity rows are
-                    // gated by the global `tapgo.showWorkProcess` toggle
-                    // (default off) so non-technical users don't have to
-                    // wade through thinking / terminal / file-edit cards.
+                    // ZCode always preserves one quiet duration row. Detailed
+                    // activity remains opt-in unless the global setting asks
+                    // for it, keeping the completed transcript low-noise.
+                    if index == firstWorkBlockIndex(blocks) {
+                        workDurationChip(turn: turn)
+                    }
                     let revealed = showWorkProcess
                         && (expandedWork.contains(turn.id) || expandedFiles.contains(turn.id))
                     if revealed { renderBlock(block, turn: turn) }
-                    if showWorkProcess, index == firstWorkBlockIndex(blocks) {
-                        workDurationChip(turn: turn)
-                    }
                 }
             }
             if !isRunning, let summary = fileSummary {
@@ -888,24 +887,18 @@ struct ChatView: View {
                 )
                 .padding(.leading, 4)
             }
-            if isRunning && !hasRollingActivityTail(turn) {
+            if isRunning && !hasRollingActivityTail(turn) && !hasStreamingAssistant(turn) {
                 runningActivityLine(turn: turn)
             }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
                 // Single-line footer: metadata + copy + feedback / actions.
                 HStack(spacing: 8) {
-                    if let usage = turn.usage {
-                        HStack(spacing: 5) {
-                            Image(systemName: "number")
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(.tertiary)
-                            Text(turnTime(turn.startedAt) + " · " + usage.summary + (turn.durationText.map { " · \($0)" } ?? ""))
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(.secondary)
-                        }
-                        CopyIconButton(text: TurnMarkdown.render(turn), help: "复制本回合")
-                            .controlSize(.mini)
-                    }
+                    Text(turnTime(turn.startedAt))
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.tertiary)
+                        .help(turn.usage.map { "\($0.summary) · \(turn.durationText ?? "")" } ?? "")
+                    CopyIconButton(text: TurnMarkdown.render(turn), help: "复制本回合")
+                        .controlSize(.mini)
                     if isLast, turn.status == .completed {
                         Button {
                             store.setTurnFeedback(turn.id, 1)
@@ -992,7 +985,7 @@ struct ChatView: View {
             toggleWork(turn.id)
         } label: {
             HStack(spacing: 6) {
-                Text("已工作 \(turn.durationText ?? "0s")")
+                Text("已工作 \(localizedWorkDuration(turn.duration))")
                 Image(systemName: "chevron.right")
                     .rotationEffect(.degrees(expanded ? 90 : 0))
             }
@@ -1014,6 +1007,7 @@ struct ChatView: View {
     }
 
     private func toggleWork(_ id: String) {
+        if !showWorkProcess { showWorkProcess = true }
         if expandedWork.contains(id) {
             expandedWork.remove(id)
         } else {
@@ -1022,6 +1016,7 @@ struct ChatView: View {
     }
 
     private func toggleFiles(_ id: String) {
+        if !showWorkProcess { showWorkProcess = true }
         if expandedFiles.contains(id) {
             expandedFiles.remove(id)
         } else {
@@ -1037,6 +1032,25 @@ struct ChatView: View {
         case .reasoning, .reasoningSummary, .commandExecution, .toolCall: return true
         default: return false
         }
+    }
+
+    private func hasStreamingAssistant(_ turn: Turn) -> Bool {
+        guard let last = turn.items.last else { return false }
+        if case .assistantMessage = last { return true }
+        return false
+    }
+
+    private func localizedWorkDuration(_ duration: TimeInterval?) -> String {
+        let total = max(Int((duration ?? 0).rounded()), 0)
+        if total < 60 { return "\(total) 秒" }
+        let minutes = total / 60
+        let seconds = total % 60
+        if minutes < 60 {
+            return seconds == 0 ? "\(minutes) 分钟" : "\(minutes) 分 \(seconds) 秒"
+        }
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        return remainder == 0 ? "\(hours) 小时" : "\(hours) 小时 \(remainder) 分"
     }
 
     /// While a reply streams without a tool item, keep one muted activity row

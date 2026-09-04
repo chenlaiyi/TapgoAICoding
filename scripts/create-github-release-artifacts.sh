@@ -102,10 +102,10 @@ elif [[ -f "$ROOT/appcast.xml" ]]; then
     echo "==> appcast.xml has no staged diff; skipping commit."
   else
     git commit -m "chore(release): refresh appcast.xml for ${TAG}"
-    if git push origin main >/dev/null 2>&1; then
+    if git push origin HEAD:main >/dev/null 2>&1; then
       echo "==> appcast.xml pushed; installed clients will detect ${TAG} on next poll."
     else
-      echo "WARN: appcast.xml push failed; run: git push origin main" >&2
+      echo "WARN: appcast.xml push failed; run: git push origin HEAD:main" >&2
     fi
   fi
 fi

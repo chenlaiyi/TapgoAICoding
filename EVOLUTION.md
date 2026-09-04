@@ -1210,3 +1210,15 @@ fidelity patch 4/4: SidebarView L224 .background(DSHTheme.bg.opacity(0.34)) → 
 MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘胶囊, 与 v0.5.88 用户气泡 trajectoryUser 形成 user/assistant 对称视觉锚点; App.swift CommandGroup(after: .windowList) 加 ⌘\\ 切换侧边栏 (tapgoToggleSidebar notification + ContentView 0.18s 动画); 命令面板新增 切换侧边栏 + 进入自进化会话 两条入口
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.90 — fix(chat): align streaming output with ZCode
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.90
+**Test status**: — 2703 passed, 0 failed —
+**Changed**:
+- fix(chat): align streaming output with ZCode
+- 对齐 ZCode 3.10.2：助手正文去除角色色条与外层卡片，增加轻量流式光标。\n- 重整 Markdown 标题、段落、列表和行内代码层级，完成态折叠工作过程并精简页脚。\n- 输出契约改为结论先行，取消强制状态 emoji 与六行压缩。\n- 修复隔离 worktree 发布到远端 main 的推送目标。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

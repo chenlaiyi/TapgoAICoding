@@ -24,7 +24,7 @@ struct MessageRow: View {
                           userImagePaths: userImagePaths,
                           startedAt: startedAt, onReply: onReply, onEdit: onEdit)
         case .assistantMessage(_, let text):
-            MessageBubble(text: text, role: .assistant)
+            MessageBubble(text: text, role: .assistant, isStreaming: isRunning)
         case .reasoning(_, let text):
             ReasoningDisclosure(text: text, isRunning: isRunning)
         case .reasoningSummary(_, let text):
@@ -136,6 +136,7 @@ struct MessageBubble: View {
     var startedAt: Date? = nil
     var onReply: (() -> Void)? = nil
     var onEdit: ((String) -> Void)? = nil
+    var isStreaming: Bool = false
 
     @State private var showEditSheet = false
     @State private var editedText = ""
@@ -197,17 +198,6 @@ struct MessageBubble: View {
                                 DSHTheme.surfaceRaised,
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
-                            // ZCode-style left accent: subtle 2pt blue strip using the
-                            // trajectoryUser token (blue-600/blue-400) at 65% so it reads
-                            // as a hint, not a hard outline. Caps the accent vertically to
-                            // the bubble body, mirroring zcode's user-message treatment.
-                            .overlay(alignment: .leading) {
-                                Capsule()
-                                    .fill(DSHTheme.trajectoryUser.opacity(0.65))
-                                    .frame(width: 2, height: 18)
-                                    .padding(.leading, 5)
-                                    .allowsHitTesting(false)
-                            }
                             .textSelection(.enabled)
                             .contextMenu {
                                 Button {
@@ -229,37 +219,23 @@ struct MessageBubble: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
             .sheet(isPresented: $showEditSheet) { editSheet }
         } else {
-            // Assistant replies render as plain markdown text on the chat
-            // background (like Codex) — no full-width card, so there's no
-            // wasted space on the right. Copy lives in the context menu.
-            // ZCode-style subtle teal accent (trajectoryAssistant, 2pt capsule)
-            // on the leading edge mirrors the user-bubble left strip so both
-            // roles have a visual anchor without a full background card.
-            HStack {
-                HStack(alignment: .top, spacing: 6) {
-                    Capsule()
-                        .fill(DSHTheme.trajectoryAssistant.opacity(0.55))
-                        .frame(width: 2, height: 22)
-                        .padding(.top, 4)
-                        .allowsHitTesting(false)
-                    MarkdownMessageView(text)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contextMenu {
-                            Button {
-                                copy(text)
-                            } label: {
-                                Label("复制消息", systemImage: "doc.on.doc")
-                            }
-                            Button {
-                                copy(stripMarkdown(text))
-                            } label: {
-                                Label("复制为纯文本", systemImage: "text.alignleft")
-                            }
-                        }
+            // ZCode keeps assistant output directly on the canvas: no role
+            // stripe, avatar, or surrounding card competing with the content.
+            MarkdownMessageView(text, isStreaming: isStreaming)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contextMenu {
+                    Button {
+                        copy(text)
+                    } label: {
+                        Label("复制消息", systemImage: "doc.on.doc")
+                    }
+                    Button {
+                        copy(stripMarkdown(text))
+                    } label: {
+                        Label("复制为纯文本", systemImage: "text.alignleft")
+                    }
                 }
-                Spacer(minLength: 1)
-            }
         }
     }
 

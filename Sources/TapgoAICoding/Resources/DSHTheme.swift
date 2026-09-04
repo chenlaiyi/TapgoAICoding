@@ -75,6 +75,8 @@ enum DSHTheme {
     // MARK: Markdown
     static let codeBlockBg = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x1B1B1C)     // bluish-50 / 900
     static let codeBlockBanner = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x2C2C2E) // bluish-50 / 850
+    /// ZCode-style inline code is a neutral typographic hint, not a blue tag.
+    static let inlineCodeBg = Color.dynamic(lightHex: 0xECEDEF, darkHex: 0x29292B)
 
     // MARK: Shadow
     static let cardShadow = Color.black.opacity(0.08)

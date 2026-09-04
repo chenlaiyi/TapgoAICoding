@@ -9,12 +9,16 @@ struct MarkdownMessageView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let text: String
+    let isStreaming: Bool
 
-    init(_ text: String) { self.text = text }
+    init(_ text: String, isStreaming: Bool = false) {
+        self.text = text
+        self.isStreaming = isStreaming
+    }
 
     var body: some View {
         let blocks = Self.blocks(MarkdownLite.parse(text))
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .para(let segs):
@@ -36,6 +40,9 @@ struct MarkdownMessageView: View {
                 case .heading(let level, let content):
                     HeadingView(level: level, content: content)
                 }
+            }
+            if isStreaming {
+                StreamingReplyCursor()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,22 +115,23 @@ struct MarkdownMessageView: View {
     /// 字号；三者皆按 appFontScale 计算，从而跟随用户字号偏好。
     fileprivate static func inlineAttributed(
         _ segs: [MarkdownSegment],
-        baseFontSize: CGFloat = AppFont.pointSize(for: .body, multiplier: 1)
+        baseFontSize: CGFloat = AppFont.pointSize(for: .body, multiplier: 1),
+        baseWeight: Font.Weight = .regular
     ) -> AttributedString {
         var a = AttributedString()
-        // 行内代码比正文略小一档，圆角风格通过 moduleBg 底色 + 比正文略深的 brandStrong 文字呈现。
+        // 行内代码比正文略小一档，以中性色底纹保持区分，但不再渲染成高饱和标签。
         let inlineSize = max(baseFontSize - 1.5, 9)
         for seg in segs {
             switch seg {
             case .text(let s):
                 var r = AttributedString(s)
-                r.font = .system(size: baseFontSize)
+                r.font = .system(size: baseFontSize, weight: baseWeight)
                 a += r
             case .inline(let s):
                 var r = AttributedString(s)
                 r.font = .system(size: inlineSize, weight: .medium, design: .monospaced)
-                r.foregroundColor = DSHTheme.brandStrong
-                r.backgroundColor = DSHTheme.moduleBg
+                r.foregroundColor = DSHTheme.labelDim
+                r.backgroundColor = DSHTheme.inlineCodeBg
                 a += r
             case .bold(let s):
                 var r = AttributedString(s)
@@ -154,10 +162,9 @@ struct MarkdownMessageView: View {
     /// 默认 single-line 行为）。
     @ViewBuilder
     private func paragraphView(segs: [MarkdownSegment]) -> some View {
-        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
+        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) + 0.5
         Text(Self.inlineAttributed(segs, baseFontSize: bodySize))
-            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
-            .lineSpacing(3)
+            .lineSpacing(4)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,12 +175,11 @@ struct MarkdownMessageView: View {
         let ordered: Bool
 
         var body: some View {
-            // 列表项之间紧凑（spacing 2），外层稍微缩进避开 chat 内边距；
-            // marker 用 tertiary 弱化、字号比正文略小、靠右对齐的固定列宽，
-            // 让多行嵌套与不同长度的 marker（`•` vs `12.`）也保持视觉对齐。
-            let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
+            // Marker 用 tertiary 弱化、字号比正文略小、靠右对齐的固定列宽；
+            // 6pt 行距保留 ZCode 长列表的扫读节奏。
+            let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) + 0.5
             let markerSize = AppFont.pointSize(for: .footnote, multiplier: appFontScale.multiplier)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
@@ -182,6 +188,7 @@ struct MarkdownMessageView: View {
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
                         Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
                             .textSelection(.enabled)
+                            .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -257,21 +264,48 @@ private struct CodeBlockView: View {
 private struct HeadingView: View {
     let level: Int
     let content: [MarkdownSegment]
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
-        Text(MarkdownMessageView.inlineAttributed(content))
-            .font(font)
-            .bold()
-            .padding(.top, 6)
+        Text(MarkdownMessageView.inlineAttributed(
+            content,
+            baseFontSize: pointSize,
+            baseWeight: .semibold
+        ))
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.top, level <= 2 ? 8 : 4)
+        .padding(.bottom, 1)
     }
 
-    private var font: Font {
+    private var pointSize: CGFloat {
+        let multiplier = appFontScale.multiplier
         switch level {
-        case 1: return .title2
-        case 2: return .title3
-        case 3: return .headline
-        default: return .subheadline
+        case 1: return AppFont.pointSize(for: .title2, multiplier: multiplier)
+        case 2: return AppFont.pointSize(for: .title3, multiplier: multiplier)
+        case 3: return AppFont.pointSize(for: .headline, multiplier: multiplier) + 0.5
+        default: return AppFont.pointSize(for: .body, multiplier: multiplier)
         }
+    }
+}
+
+/// A small caret below the partial markdown block. It communicates that the
+/// answer is still growing without adding a second status row.
+private struct StreamingReplyCursor: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var visible = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(DSHTheme.labelDim)
+            .frame(width: 9, height: 2)
+            .opacity(reduceMotion || visible ? 0.72 : 0.2)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
+                    visible = true
+                }
+            }
+            .accessibilityLabel("正在生成回复")
     }
 }
 

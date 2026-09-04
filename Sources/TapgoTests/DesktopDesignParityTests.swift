@@ -111,13 +111,20 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: ChatView 主体背景切到 fidelityMainCanvas token")
     t.expect(workbench.contains("DSHTheme.fidelityRightbarTop"),
              "desktop-design: RightWorkbenchView 外层 + 顶栏背景切到 fidelityRightbarTop token (>=2 处)")
-    // v0.5.88 — sidebar_mid + 用户消息 zcode 风格左缘蓝色 accent
+    // v0.5.90 — message canvas follows the current ZCode 3.10.2 evidence:
+    // user = quiet raised bubble, assistant = unadorned markdown on canvas.
     t.expect(sidebar.contains("DSHTheme.fidelitySidebarMid"),
              "desktop-design: SidebarView 视图模式切换器背景切到 fidelitySidebarMid token (closes sidebar_mid -15/255)")
-    t.expect(message.contains("DSHTheme.trajectoryUser"),
-             "desktop-design: MessageBubble 用户消息左缘 2pt blue accent 使用 trajectoryUser token")
-    t.expect(message.contains("DSHTheme.trajectoryAssistant"),
-             "desktop-design: MessageBubble 助手正文左缘 2pt teal accent 使用 trajectoryAssistant token")
+    t.expect(!message.contains(".fill(DSHTheme.trajectoryUser"),
+             "desktop-design: 用户消息不再叠加角色色条")
+    t.expect(!message.contains(".fill(DSHTheme.trajectoryAssistant"),
+             "desktop-design: 助手正文无色条与外层卡片")
+    t.expect(message.contains("MarkdownMessageView(text, isStreaming: isStreaming)"),
+             "desktop-design: 流式状态由正文内轻量光标承担")
+    t.expect(chat.contains("Text(turnTime(turn.startedAt))") && !chat.contains("Text(turnTime(turn.startedAt) +"),
+             "desktop-design: 完成态页脚只常驻时间，token 统计收入 tooltip")
+    t.expect(chat.contains("localizedWorkDuration(turn.duration)"),
+             "desktop-design: 已工作时长使用中文可读格式")
     // v0.5.89 — ⌘\\ sidebar toggle + command palette 接入
     t.expect(content.contains("tapgoToggleSidebar") && content.contains("切换侧边栏"),
              "desktop-design: ContentView 接入 ⌘\\ 侧边栏切换（notification 模式 + command palette 双入口）")
