@@ -3,6 +3,23 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.97</title>
+            <pubDate>Sat, 05 Sep 2026 02:08:34 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.97</link>
+            <sparkle:version>0.5.97</sparkle:version>
+            <sparkle:shortVersionString>0.5.97</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.97
+
+- 延续 0.5.96 的 ZCode 式手机 Web Remote 重构，并修复真实数据验收中发现的历史任务不可见问题。
+- 没有 `projectId` 的旧任务会按 `cwd` 自动归回已配置工作区；已移除项目的历史目录以只读工作区卡片呈现，没有目录信息的任务统一进入“未分类任务”。
+- 历史工作区仍可展开和进入任务，但不会显示无效的“新建任务”按钮；页面总任务数与实际可见任务重新一致。
+- 新增 cwd 子目录匹配、历史目录分组、无目录兜底和活动项目归类回归，完整测试为 2731 passed、0 failed。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.97/Tapgo-AICoding-0.5.97.zip" length="11138664" type="application/octet-stream" sparkle:edSignature="ijgXqxD2GCh2Ou8JC4MRXce22yKJSrocAs8pETSzd96A+BMa5yGXqFHkj5H2CfoCGW1ZmH0+24s440blYxibDw=="/>
+        </item>
+        <item>
             <title>0.5.96</title>
             <pubDate>Sat, 05 Sep 2026 02:02:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.96</link>
@@ -37,24 +54,6 @@
 - 在移除外部 `.build` 资源包后完成发布 App 回归：页面、CSS、JS、图标和状态 API 均为 HTTP 200，进程保持存活且无新增崩溃报告。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.95/Tapgo-AICoding-0.5.95.zip" length="11128126" type="application/octet-stream" sparkle:edSignature="6o4WODN4P1TnT4acnymuePgXEblb6VcCzOd1azvBgTiQgWDwIix8L+fHDrLIthq9AIkNCmvstttiKcbE3GDRCg=="/>
-        </item>
-        <item>
-            <title>0.5.94</title>
-            <pubDate>Sat, 05 Sep 2026 00:58:13 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.94</link>
-            <sparkle:version>0.5.94</sparkle:version>
-            <sparkle:shortVersionString>0.5.94</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.94
-
-- 左下角账号区按 Codex Desktop 收为约 46pt 单行结构，头像缩至 22pt，名称与更新入口垂直居中。
-- 模型、套餐和额度移入账号提示及辅助功能值，不再常驻占用第二行；后台额度刷新逻辑保持不变。
-- 新增安静的顶部分隔，更新入口降为 24pt 次要操作，有新版本时再用品牌色强调。
-- 保留连接手机、自进化日志、自进化、设置、退出登录及检查更新的真实功能。
-- 完整自动回归 `2716 passed, 0 failed`，Developer ID Release App 构建与真实界面回归通过。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.94/Tapgo-AICoding-0.5.94.zip" length="9438217" type="application/octet-stream" sparkle:edSignature="AM+cPxx5SrpoTtPbhDk69TVnV+ymcfUG158NM8FaIkLc7lVbI5ekJl14QXQ+29NzjQUEmLp+aor23Y+QfUZ3Aw=="/>
         </item>
     </channel>
 </rss>
