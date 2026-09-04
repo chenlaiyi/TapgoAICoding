@@ -52,6 +52,7 @@
     ],
     attachedCount: 0,
     control: { enabled: true, screenAllowed: true, accessibilityAllowed: true },
+    permissions: { sandbox: "workspace-write", approval: "on-request" },
     projects: [
       { id: "tapgo", name: "TapgoAICoding", path: "/Users/chanlaiyi/TapgoAICoding", threadCount: 3, isLocal: true, lastActivityAt: Date.now() - 120000 },
       { id: "oct", name: "OctTapgo", path: "/Users/chanlaiyi/OctTapgo", threadCount: 2, isLocal: true, lastActivityAt: Date.now() - 86400000 },
@@ -164,7 +165,7 @@
             <textarea id="composerInput" rows="2" placeholder="提出后续修改要求" aria-label="消息输入"></textarea>
             <div class="composer-bar">
               <button class="icon-button" data-action="attach" aria-label="添加图片">${icon("paperclip")}</button>
-              <button class="icon-button" data-action="control" aria-label="电脑操作">${icon("shield")}</button>
+              <button class="icon-button permission-button" data-action="permission" id="permissionButton" aria-label="权限等级" title="权限等级"><span class="permission-button-label" id="permissionButtonLabel">权限</span><span class="permission-button-caret" aria-hidden="true">▾</span></button>
               <span class="busy-spinner hidden" id="busySpinner" aria-label="任务运行中"></span>
               <span class="composer-spacer"></span>
               <button class="icon-button model-button" data-action="model" id="modelButton">选择模型</button>
@@ -175,6 +176,7 @@
       </div>
       <div class="overlay hidden" id="controlOverlay" role="dialog" aria-modal="true" aria-label="电脑操作"></div>
       <div class="sheet hidden" id="modelSheet" role="dialog" aria-modal="true" aria-label="选择模型"></div>
+      <div class="sheet hidden" id="permissionSheet" role="dialog" aria-modal="true" aria-label="权限等级"></div>
       <div class="toast hidden" id="toast" role="status"></div>`;
 
     document.querySelectorAll("[data-app-icon]").forEach((img) => { img.src = root + "assets/app-icon.png?v=" + config.version; });
@@ -184,6 +186,7 @@
     $("fileInput").addEventListener("change", uploadFiles);
     $("controlOverlay").addEventListener("click", (event) => { if (event.target === $("controlOverlay")) closeControl(); });
     $("modelSheet").addEventListener("click", (event) => { if (event.target === $("modelSheet")) closeModelSheet(); });
+    $("permissionSheet").addEventListener("click", (event) => { if (event.target === $("permissionSheet")) closePermissionSheet(); });
   }
 
   function handleClick(event) {
@@ -197,6 +200,9 @@
     else if (action === "close-control") closeControl();
     else if (action === "model") openModelSheet();
     else if (action === "close-model") closeModelSheet();
+    else if (action === "permission") openPermissionSheet();
+    else if (action === "close-permission") closePermissionSheet();
+    else if (action === "set-permission") setPermissionProfile(target.dataset.profile);
     else if (action === "select-model") selectModel(target.dataset.providerId, target.dataset.modelId);
     else if (action === "attach") $("fileInput").click();
     else if (action === "send") sendMessage();
@@ -453,6 +459,7 @@
     setConnection("online", "已连接 · " + (snapshot.hostname || "Mac"));
     renderWorkspaces();
     renderConversation();
+    refreshPermissionButton();
   }
 
   function toggleWorkspace(projectId) {
@@ -692,6 +699,122 @@
   }
 
   function closeModelSheet() { $("modelSheet").classList.add("hidden"); }
+
+  // v0.5.101: composer 权限下拉菜单 (3 档: 请求批准 / 帮我批准 / 完全访问权限).
+  // 后端端点 POST /api/permissions {profile: "request|auto|full"}.
+  function permissionProfiles() {
+    return [
+      { id: "request", name: "请求批准", hint: "每个写操作先在手机弹批准请求" },
+      { id: "auto",    name: "帮我批准", hint: "全自动批准, 保持当前沙箱" },
+      { id: "full",    name: "完全访问权限", hint: "全自动 + 完全访问 (不限制)" }
+    ];
+  }
+
+  // 从当前 snapshot 推断当前档位, 高亮在下拉中. 优先级: full > auto > request.
+  function currentPermissionProfile() {
+    const snap = state.snapshot?.permissions;
+    if (!snap) return null;
+    if (snap.sandbox === "danger-full-access" && snap.approval === "never") return "full";
+    if (snap.approval === "never") return "auto";
+    if (snap.approval === "on-request") return "request";
+    return null;
+  }
+
+  function currentPermissionLabel() {
+    const id = currentPermissionProfile();
+    if (!id) return "权限";
+    const item = permissionProfiles().find((p) => p.id === id);
+    return item ? item.name : "权限";
+  }
+
+  function refreshPermissionButton() {
+    const label = $("permissionButtonLabel");
+    if (label) label.textContent = currentPermissionLabel();
+  }
+
+  function openPermissionSheet() {
+    const sheet = $("permissionSheet");
+    sheet.replaceChildren();
+    const card = document.createElement("div");
+    card.className = "sheet-card";
+    const header = document.createElement("div");
+    header.className = "sheet-header";
+    const heading = document.createElement("div");
+    heading.innerHTML = '<div class="sheet-title">权限等级</div><div class="sheet-subtitle">Mac 与所有手机端立即生效。</div>';
+    const close = document.createElement("button");
+    close.className = "icon-button";
+    close.dataset.action = "close-permission";
+    close.setAttribute("aria-label", "关闭权限选择");
+    close.textContent = "关闭";
+    header.append(heading, close);
+    card.appendChild(header);
+
+    const current = currentPermissionProfile();
+    const list = document.createElement("div");
+    list.className = "permission-list";
+    permissionProfiles().forEach((item) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "permission-row" + (item.id === current ? " selected" : "");
+      row.dataset.action = "set-permission";
+      row.dataset.profile = item.id;
+      const name = document.createElement("span");
+      name.className = "permission-name";
+      name.textContent = item.name;
+      const status = document.createElement("span");
+      status.className = "permission-status";
+      status.textContent = item.id === current ? "当前" : "切换";
+      row.append(name, status);
+      const hint = document.createElement("div");
+      hint.className = "permission-hint";
+      hint.textContent = item.hint;
+      const wrapper = document.createElement("div");
+      wrapper.className = "permission-item";
+      wrapper.append(row, hint);
+      list.appendChild(wrapper);
+    });
+    card.appendChild(list);
+
+    const note = document.createElement("div");
+    note.className = "sheet-note";
+    note.textContent = "仅修改 Agent 行为, 不触碰 macOS 系统授权 (屏幕录制 / 辅助功能需在 Mac 端授权)。";
+    card.appendChild(note);
+
+    sheet.appendChild(card);
+    sheet.classList.remove("hidden");
+  }
+
+  function closePermissionSheet() { $("permissionSheet").classList.add("hidden"); }
+
+  async function setPermissionProfile(profile) {
+    closePermissionSheet();
+    if (preview) {
+      mockState.permissions = profileToSnapshot(profile);
+      render(mockState);
+      refreshPermissionButton();
+      toast("预览模式: 已模拟切换到 " + (permissionProfiles().find((p) => p.id === profile)?.name || profile));
+      return;
+    }
+    try {
+      const response = await request("api/permissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile }) });
+      const result = await response.json();
+      if (!result.ok) { toast("权限切换失败: " + (result.error || "未知错误")); return; }
+      state.lastJSON = "";
+      await refresh(true);
+      refreshPermissionButton();
+      const name = permissionProfiles().find((p) => p.id === profile)?.name || profile;
+      toast("已切换到 " + name);
+    } catch { toast("权限切换失败"); }
+  }
+
+  function profileToSnapshot(profile) {
+    switch (profile) {
+      case "full":  return { sandbox: "danger-full-access", approval: "never" };
+      case "auto":  return { sandbox: state.snapshot?.permissions?.sandbox || "workspace-write", approval: "never" };
+      case "request": return { sandbox: state.snapshot?.permissions?.sandbox || "workspace-write", approval: "on-request" };
+      default:      return null;
+    }
+  }
 
   async function selectModel(providerId, modelId) {
     if (!providerId || !modelId) return;

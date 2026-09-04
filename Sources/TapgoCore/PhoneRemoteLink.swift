@@ -213,6 +213,11 @@ public enum PhoneRemote {
         /// POST /r/<token>/api/control/enabled — 关闭可立即生效；重新开启必须
         /// 在 Mac 弹窗确认，避免拿到旧二维码的人绕过本机总开关。
         case setControlEnabled(Bool)
+        /// POST /r/<token>/api/permissions `{"profile":"off|read|workspace|full"}`
+        /// — v0.5.101 一次性把 `computerUseEnabled` + `sandboxMode` + `approvalPolicy`
+        /// 三个 UserDefaults key 切到对应档位, 手机端 composer 下拉菜单使用。
+        /// Mac 端的 `@AppStorage` / `TapgoConfig` 在下次 rebuild view 时自动同步。
+        case setPermissionProfile(String)
         /// POST /r/<token>/api/control/permission — 打开对应 macOS 隐私设置。
         case requestControlPermission(ControlPermission)
         /// POST /r/<token>/api/attach — 手机上传图片附件 (base64), 落到
@@ -353,6 +358,12 @@ public enum PhoneRemote {
             guard method == "POST", let enabled = jsonBoolField(body, "enabled")
             else { return .failure(.badRequest) }
             return .success(.setControlEnabled(enabled))
+        case ["api", "permissions"]:
+            // v0.5.101: composer 权限下拉菜单的写入端点。
+            guard method == "POST",
+                  let profile = jsonStringField(body, "profile"), !profile.isEmpty
+            else { return .failure(.badRequest) }
+            return .success(.setPermissionProfile(profile))
         case ["api", "control", "permission"]:
             guard method == "POST",
                   let raw = jsonStringField(body, "permission"),
@@ -676,6 +687,20 @@ public enum PhoneRemote {
         /// 项目列表 (按最近活跃倒序) + 活动项目; v0.5.20 项目切换用。
         public var projects: [ProjectInfo]
         public var activeProjectId: String?
+        /// v0.5.101: 当前 Mac 端权限档位, 手机端 composer 下拉高亮用。
+        /// rawValue 与 `TapgoConfig.SandboxMode` / `ApprovalPolicy` 对齐。
+        public var permissions: PermissionStatus?
+    }
+
+    /// v0.5.101: H5 composer 权限下拉所需的当前档位原始值.
+    /// 不存密码/凭据, 只暴露 rawValue (e.g. "workspace-write", "never").
+    public struct PermissionStatus: Codable, Equatable {
+        public var sandbox: String
+        public var approval: String
+        public init(sandbox: String, approval: String) {
+            self.sandbox = sandbox
+            self.approval = approval
+        }
     }
 
     /// 从 SessionStore 的数据构建 H5 需要的全量快照。纯函数, 方便单测。
@@ -690,6 +715,7 @@ public enum PhoneRemote {
                                   model: String? = nil,
                                   models: [ModelOption] = [],
                                   attachedCount: Int = 0,
+                                  permissions: PermissionStatus? = nil,
                                   now: Date = Date()) -> StateSnapshot {
         let projectIDs = Set(projects.map(\.id))
         let projectPaths = projects
@@ -780,7 +806,8 @@ public enum PhoneRemote {
                              models: models,
                              attachedCount: attachedCount,
                              projects: projectInfos,
-                             activeProjectId: resolvedActiveProjectID)
+                             activeProjectId: resolvedActiveProjectID,
+                             permissions: permissions)
     }
 
     public static func stateJSON(_ snapshot: StateSnapshot) -> Data {

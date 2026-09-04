@@ -19,6 +19,17 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.101 — 手机端 composer 权限下拉菜单（3 档）
+**Date**: 2026-09-05
+**Tag**: v0.5.101
+**Test status**: 2801 passed / 13 failed（13 pre-existing 远程 SSH 集成 + helper version 0.5.100 vs tag 0.5.99 一次性断言；本次 0 回归）
+**Changed**:
+- H5 composer-bar 输入框旁"电脑操作"按钮改为 `权限 ▾` 下拉菜单，含 3 档快捷选项：`请求批准` / `帮我批准` / `完全访问权限`。
+- 新增 `POST /api/permissions {profile:"request|auto|full"}`：写入 `TapgoConfig.approvalPolicy` (+`sandboxMode`，full 时切到 danger-full-access)；H5 端立即看到状态变化（下次轮询带回新 `permissions` 字段）。
+- `PhoneRemote.buildState` 接受 `permissions: PermissionStatus(sandbox, approval)`，snapshot 加 `permissions` 字段；H5 用来在下拉里高亮当前档位，按钮文字也同步显示档位名（如"权限 · 完全访问权限"）。
+**Why**: 用户反馈「输入框里的权限按钮怎么不是下拉菜单选择」——按用户要求简化为 3 档最常用档位，避免无意义的细粒度。
+**Next**: 完整权限抽屉仍可通过原 `data-action="control"` 抽屉进入（下拉暂未挂入口，可后续再加 "更多权限…" 项）。
+
 ## v0.5.100 — 添加远程主机/项目可用性回归
 **Date**: 2026-09-05
 **Tag**: v0.5.100

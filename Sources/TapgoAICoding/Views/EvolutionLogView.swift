@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.101",
+                    date: "2026-09-05",
+                    commit: "待 commit",
+                    tag: "v0.5.101",
+                    summary: "H5 composer 权限下拉菜单（3 档：请求批准 / 帮我批准 / 完全访问权限）。",
+                    changes: [
+                        "PhoneRemoteLink 加 Action `setPermissionProfile(String)` + router `case [\"api\", \"permissions\"]`；Server 加 `applyPermissionProfile(_:)` 写入 TapgoConfig.approvalPolicy (full 时同时把 sandboxMode 升到 danger-full-access)。",
+                        "StateSnapshot 加 `permissions: PermissionStatus(sandbox, approval)`，buildState 调用点传入当前档位 rawValue。",
+                        "app.js composer-bar 替换原 `data-action=\"control\"` 按钮为 `权限 ▾` 下拉，含 3 行；mockState 默认 `permissions: {sandbox:\"workspace-write\", approval:\"on-request\"}`。",
+                        "app.css 加 `.permission-button / .permission-list / .permission-row / .permission-hint` 样式。",
+                    ],
+                    why: "用户反馈「输入框里的权限按钮怎么不是下拉菜单选择」——按用户要求简化为 3 档最常用档位。",
+                    next: "如需更多权限选项再扩 enum。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.100",
                     date: "2026-09-05",
                     commit: "待 commit",

@@ -103,6 +103,40 @@ final class PhoneRemoteController: ObservableObject {
     /// H5 轮询间隔 2s, 允许丢一轮。
     static let presenceTimeout: TimeInterval = 8
 
+    /// v0.5.101: composer 权限下拉菜单的 3 个档位。
+    /// 与 `TapgoConfig.ApprovalPolicy` / `SandboxMode` rawValue 对齐。
+    private enum PermissionProfile: String {
+        case request   // 请求批准: 每次操作在手机弹批准请求
+        case auto      // 帮我批准: 全自动 (永不询问), 沙箱保持当前
+        case full      // 完全访问权限: 全自动 + danger-full-access
+
+        var displayName: String {
+            switch self {
+            case .request: return "请求批准"
+            case .auto:    return "帮我批准"
+            case .full:    return "完全访问权限"
+            }
+        }
+    }
+
+    /// 把 composer 下拉选中的档位一次性写入 approval / sandbox。
+    /// `request` / `auto` 保持当前 sandbox, 只切 `approvalPolicy`;
+    /// `full` 额外把 sandbox 升到 `danger-full-access`。
+    @discardableResult
+    func applyPermissionProfile(_ raw: String) -> Bool {
+        guard let profile = PermissionProfile(rawValue: raw) else { return false }
+        switch profile {
+        case .request:
+            TapgoConfig.approvalPolicy = .onRequest
+        case .auto:
+            TapgoConfig.approvalPolicy = .never
+        case .full:
+            TapgoConfig.approvalPolicy = .never
+            TapgoConfig.sandboxMode = .dangerFullAccess
+        }
+        return true
+    }
+
     // MARK: Init
 
     init(store: SessionStore, workspace: WorkspaceStore) {
@@ -348,7 +382,10 @@ final class PhoneRemoteController: ObservableObject {
                                                           configured: $0.configured,
                                                           selected: $0.selected)
                                                   },
-                                                  attachedCount: store.attachedImages.count)
+                                                  attachedCount: store.attachedImages.count,
+                                                  permissions: PhoneRemote.PermissionStatus(
+                                                      sandbox: TapgoConfig.sandboxMode.rawValue,
+                                                      approval: TapgoConfig.approvalPolicy.rawValue))
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
             lastPollAt = Date()
@@ -397,6 +434,16 @@ final class PhoneRemoteController: ObservableObject {
             }
             presentControlEnableConfirmation()
             return PhoneRemote.jsonOK(Data(#"{"ok":true,"pendingMacConfirmation":true}"#.utf8))
+        case .success(.setPermissionProfile(let profile)):
+            // v0.5.101: 手机端 composer 下拉菜单。一次性写入
+            // computerUseEnabled + sandboxMode + approvalPolicy。
+            lastPollAt = Date()
+            phoneConnected = true
+            if applyPermissionProfile(profile) {
+                rev &+= 1
+                return PhoneRemote.jsonOK(Data(#"{"ok":true,"profile":"\#(profile)"}"#.utf8))
+            }
+            return PhoneRemote.jsonOK(Data(#"{"ok":false,"error":"unknownProfile"}"#.utf8))
         case .success(.requestControlPermission(let permission)):
             lastPollAt = Date()
             phoneConnected = true

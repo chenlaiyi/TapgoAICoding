@@ -259,6 +259,18 @@ button:disabled { cursor:not-allowed;opacity:.42; }
 .model-row.selected .model-status { color:var(--accent); }
 .model-row:disabled { opacity:.5; }
 .sheet-note { margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);color:var(--faint);font-size:10px;line-height:1.5; }
+/* v0.5.101: composer 权限下拉菜单 (3 档: 请求批准 / 帮我批准 / 完全访问权限)。*/
+.permission-button { display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:140px;padding:0 9px;font-size:11px;color:var(--muted); }
+.permission-button-label { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.permission-button-caret { font-size:8px;color:var(--faint); }
+.permission-list { display:grid;gap:8px;margin-top:4px; }
+.permission-item { display:grid;gap:3px; }
+.permission-row { width:100%;min-height:42px;display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--background);color:var(--foreground);text-align:left; }
+.permission-row.selected { border-color:var(--accent);color:var(--accent); }
+.permission-name { min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:610; }
+.permission-status { flex:none;color:var(--muted);font-size:10px; }
+.permission-row.selected .permission-status { color:var(--accent); }
+.permission-hint { padding:0 4px 4px;color:var(--faint);font-size:10px;line-height:1.45; }
 .empty-state.compact { padding:22px 10px; }
 .toast { position:fixed;z-index:80;left:50%;bottom:24px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);box-shadow:0 10px 30px rgba(0,0,0,.18);color:var(--foreground);font-size:12px; }
 @media (max-width:767px) {
