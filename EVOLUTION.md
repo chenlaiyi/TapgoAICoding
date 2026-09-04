@@ -1150,3 +1150,15 @@
 Web Remote 拆资源（linkVersion 2→3，新增 /assets/<name> 路由 + webAsset API，pageHTML 从 1625 行内嵌字符串降为 32 行骨架模板）；Harness daemon 重写为 accept 循环 + 每次连接独立 spawn codex，SocketHarnessTransport 改用 DispatchSource 修 macOS 27 EOF 误判 bug；PhoneRemoteTests 同步重构适配新结构（2713/13 全绿，无新回归）；ComputerUseHelper-Info.plist 顺手对齐到 0.5.84。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.85 — fix(design): v0.5.85 — DSHTheme 6 个 ZCode 主窗口 fidelity region token 化 + DesktopDesignParity 锁定
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.85
+**Test status**: — 2680 passed, 0 failed —
+**Changed**:
+- fix(design): v0.5.85 — DSHTheme 6 个 ZCode 主窗口 fidelity region token 化 + DesktopDesignParity 锁定
+fidelity report 6 处区域色固化为 DSHTheme.fidelityXxx token (titlebar/sidebarTop/sidebarMid/mainCanvas/rightbarTop/statusbar), 后续 patch 调色只需改 token darkHex, 不需 grep 全文. 本次不改视图 .background, 仅 token 化 + 测试锁定. patch 2/2 将切换视图背景到新 token 并验证 pixelmatch<0.08.
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

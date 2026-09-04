@@ -97,7 +97,25 @@ enum DSHTheme {
     /// 用户消息: blue-600 / blue-400
     static let trajectoryUser = Color.dynamic(lightHex: 0x2563EB, darkHex: 0x60A5FA)
 
+    // MARK: Fidelity regions (ZCode 主窗口 6 处实测色, v0.5.85 锁定)
+    // 来自 artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md 区域采样表:
+    //   titlebar    ZCode rgb(35,35,35)   ← 我们旧 darkHex 0x1A1A1C(=26,28) 偏暗
+    //   sidebar_top ZCode rgb(58,59,59)   ← DSHTheme.sidebarBg 0x39393B(=57,59) 几乎一致
+    //   sidebar_mid ZCode rgb(74,75,75)   ← 旧无对应 token, 新增
+    //   main_canvas ZCode rgb(30,30,29)   ← DSHTheme.bg 0x151517(=21,23) 偏暗
+    //   rightbar_top ZCode rgb(33,33,32)  ← DSHTheme.titlebarBg 0x1A1A1C 偏暗
+    //   statusbar   ZCode rgb(27,27,27)   ← 旧无对应 token, 新增
+    // 这些 token 只锁定 darkHex (ZCode 真实 dark 实测色), 后续 patch 调色时
+    // 直接换 token darkHex, 不需要 grep .background(DSHTheme.xxBg) 全文。
+    static let fidelityTitlebar    = Color(hex: 0x232323)
+    static let fidelitySidebarTop  = Color(hex: 0x3A3B3B)
+    static let fidelitySidebarMid  = Color(hex: 0x4A4B4B)
+    static let fidelityMainCanvas  = Color(hex: 0x1E1E1D)
+    static let fidelityRightbarTop = Color(hex: 0x212120)
+    static let fidelityStatusbar   = Color(hex: 0x1B1B1B)
+
     // MARK: Radii (DSH `--dsl-*-radius: 12px`)
+
     static let radiusCard: CGFloat = 12
     static let radiusPill: CGFloat = 8
 }

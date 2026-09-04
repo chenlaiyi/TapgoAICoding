@@ -92,4 +92,18 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 工具结果 trajectoryToolResult 天蓝")
     t.expect(message.contains("trajectoryReasoning.opacity(0.8)") && message.contains("trajectoryColor(for: display.kind)"),
              "desktop-design: 思考行与汇总行按事件类型着色（80% 不透明度对齐上游）")
+    // v0.5.85 — ZCode 主窗口 6 处区域色固化为 DSHTheme.fidelityXxx token。
+    // 数据来源 artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md 区域采样表。
+    t.expect(theme.contains("fidelityTitlebar")    && theme.contains("0x232323"),
+             "desktop-design: fidelityTitlebar token 锁定 ZCode 实测 #232323")
+    t.expect(theme.contains("fidelitySidebarTop")  && theme.contains("0x3A3B3B"),
+             "desktop-design: fidelitySidebarTop token 锁定 ZCode 实测 #3A3B3B")
+    t.expect(theme.contains("fidelitySidebarMid")  && theme.contains("0x4A4B4B"),
+             "desktop-design: fidelitySidebarMid token 锁定 ZCode 实测 #4A4B4B")
+    t.expect(theme.contains("fidelityMainCanvas")  && theme.contains("0x1E1E1D"),
+             "desktop-design: fidelityMainCanvas token 锁定 ZCode 实测 #1E1E1D")
+    t.expect(theme.contains("fidelityRightbarTop") && theme.contains("0x212120"),
+             "desktop-design: fidelityRightbarTop token 锁定 ZCode 实测 #212120")
+    t.expect(theme.contains("fidelityStatusbar")   && theme.contains("0x1B1B1B"),
+             "desktop-design: fidelityStatusbar token 锁定 ZCode 实测 #1B1B1B")
 }
