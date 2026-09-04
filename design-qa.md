@@ -1,3 +1,35 @@
+# Codex Desktop 左下角账号栏对齐 QA（v0.5.94）
+
+- source truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-complete-parity-v0592/02-codex-reference-window.png`（同日 Codex Desktop 1148 × 1344 px 原始窗口；底部账号栏约 46 px）
+- regression truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-complete-parity-v0592/11-tapgo-v0592-final-same-viewport.png`，并在本轮通过 CUA 重新读取已安装 v0.5.93 的左下角 AX 与原始窗口截图
+- final implementation: 本轮通过 CUA 读取隔离 worktree 内 Developer ID 签名 Release App，窗口侧栏宽 292 pt；左下角账号栏以原始截图和 AX 树共同验收
+- scope: 只比较侧栏底部账号、额度与更新入口；不把两款 App 的真实用户名、套餐或项目数据差异计为视觉缺陷
+
+## 初始审计
+
+- P0: 无。
+- P1: v0.5.93 左下角为约 64 pt 双行结构，28 pt 头像下方常驻“模型 · 套餐 · 额度”，视觉重量显著高于 Codex 的单行低干扰账号栏。
+- P2: 更新入口与顶部更新按钮同时存在，底部图标尺寸和存在感偏高；账号栏没有明确的 1 px 顶部分隔。
+
+## 本轮实现
+
+- 账号栏改为约 46 pt 单行结构，头像由 28 pt 收为 22 pt；名称、头像和更新入口保持垂直居中。
+- 模型、套餐和额度移入账号菜单的 tooltip 与 accessibility value，不再常驻占用第二行；额度仍按原逻辑立即拉取并每 5 分钟刷新。
+- 加入 1 px 顶部分隔；更新入口收为 24 pt 次要图标，有可用更新时才用品牌色强调。
+- 真实账号菜单回归通过：连接手机、自进化日志、自进化、设置、退出登录均可打开；更新入口保持可访问。
+
+## 最终结论
+
+- P0: 0；账号菜单、更新、模型额度读取和任务列表均未受阻。
+- P1: 0；高度、单行层级、头像比例和常驻信息量已与 Codex 左下角模式收敛。
+- P2: 0；分隔、图标视觉重量和辅助信息呈现均完成降噪。
+- 自动回归：`2716 passed, 0 failed`；Release App 构建与 Developer ID 深层签名成功。
+- 可接受差异：Tapgo 保留真实更新入口，Codex 参考右侧为帮助类小图标；两者均作为单个次要操作，不再改变账号栏主层级。
+
+final result: passed
+
+---
+
 # Codex Desktop 消息正文与文件卡二次对齐 QA（v0.5.93）
 
 - source truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-message-renderer-v0593/01-codex-reference-message-and-files.png`（用户提供的 Codex Desktop 原始裁图，773 × 1076 px）

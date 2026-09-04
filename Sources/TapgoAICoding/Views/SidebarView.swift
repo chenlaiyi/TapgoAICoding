@@ -954,7 +954,6 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var userBar: some View {
-        VStack(alignment: .leading, spacing: 2) {
         HStack(alignment: .center, spacing: 6) {
             Menu {
                 Button {
@@ -986,11 +985,12 @@ struct SidebarView: View {
                     }
                 }
             } label: {
-                // macOS 26 的 Menu 会把 label 抽成"首个 Text + Image"渲染，多余
-                // 文本会被静默丢弃，所以 label 只放头像和名字，套餐行见下方。
+                // Codex keeps the account footer to one quiet row. Model and
+                // quota details remain available in the tooltip instead of
+                // permanently consuming a second line in the sidebar.
                 HStack(spacing: 8) {
                     if let user = authStore.currentUser {
-                        UserAvatar(url: user.avatarURL, name: user.displayName, size: 28)
+                        UserAvatar(url: user.avatarURL, name: user.displayName, size: 22)
                             .accessibilityLabel("当前登录用户")
                         Text(user.displayName)
                             .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
@@ -1006,56 +1006,52 @@ struct SidebarView: View {
                     }
                 }
                 .contentShape(Rectangle())
+                .padding(.vertical, 4)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .help("账户与快捷操作")
+            .help("账户与快捷操作\n\(modelQuotaSummary)")
             .accessibilityLabel("用户与快捷操作菜单")
+            .accessibilityValue(modelQuotaSummary)
 
             updateBadgeButton
-        }
-
-            Text(userBarSubtitle)
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .padding(.leading, 36) // 与名字对齐: 28pt 头像 + 8pt 间距
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .task {
-                    // 进侧栏立即拉额度, 之后每 5 分钟刷新 (周余量/套餐名)。
-                    store.refreshRateLimits()
-                    while !Task.isCancelled {
-                        try? await Task.sleep(nanoseconds: 300_000_000_000)
-                        store.refreshRateLimits()
-                    }
-                }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(DSHTheme.fidelityTitlebar.opacity(0.45))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(DSHTheme.border)
+                .frame(height: 1)
+        }
+        .task {
+            // Keep quota truth fresh for the tooltip without reserving a
+            // permanent second row in the compact footer.
+            store.refreshRateLimits()
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 300_000_000_000)
+                store.refreshRateLimits()
+            }
+        }
     }
 
-    /// ZCode 风格的更新入口：昵称右侧常驻图标。有新版本时是蓝色的"可更新"
+    /// Codex 风格的次要更新入口：昵称右侧保留紧凑图标，有新版本时再用品牌色强调。
     /// 图标，否则是灰色的向上箭头；点击执行检查更新。不放进账户菜单。
     private var updateBadgeButton: some View {
         Button {
             updater.checkForUpdates()
         } label: {
             Image(systemName: updater.updateFound ? "arrow.down.circle.fill" : "arrow.up.circle")
-                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(updater.updateFound ? DSHTheme.brand : Color.secondary)
+                .frame(width: 24, height: 24)
         }
         .buttonStyle(.plain)
         .disabled(!updater.canCheckForUpdates)
         .help(updater.updateFound ? "有可用更新，点击查看" : "检查更新")
         .accessibilityLabel(updater.updateFound ? "有可用更新" : "检查更新")
     }
-
-    private var userBarSubtitle: String {
-        authStore.currentUser != nil ? modelQuotaSummary : "Tapgo AICoding"
-    }
-
 
     private var runnerStatusColor: Color {
         if store.hasAnyRunningTasks { return .blue }

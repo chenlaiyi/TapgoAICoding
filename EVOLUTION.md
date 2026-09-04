@@ -1263,3 +1263,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 修正 Markdown 空行与块间距叠加，收紧正文尺寸和字重；标准内容列改为 760pt；多文件卡默认展示前三个文件及逐文件增删统计。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.94 — feat(ui): compact Codex-style sidebar account footer
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.94`)_
+**Tag**: v0.5.94
+**Test status**: — 2716 passed, 0 failed —
+**Changed**:
+- feat(ui): compact Codex-style sidebar account footer
+- 左下角账号区收为单行约 46pt 布局，头像缩至 22pt，模型、套餐与额度移入提示；更新入口降为 24pt 次要操作并保留真实功能。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

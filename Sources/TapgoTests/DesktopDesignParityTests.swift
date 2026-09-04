@@ -37,6 +37,15 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     // 徽章与 Menu 同处一个 HStack（头像/姓名/更新按钮同一行），而不是 VStack 里的独立一行
     t.expect(sidebar.contains("HStack(alignment: .center, spacing: 6) {\n            Menu {"),
              "desktop-design: 头像姓名与更新徽章同一行（Menu+徽章共 HStack）")
+    t.expect(sidebar.contains("UserAvatar(url: user.avatarURL, name: user.displayName, size: 22)")
+             && !sidebar.contains("private var userBarSubtitle"),
+             "desktop-design: 左下角账号栏使用 22pt 头像和单行结构")
+    t.expect(sidebar.contains(".help(\"账户与快捷操作\\n\\(modelQuotaSummary)\")")
+             && sidebar.contains(".accessibilityValue(modelQuotaSummary)"),
+             "desktop-design: 模型与额度移入提示和辅助功能值，不再常驻占高")
+    t.expect(sidebar.contains(".overlay(alignment: .top)")
+             && sidebar.contains(".frame(width: 24, height: 24)"),
+             "desktop-design: 左下角账号栏有安静顶部分隔和紧凑更新触点")
     t.expect(sidebar.contains("Label(\"设置\""), "desktop-design: 设置收进账户菜单")
     t.expect(!sidebar.contains(".help(\"连接手机与应用工具\""), "desktop-design: 底部工具菜单移除")
     t.expect(!sidebar.contains(".help(L10n.tooltipSettings)\n            .accessibilityLabel(L10n.tooltipSettings)"), "desktop-design: 底部设置按钮移除")
