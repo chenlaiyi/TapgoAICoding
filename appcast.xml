@@ -3,6 +3,26 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.90</title>
+            <pubDate>Fri, 04 Sep 2026 22:04:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.90</link>
+            <sparkle:version>0.5.90</sparkle:version>
+            <sparkle:shortVersionString>0.5.90</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.90
+
+本版聚焦对齐 ZCode 3.10.2 的消息阅读与流式输出体验。
+
+- 助手正文改为无色条、无外层卡片的直接排版，流式生成只显示轻量光标。
+- 放宽段落、列表与标题节奏，修复 Markdown 标题字号层级，行内代码改为中性色。
+- 完成态页脚只常驻时间，token/缓存/推理统计收入提示；「已工作」使用中文时长。
+- 重写助手输出契约：先给结论，允许必要标题和小标题，取消强制状态 emoji 与 6 行压缩。
+- 修复隔离 worktree 发布时应将当前 `HEAD` 推送到远端 `main` 的问题。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.90/Tapgo-AICoding-0.5.90.zip" length="9415133" type="application/octet-stream" sparkle:edSignature="K5ThoIlPhBadD2vWRNXSbRBG8z4Ru9I8wzy86+6zj6AZu+a6nt/kNaRFnMPNeb612IH+0uqEH3j6Svtxm45WAw=="/>
+        </item>
+        <item>
             <title>0.5.89</title>
             <pubDate>Fri, 04 Sep 2026 21:41:26 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.89</link>
@@ -44,32 +64,6 @@
 - 发版流程沿用 v0.5.87 自动化：`evolve.sh` 推 tag → `create-github-release-artifacts.sh` 签 zip + `gh release create` + 刷 `appcast.xml` 推 main；本次 push 命令收紧为只推新 tag（不再 `--tags`），避免本地历史重复 tag 阻断。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.88/Tapgo-AICoding-0.5.88.zip" length="9508003" type="application/octet-stream" sparkle:edSignature="uJYjQLXKW2T7JqO80DA5wtyppGCCeTgjzMS6i8dTdlHzWRnXgL5zqqJgci8nQde6PPGMOmCUUm5cL80KYhS2BA=="/>
-        </item>
-        <item>
-            <title>0.5.87</title>
-            <pubDate>Fri, 04 Sep 2026 21:25:02 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.87</link>
-            <sparkle:version>0.5.87</sparkle:version>
-            <sparkle:shortVersionString>0.5.87</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.87
-
-- 「参照目标 IDE 风格」fidelity patch 3/3：剩余 2 处主区域背景切到 fidelityXxx token：
-  - `ChatView.swift` L199 主画布 `.background(DSHTheme.bg)` → `.background(DSHTheme.fidelityMainCanvas)`（0x151517 → 0x1E1E1D，差 −9/255）
-  - `RightWorkbenchView.swift` L32 外层容器 / L52 环境信息面板顶栏 / L178 Tab 条顶栏共 3 处 `.background(DSHTheme.bg|DSHTheme.titlebarBg)` → `.background(DSHTheme.fidelityRightbarTop)`（0x1A1A1C → 0x212120，差 −11/255）
-  - 预期中央 1000x740 像素差从 13.4% 进一步收敛；sidebar_mid 单点差 −15/255 因无独立视图背景位，仍作为后续 patch 候选。
-- 发版自动化：`evolve.sh` 在 `git push` 之后自动串接 `scripts/create-github-release-artifacts.sh`：
-  - 生成 Sparkle EdDSA 签名 zip
-  - 调 `gh release create` 上传到 GitHub Release（已登录 `chenlaiyi`）
-  - 把刷新后的 `appcast.xml` 提交并 push，让所有已装客户端 Sparkle 下一轮 poll 自动拉到 v0.5.87
-  - 幂等：tag 已存在则只覆盖 zip + release notes；`gh` 缺失时降级为打印手动命令。
-- `AppBuilder/project.yml` 的 `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 不再硬编码：每次 `evolve.sh` 写 Info.plist 时同步注入新版本号，避免 `xcodegen` 重跑时漂移到 0.5.69（此前已漂移 17 个版本）。
-- `AgentOutputPolicy` 文案层对齐：5 个状态前缀（✅/❌/⚠️/🔍/💬）强制开头、禁 markdown 装饰、列表 ≤3 项、默认 ≤6 行（要详才 8）、失败 1 行「影响+处理方向」；`AgentOutputPolicyTests` 41 条断言覆盖 `threadInstructions` / `turnReminder` / `catalogInstructions` 与体积预算。
-- 测试：2706 通过 / 0 失败（TAPGO_SKIP_REMOTE_INTEGRATION=1）；预存在远程 SSH 集成测试不在本次回归范围；DesktopDesignParityTests 新增 2 条断言锁住 fidelityMainCanvas / fidelityRightbarTop 视图引用。
-- 已知限制：sidebar_mid 区域与目标 IDE 仍差 15/255，需后续单独排查；当前未跑自动 pixelmatch 验证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.87/Tapgo-AICoding-0.5.87.zip" length="9505413" type="application/octet-stream" sparkle:edSignature="dWBAY+/iFrA+pQoXex6Mb41wm4/MW1KKkMyGoh/5F/mpYHdb22cNaw64stluBjUh3YuC6bz9Y3B4qxVqEX0yBA=="/>
         </item>
     </channel>
 </rss>
