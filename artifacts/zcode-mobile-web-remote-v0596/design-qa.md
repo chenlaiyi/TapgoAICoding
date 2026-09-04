@@ -34,6 +34,13 @@
 - The composer is a compact bordered surface with attachment, control, model and send actions; safe-area padding is retained.
 - All critical actions remain reachable with accessible labels; project/task names and paths still use `textContent`.
 
+### Pass 3 — passed
+
+- Validation against the installed App's real state exposed 22 legacy tasks with no `projectId`; the total said 34 tasks while only 12 were reachable.
+- Legacy tasks now resolve to an existing workspace by longest matching `cwd`; remaining historical paths receive their own read-only workspace card, and tasks without any path enter `未分类任务`.
+- Synthetic historical groups deliberately omit the new-task button, while task selection remains available.
+- The visible workspace counts now reconcile with the task total instead of silently dropping legacy conversations.
+
 ## Functional checks
 
 - Return to task home: passed.
@@ -44,7 +51,7 @@
 - Model sheet: passed.
 - Computer-control drawer and screen/keyboard/media/system controls: passed.
 - JavaScript syntax: passed (`node --check`).
-- Swift regression suite: passed (`2728 passed, 0 failed`) after the final assertions are included.
+- Swift regression suite: passed (`2731 passed, 0 failed`) after the legacy-task grouping assertions are included.
 
 ## Final result
 

@@ -1299,3 +1299,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 重构手机首页为设备状态、工作区总览和卡片内任务两级结构，修复首页输入器误露。\n- 重构任务页顶栏、消息正文、状态与悬浮输入器，保留附件、模型和电脑控制能力。\n- 新增 ZCode 同视口设计 QA 与结构回归断言。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.97 — fix(remote): restore legacy tasks in mobile workspace
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.97`)_
+**Tag**: v0.5.97
+**Test status**: — 2731 passed, 0 failed —
+**Changed**:
+- fix(remote): restore legacy tasks in mobile workspace
+- 按 cwd 将缺少 projectId 的历史任务归回已配置工作区。\n- 为已移除目录和无目录任务生成只读工作区卡片，避免任务总数与可见列表不一致。\n- 新增真实边界回归并更新 ZCode 手机端设计 QA。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

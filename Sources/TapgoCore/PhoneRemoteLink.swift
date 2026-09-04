@@ -638,6 +638,25 @@ public enum PhoneRemote {
                                   model: String? = nil,
                                   attachedCount: Int = 0,
                                   now: Date = Date()) -> StateSnapshot {
+        let projectIDs = Set(projects.map(\.id))
+        let projectPaths = projects
+            .map { ($0.id, URL(fileURLWithPath: $0.path).standardizedFileURL.path) }
+            .sorted { $0.1.count > $1.1.count }
+        func resolvedProjectID(for thread: Thread) -> String {
+            if let projectID = thread.projectId, projectIDs.contains(projectID) {
+                return projectID
+            }
+            let cwd = thread.cwd?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !cwd.isEmpty else { return "legacy:unclassified" }
+            let standardizedCWD = URL(fileURLWithPath: cwd).standardizedFileURL.path
+            if let match = projectPaths.first(where: {
+                standardizedCWD == $0.1 || standardizedCWD.hasPrefix($0.1 + "/")
+            }) {
+                return match.0
+            }
+            return "legacy:" + standardizedCWD
+        }
+
         let sorted = threads.sorted { $0.updatedAt > $1.updatedAt }.prefix(maxThreads)
         let infos = sorted.map { t -> ThreadInfo in
             ThreadInfo(id: t.id,
@@ -645,7 +664,7 @@ public enum PhoneRemote {
                        updatedAt: t.updatedAt,
                        turnCount: t.turns.count,
                        busy: t.turns.last.map { $0.status == .running || $0.status == .awaitingApproval } ?? false,
-                       projectId: t.projectId)
+                       projectId: resolvedProjectID(for: t))
         }
         var transcript: [TranscriptTurn] = []
         if let active = threads.first(where: { $0.id == activeId }) ?? threads.first {
@@ -662,21 +681,40 @@ public enum PhoneRemote {
         }
         // 项目按各自会话的最近活跃时间倒序; 没有会话的项目用项目自身
         // lastActivityAt 兜底, 保证新建项目也能排进来。
-        let lastActiveByProject = Dictionary(grouping: threads, by: \.projectId)
+        let lastActiveByProject = Dictionary(grouping: threads, by: { resolvedProjectID(for: $0) })
             .compactMapValues { $0.map(\.updatedAt).max() }
-        let projectInfos = projects
+        let configuredProjectInfos = projects
             .map { seed -> (ProjectSeed, Date) in
                 (seed, max(seed.lastActivityAt, lastActiveByProject[seed.id] ?? .distantPast))
             }
-            .sorted { $0.1 > $1.1 }
             .map { seed, activity in
                 ProjectInfo(id: seed.id,
                             name: seed.name,
                             path: seed.path,
-                            threadCount: threads.filter { $0.projectId == seed.id }.count,
+                            threadCount: threads.filter { resolvedProjectID(for: $0) == seed.id }.count,
                             isLocal: seed.isLocal,
                             lastActivityAt: activity)
             }
+        let legacyGroups = Dictionary(grouping: threads.filter {
+            resolvedProjectID(for: $0).hasPrefix("legacy:")
+        }, by: { resolvedProjectID(for: $0) })
+        let legacyProjectInfos = legacyGroups.map { id, groupedThreads -> ProjectInfo in
+            let path = String(id.dropFirst("legacy:".count))
+            let unclassified = path == "unclassified"
+            let name = unclassified ? "未分类任务" : (URL(fileURLWithPath: path).lastPathComponent.isEmpty
+                ? "历史任务"
+                : URL(fileURLWithPath: path).lastPathComponent)
+            return ProjectInfo(id: id,
+                               name: name,
+                               path: unclassified ? "无工作区信息的历史任务" : path,
+                               threadCount: groupedThreads.count,
+                               isLocal: !unclassified && path.hasPrefix("/"),
+                               lastActivityAt: groupedThreads.map(\.updatedAt).max() ?? .distantPast)
+        }
+        let projectInfos = (configuredProjectInfos + legacyProjectInfos)
+            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+        let resolvedActiveProjectID = activeProjectId ?? threads.first(where: { $0.id == activeId })
+            .map { resolvedProjectID(for: $0) }
         return StateSnapshot(rev: rev,
                              hostname: hostname,
                              appVersion: appVersion,
@@ -688,7 +726,7 @@ public enum PhoneRemote {
                              model: model,
                              attachedCount: attachedCount,
                              projects: projectInfos,
-                             activeProjectId: activeProjectId)
+                             activeProjectId: resolvedActiveProjectID)
     }
 
     public static func stateJSON(_ snapshot: StateSnapshot) -> Data {

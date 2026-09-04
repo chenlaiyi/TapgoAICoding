@@ -265,13 +265,16 @@
     chevron.className = "workspace-chevron" + (open ? " open" : "");
     chevron.innerHTML = icon("chevron");
     head.append(main, count, chevron);
-    const add = document.createElement("button");
-    add.className = "icon-button workspace-add";
-    add.dataset.action = "new-task";
-    add.dataset.projectId = project.id;
-    add.setAttribute("aria-label", "在 " + project.name + " 新建任务");
-    add.innerHTML = icon("plus");
-    header.append(folder, head, add);
+    header.append(folder, head);
+    if (!String(project.id || "").startsWith("legacy:")) {
+      const add = document.createElement("button");
+      add.className = "icon-button workspace-add";
+      add.dataset.action = "new-task";
+      add.dataset.projectId = project.id;
+      add.setAttribute("aria-label", "在 " + project.name + " 新建任务");
+      add.innerHTML = icon("plus");
+      header.appendChild(add);
+    }
     section.appendChild(header);
 
     if (open) {

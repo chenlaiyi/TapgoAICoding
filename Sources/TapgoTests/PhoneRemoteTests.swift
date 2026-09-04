@@ -223,7 +223,8 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     let active = Thread(id: "th1", title: "修复构建", createdAt: now, updatedAt: now,
                         projectId: "pA", turns: turns)
     let other = Thread(id: "th2", title: "另一个会话",
-                       createdAt: now, updatedAt: now.addingTimeInterval(-600), turns: [])
+                       createdAt: now, updatedAt: now.addingTimeInterval(-600),
+                       cwd: "/tmp/legacy-worktree", turns: [])
 
     let snap = PhoneRemote.buildState(threads: [other, active],
                                       activeId: "th1",
@@ -254,15 +255,30 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
 
     // v0.5.20 项目维度: 会话归属 + 项目按最近活跃排序 + 计数
     t.expectEqual(snap.threads.first?.projectId, "pA", "snapshot: 会话携带 projectId")
-    t.expectEqual(snap.threads.last?.projectId, nil, "snapshot: 未分类会话 projectId 为空")
-    t.expectEqual(snap.projects.count, 2, "snapshot: 项目数")
+    t.expectEqual(snap.threads.last?.projectId, "legacy:/tmp/legacy-worktree",
+                  "snapshot: 旧会话按 cwd 归入历史工作区")
+    t.expectEqual(snap.projects.count, 3, "snapshot: 配置项目与历史 cwd 工作区都可见")
     t.expectEqual(snap.projects.first?.id, "pA", "snapshot: 项目按最近活跃排前 (th1 更新于 now)")
-    t.expectEqual(snap.projects.last?.id, "pB", "snapshot: 冷项目排后")
+    t.expectEqual(snap.projects.last?.id, "legacy:/tmp/legacy-worktree", "snapshot: 历史 cwd 工作区排入列表")
     t.expectEqual(snap.projects.first?.threadCount, 1, "snapshot: 项目会话计数")
     t.expectEqual(snap.projects.first?.name, "A项目", "snapshot: 项目名透传")
     t.expectEqual(snap.activeProjectId, "pA", "snapshot: activeProjectId 透传")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
     t.expectEqual(snap.attachedCount, 2, "snapshot: attachedCount 透传")
+
+    let cwdMatched = Thread(id: "th-cwd", title: "旧项目会话", createdAt: now,
+                            updatedAt: now, cwd: "/tmp/a/subdir", turns: [])
+    let noCWD = Thread(id: "th-none", title: "无目录会话", createdAt: now,
+                       updatedAt: now.addingTimeInterval(-1), turns: [])
+    let legacySnap = PhoneRemote.buildState(threads: [cwdMatched, noCWD], activeId: "th-cwd", rev: 0,
+                                            hostname: "h", appVersion: "v",
+                                            projects: [PhoneRemote.ProjectSeed(id: "pA", name: "A项目",
+                                                                               path: "/tmp/a", lastActivityAt: now)],
+                                            now: now)
+    t.expectEqual(legacySnap.threads.first?.projectId, "pA", "snapshot: 旧会话 cwd 子目录归回已配置项目")
+    t.expect(legacySnap.projects.contains(where: { $0.id == "legacy:unclassified" && $0.threadCount == 1 }),
+             "snapshot: 无 cwd 旧会话进入未分类任务")
+    t.expectEqual(legacySnap.activeProjectId, "pA", "snapshot: 活动项目跟随 cwd 归类结果")
 
     // transcript: app-progress 剔除 + 截断 + running 标记
     t.expectEqual(snap.transcript.count, 2, "snapshot: transcript 条数")
