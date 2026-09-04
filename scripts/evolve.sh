@@ -176,12 +176,11 @@ echo "==> Tests: ${TEST_LINE}"
 
 # ---------- 5. Append EVOLUTION.md ----------
 TODAY="$(date +%Y-%m-%d)"
-COMMIT_SHA="(to be filled)"
 ENTRY=$(cat <<ENTRY_EOF
 
 ## v${NEW_VERSION} — ${MSG}
 **Date**: ${TODAY}
-**Commit**: _(see `git log -1 v${NEW_VERSION}`)_
+**Commit**: _(see \`git log -1 v${NEW_VERSION}\`)_
 **Tag**: v${NEW_VERSION}
 **Test status**: ${TEST_LINE}
 **Changed**:

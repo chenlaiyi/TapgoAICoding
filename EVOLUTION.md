@@ -1214,11 +1214,14 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 
 ## v0.5.90 — fix(chat): align streaming output with ZCode
 **Date**: 2026-09-04
-**Commit**: _(see )_
+**Commit**: e57ab9e
 **Tag**: v0.5.90
 **Test status**: — 2703 passed, 0 failed —
 **Changed**:
 - fix(chat): align streaming output with ZCode
-- 对齐 ZCode 3.10.2：助手正文去除角色色条与外层卡片，增加轻量流式光标。\n- 重整 Markdown 标题、段落、列表和行内代码层级，完成态折叠工作过程并精简页脚。\n- 输出契约改为结论先行，取消强制状态 emoji 与六行压缩。\n- 修复隔离 worktree 发布到远端 main 的推送目标。
+- 对齐 ZCode 3.10.2：助手正文去除角色色条与外层卡片，增加轻量流式光标。
+- 重整 Markdown 标题、段落、列表和行内代码层级，完成态折叠工作过程并精简页脚。
+- 输出契约改为结论先行，取消强制状态 emoji 与六行压缩。
+- 修复隔离 worktree 发布到远端 main 的推送目标。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
