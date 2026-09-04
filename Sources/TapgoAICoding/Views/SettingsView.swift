@@ -1298,10 +1298,10 @@ private struct SettingsCard<Content: View>: View {
 private struct AddRemoteHostSheet: View {
     @Environment(\.dismiss) private var dismiss
     let onCommit: (RemoteHost) -> Void
-    @State private var alias = ""
-    @State private var host = ""
-    @State private var user = NSUserName()
-    @State private var port: Int = 22
+    @State private var alias: String = ""
+    @State private var host: String = ""
+    @State private var user: String = NSUserName()
+    @State private var portText: String = "22"
     @State private var identity: String = "default"
     @State private var error: String?
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
@@ -1315,36 +1315,87 @@ private struct AddRemoteHostSheet: View {
                     .buttonStyle(.borderless)
             }.padding(20)
             Divider()
-            Form {
-                TextField(L10n.hostAlias, text: $alias)
-                TextField(L10n.hostHost, text: $host)
-                TextField(L10n.hostUser, text: $user)
-                TextField(L10n.hostPort, value: $port, format: .number)
-                TextField(L10n.hostIdentity, text: $identity)
+            VStack(alignment: .leading, spacing: 12) {
+                field(L10n.hostAlias, text: $alias)
+                field(L10n.hostHost, text: $host)
+                field(L10n.hostUser, text: $user)
+                field(L10n.hostPort, text: $portText)
+                field(L10n.hostIdentity, text: $identity)
+                Text("说明：私钥路径留空或填 default 表示走 ~/.ssh/config + ssh-agent；填绝对路径等价于 ssh -i。")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.tertiary)
                 if let err = error {
-                    Text(err).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.red)
+                    Label(err, systemImage: "exclamationmark.triangle.fill")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.red)
                 }
             }
-            .formStyle(.grouped)
+            .padding(20)
+            Divider()
             HStack {
                 Spacer()
                 Button("取消") { dismiss() }
                 Button("保存") { commit() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(alias.isEmpty || host.isEmpty || user.isEmpty)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canSave)
             }.padding(20)
         }
-        .frame(width: 460, height: 360)
+        .frame(width: 480, height: 420)
     }
+
+    @ViewBuilder
+    private func field(_ label: String, text: Binding<String>) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .frame(width: 78, alignment: .leading)
+                .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+            TextField("", text: text)
+                .textFieldStyle(.roundedBorder)
+                .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
+        }
+    }
+
+    private var canSave: Bool {
+        let trimmedAlias = alias.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUser = user.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAlias.isEmpty, !trimmedHost.isEmpty, !trimmedUser.isEmpty else { return false }
+        guard RemoteCommandBuilder.validateAlias(trimmedAlias) != nil else { return false }
+        guard RemoteCommandBuilder.validateHost(trimmedHost) != nil else { return false }
+        guard RemoteCommandBuilder.validateUser(trimmedUser) != nil else { return false }
+        guard let portValue = Int(portText.trimmingCharacters(in: .whitespaces)),
+              portValue > 0, portValue < 65536 else { return false }
+        return true
+    }
+
     private func commit() {
-        guard RemoteCommandBuilder.validateHost(host) != nil else { error = "主机不合法"; return }
-        guard RemoteCommandBuilder.validateUser(user) != nil else { error = "用户不合法"; return }
+        let trimmedAlias = alias.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUser = user.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard RemoteCommandBuilder.validateAlias(trimmedAlias) != nil else {
+            error = "别名只允许字母/数字/点/下划线/连字符"
+            return
+        }
+        guard RemoteCommandBuilder.validateHost(trimmedHost) != nil else {
+            error = "主机(IP/域名)含非法字符"
+            return
+        }
+        guard RemoteCommandBuilder.validateUser(trimmedUser) != nil else {
+            error = "用户只允许字母/数字/点/下划线/连字符"
+            return
+        }
+        guard let portValue = Int(portText.trimmingCharacters(in: .whitespaces)),
+              portValue > 0, portValue < 65536 else {
+            error = "端口需为 1–65535 之间的整数"
+            return
+        }
         let h = RemoteHost(
             id: "host-" + UUID().uuidString,
-            alias: alias,
-            host: host,
-            user: user,
-            port: port,
+            alias: trimmedAlias,
+            host: trimmedHost,
+            user: trimmedUser,
+            port: portValue,
             identityHint: identity.isEmpty ? "default" : identity,
             addedAt: Date(),
             lastTestedAt: nil, lastTestedOK: nil, lastTestOutput: nil

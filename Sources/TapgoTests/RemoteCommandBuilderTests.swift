@@ -68,6 +68,24 @@ func runRemoteCommandBuilderInputValidation(_ t: TestRunner) {
     t.expectNil(RemoteCommandBuilder.validateCommand("ls\nrm -rf /"), "command: rejects newline")
     t.expectNil(RemoteCommandBuilder.validateCommand(""), "command: rejects empty")
     t.expectNil(RemoteCommandBuilder.validateCommand(String(repeating: "x", count: 70_000)), "command: rejects overlong")
+
+    // v0.5.100 — hostnames / usernames / aliases with underscores
+    // (the most common real-world naming convention for SSH hosts).
+    t.expectNotNil(RemoteCommandBuilder.validateHost("mac-mini_jk"), "host: dashed + underscore ok")
+    t.expectNotNil(RemoteCommandBuilder.validateHost("dev_box.local"), "host: name with underscore ok")
+    t.expectNotNil(RemoteCommandBuilder.validateHost("abc-123_def.gh"), "host: multi-mixed ok")
+    t.expectNil(RemoteCommandBuilder.validateHost("host with space"), "host: rejects space")
+    t.expectNil(RemoteCommandBuilder.validateHost("host/path"), "host: rejects slash")
+
+    t.expectNotNil(RemoteCommandBuilder.validateUser("john_doe"), "user: underscore ok")
+    t.expectNotNil(RemoteCommandBuilder.validateUser("u.name-v2"), "user: dot+dash ok")
+    t.expectNil(RemoteCommandBuilder.validateUser("user with space"), "user: rejects space")
+    t.expectNil(RemoteCommandBuilder.validateUser("user/path"), "user: rejects slash")
+
+    t.expectNotNil(RemoteCommandBuilder.validateAlias("JK-macmini"), "alias: dashed ok")
+    t.expectNotNil(RemoteCommandBuilder.validateAlias("dev_box"), "alias: underscore ok")
+    t.expectNil(RemoteCommandBuilder.validateAlias("has space"), "alias: rejects space")
+    t.expectNil(RemoteCommandBuilder.validateAlias(""), "alias: rejects empty")
 }
 
 @MainActor

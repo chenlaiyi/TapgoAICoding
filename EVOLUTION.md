@@ -19,6 +19,18 @@
 **Next**: what the following iteration plans to tackle (or "see state file").
 ```
 
+## v0.5.100 — 添加远程主机/项目可用性回归
+**Date**: 2026-09-05
+**Tag**: v0.5.100
+**Test status**: 2802 passed / 12 failed（12 pre-existing 远程 SSH 集成失败无关；RemoteCommandBuilder 4 节 47 个断言全绿，含 14 个新增下划线/空格/斜杠拒绝用例）
+**Changed**:
+- `SettingsView.AddRemoteHostSheet`：去掉 `.formStyle(.grouped)`（在 macOS 上会阻断 `@State` 与 NSTextField 同步，导致保存按钮永远 disabled），改用直接 `TextField(_, text: $binding)` + 自定义 `canSave` 校验；保存按钮的 `disabled` 现在实时反映字段合法性。
+- `RemoteCommandBuilder` 新增公开 `validateAlias(_:)`，alias / host / user 各自错误信息分别精确提示（"别名只允许字母/数字/点/下划线/连字符" / "主机含非法字符" / "用户只允许…"）。
+- 端口字段改用 `String` + `Int()` 解析，非法端口给红色错误（覆盖之前的 silently disabled），范围限制 1–65535。
+- 新增 14 个 v0.5.100 验证：host / user / alias 含下划线（`mac-mini_jk` / `john_doe` / `dev_box`）必须通过；空格 / 斜杠 必须拒绝。
+**Why**: 用户报告"不能配置主机 / 无法添加远程项目"——根因是 SwiftUI Form + macOS 的 `@State` 同步漏，加上 alias 缺字符校验 + 错误提示过宽。这次重写表单让 UI 状态与字段绑定一致。
+**Next**: distribute 脚本走一遍。
+
 ## v0.5.73 — Harness daemon 解耦（Unix socket transport + launchd 守护）
 **Date**: 2026-09-02
 **Tag**: v0.5.73

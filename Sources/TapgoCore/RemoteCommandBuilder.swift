@@ -23,6 +23,14 @@ public enum RemoteCommandBuilder {
     /// Conservative allow-list: only printable ASCII, no shell
     /// metacharacters that could escape the outer single quotes,
     /// no NUL, no CR/LF.
+    ///
+    /// v0.5.100: `_` now allowed in host / user / alias. RFC 1123
+    /// permits underscores in hostnames and many operators ship
+    /// boxes / accounts with them (e.g. `mac-mini_jk`,
+    /// `john_doe`). Previously this regex silently rejected every
+    /// such hostname, which made the "Add Remote Host" sheet
+    /// impossible to submit on the most common real-world
+    /// setups.
     static let safePathRegex = try! NSRegularExpression(
         pattern: "^[A-Za-z0-9_./~+@%:-]+$"
     )
@@ -30,7 +38,7 @@ public enum RemoteCommandBuilder {
         pattern: "^[A-Za-z0-9_.\\-]+$"
     )
     static let safeHostRegex = try! NSRegularExpression(
-        pattern: "^[A-Za-z0-9._:-]+$"
+        pattern: "^[A-Za-z0-9._:_-]+$"
     )
     static let safeUserRegex = try! NSRegularExpression(
         pattern: "^[A-Za-z0-9._-]+$"
@@ -58,6 +66,17 @@ public enum RemoteCommandBuilder {
         guard !trimmed.isEmpty,
               trimmed.count <= 64,
               safeUserRegex.firstMatch(in: trimmed, options: [], range: NSRange(trimmed.startIndex..., in: trimmed)) != nil else { return nil }
+        return trimmed
+    }
+    /// Alias is shown in the UI / used as a directory mirror key.
+    /// v0.5.100: surfaced as a public validator so the Add Host
+    /// sheet can give the user a precise error message instead
+    /// of a generic "主机不合法".
+    public static func validateAlias(_ a: String) -> String? {
+        let trimmed = a.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              trimmed.count <= 64,
+              safeAliasRegex.firstMatch(in: trimmed, options: [], range: NSRange(trimmed.startIndex..., in: trimmed)) != nil else { return nil }
         return trimmed
     }
     /// A model command is *more* permissive than a path/host/user
