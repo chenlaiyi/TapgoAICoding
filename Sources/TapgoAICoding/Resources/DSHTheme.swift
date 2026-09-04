@@ -47,36 +47,36 @@ enum DSHTheme {
     // MARK: Backgrounds (base + surfacing layers)
     /// Window / content base. bluish-00 (#fff) light, bluish-950 (#151517) dark.
     static let bg = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x151517)
-    /// ZCode-style desktop navigation chrome. The sidebar is deliberately
-    /// lighter than the conversation canvas in dark mode, so the hierarchy
-    /// stays visible without relying on separator lines.
-    static let sidebarBg = Color.dynamic(lightHex: 0xF3F3F4, darkHex: 0x39393B)
-    static let titlebarBg = Color.dynamic(lightHex: 0xFAFAFB, darkHex: 0x1A1A1C)
-    static let sidebarSelection = Color.dynamic(lightHex: 0xE5E5E7, darkHex: 0x444447)
+    /// Codex Desktop navigation chrome. The values are sampled from the
+    /// 2026-09-04 reference capture rather than inherited from the older
+    /// ZCode theme: sidebar #272728, conversation/titlebar #171717.
+    static let sidebarBg = Color.dynamic(lightHex: 0xF3F3F4, darkHex: 0x272728)
+    static let titlebarBg = Color.dynamic(lightHex: 0xFAFAFB, darkHex: 0x171717)
+    static let sidebarSelection = Color.dynamic(lightHex: 0xE5E5E7, darkHex: 0x383839)
     /// Layer-1 card. bluish-00 light, bluish-875 (#232324) dark.
-    static let bgLayer1 = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x232324)
+    static let bgLayer1 = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x252525)
     /// Layer-2 card / dock. bluish-00 light, bluish-850 (#2C2C2E) dark.
-    static let surface = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x2C2C2E)
+    static let surface = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x2B2B2C)
     /// Layer-3 raised surface. bluish-00 light, bluish-800 (#353638) dark.
-    static let surfaceRaised = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x353638)
+    static let surfaceRaised = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x303031)
     /// Module / platform chrome. bluish-60 (#F5F6F7) light, bluish-800 dark.
-    static let moduleBg = Color.dynamic(lightHex: 0xF5F6F7, darkHex: 0x353638)
+    static let moduleBg = Color.dynamic(lightHex: 0xF5F6F7, darkHex: 0x252525)
 
     // MARK: Borders
     /// Subtle hairline (DSH `border-l2`): 10% black light, 12% white dark.
-    static let border = Color.dynamic(lightHex: 0xE6E6E6, darkHex: 0x3A3A3C)
-    static let borderStrong = Color.dynamic(lightHex: 0xD9D9D9, darkHex: 0x44444A)
+    static let border = Color.dynamic(lightHex: 0xE6E6E6, darkHex: 0x39393A)
+    static let borderStrong = Color.dynamic(lightHex: 0xD9D9D9, darkHex: 0x484849)
 
     // MARK: Labels
-    static let label = Color.dynamic(lightHex: 0x0F1115, darkHex: 0xF9FAFB)    // primary
-    static let labelDim = Color.dynamic(lightHex: 0x61666B, darkHex: 0xCFD3D6)  // secondary
-    static let labelTertiary = Color.dynamic(lightHex: 0x81858C, darkHex: 0xADB2B8)
+    static let label = Color.dynamic(lightHex: 0x0F1115, darkHex: 0xF0F0F0)    // primary
+    static let labelDim = Color.dynamic(lightHex: 0x61666B, darkHex: 0xC7C7C7)  // secondary
+    static let labelTertiary = Color.dynamic(lightHex: 0x81858C, darkHex: 0x949494)
 
     // MARK: Markdown
-    static let codeBlockBg = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x1B1B1C)     // bluish-50 / 900
-    static let codeBlockBanner = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x2C2C2E) // bluish-50 / 850
-    /// ZCode-style inline code is a neutral typographic hint, not a blue tag.
-    static let inlineCodeBg = Color.dynamic(lightHex: 0xECEDEF, darkHex: 0x29292B)
+    static let codeBlockBg = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x1E1E1E)
+    static let codeBlockBanner = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x252525)
+    /// Codex uses a muted grey patch behind inline code, never a brand tag.
+    static let inlineCodeBg = Color.dynamic(lightHex: 0xECEDEF, darkHex: 0x343434)
 
     // MARK: Shadow
     static let cardShadow = Color.black.opacity(0.08)
@@ -99,22 +99,16 @@ enum DSHTheme {
     /// 用户消息: blue-600 / blue-400
     static let trajectoryUser = Color.dynamic(lightHex: 0x2563EB, darkHex: 0x60A5FA)
 
-    // MARK: Fidelity regions (ZCode 主窗口 6 处实测色, v0.5.85 锁定)
-    // 来自 artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md 区域采样表:
-    //   titlebar    ZCode rgb(35,35,35)   ← 我们旧 darkHex 0x1A1A1C(=26,28) 偏暗
-    //   sidebar_top ZCode rgb(58,59,59)   ← DSHTheme.sidebarBg 0x39393B(=57,59) 几乎一致
-    //   sidebar_mid ZCode rgb(74,75,75)   ← 旧无对应 token, 新增
-    //   main_canvas ZCode rgb(30,30,29)   ← DSHTheme.bg 0x151517(=21,23) 偏暗
-    //   rightbar_top ZCode rgb(33,33,32)  ← DSHTheme.titlebarBg 0x1A1A1C 偏暗
-    //   statusbar   ZCode rgb(27,27,27)   ← 旧无对应 token, 新增
-    // 这些 token 只锁定 darkHex (ZCode 真实 dark 实测色), 后续 patch 调色时
-    // 直接换 token darkHex, 不需要 grep .background(DSHTheme.xxBg) 全文。
-    static let fidelityTitlebar    = Color(hex: 0x232323)
-    static let fidelitySidebarTop  = Color(hex: 0x3A3B3B)
-    static let fidelitySidebarMid  = Color(hex: 0x4A4B4B)
-    static let fidelityMainCanvas  = Color(hex: 0x1E1E1D)
-    static let fidelityRightbarTop = Color(hex: 0x212120)
-    static let fidelityStatusbar   = Color(hex: 0x1B1B1B)
+    // MARK: Fidelity regions (Codex Desktop 2026-09-04 reference capture)
+    // Source: artifacts/codex-complete-parity-v0592/08-codex-vs-tapgo-natural-combined.png
+    // The main canvas and titlebar are the same near-black plane. Navigation
+    // is only ten RGB levels lighter; selection is visible but restrained.
+    static let fidelityTitlebar    = Color(hex: 0x171717)
+    static let fidelitySidebarTop  = Color(hex: 0x272728)
+    static let fidelitySidebarMid  = Color(hex: 0x303031)
+    static let fidelityMainCanvas  = Color(hex: 0x171717)
+    static let fidelityRightbarTop = Color(hex: 0x171717)
+    static let fidelityStatusbar   = Color(hex: 0x171717)
 
     // MARK: Radii (DSH `--dsl-*-radius: 12px`)
 

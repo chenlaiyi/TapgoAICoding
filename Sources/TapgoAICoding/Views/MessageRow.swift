@@ -79,43 +79,6 @@ struct ActivityRollupView: View {
     }
 }
 
-/// A narrow white highlight that crosses only the newest in-flight activity
-/// text. Completed activity remains quiet and static, matching Codex's live
-/// status treatment without turning the transcript into an animation field.
-private struct RunningTextShimmer: ViewModifier {
-    let active: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content.overlay {
-            if active && !reduceMotion {
-                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                    GeometryReader { proxy in
-                        let cycle = context.date.timeIntervalSinceReferenceDate
-                            .truncatingRemainder(dividingBy: 1.8) / 1.8
-                        let width = max(proxy.size.width * 0.28, 36)
-                        LinearGradient(
-                            colors: [.clear, .white.opacity(0.92), .clear],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(width: width)
-                        .offset(x: -width + (proxy.size.width + width * 2) * cycle)
-                    }
-                    .mask(content)
-                    .allowsHitTesting(false)
-                }
-            }
-        }
-    }
-}
-
-extension View {
-    func runningTextShimmer(active: Bool) -> some View {
-        modifier(RunningTextShimmer(active: active))
-    }
-}
-
 struct MessageBubble: View {
     enum Role { case user, assistant }
     @EnvironmentObject var store: SessionStore
@@ -214,7 +177,7 @@ struct MessageBubble: View {
             .onHover { hoveringUser = $0 }
             .sheet(isPresented: $showEditSheet) { editSheet }
         } else {
-            // ZCode keeps assistant output directly on the canvas: no role
+            // Codex keeps assistant output directly on the canvas: no role
             // stripe, avatar, or surrounding card competing with the content.
             MarkdownMessageView(text, isStreaming: isStreaming)
                 .textSelection(.enabled)
@@ -234,16 +197,11 @@ struct MessageBubble: View {
         }
     }
 
-    /// Bottom action bar for the user's question: timestamp + reply + edit +
-    /// copy, mirroring the composer-adjacent quick actions.
+    /// Hover-only actions for the user's question. Time remains available as
+    /// a tooltip instead of taking permanent space under every message.
     @ViewBuilder
     private var userActionBar: some View {
         HStack(spacing: 12) {
-            if let startedAt {
-                Text(timeText(startedAt))
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
-            }
             if let onReply {
                 Button(action: onReply) {
                     Image(systemName: "arrow.uturn.backward")
@@ -277,6 +235,7 @@ struct MessageBubble: View {
         }
         .font(.system(size: 13))
         .padding(.trailing, 2)
+        .help(startedAt.map { "发送于 \(timeText($0))" } ?? "消息操作")
     }
 
     private var editSheet: some View {
@@ -402,29 +361,25 @@ struct ReasoningDisclosure: View {
     var isRunning: Bool = false
 
     var body: some View {
-        // Single-line activity row (no expand / no copy), like Codex's
-        // "Think · <…>" summary line.
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(DSHTheme.trajectoryReasoning.opacity(0.8))
-            Text("Think")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(DSHTheme.trajectoryReasoning.opacity(0.8))
-            Text("·")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
+        // Codex treats reasoning as process metadata, not a purple log row.
+        HStack(spacing: 7) {
             if isRunning {
-                ProgressView().controlSize(.mini)
+                ProgressView()
+                    .controlSize(.mini)
+                    .frame(width: 16, height: 16)
+            } else {
+                Image(systemName: icon)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .frame(width: 16)
             }
-            Text(text.isEmpty ? (isRunning ? "思考中…" : "思考") : text)
+            Text(text.isEmpty ? (isRunning ? "思考中…" : label) : text)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .foregroundStyle(DSHTheme.labelTertiary)
+        .padding(.vertical, 2)
         .help(text)
         .accessibilityLabel("思考过程")
     }
@@ -438,13 +393,14 @@ struct ToolCallRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // Single-line activity row: "Read · <path>", "Edit · <path>", …
+            // Flat, neutral process row. Only real failures use a state color;
+            // arguments and output remain inspectable on demand.
             HStack(spacing: 6) {
                 Image(systemName: toolIcon)
                     .foregroundStyle(toolIconColor)
                 Text(toolCall.name)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(toolCallAccent.opacity(0.8))
+                    .foregroundStyle(DSHTheme.labelDim)
                 Text("·")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
@@ -457,7 +413,9 @@ struct ToolCallRow: View {
                 if isRunning {
                     ProgressView().controlSize(.mini)
                 }
-                StatusBadge(status: toolCall.status.rawValue)
+                if toolCall.status != .succeeded {
+                    StatusBadge(status: toolCall.status.rawValue)
+                }
                 Button {
                     isExpanded.toggle()
                 } label: {
@@ -467,23 +425,25 @@ struct ToolCallRow: View {
                 .buttonStyle(.borderless)
                 .accessibilityLabel(isExpanded ? "折叠结果" : "展开结果")
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-            .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
+            .padding(.vertical, 3)
 
             if isExpanded {
-                Text(toolCall.arguments)
-                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
-                if let r = toolCall.result, !r.isEmpty {
-                    Text(r)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(toolCall.arguments)
                         .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
-                        .lineLimit(6)
-                        .textSelection(.enabled)
+                        .lineLimit(4)
+                    if let r = toolCall.result, !r.isEmpty {
+                        Text(r)
+                            .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(6)
+                            .textSelection(.enabled)
+                    }
                 }
+                .padding(10)
+                .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(DSHTheme.border, lineWidth: 1))
             }
         }
     }
@@ -498,18 +458,10 @@ struct ToolCallRow: View {
         default: return "wrench.adjustable"
         }
     }
-    private var toolIconColor: Color { toolCallAccent }
-
-    /// ZCode trajectory 语义: 读=天蓝(结果侧), 写/改=琥珀(调用侧), 执行=琥珀,
-    /// 搜索=天蓝。色值统一走 DSHTheme.trajectory*, 与上游 --color-trajectory-* 对齐。
-    private var toolCallAccent: Color {
-        switch toolCall.name.lowercased() {
-        case "read", "readfile", "watch", "grep", "search":
-            return DSHTheme.trajectoryToolResult
-        case "edit", "write", "writefile", "shell", "bash", "command", "run":
-            return DSHTheme.trajectoryToolCall
-        default:
-            return DSHTheme.trajectoryToolResult
+    private var toolIconColor: Color {
+        switch toolCall.status {
+        case .failed, .denied: return DSHTheme.error
+        default: return DSHTheme.labelTertiary
         }
     }
 }

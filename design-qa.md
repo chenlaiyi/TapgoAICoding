@@ -1,3 +1,38 @@
+# Codex Desktop 消息界面对齐 QA
+
+- source truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-complete-parity-v0592/08-codex-vs-tapgo-natural-combined.png` 左侧 Codex Desktop 实机窗口
+- implementation target: Tapgo AICoding v0.5.92 macOS 深色模式，同尺寸消息窗口、同类完成态任务
+- final implementation: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-complete-parity-v0592/11-tapgo-v0592-final-same-viewport.png`
+- final comparison: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-complete-parity-v0592/12-codex-vs-tapgo-v0592-final.png`
+- viewport: Codex 与 Tapgo 均为 1148 × 1344 px 原始窗口截图；最终并排图直接拼接，未缩放、未拉伸
+- states covered: 长正文、表格、列表、行内代码、完成过程、单文件变更结果卡、完成态操作、composer
+
+## 初始审计
+
+- P0: 无。
+- P1: Tapgo v0.5.91 侧栏与选中态明显亮于 Codex；主画布也偏亮，界面层级仍是 ZCode 色阶。
+- P1: 完成态页脚常驻时间和文字按钮，单文件结果卡仍按批量文件列表组织，信息噪声高于 Codex。
+- P1: composer 的项目、权限、电脑控制、用量、模型均使用胶囊，停止按钮为红色文字按钮，与 Codex 的纯文本控制和圆形动作按钮不同。
+- P2: 思考/工具过程仍残留类别色与卡片化明细；流式占位使用扫光文字，不符合 Codex 的安静进度指示。
+
+## 比较历史
+
+1. baseline: `08-codex-vs-tapgo-natural-combined.png`，存在上述 P1/P2，未通过。
+2. iteration 1: 将 Codex 实测深色层级、安静过程轨迹、图标式完成操作、审核结果卡和简化 composer 同步实现；同视口复核发现侧栏仍比 Codex 窄、composer 偏高。
+3. iteration 2: 侧栏默认宽度锁定 292 pt，输入编辑区最小高度由 60 pt 收紧到 38 pt；`12-codex-vs-tapgo-v0592-final.png` 显示消息起点、内容宽度、composer 起点与高度已同位。
+
+## 最终结论
+
+- P0: 0；核心任务选择、消息阅读、复制/反馈、新建任务、模型/权限、发送/停止和差异审核均保持真实可操作。
+- P1: 0；画布、标题栏、侧栏、选中态、内容列、完成过程分隔和 composer 的主要视觉层级均已对齐 Codex。
+- P2: 0；常驻时间文字、长动作标签、过程类别色、扫光动画、多余胶囊和已应用徽章均已移除。
+- 可接受差异：两款 App 使用各自真实任务数据；Codex 参考窗口当前包含文件变更，Tapgo 对照任务为无文件变更的完成态，但 `FileEditBatchView` 的审核入口由源码、构建与结构测试独立覆盖。Tapgo 保留自身“电脑操作”和额度圆环功能，但已压缩为图标级次要控件。
+
+final result: passed
+
+---
+
+<!-- 历史 QA 记录，原样保留 -->
 # 输入器上方分隔线修正验收（v0.5.60）
 
 - 视觉真值：`artifacts/reference-desktop/main.png`（目标 IDE 3.10.1，871 × 768 px）。

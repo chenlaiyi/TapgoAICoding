@@ -183,7 +183,7 @@ struct ChatView: View {
             // Keep one structural ComposerView for the entire lifetime of
             // ChatView. Moving between the empty and active layouts must not
             // recreate NSTextView while the user is entering the next prompt.
-            ComposerView(contentWidth: wideContent ? 980 : 800)
+            ComposerView(contentWidth: wideContent ? 980 : 720)
                 .padding(.horizontal, hasConversation ? 0 : 16)
 
             if !hasConversation {
@@ -811,6 +811,13 @@ struct ChatView: View {
         return f.string(from: date)
     }
 
+    private func turnMetadataHelp(_ turn: Turn) -> String {
+        var parts = ["复制本回合", turnTime(turn.startedAt)]
+        if let duration = turn.durationText, !duration.isEmpty { parts.append(duration) }
+        if let usage = turn.usage { parts.append(usage.summary) }
+        return parts.joined(separator: " · ")
+    }
+
     /// A centered date banner for the first turn of each new day, styled
     /// like Codex's "今天 / 昨天 / 2026年3月1日" separators.
     private func dateDivider(for date: Date) -> some View {
@@ -889,13 +896,10 @@ struct ChatView: View {
                 runningActivityLine(turn: turn)
             }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
-                // Single-line footer: metadata + copy + feedback / actions.
-                HStack(spacing: 8) {
-                    Text(turnTime(turn.startedAt))
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                        .help(turn.usage.map { "\($0.summary) · \(turn.durationText ?? "")" } ?? "")
-                    CopyIconButton(text: TurnMarkdown.render(turn), help: "复制本回合")
+                // Codex keeps completion actions as a quiet icon row. Time,
+                // usage and duration remain discoverable in the copy tooltip.
+                HStack(spacing: 10) {
+                    CopyIconButton(text: TurnMarkdown.render(turn), help: turnMetadataHelp(turn))
                         .controlSize(.mini)
                     if isLast, turn.status == .completed {
                         Button {
@@ -923,7 +927,7 @@ struct ChatView: View {
                                 store.newThread()
                                 store.sendUserMessage(turn.userInput)
                             } label: {
-                                Label("以此输入开新任务", systemImage: "plus.message")
+                                Image(systemName: "arrow.turn.up.right")
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             }
                             .buttonStyle(.borderless)
@@ -936,7 +940,7 @@ struct ChatView: View {
                         Button {
                             store.sendUserMessage(turn.userInput)
                         } label: {
-                            Label("重试", systemImage: "arrow.clockwise")
+                            Image(systemName: "arrow.clockwise")
                                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         }
                         .buttonStyle(.borderless)
@@ -946,7 +950,8 @@ struct ChatView: View {
                     }
                     Spacer()
                 }
-                .padding(.leading, 8)
+                .foregroundStyle(DSHTheme.labelTertiary)
+                .padding(.top, 1)
             }
         }
     }
@@ -974,23 +979,27 @@ struct ChatView: View {
     /// "已处理 8 分 53 秒 >" — Codex's quiet completed-work boundary.
     private func workDurationChip(turn: Turn) -> some View {
         let expanded = expandedWork.contains(turn.id)
-        return VStack(alignment: .leading, spacing: 8) {
+        return HStack(spacing: 9) {
             Button {
                 toggleWork(turn.id)
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Text("已处理 \(localizedWorkDuration(turn.duration))")
                     Image(systemName: "chevron.right")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .rotationEffect(.degrees(expanded ? 90 : 0))
                 }
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DSHTheme.labelTertiary)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(expanded ? "折叠处理过程" : "展开处理过程")
-            Divider()
+            Rectangle()
+                .fill(DSHTheme.border)
+                .frame(height: 1)
         }
+        .padding(.vertical, 2)
     }
 
     private func firstActivityBlockIndex(_ blocks: [TurnPresentationBlock]) -> Int? {
@@ -1045,18 +1054,18 @@ struct ChatView: View {
     /// control, so historical chat content never grows another stop card.
     @ViewBuilder
     private func runningActivityLine(turn: Turn) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "text.bubble")
+        HStack(spacing: 7) {
+            ProgressView()
+                .controlSize(.mini)
+                .frame(width: 16, height: 16)
             Text(runningActivityLabel(turn))
-                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .help(runningActivityLabel(turn))
-                .runningTextShimmer(active: true)
             Spacer(minLength: 0)
         }
-        .foregroundStyle(.secondary)
-        .opacity(0.78)
+        .foregroundStyle(DSHTheme.labelTertiary)
     }
 
     private func runningActivityLabel(_ turn: Turn) -> String {
@@ -1384,13 +1393,12 @@ struct ComposerView: View {
             VStack(spacing: store.activeQueue.isEmpty ? 0 : -25) {
                 queueStatusBar
 
-                // Centered, max-width rounded dock (mirrors the DSH composer
-                // 'composer-card-max-width'). The input and its controls live
-                // inside one raised card.
-                VStack(spacing: 8) {
-            GrowingTextEditor(
+                // Codex Desktop keeps text and controls inside one quiet card.
+                VStack(spacing: 10) {
+                GrowingTextEditor(
                     text: $text,
                     placeholder: composerPlaceholder,
+                    minHeight: 38,
                     maxHeight: editorExpanded ? 320 : 150,
                     focused: $focused,
                     onSubmit: send
@@ -1422,7 +1430,7 @@ struct ComposerView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "plus.circle")
+                        Image(systemName: "plus")
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
@@ -1447,8 +1455,7 @@ struct ComposerView: View {
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .lineLimit(1)
                             }
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(DSHTheme.brandSoft, in: Capsule())
+                            .padding(.horizontal, 3).padding(.vertical, 3)
                             .help("自进化会话固定工作在 \(thread.cwd ?? repoName)，消息只发进本会话")
                             .accessibilityLabel("自进化会话，工作目录 \(thread.cwd ?? repoName)")
                         }
@@ -1524,8 +1531,7 @@ struct ComposerView: View {
                                         .truncationMode(.middle)
                                 }
                             }
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(DSHTheme.surface, in: Capsule())
+                            .padding(.horizontal, 3).padding(.vertical, 3)
                             .help("\(p.displayName) · \(p.displayPath)")
                             .accessibilityLabel("当前项目 \(p.displayName), 路径 \(p.displayPath), 点击切换")
                         }
@@ -1551,8 +1557,7 @@ struct ComposerView: View {
                                 Image(systemName: "folder").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(.secondary)
                                 Text("选择项目").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             }
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(DSHTheme.surface, in: Capsule())
+                            .padding(.horizontal, 3).padding(.vertical, 3)
                         }
                         .menuStyle(.borderlessButton)
                         .menuIndicator(.hidden)
@@ -1612,7 +1617,6 @@ struct ComposerView: View {
                         }
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "cpu").font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             Text(store.modelDisplayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             if isRunning {
                                 ProgressView().controlSize(.mini)
@@ -1622,10 +1626,11 @@ struct ComposerView: View {
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                             }
+                            Image(systemName: "chevron.down")
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         }
-                        .foregroundStyle(DSHTheme.brand)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(DSHTheme.brandSoft, in: Capsule())
+                        .foregroundStyle(DSHTheme.labelDim)
+                        .padding(.horizontal, 3).padding(.vertical, 3)
                         .help(L10n.modelChipHint + modelContextTooltip)
                         .accessibilityLabel("模型 \(store.modelDisplayName), 来自独立配置")
                     }
@@ -1634,29 +1639,35 @@ struct ComposerView: View {
 
                     if isRunning {
                         Button(action: { store.cancelActiveTurn() }) {
-                            Label("停止", systemImage: "stop.fill")
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            Image(systemName: "stop.fill")
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                                .frame(width: 28, height: 28)
+                                .foregroundStyle(DSHTheme.brandPrimaryText)
+                                .background(DSHTheme.brandPrimary, in: Circle())
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
+                        .buttonStyle(.plain)
                         .help("中断当前任务（排队消息会被保留）")
                         .accessibilityLabel("中断当前任务")
                     }
                     Button(action: send) {
                         Image(systemName: "paperplane.fill")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .frame(width: 28, height: 28)
+                            .foregroundStyle(DSHTheme.brandPrimaryText)
+                            .background(DSHTheme.brandPrimary, in: Circle())
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(isRunning ? DSHTheme.warn : DSHTheme.brand)
+                    .buttonStyle(.plain)
+                    .opacity(canSend ? 1 : 0.32)
                     .disabled(canSend == false)
                     .help(isRunning ? "发送（排队）(⌘↩)" : "发送 (⌘↩)")
                     .accessibilityLabel(L10n.sendButton)
                 }
             }
-            .padding(10)
-            .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+            .padding(12)
+            .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 14))
             .overlay(
-                RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
-                    .stroke(isDropTargeted ? DSHTheme.brand : (focused ? DSHTheme.brand : DSHTheme.border), lineWidth: isDropTargeted ? 2 : 1)
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isDropTargeted ? DSHTheme.brand : (focused ? DSHTheme.borderStrong : DSHTheme.border), lineWidth: isDropTargeted ? 2 : 1)
             )
             .frame(maxWidth: contentWidth)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -1788,8 +1799,8 @@ struct ComposerView: View {
                 Image(systemName: currentPermission.icon).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Text(currentPermission.title).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             }
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(DSHTheme.surface, in: Capsule())
+            .foregroundStyle(currentPermission.id == PermissionChoice.full.id ? DSHTheme.warn : DSHTheme.labelDim)
+            .padding(.horizontal, 3).padding(.vertical, 3)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -1802,8 +1813,8 @@ struct ComposerView: View {
             ?? PermissionChoice.full
     }
 
-    /// ZCode-style composer shortcut: visibility is a separate preference;
-    /// the dot reports the actual enablement + permission + MCP state.
+    /// Compact computer-control status. Codex's composer keeps secondary
+    /// capabilities icon-only so the permission and model remain scannable.
     private var computerControlChip: some View {
         let _ = computerPermissionRefresh
         return Button {
@@ -1812,19 +1823,16 @@ struct ComposerView: View {
                 object: SettingsView.Tab.computer.rawValue
             )
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 3) {
                 Image(systemName: "display")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Text("电脑操作")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Circle()
                     .fill(computerControlStatusColor)
                     .frame(width: 6, height: 6)
             }
             .foregroundStyle(computerUseEnabled ? DSHTheme.labelDim : DSHTheme.labelTertiary)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 3)
             .padding(.vertical, 3)
-            .background(DSHTheme.surface, in: Capsule())
         }
         .buttonStyle(.plain)
         .help(computerControlStatusText + "；点击打开电脑控制设置")
@@ -1993,8 +2001,7 @@ struct ComposerView: View {
         }
     }
 
-    /// 输入框正下方 toolbar 中的圆形上下文进度条 chip。位置紧贴
-    /// 『完全访问权限』chip 后,模仿 chip 外观(capsule + caption 字号);
+    /// 输入框正下方 toolbar 中的圆形上下文进度条。位置紧贴权限控制；
     /// 内部仍然是 `CircularContextMeter`,hover/click 触发
     /// `ModelUsagePopover` 显示套餐 / 余额明细。
     @ViewBuilder
@@ -2010,8 +2017,7 @@ struct ComposerView: View {
         HStack(spacing: 4) {
             CircularContextMeter(percent: meterPercent, isActive: isRunning)
         }
-        .padding(.horizontal, 6).padding(.vertical, 3)
-        .background(DSHTheme.surface, in: Capsule())
+        .padding(.horizontal, 3).padding(.vertical, 3)
         .help("查看模型用量与剩余额度")
         .contentShape(Rectangle())
         .onAppear { store.refreshRateLimits() }

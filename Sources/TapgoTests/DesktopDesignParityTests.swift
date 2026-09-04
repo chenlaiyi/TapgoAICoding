@@ -43,11 +43,12 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(chat.contains("threadHeader(thread: thread)"), "desktop-design: 独立任务顶栏")
     t.expect(chat.contains("NotificationCenter.default.post(name: .tapgoToggleTrajectory"), "desktop-design: 轨迹栏切换可用")
     t.expect(chat.contains("activeThread == nil, let p = workspace.state.activeProject"), "desktop-design: 活跃任务输入器不重复项目入口")
-    t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 800)"), "desktop-design: 输入器宽度对齐 ZCode 桌面端")
+    t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 720)"), "desktop-design: 标准输入器与 Codex 消息列同宽")
     t.expect(!chat.contains("if hasConversation {\n                Divider()"), "desktop-design: 输入器上方没有贯穿会话区的分隔线")
     t.expect(message.contains("DSHTheme.surfaceRaised"), "desktop-design: 用户消息使用低对比灰色气泡")
     t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg"), "desktop-design: 桌面导航层级色完整")
     t.expect(content.contains("HSplitView") && content.contains("UnevenRoundedRectangle"), "desktop-design: 灰色整窗底板承载右侧圆角覆盖层")
+    t.expect(content.contains("idealWidth: 292, maxWidth: 292"), "desktop-design: 侧栏默认宽度锁定 Codex 同视口比例")
     t.expect(content.contains("ignoresSafeArea(.container, edges: .top)"), "desktop-design: 右侧覆盖层贯穿标题栏顶部")
     t.expect(content.contains("AdaptiveEnvironmentLayout.shouldShow") && content.contains("manualDetailVisible: showTrajectory"), "desktop-design: 自适应环境卡在宽窗口自动出现且不与工作台共存")
     t.expect(content.contains("RightWorkbenchView") && content.contains("HSplitView"), "desktop-design: 右侧工作台是独立可拖拽分栏")
@@ -84,7 +85,8 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(fileChangeView.contains("DSHTheme.warnAccent") && fileChangeView.contains("执行失败"),
              "desktop-design: 文件变更「执行失败」用 warnAccent 替代 .tertiary 灰")
 
-    // Historical trajectory tokens remain available for other surfaces.
+    // Historical trajectory tokens remain available for other surfaces, but
+    // Codex message-process rows must not use category colours.
     t.expect(theme.contains("trajectoryReasoning") && theme.contains("0x7C3AED") && theme.contains("0xA78BFA"),
              "desktop-design: 思考行 trajectoryReasoning 紫（light 0x7C3AED / dark 0xA78BFA）")
     t.expect(theme.contains("trajectoryToolCall") && theme.contains("0xD97706"),
@@ -94,26 +96,28 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(message.contains("ProgressView()") && message.contains("display.isFailure ? DSHTheme.error : DSHTheme.labelDim")
              && !message.contains("trajectoryColor(for: display.kind)"),
              "desktop-design: Codex 工作过程使用中性文字与尾部进度环，仅失败着色")
-    // v0.5.85 — ZCode 主窗口 6 处区域色固化为 DSHTheme.fidelityXxx token。
-    // 数据来源 artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md 区域采样表。
-    t.expect(theme.contains("fidelityTitlebar")    && theme.contains("0x232323"),
-             "desktop-design: fidelityTitlebar token 锁定 ZCode 实测 #232323")
-    t.expect(theme.contains("fidelitySidebarTop")  && theme.contains("0x3A3B3B"),
-             "desktop-design: fidelitySidebarTop token 锁定 ZCode 实测 #3A3B3B")
-    t.expect(theme.contains("fidelitySidebarMid")  && theme.contains("0x4A4B4B"),
-             "desktop-design: fidelitySidebarMid token 锁定 ZCode 实测 #4A4B4B")
-    t.expect(theme.contains("fidelityMainCanvas")  && theme.contains("0x1E1E1D"),
-             "desktop-design: fidelityMainCanvas token 锁定 ZCode 实测 #1E1E1D")
-    t.expect(theme.contains("fidelityRightbarTop") && theme.contains("0x212120"),
-             "desktop-design: fidelityRightbarTop token 锁定 ZCode 实测 #212120")
-    t.expect(theme.contains("fidelityStatusbar")   && theme.contains("0x1B1B1B"),
-             "desktop-design: fidelityStatusbar token 锁定 ZCode 实测 #1B1B1B")
+    t.expect(!message.contains("runningTextShimmer")
+             && !message.contains("DSHTheme.trajectoryReasoning")
+             && !message.contains("toolCallAccent"),
+             "desktop-design: 流式与工具过程无扫光和类别色")
+    // v0.5.92 — current Codex Desktop reference capture locks the navigation,
+    // selection and canvas planes. Source is recorded in design-qa.md.
+    t.expect(theme.contains("fidelityTitlebar")    && theme.contains("0x171717"),
+             "desktop-design: Codex 标题栏锁定 #171717")
+    t.expect(theme.contains("fidelitySidebarTop")  && theme.contains("0x272728"),
+             "desktop-design: Codex 侧栏锁定 #272728")
+    t.expect(theme.contains("fidelitySidebarMid")  && theme.contains("0x303031"),
+             "desktop-design: Codex 侧栏控件锁定 #303031")
+    t.expect(theme.contains("fidelityMainCanvas")  && theme.contains("0x171717"),
+             "desktop-design: Codex 消息画布锁定 #171717")
+    t.expect(theme.contains("sidebarSelection") && theme.contains("0x383839"),
+             "desktop-design: Codex 任务选中态保持低对比")
     // v0.5.87 — fidelity patch 3/3: main_canvas / rightbar_top 切到 DSHTheme.fidelityMainCanvas / fidelityRightbarTop
     t.expect(chat.contains("DSHTheme.fidelityMainCanvas"),
              "desktop-design: ChatView 主体背景切到 fidelityMainCanvas token")
     t.expect(workbench.contains("DSHTheme.fidelityRightbarTop"),
              "desktop-design: RightWorkbenchView 外层 + 顶栏背景切到 fidelityRightbarTop token (>=2 处)")
-    // v0.5.90 — message canvas follows the current ZCode 3.10.2 evidence:
+    // Message canvas follows the current Codex Desktop evidence:
     // user = quiet raised bubble, assistant = unadorned markdown on canvas.
     t.expect(sidebar.contains("DSHTheme.fidelitySidebarMid"),
              "desktop-design: SidebarView 视图模式切换器背景切到 fidelitySidebarMid token (closes sidebar_mid -15/255)")
@@ -123,15 +127,23 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 助手正文无色条与外层卡片")
     t.expect(message.contains("MarkdownMessageView(text, isStreaming: isStreaming)"),
              "desktop-design: 流式状态由正文内轻量光标承担")
-    t.expect(chat.contains("Text(turnTime(turn.startedAt))") && !chat.contains("Text(turnTime(turn.startedAt) +"),
-             "desktop-design: 完成态页脚只常驻时间，token 统计收入 tooltip")
+    t.expect(!chat.contains("Text(turnTime(turn.startedAt))") && chat.contains("turnMetadataHelp(turn)"),
+             "desktop-design: 完成态页脚只显示图标，时间与 token 收入 tooltip")
+    t.expect(chat.contains("Image(systemName: \"arrow.turn.up.right\")")
+             && !chat.contains("Label(\"以此输入开新任务\", systemImage:"),
+             "desktop-design: 新任务动作使用 Codex 式图标，不常驻长标签")
     t.expect(chat.contains("Text(\"已处理 \\(localizedWorkDuration(turn.duration))\")"),
              "desktop-design: 完成过程使用 Codex 的已处理时长文案")
     t.expect(chat.contains("FileEditBatchView(files: fileChanges)"),
              "desktop-design: 完成态保留独立文件变更摘要卡")
-    t.expect(fileChangeView.contains("private static let foldThreshold = 3")
-             && fileChangeView.contains("FileChangeRowView(change: f)"),
-             "desktop-design: 文件卡默认预览三项并复用可查看差异的真实文件行")
+    t.expect(fileChangeView.contains("@State private var expanded = false")
+             && fileChangeView.contains("Button(expanded ? \"收起\" : \"审核\")")
+             && fileChangeView.contains("DiffView(change: file)"),
+             "desktop-design: 文件结果卡默认收起并提供真实差异审核")
+    t.expect(chat.contains(".background(DSHTheme.brandPrimary, in: Circle())")
+             && chat.contains("currentPermission.id == PermissionChoice.full.id")
+             && chat.contains("minHeight: 38"),
+             "desktop-design: composer 使用紧凑输入高度、圆形主动作与纯文本权限状态")
     t.expect(markdown.contains("inlineSegments(_ text: String)")
              && markdown.contains("MarkdownMessageView.inlineSegments(i < row.count ? row[i] : \"\")"),
              "desktop-design: 表格单元格渲染行内 Markdown 而非暴露标记源码")
