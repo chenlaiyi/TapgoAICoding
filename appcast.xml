@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.89</title>
+            <pubDate>Fri, 04 Sep 2026 21:41:26 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.89</link>
+            <sparkle:version>0.5.89</sparkle:version>
+            <sparkle:shortVersionString>0.5.89</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.89
+
+- 「参照目标 IDE 风格」trajectory 配色全员到位：
+  - `MessageRow.swift` 助手正文（`MessageBubble` 的 assistant 分支）在 MarkdownMessageView 前加 2pt × 22pt `DSHTheme.trajectoryAssistant.opacity(0.55)` 左缘胶囊，与 v0.5.88 用户气泡左缘 `trajectoryUser` 胶囊形成"用户蓝 / 助手青"的对称视觉锚点 — 5 色 trajectory 板（reasoning 紫 / toolCall 琥珀 / toolResult 天蓝 / user 蓝 / assistant 青）现已全部挂到 UI。
+- ⌘\ 侧边栏切换（zcode 风格的全局快捷方式）：
+  - `App.swift` `CommandGroup(after: .windowList)` 新增 `切换侧边栏` 按钮，`keyboardShortcut("\\", modifiers: [.command])`
+  - `App.swift` 加 `tapgoToggleSidebar` Notification.Name；`ContentView` 接收并以 0.18s easeInOut 动画切换 `sidebarVisible`
+  - 命令面板新增两条入口：`切换侧边栏 ⌘\` 和 `进入自进化会话 ⌘⌥E`，让不记快捷键的用户也能搜到
+- 测试：2711 通过 / 0 失败（`DesktopDesignParityTests` 由 66 → 69，新锁 trajectoryAssistant 助手 accent + ⌘\ 双入口）
+- 发版流程沿用 v0.5.87/0.5.88：单条 `./scripts/evolve.sh patch ...` 跑 build → test → commit → tag → push → 签 zip → gh release create → 刷 appcast → push main → 重打 .app；已装客户端 Sparkle 下一轮 poll 拉取 v0.5.89 升级提示。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.89/Tapgo-AICoding-0.5.89.zip" length="9510906" type="application/octet-stream" sparkle:edSignature="Xs2dr3wk8tSwTzQ+AlP5hMnf9lP6YdzYNTeSYV29YYC2vgv+NOt/vodpyAGoOwsn7BNDVh/8tQyx9aRirfqcDg=="/>
+        </item>
+        <item>
             <title>0.5.88</title>
             <pubDate>Fri, 04 Sep 2026 21:31:17 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.88</link>
@@ -49,28 +70,6 @@
 - 已知限制：sidebar_mid 区域与目标 IDE 仍差 15/255，需后续单独排查；当前未跑自动 pixelmatch 验证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.87/Tapgo-AICoding-0.5.87.zip" length="9505413" type="application/octet-stream" sparkle:edSignature="dWBAY+/iFrA+pQoXex6Mb41wm4/MW1KKkMyGoh/5F/mpYHdb22cNaw64stluBjUh3YuC6bz9Y3B4qxVqEX0yBA=="/>
-        </item>
-        <item>
-            <title>0.5.86</title>
-            <pubDate>Fri, 04 Sep 2026 14:44:01 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.86</link>
-            <sparkle:version>0.5.86</sparkle:version>
-            <sparkle:shortVersionString>0.5.86</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.86
-
-- 「参照目标 IDE 风格」fidelity patch 2/2：3 处视图背景切到 `fidelityTitlebar` token：
-  - `ChatView.swift` L691 composer 工具栏 `.background(DSHTheme.titlebarBg)` → `.background(DSHTheme.fidelityTitlebar)`
-  - `SidebarView.swift` L1036 底栏 `.background(DSHTheme.titlebarBg.opacity(0.45))` → `.background(DSHTheme.fidelityTitlebar.opacity(0.45))`
-  - `RightWorkbenchView.swift` L864 工具栏 `.background(DSHTheme.titlebarBg)` → `.background(DSHTheme.fidelityTitlebar)`
-  - 颜色由 DSHTheme 旧值 `#1A1A1C` (rgb 26,28) 切到目标 IDE 实测色 `#232323` (rgb 35,35,35)，3 处背景同步提亮 9 个等级，跟 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md` 标题栏实测色对齐。
-  - `DesktopDesignParityTests.swift` 新增 3 个 `t.expect` 断言锁定 3 处视图对 `fidelityTitlebar` 的引用，未来谁退回 `titlebarBg` CI 立即失败。
-- 配套：v0.5.85 引入的 6 个 `fidelityXxx` token 全部生效（titlebar/sidebarTop/sidebarMid/mainCanvas/rightbarTop/statusbar），本次只切 3 处主窗口高频可见背景；其余 4 个 token 留待后续 patch 视情况切换。
-- 测试：2683 通过 / 13 失败（新增 3 个 view-tied 断言；13 个失败仍为预存在远程 SSH 集成 + auth.json 缺失，零新回归）。
-- 已知限制：未跑自动 pixelmatch 验证（需要 screencapture + ImageMagick 链路，下次 patch 接入）；用户可对比本地 main canvas 区域色是否更接近目标 IDE 1220x1287 实机截图。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.86/Tapgo-AICoding-0.5.86.zip" length="9504713" type="application/octet-stream" sparkle:edSignature="bbD0P7fREDdlS+pqhBHqyDOtZj90EQl22WyVCRe4ywOLxg1pY+gt5NA3jU/YP9Q5SEsvjjlRo7XaQ2P8sKR6CQ=="/>
         </item>
     </channel>
 </rss>
