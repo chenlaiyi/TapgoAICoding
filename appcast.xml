@@ -3,6 +3,24 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.94</title>
+            <pubDate>Sat, 05 Sep 2026 00:58:13 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.94</link>
+            <sparkle:version>0.5.94</sparkle:version>
+            <sparkle:shortVersionString>0.5.94</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.94
+
+- 左下角账号区按 Codex Desktop 收为约 46pt 单行结构，头像缩至 22pt，名称与更新入口垂直居中。
+- 模型、套餐和额度移入账号提示及辅助功能值，不再常驻占用第二行；后台额度刷新逻辑保持不变。
+- 新增安静的顶部分隔，更新入口降为 24pt 次要操作，有新版本时再用品牌色强调。
+- 保留连接手机、自进化日志、自进化、设置、退出登录及检查更新的真实功能。
+- 完整自动回归 `2716 passed, 0 failed`，Developer ID Release App 构建与真实界面回归通过。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.94/Tapgo-AICoding-0.5.94.zip" length="9438217" type="application/octet-stream" sparkle:edSignature="AM+cPxx5SrpoTtPbhDk69TVnV+ymcfUG158NM8FaIkLc7lVbI5ekJl14QXQ+29NzjQUEmLp+aor23Y+QfUZ3Aw=="/>
+        </item>
+        <item>
             <title>0.5.93</title>
             <pubDate>Sat, 05 Sep 2026 00:40:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.93</link>
@@ -42,26 +60,6 @@
 验证：同一 1148 × 1344 视口与 Codex 实机并排复核通过；完整测试、Release 构建、Developer ID 深度签名及本机安装回读均纳入本次发布验收。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.92/Tapgo-AICoding-0.5.92.zip" length="9426614" type="application/octet-stream" sparkle:edSignature="LaOmFoxJrnlf9F/w6hgnHLvecC5bN5y9Uf1YEIYBkfEiexVDFDHtTq9FMx57W8/mcgkYUaKoq1ag6s0FjSoZAQ=="/>
-        </item>
-        <item>
-            <title>0.5.91</title>
-            <pubDate>Fri, 04 Sep 2026 22:33:40 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.91</link>
-            <sparkle:version>0.5.91</sparkle:version>
-            <sparkle:shortVersionString>0.5.91</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.91
-
-本版继续收紧消息输出，使阅读节奏与 Codex 桌面端更接近。
-
-- 默认使用自然、连贯的短段落，仅在明显提升扫读效率时使用标题、列表或表格，减少机械化报告模板。
-- 进行中过程改为中性文字与轻量进度提示；完成后以“已处理 + 时长”折叠过程，普通工具事件不再按类别大面积着色。
-- 文件改动在回复后保留独立摘要卡，显示增删行数并默认预览 3 个文件，仍可直接查看具体差异。
-- Markdown 表格改为平面分隔样式，支持单元格内加粗、行内代码和链接，避免显示原始标记。
-- 用户消息操作按钮改为悬停出现；引用、代码块和流式光标进一步降低装饰噪声。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.91/Tapgo-AICoding-0.5.91.zip" length="9425934" type="application/octet-stream" sparkle:edSignature="CEY8uIqOoKKSjYTfEzI/eneEAWsAMWmblrsUPIE2AG5pAYxp26V8u4afl0q0rdJ8W4LBo/pJkQHYQ7b4Nz+MCA=="/>
         </item>
     </channel>
 </rss>
