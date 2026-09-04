@@ -1246,6 +1246,8 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 **Test status**: — 2707 passed, 0 failed —
 **Changed**:
 - feat(ui): align message experience with Codex Desktop
-- 基于 Codex Desktop 实机参考统一深色层级、292pt 侧栏与 720pt 消息/输入列。\n- 重构流式思考、工具过程、完成态操作与文件审核卡，去除扫光、冗余标签和胶囊噪声。\n- 同视口并排完成两轮视觉复核，并补充 UI 结构回归测试。
+- 基于 Codex Desktop 实机参考统一深色层级、292pt 侧栏与 720pt 消息/输入列。
+- 重构流式思考、工具过程、完成态操作与文件审核卡，去除扫光、冗余标签和胶囊噪声。
+- 同视口并排完成两轮视觉复核，并补充 UI 结构回归测试。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
