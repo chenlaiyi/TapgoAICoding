@@ -122,7 +122,7 @@ let allSections: [String] = [
     "ComputerUseMCP: config.toml 段写入",
     "AppUpdate: GitHub Releases distribution",
     "AdminLogin: selected split design",
-    "Desktop: ZCode interaction design",
+    "Desktop: design parity",
     "Workbench: ZCode tab lifecycle",
         "Evolution log sync (makeHistory vs EVOLUTION.md)",
     "FakeHarnessTransport: start + send + exit",
@@ -819,7 +819,7 @@ struct TapgoTestMain {
         await runIfInScope(runner, "AdminLogin: selected split design") {
             runAdminLoginDesign(runner)
         }
-        await runIfInScope(runner, "Desktop: ZCode interaction design") {
+        await runIfInScope(runner, "Desktop: design parity") {
             runDesktopZCodeDesign(runner)
         }
         await runIfInScope(runner, "Evolution log sync (makeHistory vs EVOLUTION.md)") {

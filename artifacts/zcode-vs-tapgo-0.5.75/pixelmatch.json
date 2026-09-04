@@ -1,14 +1,14 @@
 {
   "source": {
-    "tapgo": "/Users/chanlaiyi/TapgoAICoding/artifacts/zcode-vs-tapgo-0.5.75/tapgo-main.png",
-    "zcode": "/Users/chanlaiyi/TapgoAICoding/artifacts/zcode-vs-tapgo-0.5.75/01-zcode-baseline.png"
+    "tapgo": "/Users/chanlaiyi/TapgoAICoding/artifacts/fidelity-vs-tapgo-0.5.75/tapgo-main.png",
+    "reference": "/Users/chanlaiyi/TapgoAICoding/artifacts/fidelity-vs-tapgo-0.5.75/01-baseline.png"
   },
   "original": {
     "tapgo": {
       "w": 963,
       "h": 1344
     },
-    "zcode": {
+    "reference": {
       "w": 1220,
       "h": 1287
     }

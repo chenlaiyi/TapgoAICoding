@@ -25,7 +25,10 @@ let package = Package(
         // *real* code instead of a hand-written copy.
         .target(
             name: "TapgoCore",
-            path: "Sources/TapgoCore"
+            path: "Sources/TapgoCore",
+            resources: [
+                .copy("Resources/PhoneRemote")
+            ]
         ),
         // Computer-use primitives (screenshot / CGEvent input) shared by the
         // app (PhoneRemote) and the MCP server binary. Needs AppKit, so it

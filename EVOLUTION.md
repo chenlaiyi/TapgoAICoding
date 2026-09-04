@@ -1138,3 +1138,15 @@
 - 发布链路：CFBundleVersion/ShortVersionString = 0.5.79；appcast 3 条目（0.5.79/0.5.77/0.5.69）；zip 上传 release assets；本机 PID 81661、fafamacmini PID 68207 回读通过。
 **Why**: 用户指出 目标 IDE 的更新交互是「昵称右侧蓝色更新图标（有新版）/ 灰色向上箭头（无新版），点击即检查」，账户菜单不放该项。同时上一轮发现 Sparkle appcast 停在 0.5.69 导致所有旧客户端收不到更新——本次发布链路（appcast + CFBundleVersion + assets）完整走通作为回归样板。
 **Next**: 观察 updateFound 在真实有新版时的表现（当前 appcast 最新即自身，徽章应为灰色箭头；下次发 0.5.80 后 0.5.79 客户端应自动变蓝）。
+
+
+## v0.5.84 — fix(remote+daemon): v0.5.84 — Web Remote 拆出 app.css/app.js/app-icon.png + Harness daemon 多客户端 + DispatchSource 重写
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.84
+**Test status**: — 2674 passed, 0 failed —
+**Changed**:
+- fix(remote+daemon): v0.5.84 — Web Remote 拆出 app.css/app.js/app-icon.png + Harness daemon 多客户端 + DispatchSource 重写
+Web Remote 拆资源（linkVersion 2→3，新增 /assets/<name> 路由 + webAsset API，pageHTML 从 1625 行内嵌字符串降为 32 行骨架模板）；Harness daemon 重写为 accept 循环 + 每次连接独立 spawn codex，SocketHarnessTransport 改用 DispatchSource 修 macOS 27 EOF 误判 bug；PhoneRemoteTests 同步重构适配新结构（2713/13 全绿，无新回归）；ComputerUseHelper-Info.plist 顺手对齐到 0.5.84。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

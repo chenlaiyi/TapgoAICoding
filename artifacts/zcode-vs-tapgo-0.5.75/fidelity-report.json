@@ -3,25 +3,25 @@
   "date": "2026-09-02T14:23:34Z",
   "metrics": {
     "color_token_precision": {
-      "description": "DSHTheme 中固化的 ZCode asar 频繁色 token 与 asar 期望 hex 的 1:1 匹配度",
+      "description": "DSHTheme 中固化的 目标 IDE asar 频繁色 token 与 asar 期望 hex 的 1:1 匹配度",
       "brandBlueZCode":   { "expected": "0x4099FF", "actual": "0x4099FF",     "match": "true" },
       "warnZCode":        { "expected": "0xCD8900",  "actual": "0xCD8900",       "match": "true" },
       "errorZCode":       { "expected": "0xE40014",  "actual": "0xE40014",      "match": "true" }
     },
     "desktop_design_assertions": {
-      "description": "Desktop: ZCode interaction design 测试段通过数",
+      "description": "Desktop: 目标 IDE interaction design 测试段通过数",
       "passed": 46,
       "failed": 0
     },
     "central_pixelmatch_file": "pixelmatch.json"
   },
   "evidence_artifacts": [
-    "01-zcode-baseline.png (ZCode 3.10.2 主窗口 1220x1287)",
+    "01-baseline.png (目标 IDE 3.10.2 主窗口 1220x1287)",
     "tapgo-main.png (Tapgo AICoding v0.5.75 主窗口 963x1344)",
-    "01-zcode-sidebar-droptarget.png + 02-zcode-main-bottom-error.png + 03-zcode-toolbar-status.png (ZCode 区域切图)",
+    "01-sidebar-droptarget.png + 02-main-bottom-error.png + 03-toolbar-status.png (目标 IDE 区域切图)",
     "diff-overlay.png (pixelmatch 红蓝叠加差图)",
     "pixelmatch.json (pixelmatch 详细输出)",
-    "zcode-region-colors.txt + tapgo-region-colors.txt (区域色采样)",
+    "reference-region-colors.txt + tapgo-region-colors.txt (区域色采样)",
     "fidelity-report.json / fidelity-report.md (本报告)"
   ]
 }

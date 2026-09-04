@@ -19,7 +19,9 @@ public enum PhoneRemote {
     /// 端口被占用时向后扫描的范围。
     public static let portScanRange = 8723...8733
     /// 链接协议版本, 进 H5 页面与 /api/state 便于以后兼容判断。
-    public static let linkVersion = 2
+    public static let linkVersion = 3
+    /// Web Remote 静态客户端版本。资源 URL 带版本参数，升级后不会误用旧缓存。
+    public static let webClientVersion = 1
 
     /// transcript 最多回带最近多少个 turn (H5 端向下翻由 Mac 端后续版本支持)。
     public static let maxTranscriptTurns = 30
@@ -190,6 +192,8 @@ public enum PhoneRemote {
     public enum Route: Equatable {
         /// GET /r/<token>(/) — H5 页面本体。
         case page
+        /// GET /r/<token>/assets/<name> — 随 App 发布的 Web Remote 静态资源。
+        case asset(name: String)
         /// GET /r/<token>/api/state — 全量状态快照 JSON。
         case state
         /// POST /r/<token>/api/send `{"text": "..."}` — 向当前会话发送指令。
@@ -298,6 +302,11 @@ public enum PhoneRemote {
         case [], [""]:
             guard method == "GET" || method == "HEAD" else { return .failure(.badRequest) }
             return .success(.page)
+        case let asset where asset.count == 2 && asset[0] == "assets":
+            guard method == "GET" || method == "HEAD",
+                  webAssetNames.contains(asset[1])
+            else { return .failure(.notFound) }
+            return .success(.asset(name: asset[1]))
         case ["api", "state"]:
             guard method == "GET" else { return .failure(.badRequest) }
             return .success(.state)
@@ -848,7 +857,17 @@ public enum PhoneRemote {
     /// 渲染 H5 单页。页面静态、无外链资源, 数据全部经 `/api/state` JSON
     /// 获取, DOM 一律用 textContent 写入, 天然免 XSS。
     public static func pageHTML(token: String) -> String {
-        """
+        if let url = Bundle.module.url(forResource: "index",
+                                       withExtension: "html",
+                                       subdirectory: "PhoneRemote"),
+           let template = try? String(contentsOf: url, encoding: .utf8) {
+            return template
+                .replacingOccurrences(of: "__TAPGO_TOKEN_JSON__",
+                                      with: JSONEncoder.tokenLiteral(token))
+                .replacingOccurrences(of: "__TAPGO_WEB_VERSION__",
+                                      with: String(webClientVersion))
+        }
+        return """
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
@@ -1662,6 +1681,59 @@ public enum PhoneRemote {
         </body>
         </html>
         """
+    }
+
+    // MARK: - Web Remote 静态资源
+
+    public struct WebAsset: Equatable {
+        public var name: String
+        public var contentType: String
+        public var data: Data
+
+        public init(name: String, contentType: String, data: Data) {
+            self.name = name
+            self.contentType = contentType
+            self.data = data
+        }
+    }
+
+    private static let webAssetNames: Set<String> = [
+        "app.css", "app.js", "app-icon.png",
+    ]
+
+    public static func webAsset(named name: String) -> WebAsset? {
+        guard webAssetNames.contains(name),
+              let dot = name.lastIndex(of: ".")
+        else { return nil }
+        let stem = String(name[..<dot])
+        let ext = String(name[name.index(after: dot)...])
+        guard let url = Bundle.module.url(forResource: stem,
+                                          withExtension: ext,
+                                          subdirectory: "PhoneRemote"),
+              let data = try? Data(contentsOf: url)
+        else { return nil }
+        let contentType: String
+        switch ext {
+        case "css": contentType = "text/css; charset=utf-8"
+        case "js": contentType = "text/javascript; charset=utf-8"
+        case "png": contentType = "image/png"
+        default: contentType = "application/octet-stream"
+        }
+        return WebAsset(name: name, contentType: contentType, data: data)
+    }
+
+    public static func webAssetResponse(named name: String) -> Data {
+        guard let asset = webAsset(named: name) else { return notFoundResponse }
+        var head = "HTTP/1.1 200 OK\r\n"
+        head += "Content-Type: \(asset.contentType)\r\n"
+        head += "Content-Length: \(asset.data.count)\r\n"
+        head += "Connection: close\r\n"
+        head += "Cache-Control: private, max-age=31536000, immutable\r\n"
+        head += "X-Content-Type-Options: nosniff\r\n"
+        head += "\r\n"
+        var out = Data(head.utf8)
+        out.append(asset.data)
+        return out
     }
 }
 

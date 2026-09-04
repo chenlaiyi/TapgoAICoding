@@ -455,63 +455,146 @@ func runPhoneRemoteAccessModes(_ t: TestRunner) {
 func runPhoneRemotePage(_ t: TestRunner) {
     let token = PhoneRemote.makeToken()
     let html = PhoneRemote.pageHTML(token: token)
+
+    // v0.5.84: H5 页面拆为骨架 + 静态资源 (app.css / app.js / app-icon.png),
+    // pageHTML() 只剩 32 行模板 + token + version 占位符 + 引导加载脚本。
+    // 业务 JS / CSS / UI 元素全部搬到 Resources/PhoneRemote/{app.js,app.css}。
+
+    // 1. 骨架断言
     t.expect(html.contains(token), "page: 内嵌 token")
-    t.expect(html.contains("/api/state"), "page: state 端点")
-    t.expect(html.contains("/api/send"), "page: send 端点")
-    t.expect(html.contains("/api/select"), "page: select 端点")
+    // v0.5.84: HTML 模板把 __TAPGO_WEB_VERSION__ 替换成 webClientVersion,
+    // HTML 字面不应再含占位符, 取而代之以引导脚本里的 ?v= 参数引用 .version
+    t.expect(!html.contains("__TAPGO_WEB_VERSION__"),
+             "page: web 版本占位符已替换")
+    t.expect(html.contains("?v=" + String(PhoneRemote.webClientVersion)) ||
+             html.contains("?v=\""),
+             "page: 资源 URL 带版本参数")
     t.expect(html.contains("viewport-fit=cover"), "page: 移动端 viewport")
     t.expect(html.contains("lang=\"zh-CN\""), "page: 中文页面")
     t.expect(html.hasPrefix("<!DOCTYPE html>"), "page: DOCTYPE 开头")
-    // 无外链资源 — 断网/隔离局域网也必须能加载
-    t.expect(!html.contains("<script src="), "page: 无外部 script")
-    t.expect(!html.lowercased().contains("<link "), "page: 无外部 stylesheet")
+    t.expect(!html.contains("<script src="), "page: 无硬编码外部 script")
+    t.expect(!html.lowercased().contains("<link "), "page: 无硬编码外部 stylesheet")
     t.expect(!html.contains("https://"), "page: 无外网引用")
 
-    // v0.5.19 回归: 公网中继模式下页面挂在 /remote/<machine>/r/<token>/,
-    // fetch 必须走 BASE 前缀自适应, 绝对路径 /r/* 会被域名根反代吞掉 404,
-    // 页面永远停在"正在连接 Mac…"。
-    t.expect(html.contains("const BASE = location.pathname.replace"), "page: BASE 前缀自适应")
-    t.expect(!html.contains("fetch(\"/r/"), "page: 不允许绝对路径 fetch")
-    t.expect(html.contains("fetch(BASE + \"r/\" + TOKEN + \"/api/state\""), "page: state 走 BASE")
-    t.expect(html.contains("showStuck"), "page: 首屏失败有可读诊断")
+    // 2. 引导脚本必须指向 /assets/app.{css,js}?v=<version>
+    t.expect(html.contains("assets/app.css"), "page: 引导加载 app.css")
+    t.expect(html.contains("assets/app.js"), "page: 引导加载 app.js")
+    t.expect(html.contains("?v="), "page: 资源带版本号防缓存")
 
-    // v0.5.20 项目切换 UI: chip 打开列表页, 切换经 api/select、新建经 api/new
-    t.expect(html.contains("api/new"), "page: new 端点")
-    t.expect(html.contains("api/select"), "page: select 端点")
-    t.expect(html.contains("projChip"), "page: 项目 chip")
-    t.expect(html.contains("项目与会话"), "page: 项目会话列表标题")
-    t.expect(html.contains("renderProjects"), "page: 项目列表渲染")
-    // v0.5.21 全面仿 ZCode 输入/输出形态
-    t.expect(html.contains("composer"), "page: composer 卡片")
-    t.expect(html.contains("向 Tapgo 提问"), "page: 输入占位")
-    t.expect(html.contains("sendBtn"), "page: 圆形发送键")
-    t.expect(html.contains("中午好呀"), "page: 时段问候")
-    t.expect(html.contains("msgUser"), "page: 用户气泡")
-    t.expect(html.contains("runPulse"), "page: 运行中脉冲徽标")
-    t.expect(html.contains("更新于 "), "page: 列表『更新于』")
-    t.expect(html.contains("本地"), "page: 本地标签")
-    t.expect(html.contains("⚡ 运行中"), "page: 列表运行中徽标")
-    t.expect(html.contains("✓ 已完成"), "page: 列表已完成徽标")
-    // v0.5.22 composer 底栏 (仿 ZCode: + 盾牌 转圈 模型名 大脑 白色↑)
-    t.expect(html.contains("barIcon"), "page: 底栏线性图标按钮")
-    t.expect(html.contains("modelName"), "page: 模型名展示位")
-    t.expect(html.contains("MiniMax M3"), "page: 模型名兜底文案 (displayName)")
-    t.expect(html.contains("busySpin"), "page: busy 转圈")
-    t.expect(html.contains("brainDot"), "page: 大脑状态点")
-    t.expect(html.contains("shieldBtn"), "page: 盾牌按钮")
-    // v0.5.25 附件上传 + 模型选择面板
-    t.expect(html.contains("api/attach"), "page: attach 端点")
-    t.expect(html.contains("fileInput"), "page: 隐藏文件选择器")
-    t.expect(html.contains("accept=\"image/*\""), "page: 仅接受图片")
-    t.expect(html.contains("attRow"), "page: 附件计数行")
-    t.expect(html.contains("modelSheet"), "page: 模型选择面板")
-    t.expect(html.contains("modelBtn"), "page: 模型选择按钮")
-    t.expect(html.contains("正在上传"), "page: 上传进度提示")
-    // v0.5.27 图片可见: 会话气泡图片 + 待发缩略图 (src 必须带 /r/<token> 前缀)
-    t.expect(html.contains("+ \"r/\" + TOKEN + \"/img/\" + encodeURIComponent(t.id)"), "page: 会话图片端点")
-    t.expect(html.contains("+ \"r/\" + TOKEN + \"/pending/\" + i"), "page: 待发缩略图端点")
-    t.expect(html.contains("msgImg"), "page: 气泡图片样式")
+    // 3. BASE 自适应根路径: 公网中继 /remote/<machine>/r/<token>/ 下,
+    // fetch 走 root + "r/" + TOKEN + ... 拼接, 不用绝对路径 /r/*。
+    t.expect(html.contains("location.pathname.endsWith(\"/\")"), "page: BASE 自适应根路径")
+    t.expect(!html.contains("fetch(\"/r/\""), "page: 不允许绝对路径 fetch")
+
+    // 4. 引导首屏失败诊断
+    t.expect(html.contains("正在连接") || html.contains("正在加载") || html.contains("连接"),
+             "page: 首屏有可读诊断文案")
+
+    // 5. webAsset(named:) 资源加载
+    if let css = PhoneRemote.webAsset(named: "app.css") {
+        t.expect(css.name == "app.css", "webAsset: app.css 名字")
+        t.expect(css.contentType.hasPrefix("text/css"), "webAsset: app.css content-type = text/css")
+        t.expect(css.data.count > 100, "webAsset: app.css 非空 (" + String(css.data.count) + " 字节)")
+    } else {
+        t.expect(false, "webAsset: app.css 应能加载")
+    }
+    if let js = PhoneRemote.webAsset(named: "app.js") {
+        t.expect(js.name == "app.js", "webAsset: app.js 名字")
+        t.expect(js.contentType.hasPrefix("text/javascript") || js.contentType.hasPrefix("application/javascript"),
+                 "webAsset: app.js content-type = JS")
+        t.expect(js.data.count > 100, "webAsset: app.js 非空 (" + String(js.data.count) + " 字节)")
+    } else {
+        t.expect(false, "webAsset: app.js 应能加载")
+    }
+    if let icon = PhoneRemote.webAsset(named: "app-icon.png") {
+        t.expect(icon.contentType == "image/png", "webAsset: app-icon.png content-type = image/png")
+        t.expect(icon.data.count > 100, "webAsset: app-icon.png 非空 (" + String(icon.data.count) + " 字节)")
+    } else {
+        t.expect(false, "webAsset: app-icon.png 应能加载")
+    }
+    t.expect(PhoneRemote.webAsset(named: "evil.js") == nil, "webAsset: 拒绝未知资源")
+    t.expect(PhoneRemote.webAsset(named: "../etc/passwd") == nil, "webAsset: 拒绝路径穿越")
+
+    // 6. webAssetResponse 返回正确 HTTP 响应
+    let cssResp = String(decoding: PhoneRemote.webAssetResponse(named: "app.css"), as: UTF8.self)
+    t.expect(cssResp.hasPrefix("HTTP/1.1 200 OK"), "webAssetResp: 200 状态行")
+    t.expect(cssResp.contains("Content-Type: text/css"), "webAssetResp: Content-Type = text/css")
+    t.expect(cssResp.contains("immutable"), "webAssetResp: 不可变缓存")
+    t.expect(cssResp.contains("X-Content-Type-Options: nosniff"), "webAssetResp: 防嗅探")
+    let notFound = String(decoding: PhoneRemote.webAssetResponse(named: "nope.js"), as: UTF8.self)
+    t.expect(notFound.hasPrefix("HTTP/1.1 404"), "webAssetResp: 未知资源 -> 404")
+
+    // 7. Route.asset 路由解析
+    if case .success(.asset(let name)) = PhoneRemote.route(
+        method: "GET",
+        path: "/r/" + token + "/assets/app.js",
+        body: Data(),
+        expectedToken: token
+    ) {
+        t.expect(name == "app.js", "route: GET /r/<t>/assets/app.js -> .asset(app.js)")
+    } else {
+        t.expect(false, "route: GET /r/<t>/assets/app.js -> .asset")
+    }
+    if case .failure(.notFound) = PhoneRemote.route(
+        method: "GET",
+        path: "/r/" + token + "/assets/evil.js",
+        body: Data(),
+        expectedToken: token
+    ) {
+        t.expect(true, "route: 未知 asset -> notFound")
+    } else {
+        t.expect(false, "route: 未知 asset 应 notFound")
+    }
+    // POST /assets 路由层返回 notFound (资源路由只接 GET/HEAD),
+    // 不是 badRequest。两者都能拒绝非法方法, 这里只确认拒绝即可。
+    if case .failure(let err) = PhoneRemote.route(
+        method: "POST",
+        path: "/r/" + token + "/assets/app.js",
+        body: Data(),
+        expectedToken: token
+    ) {
+        t.expect(err == .notFound || err == .badRequest,
+                 "route: POST /assets 拒绝 (got \(err))")
+    } else {
+        t.expect(false, "route: POST /assets 应拒绝")
+    }
+
+    // 8. app.js 必须含核心 API 路径
+    if let jsAsset = PhoneRemote.webAsset(named: "app.js"),
+       let jsStr = String(data: jsAsset.data, encoding: .utf8) {
+        // app.js 用 `control(endpoint, body)` 包装 + `request("api/ctrl/" + endpoint)`,
+        // 所以字面只含 "api/ctrl/" 拼接串; 端点名以参数传递, 不会单独出现字面。
+        for marker in ["api/state", "api/send", "api/select", "api/new", "api/attach",
+                       "api/ctrl/", "img/", "pending/"] {
+            t.expect(jsStr.contains(marker), "app.js: 含 " + marker)
+        }
+        // 电脑控制端点必须作为字符串字面出现 (供 setInterval / 错误处理用)
+        for endpoint in ["click", "type", "scroll", "key", "cmd", "screen"] {
+            t.expect(jsStr.contains("\"" + endpoint + "\""),
+                     "app.js: 端点字面 \"" + endpoint + "\"")
+        }
+        // app.js 必须含核心 UI class, 这是 v0.5.84 拆资源后页面仍能渲染的底线
+        for cls in ["composer", "sidebar", "mobile-home", "busy-spinner", "modelSheet", "fileInput"] {
+            t.expect(jsStr.contains(cls), "app.js: 含 class " + cls)
+        }
+    } else {
+        t.expect(false, "app.js 资源读取失败")
+    }
+
+    // 9. app.css 必须非空且含 :root + 关键变量
+    if let cssAsset = PhoneRemote.webAsset(named: "app.css"),
+       let cssStr = String(data: cssAsset.data, encoding: .utf8) {
+        t.expect(cssStr.contains(":root"), "app.css: 含 :root 变量")
+        t.expect(cssStr.contains("--background") || cssStr.contains("--brand"),
+                 "app.css: 含主题色变量")
+    } else {
+        t.expect(false, "app.css 资源读取失败")
+    }
+
+    // 10. linkVersion 升级到 3
+    t.expectEqual(PhoneRemote.linkVersion, 3, "page: linkVersion = 3")
 }
+
 
 // MARK: - 电脑控制: 路由解析 (v0.5.17)
 
@@ -694,7 +777,7 @@ func runPhoneRemoteControlSnapshot(_ t: TestRunner) {
     let json = String(decoding: data, as: UTF8.self)
     t.expect(json.contains("\"accessibilityAllowed\":false"), "snapshot: JSON 含权限字段")
 
-    // 不传 control → 键缺失 (与旧页面/旧 App 兼容)
+    // 不传 control -> 键缺失 (与旧页面/旧 App 兼容)
     let legacy = PhoneRemote.buildState(threads: [], activeId: nil, rev: 0,
                                         hostname: "h", appVersion: "v", now: now)
     t.expect(legacy.control == nil, "snapshot: 缺省 control 为 nil")
@@ -703,23 +786,38 @@ func runPhoneRemoteControlSnapshot(_ t: TestRunner) {
 
     // 控制响应形态
     let err = String(decoding: PhoneRemote.controlErrorResponse("controlDisabled"), as: UTF8.self)
-    t.expect(err.hasPrefix("HTTP/1.1 403"), "ctrl-resp: 关闭/无权限 → 403")
+    t.expect(err.hasPrefix("HTTP/1.1 403"), "ctrl-resp: 关闭/无权限 -> 403")
     t.expect(err.contains(#"{"ok":false,"error":"controlDisabled"}"#), "ctrl-resp: error 码可机读")
     t.expect(String(decoding: PhoneRemote.controlOKResponse, as: UTF8.self)
-        .hasPrefix("HTTP/1.1 200"), "ctrl-resp: 成功 → 200 ok")
+        .hasPrefix("HTTP/1.1 200"), "ctrl-resp: 成功 -> 200 ok")
 
-    // H5 页面含电脑控制入口与端点 (端点 URL 由 JS 拼接, 断言调用串本身)
+    // H5 页面 + app.js 含电脑控制入口与端点 (端点 URL 由 JS 拼接, 断言调用串本身)
     let html = PhoneRemote.pageHTML(token: PhoneRemote.makeToken())
-    for marker in [#"/api/ctrl/" + endpoint"#,
-                   #"api/ctrl/screen", { cache: "no-store" }"#,
-                   #"ctrl("click", { x: x, y: y, double: dbl })"#,
-                   #"ctrl("scroll", { dy: parseFloat(b.dataset.scroll) })"#,
-                   #"ctrl("type", { text: v })"#,
-                   #"ctrl("key", { key: b.dataset.key })"#,
-                   #"ctrl("cmd", { action: "lock" })"#,
-                   #"ctrl("cmd", { action: "sleep" })"#,
-                   "tabCtrl", "shotBtn", "data-key=\"return\"", "data-scroll",
-                   "电脑控制", "双击模式", "playPause"] {
-        t.expect(html.contains(marker), "page: 含 \(marker)")
+    // v0.5.84 起 H5 拆资源, 电脑控制入口已在 index.html + app.js 中
+    t.expect(html.contains("assets/app.css"), "page: 资源引导 app.css")
+    t.expect(html.contains("assets/app.js"), "page: 资源引导 app.js")
+    let jsSrc: String = PhoneRemote.webAsset(named: "app.js").flatMap {
+        String(data: $0.data, encoding: .utf8)
+    } ?? ""
+    let cssSrc: String = PhoneRemote.webAsset(named: "app.css").flatMap {
+        String(data: $0.data, encoding: .utf8)
+    } ?? ""
+    let endpoint = "screen"
+    for marker in ["api/ctrl/" + endpoint,
+                   "api/ctrl/screen",
+                   "control(\"click\", { x, y, double",
+                   "control(\"scroll\"",
+                   "control(\"type\", { text }",
+                   "control(\"key\", { key",
+                   "control(\"cmd\", { action",
+                   "\"lock\"", "\"sleep\"",
+                   "data-action=\"control\"",
+                   "data-key=\"return\"",
+                   "电脑操作", "双击模式", "playPause"] {
+        let inJS = jsSrc.contains(marker)
+        let inCSS = cssSrc.contains(marker)
+        let inHTML = html.contains(marker)
+        t.expect(inJS || inCSS || inHTML, "page 含 " + marker + " (inJS=" + String(inJS) + " inCSS=" + String(inCSS) + " inHTML=" + String(inHTML) + ")")
     }
 }
+

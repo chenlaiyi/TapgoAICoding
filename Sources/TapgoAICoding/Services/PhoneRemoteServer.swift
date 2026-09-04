@@ -313,6 +313,8 @@ final class PhoneRemoteController: ObservableObject {
             return PhoneRemote.httpResponse(status: 200, reason: "OK",
                                             contentType: "text/html; charset=utf-8",
                                             body: Data(html.utf8))
+        case .success(.asset(let name)):
+            return PhoneRemote.webAssetResponse(named: name)
         case .success(.state):
             lastPollAt = Date()
             phoneConnected = true

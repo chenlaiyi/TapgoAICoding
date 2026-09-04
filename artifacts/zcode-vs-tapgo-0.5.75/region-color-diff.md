@@ -1,4 +1,4 @@
-| region | ZCode | Tapgo | delta (max channel) |
+| region | 目标 IDE | Tapgo | delta (max channel) |
 | --- | --- | --- | --- |
 | titlebar | rgb(35,35,35) | rgb(35,36,36) | 1 |
 | sidebar_top | rgb(58,59,59) | rgb(58,58,60) | 1 |
