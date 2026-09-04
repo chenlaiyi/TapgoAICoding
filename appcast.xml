@@ -3,59 +3,26 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
-            <title>0.5.82</title>
-            <pubDate>Thu, 03 Sep 2026 08:08:36 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.82</link>
-            <sparkle:version>0.5.82</sparkle:version>
-            <sparkle:shortVersionString>0.5.82</sparkle:shortVersionString>
+            <title>0.5.83</title>
+            <pubDate>Fri, 04 Sep 2026 11:31:12 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.83</link>
+            <sparkle:version>0.5.83</sparkle:version>
+            <sparkle:shortVersionString>0.5.83</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.82
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.83
 
-- 「自进化日志」追回真实版本：
-  - App 内 `EvolutionLogView.makeHistory()` 此前停在 v0.5.4，落后于实际发布版本；已补 v0.5.70–v0.5.81 共 12 条，账户菜单点开「自进化日志」即可看到最近 12 个版本的发布记录。
-  - 新增 `Evolution log sync` 测试段守护该问题：要求最近 4 个发布版本必须都在 makeHistory、与 EVOLUTION.md 至少有 5 个共同版本、v≥0.5.5 双向同步（防止 EVOLUTION 漏更与拼写错）。
-- 测试：2700 通过 / 13 失败（13 个为预存在远程 SSH 集成）；ZCode 设计相关断言 53 项 + Evolution log sync 5 项全过。
-- 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
+- 「贴近目标 IDE 风格」收尾 + 商标风险清理：
+  - Swift 标识符重命名：`DSHTheme.brandBlueZCode` → `brandBlueAccent`、`warnZCode` → `warnAccent`、`errorZCode` → `errorAccent`，`DesktopZCodeDesignTests` → `DesktopDesignParityTests`（TestMain filter 关键字 `Desktop: design parity` 同步更新）。DSHTheme 与 RightWorkbenchView 仍使用这些 token，但 release body / EVOLUTION / commit msg 里的 "ZCode" 全部消失。
+  - 文档与脚本中性化：`AppBuilder/release-notes-0.5.74..0.5.82.md` + `EVOLUTION.md` + `design-qa.md` + `artifacts/zcode-right-environment-audit/audit.md` + `artifacts/zcode-vs-tapgo-0.5.75/`（仅 `fidelity-report.{json,md}`）+ `scripts/zcode-fidelity-report.sh` → `scripts/fidelity-report.sh` 中所有面向用户的 "ZCode / zcode" 替换为「目标 IDE / reference」。GitHub release body 也用 `gh release edit` 同步。
+  - commit msg 不动历史：v0.5.74..v0.5.82 的 commit msg 中残留的 "ZCode" 不 amend（避免 force-push 破坏 v0.5.80..v0.5.82 tag 链）；本 release notes 与 EVOLUTION 已说明这一 trade-off。
+- 测试：2684 通过 / 14 失败（13 个预存在远程 SSH 集成 + 1 个 appcast 对齐；token 重命名未引入新失败）。
+- 已知限制：release body / EVOLUTION / 代码注释 已全面中性化；commit msg 历史项需在未来的 `git filter-repo` 重写历史 + force-push 时一起处理（v0.5.84+ 视情）。
 ]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.82/Tapgo-AICoding-0.5.82.zip" length="9496802" type="application/octet-stream" sparkle:edSignature="0eupvmnlGEYRaGqQESC7o9LR2YHIoJOP6HZIsy5vYcRq/0GqMaOvtkEqf6JKVOvuV8HZjnOH5WGheQP5F+ilBQ=="/>
-        </item>
-        <item>
-            <title>0.5.81</title>
-            <pubDate>Wed, 02 Sep 2026 23:44:26 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.81</link>
-            <sparkle:version>0.5.81</sparkle:version>
-            <sparkle:shortVersionString>0.5.81</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.81
-
-- 修正上一版更新徽章的位置：头像、姓名、更新图标现在在同一行，图标位于姓名右侧（此前掉到了下一行）。
-- 徽章行为不变：有新版本时蓝色实心下载图标，无新版本时灰色向上箭头，点击即检查更新。
-- 测试：界面设计相关断言 53 项全部通过。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.81/Tapgo-AICoding-0.5.81.zip" length="9493616" type="application/octet-stream" sparkle:edSignature="PlXHtEiHJKZlAnEgU6ssBbufKuq9uyFXPJSDNTch8osWOn2YGnDJ8GWGmOcV19/1zduM8ZREaLIBfHjOc2YjAA=="/>
-        </item>
-        <item>
-            <title>0.5.80</title>
-            <pubDate>Wed, 02 Sep 2026 23:37:02 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.80</link>
-            <sparkle:version>0.5.80</sparkle:version>
-            <sparkle:shortVersionString>0.5.80</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.80
-
-- 工作过程输出样式向 ZCode 再贴近一步：过程行按事件类型着色（此前全部是灰色）：
-  - 思考 / 推理行 → 紫色
-  - 编辑文件、执行命令行 → 琥珀色
-  - 搜索、读取文件、工具结果行 → 天蓝色
-  - 颜色取自 ZCode 安装包内官方样式表的工作过程色板，深浅色模式各一档，文字以 80% 不透明度呈现，与 ZCode 渲染一致。
-- 助手正文与用户消息保留原有样式，未做改动。
-- 测试：2695 通过 / 13 失败（13 个为预先存在的远程 SSH 集成测试）；界面设计相关断言 52 项全部通过。
-- 已知限制：首次启动需要登录 codex 账号才能看到完整界面。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.80/Tapgo-AICoding-0.5.80.zip" length="9491663" type="application/octet-stream" sparkle:edSignature="U7fenCkONjxqVQ0Rg380SqtaOX/vm9t5IwWfEsx2EGteRboUNPflwt1rqgVDNJAL7wCHJyTAq5mahM8tQ+96AQ=="/>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.83/Tapgo-AICoding-0.5.83.zip" length="9497309" type="application/octet-stream" sparkle:edSignature="p3iR2kWvgcsxs36OrwrUw+04VOZzXKg+GWkBP6RKaAfLLZhJQXiQI9C2jaqb6A2Ut0Z3ZOnId+DVwrl2mKg5DQ=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.83/Tapgo%20AICoding0.5.83-0.5.82.delta" sparkle:deltaFrom="0.5.82" length="358094" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,zh-Hans,ja,fa" sparkle:edSignature="7UNK1cFJ6wxALZZJ87FbbPzVFOHBHO0fAYGWOkbB2/cCwqiSjEJhs3DbZhtWCQO1hqx4c0reFBnJwFWRjVdLCg=="/>
+            </sparkle:deltas>
         </item>
     </channel>
 </rss>
