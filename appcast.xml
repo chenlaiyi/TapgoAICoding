@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.86</title>
+            <pubDate>Fri, 04 Sep 2026 14:44:01 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.86</link>
+            <sparkle:version>0.5.86</sparkle:version>
+            <sparkle:shortVersionString>0.5.86</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.86
+
+- 「参照目标 IDE 风格」fidelity patch 2/2：3 处视图背景切到 `fidelityTitlebar` token：
+  - `ChatView.swift` L691 composer 工具栏 `.background(DSHTheme.titlebarBg)` → `.background(DSHTheme.fidelityTitlebar)`
+  - `SidebarView.swift` L1036 底栏 `.background(DSHTheme.titlebarBg.opacity(0.45))` → `.background(DSHTheme.fidelityTitlebar.opacity(0.45))`
+  - `RightWorkbenchView.swift` L864 工具栏 `.background(DSHTheme.titlebarBg)` → `.background(DSHTheme.fidelityTitlebar)`
+  - 颜色由 DSHTheme 旧值 `#1A1A1C` (rgb 26,28) 切到目标 IDE 实测色 `#232323` (rgb 35,35,35)，3 处背景同步提亮 9 个等级，跟 `artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md` 标题栏实测色对齐。
+  - `DesktopDesignParityTests.swift` 新增 3 个 `t.expect` 断言锁定 3 处视图对 `fidelityTitlebar` 的引用，未来谁退回 `titlebarBg` CI 立即失败。
+- 配套：v0.5.85 引入的 6 个 `fidelityXxx` token 全部生效（titlebar/sidebarTop/sidebarMid/mainCanvas/rightbarTop/statusbar），本次只切 3 处主窗口高频可见背景；其余 4 个 token 留待后续 patch 视情况切换。
+- 测试：2683 通过 / 13 失败（新增 3 个 view-tied 断言；13 个失败仍为预存在远程 SSH 集成 + auth.json 缺失，零新回归）。
+- 已知限制：未跑自动 pixelmatch 验证（需要 screencapture + ImageMagick 链路，下次 patch 接入）；用户可对比本地 main canvas 区域色是否更接近目标 IDE 1220x1287 实机截图。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.86/Tapgo-AICoding-0.5.86.zip" length="9504713" type="application/octet-stream" sparkle:edSignature="bbD0P7fREDdlS+pqhBHqyDOtZj90EQl22WyVCRe4ywOLxg1pY+gt5NA3jU/YP9Q5SEsvjjlRo7XaQ2P8sKR6CQ=="/>
+        </item>
+        <item>
             <title>0.5.85</title>
             <pubDate>Fri, 04 Sep 2026 12:54:53 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.85</link>
@@ -47,25 +69,6 @@
 - 已知限制：拆分出来的 app.js / app.css 是 v0.5.84 重写的精简版本（核心 API 路径 + 6 个关键 UI class 完整保留），后续 patch 可继续完善边角 UI。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.84/Tapgo-AICoding-0.5.84.zip" length="9504850" type="application/octet-stream" sparkle:edSignature="ocBiHj8b9tWwgtrC2JxGfQlCuhotrpP3ieBMNOMCG0dGLPwVRLGM1mETF32qUq8hxuGaO4Cp2pYHELh7WhkZAA=="/>
-        </item>
-        <item>
-            <title>0.5.83</title>
-            <pubDate>Fri, 04 Sep 2026 11:49:33 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.83</link>
-            <sparkle:version>0.5.83</sparkle:version>
-            <sparkle:shortVersionString>0.5.83</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.83
-
-- 「贴近目标 IDE 风格」收尾 + 商标风险清理：
-  - Swift 标识符重命名：`DSHTheme.brandBlueZCode` → `brandBlueAccent`、`warnZCode` → `warnAccent`、`errorZCode` → `errorAccent`，`DesktopZCodeDesignTests` → `DesktopDesignParityTests`（TestMain filter 关键字 `Desktop: design parity` 同步更新）。DSHTheme 与 RightWorkbenchView 仍使用这些 token，但 release body / EVOLUTION / commit msg 里的 "ZCode" 全部消失。
-  - 文档与脚本中性化：`AppBuilder/release-notes-0.5.74..0.5.82.md` + `EVOLUTION.md` + `design-qa.md` + `artifacts/zcode-right-environment-audit/audit.md` + `artifacts/zcode-vs-tapgo-0.5.75/`（仅 `fidelity-report.{json,md}`）+ `scripts/zcode-fidelity-report.sh` → `scripts/fidelity-report.sh` 中所有面向用户的 "ZCode / zcode" 替换为「目标 IDE / reference」。GitHub release body 也用 `gh release edit` 同步。
-  - commit msg 不动历史：v0.5.74..v0.5.82 的 commit msg 中残留的 "ZCode" 不 amend（避免 force-push 破坏 v0.5.80..v0.5.82 tag 链）；本 release notes 与 EVOLUTION 已说明这一 trade-off。
-- 测试：2684 通过 / 14 失败（13 个预存在远程 SSH 集成 + 1 个 appcast 对齐；token 重命名未引入新失败）。
-- 已知限制：release body / EVOLUTION / 代码注释 已全面中性化；commit msg 历史项需在未来的 `git filter-repo` 重写历史 + force-push 时一起处理（v0.5.84+ 视情）。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.83/Tapgo-AICoding-0.5.83.zip" length="9504828" type="application/octet-stream" sparkle:edSignature="n3la+sFZj6tU4b9HMq1RRw6AiqWT+wwBoTu7zQRfQHsq2I0MJf+YUJhBm+pTKGYroUaP4Xap7NFDBEIxtX0oBA=="/>
         </item>
     </channel>
 </rss>
