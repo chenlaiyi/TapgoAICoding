@@ -116,6 +116,13 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: SidebarView 视图模式切换器背景切到 fidelitySidebarMid token (closes sidebar_mid -15/255)")
     t.expect(message.contains("DSHTheme.trajectoryUser"),
              "desktop-design: MessageBubble 用户消息左缘 2pt blue accent 使用 trajectoryUser token")
+    t.expect(message.contains("DSHTheme.trajectoryAssistant"),
+             "desktop-design: MessageBubble 助手正文左缘 2pt teal accent 使用 trajectoryAssistant token")
+    // v0.5.89 — ⌘\\ sidebar toggle + command palette 接入
+    t.expect(content.contains("tapgoToggleSidebar") && content.contains("切换侧边栏"),
+             "desktop-design: ContentView 接入 ⌘\\ 侧边栏切换（notification 模式 + command palette 双入口）")
+    t.expect(app.contains("keyboardShortcut(\"\\\\\"") && app.contains("tapgoToggleSidebar"),
+             "desktop-design: App.swift 菜单层声明 ⌘\\ 切换侧边栏")
     // v0.5.86 — fidelity patch 2/2: 视图 .background 切到 DSHTheme.fidelityTitlebar
     t.expect(chat.contains("DSHTheme.fidelityTitlebar"),
              "desktop-design: ChatView composer 工具栏背景切到 fidelityTitlebar token")

@@ -232,8 +232,16 @@ struct MessageBubble: View {
             // Assistant replies render as plain markdown text on the chat
             // background (like Codex) — no full-width card, so there's no
             // wasted space on the right. Copy lives in the context menu.
+            // ZCode-style subtle teal accent (trajectoryAssistant, 2pt capsule)
+            // on the leading edge mirrors the user-bubble left strip so both
+            // roles have a visual anchor without a full background card.
             HStack {
                 HStack(alignment: .top, spacing: 6) {
+                    Capsule()
+                        .fill(DSHTheme.trajectoryAssistant.opacity(0.55))
+                        .frame(width: 2, height: 22)
+                        .padding(.top, 4)
+                        .allowsHitTesting(false)
                     MarkdownMessageView(text)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)

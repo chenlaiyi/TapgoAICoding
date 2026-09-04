@@ -65,6 +65,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenCommandPalette)) { _ in
             showCommandPalette = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoToggleSidebar)) { _ in
+            withAnimation(.easeInOut(duration: 0.18)) { sidebarVisible.toggle() }
+        }
         .sheet(isPresented: $showNewTask) {
             NewTaskView { project in
                 workspace.setActiveProject(project?.id)
@@ -577,6 +580,10 @@ private struct CommandPaletteView: View {
             .init("appearance", "切换外观", "sun.max", "⌘⇧D", { toggleAppearance() }),
             .init("openInTerminal", "在终端中打开项目", "terminal", "",
                   { openActiveProjectTerminal() }),
+            .init("toggleSidebar", "切换侧边栏", "sidebar.left", "⌘\\",
+                  { NotificationCenter.default.post(name: .tapgoToggleSidebar, object: nil) }),
+            .init("openEvolution", "进入自进化会话", "arrow.triangle.2.circlepath", "⌘⌥E",
+                  { NotificationCenter.default.post(name: .tapgoOpenEvolution, object: nil) }),
         ]
     }
 

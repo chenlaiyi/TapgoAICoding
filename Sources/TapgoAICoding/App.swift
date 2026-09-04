@@ -111,6 +111,10 @@ struct TapgoAICodingApp: App {
                 .keyboardShortcut(",", modifiers: [.command])
             }
             CommandGroup(after: .windowList) {
+                Button("切换侧边栏") {
+                    NotificationCenter.default.post(name: .tapgoToggleSidebar, object: nil)
+                }
+                .keyboardShortcut("\\", modifiers: [.command])
                 Button("检查更新…") {
                     updater.checkForUpdates()
                 }
@@ -195,6 +199,7 @@ extension Notification.Name {
     static let tapgoInterjectAndFlush = Notification.Name("tapgo.interjectAndFlush")
     static let tapgoJumpToTurn = Notification.Name("tapgo.jumpToTurn")
     static let tapgoOpenCommandPalette = Notification.Name("tapgo.openCommandPalette")
+    static let tapgoToggleSidebar = Notification.Name("tapgo.toggleSidebar")
     static let tapgoRequestOpenNewTask = Notification.Name("tapgo.openNewTask")
     static let tapgoRetryTurn = Notification.Name("tapgo.retryTurn")
     static let tapgoClearComposer = Notification.Name("tapgo.clearComposer")

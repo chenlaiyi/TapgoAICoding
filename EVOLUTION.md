@@ -1198,3 +1198,15 @@ fidelity patch 3/3 (ChatView L199 / RightWorkbenchView L32+L52+L178 切到 fidel
 fidelity patch 4/4: SidebarView L224 .background(DSHTheme.bg.opacity(0.34)) → DSHTheme.fidelitySidebarMid, 关闭 sidebar_mid 单点 delta -15/255 的最大残差; MessageBubble 用户气泡加 2pt 高 18pt trajectoryUser.opacity(0.65) 左缘胶囊 (ZCode 用户消息左侧色条语义)
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.89 — fix(ui+shortcut): v0.5.89 — trajectoryAssistant 接入助手正文 + ⌘\\ 切换侧边栏 + 命令面板扩展
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.89
+**Test status**: — 2711 passed, 0 failed —
+**Changed**:
+- fix(ui+shortcut): v0.5.89 — trajectoryAssistant 接入助手正文 + ⌘\\ 切换侧边栏 + 命令面板扩展
+MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘胶囊, 与 v0.5.88 用户气泡 trajectoryUser 形成 user/assistant 对称视觉锚点; App.swift CommandGroup(after: .windowList) 加 ⌘\\ 切换侧边栏 (tapgoToggleSidebar notification + ContentView 0.18s 动画); 命令面板新增 切换侧边栏 + 进入自进化会话 两条入口
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
