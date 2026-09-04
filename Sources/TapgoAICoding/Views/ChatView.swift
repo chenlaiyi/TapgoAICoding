@@ -688,7 +688,7 @@ struct ChatView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
-        .background(DSHTheme.titlebarBg)
+        .background(DSHTheme.fidelityTitlebar)
     }
 
     // MARK: - Status pill (running / failed / idle)

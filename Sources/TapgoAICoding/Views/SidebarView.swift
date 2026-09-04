@@ -1033,7 +1033,7 @@ struct SidebarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(DSHTheme.titlebarBg.opacity(0.45))
+        .background(DSHTheme.fidelityTitlebar.opacity(0.45))
     }
 
     /// ZCode 风格的更新入口：昵称右侧常驻图标。有新版本时是蓝色的"可更新"

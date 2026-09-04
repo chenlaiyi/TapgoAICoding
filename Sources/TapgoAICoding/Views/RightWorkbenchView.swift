@@ -861,7 +861,7 @@ private struct WorkbenchBrowser: View {
             .buttonStyle(.borderless)
             .padding(.horizontal, 8)
             .frame(height: 42)
-            .background(DSHTheme.titlebarBg)
+            .background(DSHTheme.fidelityTitlebar)
             Divider()
             WorkbenchWebView(controller: controller)
                 .padding(freeSize ? 16 : 0)

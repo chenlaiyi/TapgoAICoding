@@ -106,4 +106,11 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: fidelityRightbarTop token 锁定 ZCode 实测 #212120")
     t.expect(theme.contains("fidelityStatusbar")   && theme.contains("0x1B1B1B"),
              "desktop-design: fidelityStatusbar token 锁定 ZCode 实测 #1B1B1B")
+    // v0.5.86 — fidelity patch 2/2: 视图 .background 切到 DSHTheme.fidelityTitlebar
+    t.expect(chat.contains("DSHTheme.fidelityTitlebar"),
+             "desktop-design: ChatView composer 工具栏背景切到 fidelityTitlebar token")
+    t.expect(sidebar.contains("DSHTheme.fidelityTitlebar"),
+             "desktop-design: SidebarView 底栏背景切到 fidelityTitlebar token")
+    t.expect(workbench.contains("DSHTheme.fidelityTitlebar"),
+             "desktop-design: RightWorkbenchView 工具栏背景切到 fidelityTitlebar token")
 }

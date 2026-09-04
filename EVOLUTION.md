@@ -1162,3 +1162,15 @@ Web Remote 拆资源（linkVersion 2→3，新增 /assets/<name> 路由 + webAss
 fidelity report 6 处区域色固化为 DSHTheme.fidelityXxx token (titlebar/sidebarTop/sidebarMid/mainCanvas/rightbarTop/statusbar), 后续 patch 调色只需改 token darkHex, 不需 grep 全文. 本次不改视图 .background, 仅 token 化 + 测试锁定. patch 2/2 将切换视图背景到新 token 并验证 pixelmatch<0.08.
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.86 — fix(design): v0.5.86 — fidelity patch 2/2 (3 处 .background 切到 fidelityTitlebar token)
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.86
+**Test status**: — 2683 passed, 0 failed —
+**Changed**:
+- fix(design): v0.5.86 — fidelity patch 2/2 (3 处 .background 切到 fidelityTitlebar token)
+ChatView composer 工具栏 / SidebarView 底栏 / RightWorkbenchView 工具栏 3 处 .background 从 DSHTheme.titlebarBg (0x1A1A1C) 切到 DSHTheme.fidelityTitlebar (0x232323), 标题栏实测色对齐目标 IDE 0x232323. 配合 v0.5.85 引入的 6 个 fidelityXxx token, 本次只切 3 处主窗口高频可见背景; 4 个其余 token (sidebarTop/sidebarMid/mainCanvas/rightbarTop/statusbar) 留待后续 patch 视情况切换.
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
