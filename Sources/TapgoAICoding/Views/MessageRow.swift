@@ -56,7 +56,11 @@ struct ActivityRollupView: View {
             turnIsRunning: turnIsRunning
         )
         HStack(spacing: 8) {
-            if let icon = display.systemImage {
+            if turnIsRunning && activity.isTail && display.isRunning {
+                ProgressView()
+                    .controlSize(.mini)
+                    .frame(width: 18, height: 18)
+            } else if let icon = display.systemImage {
                 Image(systemName: icon)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .frame(width: 18)
@@ -65,28 +69,13 @@ struct ActivityRollupView: View {
                 .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .runningTextShimmer(
-                    active: turnIsRunning && activity.isTail && display.isRunning
-                )
         }
-        // ZCode trajectory 语义着色: 每行事件按类型取 --color-trajectory-*，
-        // 80% 不透明度与上游 .text-trajectory-*/80 一致；失败行保持警示红。
-        .foregroundStyle(
-            display.isFailure ? DSHTheme.error : Self.trajectoryColor(for: display.kind)
-        )
-        .opacity(turnIsRunning && display.isRunning ? 0.78 : 0.68)
+        // Codex keeps ordinary work events neutral; color is reserved for a
+        // real failure instead of encoding every tool category.
+        .foregroundStyle(display.isFailure ? DSHTheme.error : DSHTheme.labelDim)
+        .opacity(turnIsRunning && display.isRunning ? 0.9 : 0.72)
         .animation(nil, value: activity.latest.id)
         .accessibilityLabel(display.text)
-    }
-
-    /// ZCode --color-trajectory-* 语义: 思考=紫, 编辑/执行=琥珀,
-    /// 搜索/读取/结果=天蓝, 其余兜底天蓝。
-    private static func trajectoryColor(for kind: TurnActivityDisplay.Kind) -> Color {
-        switch kind {
-        case .reasoning: return DSHTheme.trajectoryReasoning
-        case .edit, .command: return DSHTheme.trajectoryToolCall
-        case .search, .read, .tool, .compaction: return DSHTheme.trajectoryToolResult
-        }
     }
 }
 
@@ -140,6 +129,7 @@ struct MessageBubble: View {
 
     @State private var showEditSheet = false
     @State private var editedText = ""
+    @State private var hoveringUser = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     private func copy(_ s: String) {
@@ -192,11 +182,11 @@ struct MessageBubble: View {
                     if text != "(图片)" || userImagePaths.isEmpty {
                         Text(text)
                             .foregroundStyle(DSHTheme.label)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 7)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
                             .background(
                                 DSHTheme.surfaceRaised,
-                                in: RoundedRectangle(cornerRadius: 8)
+                                in: RoundedRectangle(cornerRadius: 12)
                             )
                             .textSelection(.enabled)
                             .contextMenu {
@@ -214,9 +204,14 @@ struct MessageBubble: View {
                             }
                     }
                 }
-                userActionBar
+                if hoveringUser {
+                    userActionBar
+                        .transition(.opacity)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
+            .contentShape(Rectangle())
+            .onHover { hoveringUser = $0 }
             .sheet(isPresented: $showEditSheet) { editSheet }
         } else {
             // ZCode keeps assistant output directly on the canvas: no role

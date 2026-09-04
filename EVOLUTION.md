@@ -1225,3 +1225,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 修复隔离 worktree 发布到远端 main 的推送目标。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.91 — fix(chat): align message flow with Codex desktop
+**Date**: 2026-09-04
+**Commit**: _(see `git log -1 v0.5.91`)_
+**Tag**: v0.5.91
+**Test status**: — 2704 passed, 0 failed —
+**Changed**:
+- fix(chat): align message flow with Codex desktop
+- Align streaming activity, completed-work boundaries, file summaries, and Markdown table rendering with current Codex Desktop evidence.
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

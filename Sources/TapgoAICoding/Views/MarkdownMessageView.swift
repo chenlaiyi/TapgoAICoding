@@ -147,13 +147,23 @@ struct MarkdownMessageView: View {
                 r.link = URL(string: url)
                 r.font = .system(size: baseFontSize)
                 r.foregroundColor = DSHTheme.brand
-                r.underlineStyle = .single
                 a += r
             case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading:
                 break
             }
         }
         return a
+    }
+
+    /// Table cells also accept inline markdown. The previous plain-string
+    /// renderer exposed literal `**bold**` and backticks in the transcript.
+    fileprivate static func inlineSegments(_ text: String) -> [MarkdownSegment] {
+        MarkdownLite.parse(text).filter { segment in
+            switch segment {
+            case .text, .inline, .bold, .link, .strikethrough: return true
+            default: return false
+            }
+        }
     }
 
 
@@ -249,7 +259,6 @@ private struct CodeBlockView: View {
         .background(DSHTheme.codeBlockBg, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
         .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .shadow(color: DSHTheme.cardShadow, radius: 3, x: 0, y: 1)
     }
 
     private func copy(_ s: String) {
@@ -288,16 +297,16 @@ private struct HeadingView: View {
     }
 }
 
-/// A small caret below the partial markdown block. It communicates that the
-/// answer is still growing without adding a second status row.
+/// A restrained text caret for the partial markdown block. The composer owns
+/// the stop control; the transcript only needs a subtle streaming cue.
 private struct StreamingReplyCursor: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var visible = false
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 1)
+        Capsule()
             .fill(DSHTheme.labelDim)
-            .frame(width: 9, height: 2)
+            .frame(width: 2, height: 13)
             .opacity(reduceMotion || visible ? 0.72 : 0.2)
             .onAppear {
                 guard !reduceMotion else { return }
@@ -309,10 +318,8 @@ private struct StreamingReplyCursor: View {
     }
 }
 
-/// Left-bordered, muted quote block for `> …` lines. Rendered as a Codex-
-/// style info callout card (quote icon + bordered surface) rather than a
-/// bare italic blockquote. 内部仍走 `inlineAttributed(_, baseFontSize:)`，
-/// 这样引用里的 inline code / bold / link 视觉与正文一致。
+/// Codex-style blockquote: one quiet leading rule and secondary text, without
+/// turning ordinary quoted prose into another card.
 private struct QuoteView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
@@ -320,24 +327,21 @@ private struct QuoteView: View {
 
     var body: some View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "quote.opening")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
+        HStack(alignment: .top, spacing: 10) {
+            RoundedRectangle(cornerRadius: 1)
+                .fill(DSHTheme.borderStrong)
+                .frame(width: 2)
             Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
                 .textSelection(.enabled)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
+        .padding(.vertical, 3)
     }
 }
 
 /// Lightweight pipe-table renderer (`| a | b |` with a `|---|` header
-/// separator). Cells are plain text; column count follows the header.
+/// separator). It stays flat in the transcript and renders inline markdown.
 private struct TableView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
@@ -345,39 +349,42 @@ private struct TableView: View {
     let rows: [[String]]
 
     var body: some View {
+        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) - 0.5
         ScrollView(.horizontal, showsIndicators: false) {
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                // Header row sits on a raised surface for a Codex-like table.
+            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
                 GridRow {
                     ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
-                        Text(h)
-                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                            .bold()
+                        Text(MarkdownMessageView.inlineAttributed(
+                            MarkdownMessageView.inlineSegments(h),
+                            baseFontSize: bodySize,
+                            baseWeight: .semibold
+                        ))
+                        .textSelection(.enabled)
                     }
                 }
-                .padding(.vertical, 4)
-                .background(DSHTheme.surfaceRaised)
+                .padding(.bottom, 2)
                 if !rows.isEmpty {
                     Divider()
                 }
-                ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     GridRow {
                         ForEach(Array(headers.enumerated()), id: \.offset) { i, _ in
-                            Text(i < row.count ? row[i] : "")
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                .textSelection(.enabled)
+                            Text(MarkdownMessageView.inlineAttributed(
+                                MarkdownMessageView.inlineSegments(i < row.count ? row[i] : ""),
+                                baseFontSize: bodySize
+                            ))
+                            .textSelection(.enabled)
                         }
                     }
                     .padding(.vertical, 2)
-                    .background(idx % 2 == 1 ? DSHTheme.moduleBg.opacity(0.35) : Color.clear)
                 }
             }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
+        .overlay(alignment: .top) { Divider() }
+        .overlay(alignment: .bottom) { Divider() }
         .contextMenu {
             Button {
                 copy(tableText)

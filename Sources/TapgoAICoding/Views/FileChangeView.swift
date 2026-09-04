@@ -182,25 +182,34 @@ struct FileChangeSummaryBar: View {
     }
 }
 
-/// Codex-style batched file-edit block: a single "已编辑 N 个文件" card that
-/// folds a run of consecutive file changes into one collapsible list, with
-/// an applied/awaiting badge and a "再显示 N 个文件" expander for long runs.
+/// Codex-style batched file-edit block: one persistent result card with the
+/// aggregate line delta and a three-file preview. The detailed diffs remain
+/// available from each row without flooding the surrounding transcript.
 struct FileEditBatchView: View {
     let files: [FileChange]
-    @EnvironmentObject var workspace: WorkspaceStore
     @State private var expanded = true
     @State private var showAll = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
-    private static let foldThreshold = 30
+    private static let foldThreshold = 3
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Image(systemName: "doc.on.doc.fill")
-                    .foregroundStyle(.indigo)
+                    .foregroundStyle(.secondary)
                 Text("已编辑 \(files.count) 个文件")
                     .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                    .bold()
+                    .fontWeight(.semibold)
+                if additions > 0 {
+                    Text("+\(additions)")
+                        .font(AppFont.monoScaled(size: 10, weight: .medium, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(DSHTheme.success)
+                }
+                if deletions > 0 {
+                    Text("-\(deletions)")
+                        .font(AppFont.monoScaled(size: 10, weight: .medium, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(DSHTheme.error)
+                }
                 Spacer()
                 HStack(spacing: 3) {
                     Text(badgeLabel)
@@ -230,55 +239,13 @@ struct FileEditBatchView: View {
             if expanded {
                 Divider().padding(.top, 6)
                 ForEach(Array(visibleFiles.enumerated()), id: \.offset) { _, f in
-                    HStack(spacing: 6) {
-                        Image(systemName: icon(for: f.kind))
-                            .foregroundStyle(color(for: f.kind))
-                            .frame(width: 14)
-                        Text(f.path)
-                            .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .textSelection(.enabled)
-                        Spacer()
-                        Text(kindLabel(f.kind))
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        let url = resolvedURL(for: f.path)
-                        if FileManager.default.fileExists(atPath: url.path) {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-                    .contextMenu {
-                        Button {
-                            copy(f.path)
-                        } label: {
-                            Label("复制路径", systemImage: "doc.on.doc")
-                        }
-                        Button {
-                            let url = resolvedURL(for: f.path)
-                            if FileManager.default.fileExists(atPath: url.path) {
-                                NSWorkspace.shared.open(url)
-                            }
-                        } label: {
-                            Label("打开文件", systemImage: "doc")
-                        }
-                        Button {
-                            let url = resolvedURL(for: f.path)
-                            NSWorkspace.shared.activateFileViewerSelecting([url])
-                        } label: {
-                            Label("在访达中显示", systemImage: "folder")
-                        }
-                    }
-                    .padding(.vertical, 3)
+                    FileChangeRowView(change: f)
                 }
                 if files.count > Self.foldThreshold {
                     Button {
-                        showAll = true
+                        showAll.toggle()
                     } label: {
-                        Text("再显示 \(files.count - Self.foldThreshold) 个文件")
+                        Text(showAll ? "收起文件" : "再显示 \(files.count - Self.foldThreshold) 个文件")
                             .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     }
                     .buttonStyle(.borderless)
@@ -291,7 +258,6 @@ struct FileEditBatchView: View {
         .padding(.vertical, 8)
         .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
         .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
-        .shadow(color: DSHTheme.cardShadow, radius: 3, x: 0, y: 1)
     }
 
     private var visibleFiles: [FileChange] {
@@ -300,6 +266,14 @@ struct FileEditBatchView: View {
 
     private var pathsText: String {
         files.map(\.path).joined(separator: "\n")
+    }
+
+    private var additions: Int {
+        files.reduce(0) { $0 + FileChangeRowView.addedLines(in: $1.diff) }
+    }
+
+    private var deletions: Int {
+        files.reduce(0) { $0 + FileChangeRowView.removedLines(in: $1.diff) }
     }
     private func copy(_ s: String) {
         let pb = NSPasteboard.general
@@ -317,10 +291,6 @@ struct FileEditBatchView: View {
             ?? workspace.state.projects.first?.worktreeRoot
         if let base { return base.appendingPathComponent(path) }
         return URL(fileURLWithPath: path)
-    }
-
-    func resolvedURL(for path: String) -> URL {
-        Self.resolve(path, in: workspace)
     }
 
     private var badgeLabel: String {
@@ -347,27 +317,6 @@ struct FileEditBatchView: View {
         return .applied
     }
 
-    private func icon(for kind: FileChange.Kind) -> String {
-        switch kind {
-        case .create: return "doc.badge.plus"
-        case .update: return "pencil"
-        case .delete: return "trash"
-        }
-    }
-    private func color(for kind: FileChange.Kind) -> Color {
-        switch kind {
-        case .create: return .green
-        case .update: return .blue
-        case .delete: return .red
-        }
-    }
-    private func kindLabel(_ kind: FileChange.Kind) -> String {
-        switch kind {
-        case .create: return "添加"
-        case .update: return "修改"
-        case .delete: return "删除"
-        }
-    }
 }
 
 struct FileChangeView: View {

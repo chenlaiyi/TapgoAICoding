@@ -15,6 +15,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     let content = desktopDesignFile("Sources/TapgoAICoding/Views/ContentView.swift")
     let workbench = desktopDesignFile("Sources/TapgoAICoding/Views/RightWorkbenchView.swift")
     let fileChangeView = desktopDesignFile("Sources/TapgoAICoding/Views/FileChangeView.swift")
+    let markdown = desktopDesignFile("Sources/TapgoAICoding/Views/MarkdownMessageView.swift")
 
     t.expect(sidebar.contains("menuItem(\"新建任务\""), "desktop-design: 新建任务位于一级导航")
     t.expect(sidebar.contains("menuItem(\"搜索\""), "desktop-design: 搜索位于一级导航")
@@ -83,15 +84,16 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(fileChangeView.contains("DSHTheme.warnAccent") && fileChangeView.contains("执行失败"),
              "desktop-design: 文件变更「执行失败」用 warnAccent 替代 .tertiary 灰")
 
-    // v0.5.80 — ZCode 工作过程行按事件类型着色（--color-trajectory-*）
+    // Historical trajectory tokens remain available for other surfaces.
     t.expect(theme.contains("trajectoryReasoning") && theme.contains("0x7C3AED") && theme.contains("0xA78BFA"),
              "desktop-design: 思考行 trajectoryReasoning 紫（light 0x7C3AED / dark 0xA78BFA）")
     t.expect(theme.contains("trajectoryToolCall") && theme.contains("0xD97706"),
              "desktop-design: 工具调用 trajectoryToolCall 琥珀")
     t.expect(theme.contains("trajectoryToolResult") && theme.contains("0x0284C7"),
              "desktop-design: 工具结果 trajectoryToolResult 天蓝")
-    t.expect(message.contains("trajectoryReasoning.opacity(0.8)") && message.contains("trajectoryColor(for: display.kind)"),
-             "desktop-design: 思考行与汇总行按事件类型着色（80% 不透明度对齐上游）")
+    t.expect(message.contains("ProgressView()") && message.contains("display.isFailure ? DSHTheme.error : DSHTheme.labelDim")
+             && !message.contains("trajectoryColor(for: display.kind)"),
+             "desktop-design: Codex 工作过程使用中性文字与尾部进度环，仅失败着色")
     // v0.5.85 — ZCode 主窗口 6 处区域色固化为 DSHTheme.fidelityXxx token。
     // 数据来源 artifacts/zcode-vs-tapgo-0.5.75/fidelity-report.md 区域采样表。
     t.expect(theme.contains("fidelityTitlebar")    && theme.contains("0x232323"),
@@ -123,8 +125,19 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 流式状态由正文内轻量光标承担")
     t.expect(chat.contains("Text(turnTime(turn.startedAt))") && !chat.contains("Text(turnTime(turn.startedAt) +"),
              "desktop-design: 完成态页脚只常驻时间，token 统计收入 tooltip")
-    t.expect(chat.contains("localizedWorkDuration(turn.duration)"),
-             "desktop-design: 已工作时长使用中文可读格式")
+    t.expect(chat.contains("Text(\"已处理 \\(localizedWorkDuration(turn.duration))\")"),
+             "desktop-design: 完成过程使用 Codex 的已处理时长文案")
+    t.expect(chat.contains("FileEditBatchView(files: fileChanges)"),
+             "desktop-design: 完成态保留独立文件变更摘要卡")
+    t.expect(fileChangeView.contains("private static let foldThreshold = 3")
+             && fileChangeView.contains("FileChangeRowView(change: f)"),
+             "desktop-design: 文件卡默认预览三项并复用可查看差异的真实文件行")
+    t.expect(markdown.contains("inlineSegments(_ text: String)")
+             && markdown.contains("MarkdownMessageView.inlineSegments(i < row.count ? row[i] : \"\")"),
+             "desktop-design: 表格单元格渲染行内 Markdown 而非暴露标记源码")
+    t.expect(!markdown.contains(".background(idx % 2 == 1")
+             && markdown.contains(".overlay(alignment: .top) { Divider() }"),
+             "desktop-design: 表格改为 Codex 式平面分隔，不再使用连续卡片底色")
     // v0.5.89 — ⌘\\ sidebar toggle + command palette 接入
     t.expect(content.contains("tapgoToggleSidebar") && content.contains("切换侧边栏"),
              "desktop-design: ContentView 接入 ⌘\\ 侧边栏切换（notification 模式 + command palette 双入口）")

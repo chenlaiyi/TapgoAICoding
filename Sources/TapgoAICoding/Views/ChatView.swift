@@ -141,10 +141,9 @@ struct ChatView: View {
     @State private var searchQuery = ""
     @State private var jumpToTurnId: String? = nil
     @State private var showEvolutionLog = false
-    /// ZCode-style fold state: completed turns collapse their work log into
-    /// an "已工作 …" chip and their file edits into a summary bar.
+    /// Codex-style fold state: completed turns collapse their work log into
+    /// an "已处理 …" row. File edits remain visible as a separate summary card.
     @State private var expandedWork: Set<String> = []
-    @State private var expandedFiles: Set<String> = []
     @State private var showShortcuts = false
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
@@ -851,41 +850,40 @@ struct ChatView: View {
     private func turnSection(turn: Turn, isLast: Bool = false) -> some View {
         let isRunning = turn.status == .running
         let blocks = TurnPresentation.compactBlocks(turn.items)
-        let fileSummary = turn.fileChangeSummary
+        let fileChanges = turn.items.compactMap { item -> FileChange? in
+            guard case .fileChange(let change) = item else { return nil }
+            return change
+        }
         VStack(alignment: .leading, spacing: 10) {
-            // ZCode-style work log. While the turn runs, every activity row
-            // streams visibly; once it completes the rows fold into an
-            // "已工作 …" chip and file edits fold into a summary bar.
+            // Codex-style work log. Live activity stays in the transcript;
+            // completed activity folds into one quiet duration row. File
+            // changes are promoted into their own persistent summary card.
             ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
-                let isWorkBlock: Bool = {
-                    switch block {
-                    case .activity, .fileBatch: return true
-                    case .item: return false
-                    }
-                }()
-                if isRunning || !isWorkBlock {
+                switch block {
+                case .item:
                     renderBlock(block, turn: turn)
-                } else if isWorkBlock {
-                    // ZCode always preserves one quiet duration row. Detailed
-                    // activity remains opt-in unless the global setting asks
-                    // for it, keeping the completed transcript low-noise.
-                    if index == firstWorkBlockIndex(blocks) {
-                        workDurationChip(turn: turn)
+                case .activity:
+                    if isRunning {
+                        renderBlock(block, turn: turn)
+                    } else {
+                        if index == firstActivityBlockIndex(blocks) {
+                            workDurationChip(turn: turn)
+                        }
+                        let revealed = showWorkProcess && expandedWork.contains(turn.id)
+                        if revealed { renderBlock(block, turn: turn) }
                     }
-                    let revealed = showWorkProcess
-                        && (expandedWork.contains(turn.id) || expandedFiles.contains(turn.id))
-                    if revealed { renderBlock(block, turn: turn) }
+                case .fileBatch:
+                    if isRunning {
+                        // During execution, show the current file batch where
+                        // it happened. Completed turns consolidate all edits
+                        // into one card below the answer, like Codex.
+                        renderBlock(block, turn: turn)
+                    }
                 }
             }
-            if !isRunning, let summary = fileSummary {
-                FileChangeSummaryBar(
-                    count: summary.count,
-                    additions: summary.additions,
-                    deletions: summary.deletions,
-                    isExpanded: expandedFiles.contains(turn.id),
-                    onToggle: { toggleFiles(turn.id) }
-                )
-                .padding(.leading, 4)
+            if !isRunning, !fileChanges.isEmpty {
+                FileEditBatchView(files: fileChanges)
+                    .padding(.top, 2)
             }
             if isRunning && !hasRollingActivityTail(turn) && !hasStreamingAssistant(turn) {
                 runningActivityLine(turn: turn)
@@ -969,39 +967,37 @@ struct ChatView: View {
                 turnIsRunning: turn.status == .running
             )
         case .fileBatch(let files):
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(files) { file in
-                    FileChangeRowView(change: file)
-                }
-            }
+            FileEditBatchView(files: files)
         }
     }
 
-    /// "已工作 8 分 53 秒 >" — the collapsed work-log toggle that ZCode
-    /// shows once a turn finishes; clicking reveals the activity rows.
+    /// "已处理 8 分 53 秒 >" — Codex's quiet completed-work boundary.
     private func workDurationChip(turn: Turn) -> some View {
         let expanded = expandedWork.contains(turn.id)
-        return Button {
-            toggleWork(turn.id)
-        } label: {
-            HStack(spacing: 6) {
-                Text("已工作 \(localizedWorkDuration(turn.duration))")
-                Image(systemName: "chevron.right")
-                    .rotationEffect(.degrees(expanded ? 90 : 0))
+        return VStack(alignment: .leading, spacing: 8) {
+            Button {
+                toggleWork(turn.id)
+            } label: {
+                HStack(spacing: 6) {
+                    Text("已处理 \(localizedWorkDuration(turn.duration))")
+                    Image(systemName: "chevron.right")
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
             }
-            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-            .foregroundStyle(.secondary)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityLabel(expanded ? "折叠处理过程" : "展开处理过程")
+            Divider()
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(expanded ? "折叠工作过程" : "展开工作过程")
     }
 
-    private func firstWorkBlockIndex(_ blocks: [TurnPresentationBlock]) -> Int? {
+    private func firstActivityBlockIndex(_ blocks: [TurnPresentationBlock]) -> Int? {
         blocks.firstIndex { block in
             switch block {
-            case .activity, .fileBatch: return true
-            case .item: return false
+            case .activity: return true
+            case .item, .fileBatch: return false
             }
         }
     }
@@ -1012,15 +1008,6 @@ struct ChatView: View {
             expandedWork.remove(id)
         } else {
             expandedWork.insert(id)
-        }
-    }
-
-    private func toggleFiles(_ id: String) {
-        if !showWorkProcess { showWorkProcess = true }
-        if expandedFiles.contains(id) {
-            expandedFiles.remove(id)
-        } else {
-            expandedFiles.insert(id)
         }
     }
 
