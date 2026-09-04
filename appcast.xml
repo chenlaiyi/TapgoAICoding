@@ -3,6 +3,38 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.101</title>
+            <pubDate>Sat, 05 Sep 2026 03:09:41 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.101</link>
+            <sparkle:version>0.5.101</sparkle:version>
+            <sparkle:shortVersionString>0.5.101</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.101
+
+手机端 composer 输入框旁权限按钮改为下拉菜单（3 档），按用户反馈的「请求批准 / 帮我批准 / 完全访问权限」最常用档位。
+
+## 修复
+
+- H5 composer-bar 输入框旁的「电脑操作」按钮改为 `权限 ▾` 下拉菜单：
+  - **请求批准** — 每次写操作在手机端弹批准请求 (`approvalPolicy=on-request`)
+  - **帮我批准** — 全自动批准 (`approvalPolicy=never`)
+  - **完全访问权限** — 全自动 + 完全访问不限制 (`sandboxMode=danger-full-access`)
+- 新增 `POST /api/permissions {profile:"request|auto|full"}` 后端端点，写入 `TapgoConfig.approvalPolicy` + `sandboxMode`（仅 full 时）。
+- `PhoneRemote.StateSnapshot` 新增 `permissions: {sandbox, approval}` 字段，composer 按钮文字同步显示当前档位（如「完全访问权限」），下拉高亮当前选中档。
+
+## 范围说明
+
+- 完整权限抽屉（屏幕录制 / 辅助功能）仍通过原电脑控制抽屉进入，下拉菜单暂未挂载入口。
+- 不影响 macOS 系统授权（屏幕录制 / 辅助功能），后者仍需 Mac 端手动确认。
+
+## 测试
+
+- 2801 通过 / 13 失败，13 个全是预先存在的远程 SSH 集成 + helper version tag 一次性断言，无回归。
+- Core 端 `PhoneRemote.buildState` 接受 `permissions` 实参；App 端 `applyPermissionProfile` 写入后立即被下次轮询带回。]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.101/Tapgo-AICoding-0.5.101.zip" length="11285780" type="application/octet-stream" sparkle:edSignature="wLOb60RNoxqz+5ozu/potsp/6C9I0VfcA4VXU1gi0ri061sATYogeczyJIsyEHtmf4PeljYQJDgRvu9+xw6ACg=="/>
+        </item>
+        <item>
             <title>0.5.100</title>
             <pubDate>Sat, 05 Sep 2026 02:52:57 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.100</link>
@@ -48,25 +80,6 @@
 - 新增表头行内代码、单元格加粗和 Markdown 源码不泄露回归。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.99/Tapgo-AICoding-0.5.99.zip" length="11164171" type="application/octet-stream" sparkle:edSignature="Vh0yfYvV9g8ZL41qXy2FvCqA3QjEycEKQF3fZD3b3/Pcj6sN0DXX/cZf8wevbppgtkd0fU3GJ71T4/pRBeL4CQ=="/>
-        </item>
-        <item>
-            <title>0.5.98</title>
-            <pubDate>Sat, 05 Sep 2026 02:21:39 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.98</link>
-            <sparkle:version>0.5.98</sparkle:version>
-            <sparkle:shortVersionString>0.5.98</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.98
-
-- 手机 Web Remote 的模型选择从静态展示升级为真实切换：按供应商分组展示 ProviderRegistry 模型，标记当前模型，并对新建任务立即生效。
-- 未配置 API Key 的模型在手机端明确标为“未配置”且不可选择；Web 状态只下发模型 ID、显示名和配置状态，不会暴露 API Key 或供应商端点。
-- 电脑操作抽屉新增远程控制总开关、屏幕录制和辅助功能三层状态，状态持续从 Mac 回读。
-- 手机可立即关闭电脑控制；重新开启会在 Mac 上弹出确认，防止旧二维码链接绕过本机总开关。
-- 手机可分别发起打开 Mac 的屏幕录制或辅助功能设置；macOS 系统授权仍必须由人在 Mac 上确认，Web 端无法绕过 TCC。
-- 完善模型、权限和控制设置的鉴权路由、非法输入拒绝、状态快照与前端交互回归。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.98/Tapgo-AICoding-0.5.98.zip" length="11164202" type="application/octet-stream" sparkle:edSignature="KuxJNd+bqxQdAfMjIuGOwOb9if0EQLpRPRQFNA+XvAAJOm24OA+FnnWcK8KuWXMIWOuUr3uFVcrN9VgcTjzXBA=="/>
         </item>
     </channel>
 </rss>
