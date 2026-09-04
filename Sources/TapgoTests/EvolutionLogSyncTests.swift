@@ -1,5 +1,4 @@
 import Foundation
-@testable import TapgoAICoding
 
 /// 守住"makeHistory() 不能明显落后于 EVOLUTION.md"：两个源的版本列表
 /// 必须有交集（交集少于 5 条即视为维护疏漏）。该测试在每次 release 前
@@ -47,7 +46,6 @@ func runEvolutionLogSync(_ t: TestRunner) {
         let parts = v.split(separator: ".").compactMap { Int($0) }
         guard parts.count == 3 else { return false }
         return (parts[0], parts[1], parts[2]) >= (0, 5, 5)
-        return parts.count == 3 && (parts[0], parts[1], parts[2]) >= (0, 5, 5)
     }
     let missingInEvo = modernViewVersions.subtracting(evoVersions)
     t.expect(missingInEvo.isEmpty,

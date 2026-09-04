@@ -15,7 +15,7 @@
 #   Override with:   TAPGO_SDK=macosx27.0 ./scripts/build-app.sh
 #   Detect with:     xcrun --show-sdk-path  (check for missing SwiftUIMacros)
 #   2. Creates Tapgo AICoding.app/Contents/{MacOS,Resources}/
-#   3. Copies the binary, Info.plist, entitlements
+#   3. Copies the binary, SwiftPM resource bundle, Info.plist, entitlements
 #   4. Signs with Tapgo's Developer ID when available; otherwise explicitly
 #      falls back to ad-hoc signing for local development only
 #
@@ -70,6 +70,16 @@ HELPER_PLIST_SRC="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
 PKGINFO_SRC="${ROOT}/AppBuilder/PkgInfo"
 ICNS_SRC="${ROOT}/AppBuilder/AppIcon.icns"
 LOGIN_BRAND_BG_SRC="${ROOT}/AppBuilder/LoginBrandBackground.png"
+CORE_RESOURCE_BUNDLE_NAME="TapgoAICoding_TapgoCore.bundle"
+CORE_RESOURCE_BUNDLE_SRC="${ROOT}/.build/release/${CORE_RESOURCE_BUNDLE_NAME}"
+CORE_RESOURCE_BUNDLE_DST="${RESOURCES_DIR}/${CORE_RESOURCE_BUNDLE_NAME}"
+HELPER_RESOURCE_BUNDLE_DST="${HELPER_RESOURCES_DIR}/${CORE_RESOURCE_BUNDLE_NAME}"
+CORE_RESOURCE_FILES=(
+  "PhoneRemote/index.html"
+  "PhoneRemote/app.css"
+  "PhoneRemote/app.js"
+  "PhoneRemote/app-icon.png"
+)
 
 echo "==> Building ${BIN_NAME} (release)"
 # Build only the app product — the TapgoTests target isn't part of the
@@ -92,6 +102,16 @@ if [[ ! -f "$MCP_SRC" ]]; then
   echo "ERROR: built MCP binary not found at $MCP_SRC" >&2
   exit 1
 fi
+if [[ ! -d "$CORE_RESOURCE_BUNDLE_SRC" ]]; then
+  echo "ERROR: SwiftPM resource bundle not found at $CORE_RESOURCE_BUNDLE_SRC" >&2
+  exit 10
+fi
+for RESOURCE_FILE in "${CORE_RESOURCE_FILES[@]}"; do
+  if [[ ! -f "${CORE_RESOURCE_BUNDLE_SRC}/${RESOURCE_FILE}" ]]; then
+    echo "ERROR: phone remote resource missing: ${CORE_RESOURCE_BUNDLE_SRC}/${RESOURCE_FILE}" >&2
+    exit 10
+  fi
+done
 
 # Build the .icns if missing or stale.
 if [[ ! -f "$ICNS_SRC" ]]; then
@@ -132,6 +152,21 @@ cp "$MCP_SRC" "$HELPER_MACOS_DIR/${MCP_NAME}"
 chmod +x "$HELPER_MACOS_DIR/${MCP_NAME}"
 cp "$HELPER_PLIST_SRC" "$HELPER_CONTENTS_DIR/Info.plist"
 echo "  embedded computer-use helper: Tapgo Computer Use.app"
+
+# Packaged apps keep the SwiftPM resources in the standard signed resource
+# directory. PhoneRemote resolves this location before using Bundle.module in
+# development/test executables, avoiding a fatal accessor on clean machines.
+ditto "$CORE_RESOURCE_BUNDLE_SRC" "$CORE_RESOURCE_BUNDLE_DST"
+ditto "$CORE_RESOURCE_BUNDLE_SRC" "$HELPER_RESOURCE_BUNDLE_DST"
+for EMBEDDED_RESOURCE_BUNDLE in "$CORE_RESOURCE_BUNDLE_DST" "$HELPER_RESOURCE_BUNDLE_DST"; do
+  for RESOURCE_FILE in "${CORE_RESOURCE_FILES[@]}"; do
+    [[ -f "${EMBEDDED_RESOURCE_BUNDLE}/${RESOURCE_FILE}" ]] || {
+      echo "ERROR: embedded phone remote resource missing: ${EMBEDDED_RESOURCE_BUNDLE}/${RESOURCE_FILE}" >&2
+      exit 11
+    }
+  done
+done
+echo "  embedded SwiftPM resources: ${CORE_RESOURCE_BUNDLE_NAME}"
 
 cp "$PLIST_SRC" "$CONTENTS_DIR/Info.plist"
 cp "$PKGINFO_SRC" "$CONTENTS_DIR/PkgInfo"

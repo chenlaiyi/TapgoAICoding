@@ -854,12 +854,34 @@ public enum PhoneRemote {
 
     // MARK: - H5 page
 
+    private static let coreResourceBundleName = "TapgoAICoding_TapgoCore.bundle"
+
+    /// 发布 App 的资源位于标准的 Contents/Resources；只有 SwiftPM 开发和
+    /// 测试可执行文件才访问 Bundle.module。生成的 Bundle.module 在发布包
+    /// 漏资源时会 fatalError，不能作为已打包 App 的可选查找接口。
+    private static func phoneRemoteResourceURL(stem: String, extension ext: String) -> URL? {
+        if let resourceURL = Bundle.main.resourceURL {
+            let packagedURL = resourceURL
+                .appendingPathComponent(coreResourceBundleName, isDirectory: true)
+                .appendingPathComponent("PhoneRemote", isDirectory: true)
+                .appendingPathComponent("\(stem).\(ext)", isDirectory: false)
+            if FileManager.default.fileExists(atPath: packagedURL.path) {
+                return packagedURL
+            }
+        }
+
+        guard Bundle.main.bundleURL.pathExtension.lowercased() != "app" else {
+            return nil
+        }
+        return Bundle.module.url(forResource: stem,
+                                 withExtension: ext,
+                                 subdirectory: "PhoneRemote")
+    }
+
     /// 渲染 H5 单页。页面静态、无外链资源, 数据全部经 `/api/state` JSON
     /// 获取, DOM 一律用 textContent 写入, 天然免 XSS。
     public static func pageHTML(token: String) -> String {
-        if let url = Bundle.module.url(forResource: "index",
-                                       withExtension: "html",
-                                       subdirectory: "PhoneRemote"),
+        if let url = phoneRemoteResourceURL(stem: "index", extension: "html"),
            let template = try? String(contentsOf: url, encoding: .utf8) {
             return template
                 .replacingOccurrences(of: "__TAPGO_TOKEN_JSON__",
@@ -1707,9 +1729,7 @@ public enum PhoneRemote {
         else { return nil }
         let stem = String(name[..<dot])
         let ext = String(name[name.index(after: dot)...])
-        guard let url = Bundle.module.url(forResource: stem,
-                                          withExtension: ext,
-                                          subdirectory: "PhoneRemote"),
+        guard let url = phoneRemoteResourceURL(stem: stem, extension: ext),
               let data = try? Data(contentsOf: url)
         else { return nil }
         let contentType: String

@@ -34,6 +34,26 @@ WORK="$(mktemp -d -t tapgo-sparkle-release.XXXXXX)"
 trap 'mavis-trash "$WORK" >/dev/null 2>&1 || true' EXIT
 
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$WORK/$ARCHIVE"
+
+# A signed binary can still crash at Bundle.module if the SwiftPM resource
+# bundle was omitted from the archive. Validate the exact distributable, not
+# merely the source build directory, before signing or publishing it.
+APP_BUNDLE_NAME="$(basename "$APP")"
+CORE_RESOURCE_PREFIXES=(
+  "${APP_BUNDLE_NAME}/Contents/Resources/TapgoAICoding_TapgoCore.bundle/PhoneRemote"
+  "${APP_BUNDLE_NAME}/Contents/Resources/computer-use-helper/Tapgo Computer Use.app/Contents/Resources/TapgoAICoding_TapgoCore.bundle/PhoneRemote"
+)
+ARCHIVE_ENTRIES="$WORK/archive-entries.txt"
+unzip -Z1 "$WORK/$ARCHIVE" > "$ARCHIVE_ENTRIES"
+for CORE_RESOURCE_PREFIX in "${CORE_RESOURCE_PREFIXES[@]}"; do
+  for RESOURCE_FILE in index.html app.css app.js app-icon.png; do
+    if ! grep -Fxq "${CORE_RESOURCE_PREFIX}/${RESOURCE_FILE}" "$ARCHIVE_ENTRIES"; then
+      echo "ERROR: release archive missing phone remote resource: ${CORE_RESOURCE_PREFIX}/${RESOURCE_FILE}" >&2
+      exit 5
+    fi
+  done
+done
+echo "==> Verified release archive contains phone remote resources"
 if [[ -f "$ROOT/appcast.xml" ]]; then
   cp "$ROOT/appcast.xml" "$WORK/appcast.xml"
 fi

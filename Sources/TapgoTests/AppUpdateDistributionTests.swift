@@ -49,6 +49,7 @@ func runAppUpdateDistribution(_ t: TestRunner) {
     let sidebar = updateFile("Sources/TapgoAICoding/Views/SidebarView.swift")
     let build = updateFile("scripts/build-app.sh")
     let release = updateFile("scripts/create-github-release-artifacts.sh")
+    let phoneRemote = updateFile("Sources/TapgoCore/PhoneRemoteLink.swift")
     let appcast = updateFile("appcast.xml")
     let info = updatePlist("AppBuilder/Info.plist")
     let helperInfo = updatePlist("AppBuilder/ComputerUseHelper-Info.plist")
@@ -75,8 +76,30 @@ func runAppUpdateDistribution(_ t: TestRunner) {
     t.expect(build.contains("embedded updater: Sparkle.framework"), "update: 构建嵌入 Sparkle")
     t.expect(build.contains("@executable_path/../Frameworks"), "update: App 运行时框架路径")
     t.expect(build.contains("codesign --verify --deep --strict"), "update: 完整签名验证")
+    t.expect(package.contains(".copy(\"Resources/PhoneRemote\")"), "update: SwiftPM 声明手机远程资源")
+    t.expect(build.contains("CORE_RESOURCE_BUNDLE_NAME=\"TapgoAICoding_TapgoCore.bundle\"")
+             && build.contains("ditto \"$CORE_RESOURCE_BUNDLE_SRC\" \"$CORE_RESOURCE_BUNDLE_DST\"")
+             && build.contains("ditto \"$CORE_RESOURCE_BUNDLE_SRC\" \"$HELPER_RESOURCE_BUNDLE_DST\""),
+             "update: 主 App 与 Helper 均嵌入 SwiftPM 资源包")
+    t.expect(build.contains("PhoneRemote/index.html")
+             && build.contains("PhoneRemote/app.css")
+             && build.contains("PhoneRemote/app.js")
+             && build.contains("PhoneRemote/app-icon.png"),
+             "update: 构建前后校验手机远程四项资源")
+    t.expect(build.contains("CORE_RESOURCE_BUNDLE_DST=\"${RESOURCES_DIR}/${CORE_RESOURCE_BUNDLE_NAME}\"")
+             && build.contains("HELPER_RESOURCE_BUNDLE_DST=\"${HELPER_RESOURCES_DIR}/${CORE_RESOURCE_BUNDLE_NAME}\""),
+             "update: SwiftPM 资源位于主 App 与 Helper 的标准签名资源目录")
+    t.expect(phoneRemote.contains("Bundle.main.resourceURL")
+             && phoneRemote.contains("Bundle.main.bundleURL.pathExtension.lowercased() != \"app\""),
+             "update: 发布 App 优先读取已嵌入资源且不触发 Bundle.module fatalError")
+    t.expectEqual(phoneRemote.components(separatedBy: "Bundle.module.url").count - 1, 1,
+                  "update: Bundle.module 仅保留在非 App 开发回退路径")
     t.expect(release.contains("--account com.tapgo.aicoding"), "update: 私钥只从 Keychain 读取")
     t.expect(release.contains("releases/download/$TAG/"), "update: Release 下载地址")
+    t.expect(release.contains("unzip -Z1 \"$WORK/$ARCHIVE\"")
+             && release.contains("CORE_RESOURCE_PREFIX")
+             && release.contains("grep -Fxq"),
+             "update: 发布前校验最终 ZIP 的资源清单")
     // appcast.xml 是发布产物：每次 GitHub Release 创建时由独立脚本追加，
 // evolve 流程（git tag + .app 重打）跑在 Release 之前——此时 appcast
 // 还没有新条目。TAPGO_EXPECTED_VERSION 由 evolve.sh 注入，等价于「现在

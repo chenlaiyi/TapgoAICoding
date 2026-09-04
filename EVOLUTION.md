@@ -1275,3 +1275,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 左下角账号区收为单行约 46pt 布局，头像缩至 22pt，模型、套餐与额度移入提示；更新入口降为 24pt 次要操作并保留真实功能。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.95 — fix(remote): embed phone web resources in signed app
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.95`)_
+**Tag**: v0.5.95
+**Test status**: — 2723 passed, 0 failed —
+**Changed**:
+- fix(remote): embed phone web resources in signed app
+- 修复干净机器扫码连接手机时因 SwiftPM 资源包缺失触发 Bundle.module 崩溃；主 App 与 Helper 嵌入标准签名资源，并在最终 ZIP 发布前验证。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
