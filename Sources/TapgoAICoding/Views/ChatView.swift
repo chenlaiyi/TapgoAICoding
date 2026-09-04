@@ -196,7 +196,7 @@ struct ChatView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DSHTheme.bg)
+        .background(DSHTheme.fidelityMainCanvas)
         .navigationTitle("")
         .alert("重命名会话", isPresented: Binding(
             get: { renamingCurrentId != nil },

@@ -29,7 +29,7 @@ struct RightWorkbenchView: View {
                 tabContents
             }
             .frame(minWidth: 340, idealWidth: CGFloat(workbenchWidth), maxWidth: 820)
-            .background(DSHTheme.bg)
+            .background(DSHTheme.fidelityRightbarTop)
             .background(widthReader(for: .workbench))
 
             if layout.isEnvironmentVisible {
@@ -49,7 +49,7 @@ struct RightWorkbenchView: View {
                     }
                     .padding(.horizontal, 12)
                     .frame(height: 37)
-                    .background(DSHTheme.titlebarBg)
+                    .background(DSHTheme.fidelityRightbarTop)
                     Divider()
                     ScrollView {
                         EnvironmentPanel(thread: thread)
@@ -175,7 +175,7 @@ struct RightWorkbenchView: View {
         }
         .padding(.horizontal, 4)
         .frame(height: 37)
-        .background(DSHTheme.titlebarBg)
+        .background(DSHTheme.fidelityRightbarTop)
     }
 
     private func workbenchTab(_ tab: WorkbenchLayoutState.Tab) -> some View {

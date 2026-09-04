@@ -67,3 +67,48 @@ echo "Release artifacts ready:"
 echo "  $DIST/$ARCHIVE"
 echo "  $DIST/appcast.xml"
 echo "  $DIST/SHA256SUMS.txt"
+
+# ---------- 6. Upload to GitHub Release ----------
+# Without this step the appcast <enclosure url> points to a 404 — installed
+# clients can't fetch the zip. Idempotent: if the release already exists
+# for this tag we only upload the zip and replace the release notes.
+if ! command -v gh >/dev/null 2>&1; then
+  echo "WARN: gh CLI not installed; skipping GitHub Release upload." >&2
+  echo "      Install with: brew install gh" >&2
+  echo "      Then run: gh release create \"$TAG\" \"$DIST/$ARCHIVE\" \\" >&2
+  echo "                 --title \"$TAG\" --notes-file \"$NOTES_SOURCE\"" >&2
+else
+  if gh release view "$TAG" >/dev/null 2>&1; then
+    echo "==> Release $TAG already exists; uploading zip + refreshing notes."
+    gh release upload "$TAG" "$DIST/$ARCHIVE" --clobber >/dev/null
+    gh release edit "$TAG" --notes-file "$NOTES_SOURCE" >/dev/null
+  else
+    echo "==> Creating GitHub Release $TAG with signed zip."
+    gh release create "$TAG" "$DIST/$ARCHIVE" \
+      --title "$TAG" \
+      --notes-file "$NOTES_SOURCE"
+  fi
+fi
+
+# ---------- 7. Commit refreshed appcast.xml ----------
+# The new appcast.xml in repo root is what raw.githubusercontent.com serves —
+# installed Sparkle clients poll that URL. Commit + push so the next poll
+# sees the new <item>.
+if [[ -f "$ROOT/appcast.xml" ]] && git diff --quiet -- appcast.xml; then
+  echo "==> appcast.xml unchanged; nothing to commit."
+elif [[ -f "$ROOT/appcast.xml" ]]; then
+  git add appcast.xml
+  if git diff --cached --quiet; then
+    echo "==> appcast.xml has no staged diff; skipping commit."
+  else
+    git commit -m "chore(release): refresh appcast.xml for ${TAG}"
+    if git push origin main >/dev/null 2>&1; then
+      echo "==> appcast.xml pushed; installed clients will detect ${TAG} on next poll."
+    else
+      echo "WARN: appcast.xml push failed; run: git push origin main" >&2
+    fi
+  fi
+fi
+
+echo
+echo "==> Done. Release: https://github.com/chenlaiyi/TapgoAICoding/releases/tag/$TAG"

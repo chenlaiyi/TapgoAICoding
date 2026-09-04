@@ -1174,3 +1174,15 @@ fidelity report 6 处区域色固化为 DSHTheme.fidelityXxx token (titlebar/sid
 ChatView composer 工具栏 / SidebarView 底栏 / RightWorkbenchView 工具栏 3 处 .background 从 DSHTheme.titlebarBg (0x1A1A1C) 切到 DSHTheme.fidelityTitlebar (0x232323), 标题栏实测色对齐目标 IDE 0x232323. 配合 v0.5.85 引入的 6 个 fidelityXxx token, 本次只切 3 处主窗口高频可见背景; 4 个其余 token (sidebarTop/sidebarMid/mainCanvas/rightbarTop/statusbar) 留待后续 patch 视情况切换.
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.87 — fix(design+release): v0.5.87 — fidelity patch 3/3 (main_canvas/rightbar_top) + 自动 GitHub Release 发布 + AgentOutputPolicy 文案层 + project.yml 版本注入
+**Date**: 2026-09-04
+**Commit**: _(see )_
+**Tag**: v0.5.87
+**Test status**: — 2706 passed, 0 failed —
+**Changed**:
+- fix(design+release): v0.5.87 — fidelity patch 3/3 (main_canvas/rightbar_top) + 自动 GitHub Release 发布 + AgentOutputPolicy 文案层 + project.yml 版本注入
+fidelity patch 3/3 (ChatView L199 / RightWorkbenchView L32+L52+L178 切到 fidelityMainCanvas / fidelityRightbarTop, 关闭 13.4% 像素差主体); evolve.sh 推 tag 后自动 gh release create + 刷 appcast.xml 推到 main, 已装客户端 Sparkle 自动升级; project.yml 的 MARKETING_VERSION/CURRENT_PROJECT_VERSION 改为 evolve.sh 注入, 不再硬编码漂移; AgentOutputPolicy 文案层加状态前缀 + 禁 markdown 装饰 + 列表≤3 + 默认≤6 行 + 失败1行说影响
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

@@ -118,6 +118,21 @@ if [[ -f "$HELPER_PLIST" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW_VERSION}" "$HELPER_PLIST" >/dev/null
 fi
 
+# Sync AppBuilder/project.yml so a future 'xcodegen' run picks up the new
+# MARKETING_VERSION / CURRENT_PROJECT_VERSION instead of a stale hardcode.
+PROJECT_YML="${ROOT}/AppBuilder/project.yml"
+if [[ -f "$PROJECT_YML" ]] && grep -q "MARKETING_VERSION" "$PROJECT_YML"; then
+  # Sync version so a future xcodegen run doesn't ship a stale spec.
+  python3 - "$PROJECT_YML" "${NEW_VERSION}" <<'PY'
+import re, sys
+path, ver = sys.argv[1], sys.argv[2]
+text = open(path).read()
+text = re.sub(r'(MARKETING_VERSION:\s*")[0-9.]+"', r'\g<1>' + ver + '"', text)
+text = re.sub(r'(CURRENT_PROJECT_VERSION:\s*")[0-9.]+"', r'\g<1>' + ver + '"', text)
+open(path, 'w').write(text)
+PY
+fi
+
 # ---------- 3. Build ----------
 echo "==> Building release"
 if ! "${SWIFT[@]}" build -c release --product TapgoAICoding; then
@@ -200,6 +215,13 @@ if ! git push origin main --tags; then
   echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
   echo "Re-run with network to retry, or:  git push origin main --tags" >&2
   exit 6
+fi
+
+echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
+if ! ./scripts/create-github-release-artifacts.sh; then
+  echo "WARN: create-github-release-artifacts.sh failed; release not published." >&2
+  echo "      Re-run later: ./scripts/create-github-release-artifacts.sh" >&2
+  echo "      Tag v${NEW_VERSION} is already pushed; clients cannot fetch the zip until release is created." >&2
 fi
 
 # ---------- 8. Rebuild .app ----------
