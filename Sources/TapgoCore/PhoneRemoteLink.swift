@@ -21,7 +21,7 @@ public enum PhoneRemote {
     /// 链接协议版本, 进 H5 页面与 /api/state 便于以后兼容判断。
     public static let linkVersion = 3
     /// Web Remote 静态客户端版本。资源 URL 带版本参数，升级后不会误用旧缓存。
-    public static let webClientVersion = 2
+    public static let webClientVersion = 3
 
     /// transcript 最多回带最近多少个 turn (H5 端向下翻由 Mac 端后续版本支持)。
     public static let maxTranscriptTurns = 30
@@ -207,6 +207,14 @@ public enum PhoneRemote {
         /// POST /r/<token>/api/new `{"projectId": "..."}` — 在指定项目下新建
         /// 会话并切换过去。
         case newSession(projectId: String)
+        /// POST /r/<token>/api/model — 切换“新任务模型”。供应商与模型必须
+        /// 同时匹配 App 当前注册表，服务端不会接受任意 API 模型名。
+        case selectModel(providerId: String, modelId: String)
+        /// POST /r/<token>/api/control/enabled — 关闭可立即生效；重新开启必须
+        /// 在 Mac 弹窗确认，避免拿到旧二维码的人绕过本机总开关。
+        case setControlEnabled(Bool)
+        /// POST /r/<token>/api/control/permission — 打开对应 macOS 隐私设置。
+        case requestControlPermission(ControlPermission)
         /// POST /r/<token>/api/attach — 手机上传图片附件 (base64), 落到
         /// Mac 待发附件, 随下一条消息一起发送。
         case attach(name: String, dataBase64: String)
@@ -279,6 +287,11 @@ public enum PhoneRemote {
         case sleep
     }
 
+    public enum ControlPermission: String, CaseIterable, Equatable {
+        case screenRecording
+        case accessibility
+    }
+
     public enum RouteError: Error, Equatable {
         /// 路径里的 token 与当前 token 不符。
         case unauthorized
@@ -330,6 +343,22 @@ public enum PhoneRemote {
                 return .failure(.badRequest)
             }
             return .success(.newSession(projectId: pid))
+        case ["api", "model"]:
+            guard method == "POST",
+                  let providerId = jsonStringField(body, "providerId"), !providerId.isEmpty,
+                  let modelId = jsonStringField(body, "modelId"), !modelId.isEmpty
+            else { return .failure(.badRequest) }
+            return .success(.selectModel(providerId: providerId, modelId: modelId))
+        case ["api", "control", "enabled"]:
+            guard method == "POST", let enabled = jsonBoolField(body, "enabled")
+            else { return .failure(.badRequest) }
+            return .success(.setControlEnabled(enabled))
+        case ["api", "control", "permission"]:
+            guard method == "POST",
+                  let raw = jsonStringField(body, "permission"),
+                  let permission = ControlPermission(rawValue: raw)
+            else { return .failure(.badRequest) }
+            return .success(.requestControlPermission(permission))
         case ["api", "attach"]:
             guard method == "POST",
                   let name = jsonStringField(body, "name"), !name.isEmpty,
@@ -607,6 +636,27 @@ public enum PhoneRemote {
         }
     }
 
+    public struct ModelOption: Codable, Equatable {
+        public var providerId: String
+        public var providerName: String
+        public var modelId: String
+        public var modelName: String
+        /// 是否已配置该供应商的 API Key；仅暴露布尔值，不暴露端点或凭据。
+        public var configured: Bool
+        public var selected: Bool
+
+        public init(providerId: String, providerName: String,
+                    modelId: String, modelName: String,
+                    configured: Bool, selected: Bool) {
+            self.providerId = providerId
+            self.providerName = providerName
+            self.modelId = modelId
+            self.modelName = modelName
+            self.configured = configured
+            self.selected = selected
+        }
+    }
+
     public struct StateSnapshot: Codable, Equatable {
         public var rev: Int
         public var hostname: String
@@ -619,6 +669,8 @@ public enum PhoneRemote {
         public var control: ControlStatus?
         /// 当前模型展示名 (composer 底栏/H5 模型面板展示, 如 "DeepSeek V4 Flash")。
         public var model: String?
+        /// 可切换模型白名单。只含展示名、稳定 ID 与是否已配置，不含凭据。
+        public var models: [ModelOption]
         /// Mac 端待发附件图片张数 (手机上传后 >0, 发送后清零)。
         public var attachedCount: Int
         /// 项目列表 (按最近活跃倒序) + 活动项目; v0.5.20 项目切换用。
@@ -636,6 +688,7 @@ public enum PhoneRemote {
                                   projects: [ProjectSeed] = [],
                                   activeProjectId: String? = nil,
                                   model: String? = nil,
+                                  models: [ModelOption] = [],
                                   attachedCount: Int = 0,
                                   now: Date = Date()) -> StateSnapshot {
         let projectIDs = Set(projects.map(\.id))
@@ -724,6 +777,7 @@ public enum PhoneRemote {
                              transcript: transcript,
                              control: control,
                              model: model,
+                             models: models,
                              attachedCount: attachedCount,
                              projects: projectInfos,
                              activeProjectId: resolvedActiveProjectID)

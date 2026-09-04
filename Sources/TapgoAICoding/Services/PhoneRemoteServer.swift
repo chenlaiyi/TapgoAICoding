@@ -95,6 +95,7 @@ final class PhoneRemoteController: ObservableObject {
     private var presenceTimer: Timer?
     private var pendingBuffers: [ObjectIdentifier: Data] = [:]
     private var cancellables: Set<AnyCancellable> = []
+    private var controlEnableConfirmationVisible = false
     private let queue = DispatchQueue(label: "tapgo.phone-remote", qos: .userInitiated)
 
     static let tokenKey = "tapgo.remote.token"
@@ -338,6 +339,15 @@ final class PhoneRemoteController: ObservableObject {
                                                   projects: seeds,
                                                   activeProjectId: workspace.state.activeProjectId,
                                                   model: store.modelDisplayName,
+                                                  models: TapgoConfig.selectableModelOptions().map {
+                                                      PhoneRemote.ModelOption(
+                                                          providerId: $0.providerID,
+                                                          providerName: $0.providerName,
+                                                          modelId: $0.modelID,
+                                                          modelName: $0.modelName,
+                                                          configured: $0.configured,
+                                                          selected: $0.selected)
+                                                  },
                                                   attachedCount: store.attachedImages.count)
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
@@ -365,6 +375,39 @@ final class PhoneRemoteController: ObservableObject {
             }
             store.newThread()
             return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
+        case .success(.selectModel(let providerId, let modelId)):
+            lastPollAt = Date()
+            phoneConnected = true
+            guard TapgoConfig.selectProviderModel(providerID: providerId, modelID: modelId) else {
+                return PhoneRemote.badRequestResponse
+            }
+            rev &+= 1
+            store.refreshRateLimits()
+            return PhoneRemote.jsonOK(Data(#"{"ok":true}"#.utf8))
+        case .success(.setControlEnabled(let enabled)):
+            lastPollAt = Date()
+            phoneConnected = true
+            if !enabled {
+                controlEnabled = false
+                rev &+= 1
+                return PhoneRemote.jsonOK(Data(#"{"ok":true,"enabled":false}"#.utf8))
+            }
+            if controlEnabled {
+                return PhoneRemote.jsonOK(Data(#"{"ok":true,"enabled":true}"#.utf8))
+            }
+            presentControlEnableConfirmation()
+            return PhoneRemote.jsonOK(Data(#"{"ok":true,"pendingMacConfirmation":true}"#.utf8))
+        case .success(.requestControlPermission(let permission)):
+            lastPollAt = Date()
+            phoneConnected = true
+            guard openPermissionSettings(permission) else {
+                return PhoneRemote.httpResponse(
+                    status: 500, reason: "Internal Server Error",
+                    contentType: "application/json; charset=utf-8",
+                    body: Data(#"{"ok":false,"error":"settingsUnavailable"}"#.utf8))
+            }
+            rev &+= 1
+            return PhoneRemote.jsonOK(Data(#"{"ok":true,"requiresMacConfirmation":true}"#.utf8))
         case .success(.attach(let name, let dataBase64)):
             lastPollAt = Date()
             phoneConnected = true
@@ -428,6 +471,46 @@ final class PhoneRemoteController: ObservableObject {
     /// 弹出系统授权弹窗 (ConnectPhoneView 的「申请授权」按钮调用)。
     nonisolated static func requestPermissions() {
         ComputerUse.requestPermissions()
+    }
+
+    /// 关闭总开关可由已鉴权的手机立即完成；重新开启必须由 Mac 用户确认。
+    /// 这样旧二维码即使尚未轮换，也不能绕过用户在本机主动关闭的安全边界。
+    private func presentControlEnableConfirmation() {
+        guard !controlEnableConfirmationVisible else { return }
+        controlEnableConfirmationVisible = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "允许手机重新开启电脑控制？"
+            alert.informativeText = "此请求来自当前 Web Remote 链接。开启后，持有该链接的设备可在权限允许时操作鼠标、键盘和屏幕。"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "允许开启")
+            alert.addButton(withTitle: "保持关闭")
+            let response = alert.runModal()
+            self.controlEnableConfirmationVisible = false
+            if response == .alertFirstButtonReturn {
+                self.controlEnabled = true
+                self.rev &+= 1
+            }
+        }
+    }
+
+    /// Web 端只能发起系统授权并打开设置页，TCC 最终授权仍由 Mac 用户完成。
+    private func openPermissionSettings(_ permission: PhoneRemote.ControlPermission) -> Bool {
+        let suffix: String
+        switch permission {
+        case .screenRecording:
+            ComputerUse.requestScreenCapturePermission()
+            suffix = "Privacy_ScreenCapture"
+        case .accessibility:
+            ComputerUse.requestAccessibilityPermission()
+            suffix = "Privacy_Accessibility"
+        }
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(suffix)")
+        else { return false }
+        NSApp.activate(ignoringOtherApps: true)
+        return NSWorkspace.shared.open(url)
     }
 
     private func takeScreenshotJPEG() -> Data? {

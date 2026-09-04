@@ -39,11 +39,17 @@
   const mockState = {
     rev: 12,
     hostname: "Chenlaiyi 的 Mac",
-    appVersion: "0.5.96",
+    appVersion: "0.5.98",
     linkVersion: 3,
     activeId: "task-mobile",
     activeProjectId: "tapgo",
     model: "GLM-5.3",
+    models: [
+      { providerId: "builtin:zhipu", providerName: "智谱", modelId: "builtin:zhipu::GLM-5.3", modelName: "GLM-5.3", configured: true, selected: true },
+      { providerId: "builtin:zhipu", providerName: "智谱", modelId: "builtin:zhipu::GLM-5.3-Flash", modelName: "GLM-5.3-Flash", configured: true, selected: false },
+      { providerId: "builtin:minimax", providerName: "MiniMax", modelId: "builtin:minimax::MiniMax-M3", modelName: "MiniMax M3", configured: true, selected: false },
+      { providerId: "builtin:deepseek", providerName: "DeepSeek", modelId: "builtin:deepseek::deepseek-v4-flash", modelName: "DeepSeek V4 Flash", configured: false, selected: false },
+    ],
     attachedCount: 0,
     control: { enabled: true, screenAllowed: true, accessibilityAllowed: true },
     projects: [
@@ -191,6 +197,7 @@
     else if (action === "close-control") closeControl();
     else if (action === "model") openModelSheet();
     else if (action === "close-model") closeModelSheet();
+    else if (action === "select-model") selectModel(target.dataset.providerId, target.dataset.modelId);
     else if (action === "attach") $("fileInput").click();
     else if (action === "send") sendMessage();
     else if (action === "select-task") selectTask(target.dataset.id);
@@ -206,6 +213,8 @@
     else if (action === "control-scroll") control("scroll", { dy: Number(target.dataset.delta) });
     else if (action === "control-type") typeToMac();
     else if (action === "control-command") runControlCommand(target.dataset.command);
+    else if (action === "control-enabled") setControlEnabled(target.dataset.enabled === "true");
+    else if (action === "control-permission") requestControlPermission(target.dataset.permission);
   }
 
   function setConnection(kind, text) {
@@ -622,13 +631,88 @@
   }
 
   function openModelSheet() {
-    const current = state.snapshot?.model || "当前模型";
-    $("modelSheet").innerHTML = `<div class="sheet-card"><div class="sheet-title">选择模型</div><button class="model-row selected" type="button"></button><button class="ghost-button" data-action="close-model">关闭</button></div>`;
-    $("modelSheet").querySelector(".model-row").textContent = current + " · 当前";
-    $("modelSheet").classList.remove("hidden");
+    const sheet = $("modelSheet");
+    sheet.replaceChildren();
+    const card = document.createElement("div");
+    card.className = "sheet-card";
+    const header = document.createElement("div");
+    header.className = "sheet-header";
+    const heading = document.createElement("div");
+    heading.innerHTML = '<div class="sheet-title">选择新任务模型</div><div class="sheet-subtitle">仅影响之后新建的任务；当前运行不会中断。</div>';
+    const close = document.createElement("button");
+    close.className = "icon-button";
+    close.dataset.action = "close-model";
+    close.setAttribute("aria-label", "关闭模型选择");
+    close.textContent = "关闭";
+    header.append(heading, close);
+    card.appendChild(header);
+
+    const models = state.snapshot?.models || [];
+    if (!models.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state compact";
+      empty.textContent = "Mac 没有返回可切换模型，请更新 App 后重试。";
+      card.appendChild(empty);
+    } else {
+      const providers = [...new Set(models.map((item) => item.providerId))];
+      providers.forEach((providerId) => {
+        const providerModels = models.filter((item) => item.providerId === providerId);
+        const group = document.createElement("section");
+        group.className = "model-group";
+        const title = document.createElement("div");
+        title.className = "model-provider";
+        title.textContent = providerModels[0]?.providerName || "模型供应商";
+        group.appendChild(title);
+        providerModels.forEach((item) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "model-row" + (item.selected ? " selected" : "");
+          row.dataset.action = "select-model";
+          row.dataset.providerId = item.providerId;
+          row.dataset.modelId = item.modelId;
+          row.disabled = !item.configured;
+          const name = document.createElement("span");
+          name.className = "model-name";
+          name.textContent = item.modelName;
+          const status = document.createElement("span");
+          status.className = "model-status";
+          status.textContent = item.selected ? "当前" : (item.configured ? "切换" : "未配置");
+          row.append(name, status);
+          group.appendChild(row);
+        });
+        card.appendChild(group);
+      });
+    }
+    const note = document.createElement("div");
+    note.className = "sheet-note";
+    note.textContent = "API Key 与供应商端点只能在 Mac 设置中维护，不会发送到手机。";
+    card.appendChild(note);
+    sheet.appendChild(card);
+    sheet.classList.remove("hidden");
   }
 
   function closeModelSheet() { $("modelSheet").classList.add("hidden"); }
+
+  async function selectModel(providerId, modelId) {
+    if (!providerId || !modelId) return;
+    if (preview) {
+      const item = mockState.models.find((model) => model.providerId === providerId && model.modelId === modelId);
+      if (!item || !item.configured) return;
+      mockState.models.forEach((model) => { model.selected = model === item; });
+      mockState.model = (item.providerName + " " + item.modelName).trim();
+      render(mockState);
+      closeModelSheet();
+      toast("新任务模型已切换");
+      return;
+    }
+    try {
+      await request("api/model", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ providerId, modelId }) });
+      state.lastJSON = "";
+      await refresh(true);
+      closeModelSheet();
+      toast("新任务模型已切换");
+    } catch { toast("模型切换失败，请在 Mac 检查配置"); }
+  }
 
   function controlReady() {
     const controlState = state.snapshot?.control;
@@ -643,7 +727,7 @@
   function controlBannerText() {
     const controlState = state.snapshot?.control;
     if (!controlState) return "当前 App 版本不支持电脑操作。";
-    if (!controlState.enabled) return "Mac 端已关闭电脑操作，请在移动端远程控制窗口开启。";
+    if (!controlState.enabled) return "电脑控制已关闭。可从这里请求开启，Mac 端需要确认。";
     const missing = [];
     if (!controlState.screenAllowed) missing.push("屏幕录制");
     if (!controlState.accessibilityAllowed) missing.push("辅助功能");
@@ -657,38 +741,54 @@
         <header class="drawer-header"><div class="drawer-title">电脑操作</div><button class="icon-button" data-action="close-control">关闭</button></header>
         <div class="drawer-scroll">
           <div class="control-banner ${banner ? "" : "hidden"}" id="controlBanner"></div>
+          <section class="control-card permission-card">
+            <div class="permission-heading"><div><h2>访问与权限</h2><p>状态每 2 秒从 Mac 实时回读</p></div><span class="permission-overall ${controlReady() && screenReady() ? "ready" : ""}">${controlReady() && screenReady() ? "已就绪" : "需处理"}</span></div>
+            <div class="permission-row">
+              <div><strong>电脑控制</strong><span>${state.snapshot?.control?.enabled ? "已开启" : "已关闭"}</span></div>
+              <button class="ghost-button" data-action="control-enabled" data-enabled="${state.snapshot?.control?.enabled ? "false" : "true"}">${state.snapshot?.control?.enabled ? "关闭" : "请求开启"}</button>
+            </div>
+            <div class="permission-row">
+              <div><strong>屏幕录制</strong><span>${state.snapshot?.control?.screenAllowed ? "已授权" : "未授权"}</span></div>
+              <button class="ghost-button" data-action="control-permission" data-permission="screenRecording" ${state.snapshot?.control?.screenAllowed ? "disabled" : ""}>${state.snapshot?.control?.screenAllowed ? "已完成" : "在 Mac 打开设置"}</button>
+            </div>
+            <div class="permission-row">
+              <div><strong>辅助功能</strong><span>${state.snapshot?.control?.accessibilityAllowed ? "已授权" : "未授权"}</span></div>
+              <button class="ghost-button" data-action="control-permission" data-permission="accessibility" ${state.snapshot?.control?.accessibilityAllowed ? "disabled" : ""}>${state.snapshot?.control?.accessibilityAllowed ? "已完成" : "在 Mac 打开设置"}</button>
+            </div>
+            <div class="control-hint">macOS 权限必须由人在 Mac 上确认，手机端无法绕过系统授权。关闭控制可立即生效；重新开启也需要 Mac 确认。</div>
+          </section>
           <section class="control-card">
             <h2>屏幕</h2>
-            <div class="control-row"><button class="primary-button" data-action="screen">截取屏幕</button><button class="ghost-button" data-action="double" id="doubleButton">双击模式：${state.doubleClick ? "开" : "关"}</button></div>
+            <div class="control-row"><button class="primary-button" data-action="screen" data-control-action>截取屏幕</button><button class="ghost-button" data-action="double" id="doubleButton">双击模式：${state.doubleClick ? "开" : "关"}</button></div>
             <div class="screen-wrap"><img id="screenImage" alt="Mac 屏幕"><div class="screen-empty" id="screenEmpty">截取屏幕后，可以直接点按画面控制 Mac。</div></div>
             <div class="control-hint">点按画面会映射到 Mac 对应位置。双击模式仅影响下一次点按。</div>
           </section>
           <section class="control-card">
             <h2>滚动</h2>
-            <div class="control-row"><button class="ghost-button" data-action="control-scroll" data-delta="-5">向上滚动</button><button class="ghost-button" data-action="control-scroll" data-delta="5">向下滚动</button></div>
+            <div class="control-row"><button class="ghost-button" data-action="control-scroll" data-delta="-5" data-control-action>向上滚动</button><button class="ghost-button" data-action="control-scroll" data-delta="5" data-control-action>向下滚动</button></div>
           </section>
           <section class="control-card">
             <h2>键盘</h2>
             <textarea class="control-text" id="controlText" placeholder="输入要发送到 Mac 的文字"></textarea>
-            <div class="control-row"><button class="primary-button" data-action="control-type">输入到 Mac</button></div>
-            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="return">回车</button><button class="ghost-button" data-action="control-key" data-key="escape">Esc</button><button class="ghost-button" data-action="control-key" data-key="tab">Tab</button><button class="ghost-button" data-action="control-key" data-key="delete">删除</button></div>
-            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="left">左</button><button class="ghost-button" data-action="control-key" data-key="up">上</button><button class="ghost-button" data-action="control-key" data-key="down">下</button><button class="ghost-button" data-action="control-key" data-key="right">右</button></div>
+            <div class="control-row"><button class="primary-button" data-action="control-type" data-control-action>输入到 Mac</button></div>
+            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="return" data-control-action>回车</button><button class="ghost-button" data-action="control-key" data-key="escape" data-control-action>Esc</button><button class="ghost-button" data-action="control-key" data-key="tab" data-control-action>Tab</button><button class="ghost-button" data-action="control-key" data-key="delete" data-control-action>删除</button></div>
+            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="left" data-control-action>左</button><button class="ghost-button" data-action="control-key" data-key="up" data-control-action>上</button><button class="ghost-button" data-action="control-key" data-key="down" data-control-action>下</button><button class="ghost-button" data-action="control-key" data-key="right" data-control-action>右</button></div>
           </section>
           <section class="control-card">
             <h2>媒体</h2>
-            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="volumeUp">音量增大</button><button class="ghost-button" data-action="control-key" data-key="volumeDown">音量减小</button><button class="ghost-button" data-action="control-key" data-key="mute">静音</button></div>
-            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="brightnessUp">亮度增加</button><button class="ghost-button" data-action="control-key" data-key="brightnessDown">亮度降低</button><button class="ghost-button" data-action="control-key" data-key="playPause">播放暂停</button></div>
+            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="volumeUp" data-control-action>音量增大</button><button class="ghost-button" data-action="control-key" data-key="volumeDown" data-control-action>音量减小</button><button class="ghost-button" data-action="control-key" data-key="mute" data-control-action>静音</button></div>
+            <div class="control-row"><button class="ghost-button" data-action="control-key" data-key="brightnessUp" data-control-action>亮度增加</button><button class="ghost-button" data-action="control-key" data-key="brightnessDown" data-control-action>亮度降低</button><button class="ghost-button" data-action="control-key" data-key="playPause" data-control-action>播放暂停</button></div>
           </section>
           <section class="control-card">
             <h2>系统</h2>
-            <div class="control-row"><button class="danger-button" data-action="control-command" data-command="lock">锁定 Mac</button><button class="danger-button" data-action="control-command" data-command="sleep">让 Mac 睡眠</button></div>
+            <div class="control-row"><button class="danger-button" data-action="control-command" data-command="lock" data-control-action>锁定 Mac</button><button class="danger-button" data-action="control-command" data-command="sleep" data-control-action>让 Mac 睡眠</button></div>
           </section>
         </div>
       </section>`;
     $("controlBanner").textContent = banner;
     $("controlOverlay").classList.remove("hidden");
     $("screenImage").addEventListener("click", clickScreen);
-    $("controlOverlay").querySelectorAll("button:not([data-action='close-control'])").forEach((button) => {
+    $("controlOverlay").querySelectorAll("[data-control-action]").forEach((button) => {
       const allowed = button.dataset.action === "screen" ? screenReady() : controlReady();
       if (["double"].includes(button.dataset.action)) return;
       button.disabled = !allowed;
@@ -696,6 +796,33 @@
   }
 
   function closeControl() { $("controlOverlay").classList.add("hidden"); }
+
+  async function setControlEnabled(enabled) {
+    if (!enabled && !confirm("关闭后，手机端所有电脑操作会立即停止。确定关闭吗？")) return;
+    if (preview) {
+      mockState.control.enabled = enabled;
+      render(mockState);
+      openControl();
+      toast(enabled ? "预览模式：已模拟开启" : "电脑控制已关闭");
+      return;
+    }
+    try {
+      const response = await request("api/control/enabled", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled }) });
+      const result = await response.json();
+      state.lastJSON = "";
+      await refresh(true);
+      openControl();
+      toast(result.pendingMacConfirmation ? "请在 Mac 上确认开启" : (enabled ? "电脑控制已开启" : "电脑控制已关闭"));
+    } catch { toast("更新电脑控制设置失败"); }
+  }
+
+  async function requestControlPermission(permission) {
+    if (preview) { toast("请在 Mac 系统设置中确认授权"); return; }
+    try {
+      await request("api/control/permission", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ permission }) });
+      toast("已在 Mac 打开系统设置，请在电脑上确认");
+    } catch { toast("无法打开 Mac 权限设置"); }
+  }
 
   function toggleDouble() {
     state.doubleClick = !state.doubleClick;

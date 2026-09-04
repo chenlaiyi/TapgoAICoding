@@ -41,6 +41,15 @@
 - Synthetic historical groups deliberately omit the new-task button, while task selection remains available.
 - The visible workspace counts now reconcile with the task total instead of silently dropping legacy conversations.
 
+### Pass 4 — passed
+
+- The 393 × 852 comparison was repeated for the task stream, bottom composer, model sheet and computer-control drawer; the new panels preserve the same compact dark hierarchy and touch targets instead of introducing desktop settings chrome.
+- The model sheet now receives the real ProviderRegistry whitelist, groups models by provider, marks the current choice, disables unconfigured providers and switches the model used by new tasks without interrupting a running task.
+- The browser receives no API key or provider endpoint; it only receives stable IDs, display names and a configured boolean.
+- Computer control now exposes three distinct states: the App-level remote-control switch, Screen Recording, and Accessibility. Each permission has a live readback and a focused Mac System Settings action.
+- Disabling computer control takes effect immediately. Re-enabling from the phone deliberately requires an explicit confirmation dialog on the Mac, and macOS TCC consent can never be granted by the phone.
+- Mobile interaction QA switched the preview from GLM-5.3 to GLM-5.3-Flash, then disabled computer control and verified that screen, keyboard, media and system actions all became unavailable.
+
 ## Functional checks
 
 - Return to task home: passed.
@@ -49,9 +58,12 @@
 - Task selection and conversation rendering: passed.
 - Theme cycling: passed.
 - Model sheet: passed.
+- Real provider/model grouping, configured-state and selection transition: passed.
 - Computer-control drawer and screen/keyboard/media/system controls: passed.
+- Remote-control disable confirmation and disabled-action state: passed.
+- macOS Screen Recording / Accessibility guidance and status UI: passed.
 - JavaScript syntax: passed (`node --check`).
-- Swift regression suite: passed (`2731 passed, 0 failed`) after the legacy-task grouping assertions are included.
+- Swift regression suite: passed (`2745 passed, 0 failed`) after model, permission and control-setting route assertions are included.
 
 ## Final result
 

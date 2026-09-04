@@ -453,6 +453,16 @@ enum TapgoConfig {
         let builtIn: TapgoModel?  // 内置模型非空；自定义模型 nil
     }
 
+    /// Web Remote 只需要展示与选择模型，不得把端点或 API Key 暴露给浏览器。
+    struct SelectableModelOption: Equatable {
+        let providerID: String
+        let providerName: String
+        let modelID: String
+        let modelName: String
+        let configured: Bool
+        let selected: Bool
+    }
+
     /// 自定义模型注册表文件（0600）。
     static var modelRegistryFileURL: URL {
         codexHome.appendingPathComponent("model-registry.json")
@@ -574,6 +584,57 @@ enum TapgoConfig {
         let models = allModels()
         if let hit = models.first(where: { $0.id == id }) { return hit }
         return models[0]
+    }
+
+    /// ProviderRegistry 是桌面模型设置页与 Web Remote 的共同真相源。
+    /// 返回值刻意不包含 baseURL / apiKey，避免凭据进入手机端状态快照。
+    static func selectableModelOptions() -> [SelectableModelOption] {
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        let selectedProvider = registry.resolveSelectedProvider()
+        let selectedModel = registry.resolveSelectedModel(for: selectedProvider)
+        return registry.providers.flatMap { provider in
+            let configured: Bool
+            if let kind = provider.builtInKind {
+                configured = !providerAPIKey(kind).isEmpty
+            } else {
+                configured = !provider.apiKey.isEmpty
+            }
+            return provider.models.map { model in
+                SelectableModelOption(
+                    providerID: provider.id,
+                    providerName: provider.displayName,
+                    modelID: model.id,
+                    modelName: model.displayName,
+                    configured: configured,
+                    selected: provider.id == selectedProvider.id && model.id == selectedModel.id
+                )
+            }
+        }
+    }
+
+    /// 与 ModelSettingsView 使用同一套 ProviderRegistry 选择语义。仅接受当前
+    /// 注册表中确实存在的 provider/model 组合，拒绝浏览器注入任意模型 ID。
+    @discardableResult
+    static func selectProviderModel(providerID: String, modelID: String) -> Bool {
+        let registry = providerRegistry()
+        _ = registry.migrateFromLegacyIfNeeded()
+        registry.ensureBuiltinProviders()
+        guard let provider = registry.provider(id: providerID),
+              let model = provider.models.first(where: { $0.id == modelID })
+        else { return false }
+        let configured = provider.builtInKind.map { !providerAPIKey($0).isEmpty }
+            ?? !provider.apiKey.isEmpty
+        guard configured else { return false }
+
+        registry.setSelectedProvider(id: provider.id)
+        registry.setSelectedModel(model, for: provider)
+        let legacyID = provider.isBuiltin ? "builtin:\(model.apiModel)" : provider.id
+        UserDefaults.standard.set(legacyID, forKey: selectedModelKey)
+        modelRegistry().setSelected(legacyID)
+        syncProviderFiles()
+        return true
     }
 
     /// ProviderRegistry ID 到 Codex config.toml provider 段名的稳定映射。

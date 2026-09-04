@@ -58,7 +58,17 @@ public enum ComputerUse {
 
     /// 弹出系统授权弹窗 (App 设置页 / MCP 工具错误提示引导用户授权)。
     public static func requestPermissions() {
+        requestScreenCapturePermission()
+        requestAccessibilityPermission()
+    }
+
+    /// 只申请屏幕录制，供 Web Remote 的单项权限入口使用。
+    public static func requestScreenCapturePermission() {
         _ = CGRequestScreenCaptureAccess()
+    }
+
+    /// 只申请辅助功能，供 Web Remote 的单项权限入口使用。
+    public static func requestAccessibilityPermission() {
         let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(opts)
     }

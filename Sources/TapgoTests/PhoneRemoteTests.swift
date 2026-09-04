@@ -90,6 +90,39 @@ func runPhoneRemoteLinkRoute(_ t: TestRunner) {
     if case .failure(.badRequest) = route("POST", "/r/\(token)/api/new", "{}") {} else {
         t.expect(false, "route: 缺 projectId 的 new → badRequest")
     }
+    if case .success(.selectModel(let providerId, let modelId)) =
+        route("POST", "/r/\(token)/api/model",
+              #"{"providerId":"builtin:zhipu","modelId":"builtin:zhipu::GLM-5.3"}"#) {
+        t.expectEqual(providerId, "builtin:zhipu", "route: model 携带 providerId")
+        t.expectEqual(modelId, "builtin:zhipu::GLM-5.3", "route: model 携带 modelId")
+    } else {
+        t.expect(false, "route: POST api/model → selectModel")
+    }
+    for bad in [#"{"providerId":"builtin:zhipu"}"#, #"{"modelId":"m"}"#, "{}"] {
+        if case .failure(.badRequest) = route("POST", "/r/\(token)/api/model", bad) {} else {
+            t.expect(false, "route: model 缺字段拒绝 (\(bad))")
+        }
+    }
+    if case .success(.setControlEnabled(false)) =
+        route("POST", "/r/\(token)/api/control/enabled", #"{"enabled":false}"#) {} else {
+        t.expect(false, "route: control/enabled 解析布尔值")
+    }
+    if case .failure(.badRequest) =
+        route("POST", "/r/\(token)/api/control/enabled", #"{"enabled":"true"}"#) {} else {
+        t.expect(false, "route: control/enabled 拒绝字符串布尔值")
+    }
+    if case .success(.requestControlPermission(.screenRecording)) =
+        route("POST", "/r/\(token)/api/control/permission", #"{"permission":"screenRecording"}"#) {} else {
+        t.expect(false, "route: 屏幕录制权限入口")
+    }
+    if case .success(.requestControlPermission(.accessibility)) =
+        route("POST", "/r/\(token)/api/control/permission", #"{"permission":"accessibility"}"#) {} else {
+        t.expect(false, "route: 辅助功能权限入口")
+    }
+    if case .failure(.badRequest) =
+        route("POST", "/r/\(token)/api/control/permission", #"{"permission":"camera"}"#) {} else {
+        t.expect(false, "route: 未登记权限类型拒绝")
+    }
     // v0.5.25 附件上传路由
     if case .success(.attach(let n, let d)) =
         route("POST", "/r/\(token)/api/attach", #"{"name":"p.png","data":"aGVsbG8="}"#) {
@@ -141,6 +174,13 @@ func runPhoneRemoteLinkRoute(_ t: TestRunner) {
     }
     if case .failure(.unauthorized) = route("GET", "/r/\(stranger)/api/state", expected: token) {} else {
         t.expect(false, "route: token 不符的 api 调用 → unauthorized")
+    }
+    if case .failure(.unauthorized) = route(
+        "POST", "/r/\(stranger)/api/model",
+        #"{"providerId":"builtin:zhipu","modelId":"builtin:zhipu::GLM-5.3"}"#,
+        expected: token
+    ) {} else {
+        t.expect(false, "route: token 不符的模型切换 → unauthorized")
     }
 
     // 常量时间比对
@@ -241,6 +281,16 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                                       ],
                                       activeProjectId: "pA",
                                       model: "MiniMax-M3",
+                                      models: [
+                                        PhoneRemote.ModelOption(
+                                            providerId: "builtin:minimax", providerName: "MiniMax",
+                                            modelId: "builtin:minimax::MiniMax-M3", modelName: "MiniMax M3",
+                                            configured: true, selected: true),
+                                        PhoneRemote.ModelOption(
+                                            providerId: "builtin:deepseek", providerName: "DeepSeek",
+                                            modelId: "builtin:deepseek::deepseek-v4-flash", modelName: "DeepSeek V4 Flash",
+                                            configured: false, selected: false),
+                                      ],
                                       attachedCount: 2,
                                       now: now)
     t.expectEqual(snap.rev, 7, "snapshot: rev 透传")
@@ -264,6 +314,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(snap.projects.first?.name, "A项目", "snapshot: 项目名透传")
     t.expectEqual(snap.activeProjectId, "pA", "snapshot: activeProjectId 透传")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
+    t.expectEqual(snap.models.count, 2, "snapshot: 模型白名单透传")
+    t.expectEqual(snap.models.first?.selected, true, "snapshot: 当前模型标记")
+    t.expectEqual(snap.models.last?.configured, false, "snapshot: 仅暴露已配置布尔值")
     t.expectEqual(snap.attachedCount, 2, "snapshot: attachedCount 透传")
 
     let cwdMatched = Thread(id: "th-cwd", title: "旧项目会话", createdAt: now,
@@ -313,6 +366,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
         t.expect(false, "snapshot: JSON 可解码"); return
     }
     t.expectEqual(decoded, snap, "snapshot: JSON round-trip 相等")
+    let stateText = String(decoding: data, as: UTF8.self)
+    t.expect(!stateText.contains("apiKey") && !stateText.contains("baseURL"),
+             "snapshot: 模型状态不暴露 API Key 或端点")
 }
 
 // MARK: - Markdown 输出渲染 (v0.5.23)
@@ -836,6 +892,9 @@ func runPhoneRemoteControlSnapshot(_ t: TestRunner) {
                    "\"lock\"", "\"sleep\"",
                    "data-action=\"control\"",
                    "data-key=\"return\"",
+                   "api/model", "select-model", "api/control/enabled",
+                   "api/control/permission", "screenRecording", "accessibility",
+                   "新任务模型", "未配置", "Mac 上确认",
                    "电脑操作", "双击模式", "playPause"] {
         let inJS = jsSrc.contains(marker)
         let inCSS = cssSrc.contains(marker)

@@ -1311,3 +1311,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 按 cwd 将缺少 projectId 的历史任务归回已配置工作区。\n- 为已移除目录和无目录任务生成只读工作区卡片，避免任务总数与可见列表不一致。\n- 新增真实边界回归并更新 ZCode 手机端设计 QA。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.98 — feat(remote): add model and permission controls
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.98`)_
+**Tag**: v0.5.98
+**Test status**: — 2746 passed, 0 failed —
+**Changed**:
+- feat(remote): add model and permission controls
+- Web Remote 直接使用 ProviderRegistry 的模型白名单，按供应商分组并支持真实切换。\n- 手机端新增电脑控制总开关、屏幕录制和辅助功能状态及 Mac 设置入口。\n- 关闭控制立即生效；重新开启必须在 Mac 弹窗确认，系统 TCC 授权仍由 Mac 用户完成。\n- 模型快照不下发 API Key 或端点，并拒绝未配置或不存在的模型。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
