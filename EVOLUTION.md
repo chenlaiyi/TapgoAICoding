@@ -1287,3 +1287,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 修复干净机器扫码连接手机时因 SwiftPM 资源包缺失触发 Bundle.module 崩溃；主 App 与 Helper 嵌入标准签名资源，并在最终 ZIP 发布前验证。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.96 — feat(remote): align mobile web remote with ZCode
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.96`)_
+**Tag**: v0.5.96
+**Test status**: — 2728 passed, 0 failed —
+**Changed**:
+- feat(remote): align mobile web remote with ZCode
+- 重构手机首页为设备状态、工作区总览和卡片内任务两级结构，修复首页输入器误露。\n- 重构任务页顶栏、消息正文、状态与悬浮输入器，保留附件、模型和电脑控制能力。\n- 新增 ZCode 同视口设计 QA 与结构回归断言。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

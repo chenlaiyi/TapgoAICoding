@@ -6,13 +6,29 @@
   const preview = new URLSearchParams(location.search).get("preview") === "1";
   const app = document.getElementById("app");
   const $ = (id) => document.getElementById(id);
+  const icons = {
+    palette: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 22a10 10 0 1 0 0-20c-5.5 0-10 4-10 9 0 3.3 2.7 6 6 6h1.7c1.3 0 2.3 1.2 1.8 2.4-.4 1.1.4 2.6 1.5 2.6Z"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M19 11a7 7 0 1 0-1.6 5.4"/></svg>',
+    collapse: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 15 5-5 5 5"/><path d="M7 20h10"/></svg>',
+    sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h12M3 12h9M3 18h6"/><path d="m17 15 3 3 3-3M20 6v12"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H9l2 2h7.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+    more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+    panel: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>',
+    paperclip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.6 9.6a2 2 0 0 1-2.8-2.8l8.9-8.9"/></svg>',
+    shield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
+    send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+  };
+  const icon = (name) => '<span class="ui-icon">' + (icons[name] || "") + '</span>';
   const state = {
     snapshot: null,
     lastJSON: "",
     failures: 0,
     mobileView: "home",
     expanded: new Set(),
-    organizeBy: localStorage.getItem("tapgo-remote-organize") || "workspace",
+    organizeBy: "workspace",
     sortBy: localStorage.getItem("tapgo-remote-sort") || "updated",
     theme: localStorage.getItem("tapgo-remote-theme") || "system",
     busy: false,
@@ -23,7 +39,7 @@
   const mockState = {
     rev: 12,
     hostname: "Chenlaiyi 的 Mac",
-    appVersion: "0.5.58",
+    appVersion: "0.5.96",
     linkVersion: 3,
     activeId: "task-mobile",
     activeProjectId: "tapgo",
@@ -44,8 +60,8 @@
       { id: "task-finance", title: "流水与提现差异核对", updatedAt: Date.now() - 180000000, turnCount: 9, busy: false, projectId: "third" },
     ],
     transcript: [
-      { id: "turn-1", user: "先完整复刻 ZCode 的 UI 和交互。", status: "completed", assistant: "", assistantHTML: "<p>已按 ZCode 的远程工作区结构整理桌面与移动端：桌面保持工作区侧栏和主会话，手机先进入任务首页，再进入聊天。</p>", userImageCount: 0, running: false },
-      { id: "turn-2", user: "手机上要能切换项目、任务，也要能控制电脑。", status: "running", assistant: "", assistantHTML: "<p>项目、任务、聊天、附件和电脑控制都复用 Mac 端现有能力，旧二维码链接继续兼容。</p>", userImageCount: 0, running: true },
+      { id: "turn-1", user: "先完整复刻 ZCode 的 UI 和交互。", status: "completed", assistant: "", assistantHTML: "<p>已经按 ZCode 的远程工作区结构重新梳理手机端。</p><h2>本轮重点</h2><ul><li>首页只负责工作区与任务选择</li><li>任务页聚焦消息阅读与输入</li><li>电脑操作收进紧凑入口</li></ul><p>项目路径、更新时间和执行状态都保留，旧二维码链接继续兼容。</p>", userImageCount: 0, running: false },
+      { id: "turn-2", user: "手机上要能切换项目、任务，也要能控制电脑。", status: "running", assistant: "", assistantHTML: "<h2>正在继续优化</h2><p>当前正在核对消息密度、代码块、列表和底部输入器，确保长内容在窄屏上仍然清晰。</p><pre class=\"codeBlock\"><span class=\"codeLang\">swift</span><code>let layout = MobileRemoteLayout.compact</code></pre>", userImageCount: 0, running: true },
     ],
   };
 
@@ -71,7 +87,7 @@
               <div class="brand-title">Tapgo AICoding</div>
               <div class="connection-line"><span class="status-dot" data-status-dot></span><span data-connection>正在连接</span></div>
             </div>
-            <button class="icon-button theme-action" data-action="theme" aria-label="切换主题">主题</button>
+            <button class="icon-button theme-action" data-action="theme" aria-label="切换主题">${icon("palette")}</button>
           </div>
           <div class="sidebar-toolbar">
             <button class="ghost-button" data-action="new-active">新建任务</button>
@@ -85,25 +101,23 @@
           <header class="mobile-home-header">
             <div class="mobile-home-title-row">
               <div class="brand-copy">
-                <div class="mobile-home-title">远程工作区</div>
+                <div class="mobile-home-title">Tapgo 远程控制</div>
                 <div class="mobile-connected" id="mobileConnected">正在连接 Mac…</div>
               </div>
-              <button class="icon-button" data-action="theme" aria-label="切换主题">主题</button>
+              <button class="icon-button" data-action="theme" aria-label="切换主题">${icon("palette")}</button>
             </div>
           </header>
           <div class="mobile-home-scroll">
-            <div class="notice-card">你正在通过手机远程访问这台 Mac。可以选择工作区和任务，或直接新建任务继续工作。</div>
+            <div class="notice-card"><span class="notice-dot"></span><span>移动端可查看任务进度并继续对话。电脑操作需要 Mac 端保持在线。</span></div>
             <div class="mobile-section-heading">
               <div>
-                <div class="mobile-section-title">任务</div>
+                <div class="mobile-section-title">当前设备上的工作区和任务</div>
                 <div class="mobile-section-summary" id="mobileSummary">正在加载…</div>
               </div>
               <div class="mobile-tools">
-                <div class="segmented" aria-label="任务组织方式">
-                  <button data-action="organize" data-value="workspace">工作区</button>
-                  <button data-action="organize" data-value="timeline">时间</button>
-                </div>
-                <button class="icon-button" data-action="refresh">刷新</button>
+                <button class="icon-button" data-action="collapse-all" aria-label="全部折叠">${icon("collapse")}</button>
+                <button class="icon-button" data-action="sort" aria-label="切换排序">${icon("sort")}</button>
+                <button class="icon-button" data-action="refresh" aria-label="刷新">${icon("refresh")}</button>
               </div>
             </div>
             <div class="mobile-workspace-list" id="mobileWorkspaces"></div>
@@ -112,14 +126,21 @@
 
         <main class="main-view" id="mainView">
           <header class="chat-header">
-            <button class="icon-button mobile-back" data-action="mobile-home">返回</button>
-            <div class="chat-heading">
-              <div class="chat-title" id="chatTitle">新建任务</div>
-              <div class="chat-subtitle" id="chatSubtitle">等待工作区连接</div>
+            <div class="chat-nav">
+              <button class="icon-button mobile-back" data-action="mobile-home" aria-label="返回任务首页">${icon("back")}</button>
+              <div class="chat-kicker">任务会话</div>
+              <button class="icon-button mobile-theme" data-action="theme" aria-label="切换主题">${icon("palette")}</button>
             </div>
-            <div class="header-actions">
-              <button class="icon-button theme-action" data-action="theme">主题</button>
-              <button class="ghost-button control-action" data-action="control">电脑操作</button>
+            <div class="chat-context">
+              <div class="chat-heading">
+                <div class="chat-title" id="chatTitle">新建任务</div>
+                <div class="chat-subtitle" id="chatSubtitle">等待工作区连接</div>
+              </div>
+              <div class="header-actions">
+                <button class="icon-button theme-action" data-action="theme" aria-label="切换主题">${icon("palette")}</button>
+                <button class="icon-button" data-action="model" aria-label="更多">${icon("more")}</button>
+                <button class="icon-button control-action" data-action="control" aria-label="电脑操作">${icon("panel")}</button>
+              </div>
             </div>
           </header>
           <div class="chat-scroll" id="chatScroll">
@@ -136,12 +157,12 @@
             </div>
             <textarea id="composerInput" rows="2" placeholder="提出后续修改要求" aria-label="消息输入"></textarea>
             <div class="composer-bar">
-              <button class="icon-button" data-action="attach">添加</button>
-              <button class="icon-button" data-action="control">电脑操作</button>
+              <button class="icon-button" data-action="attach" aria-label="添加图片">${icon("paperclip")}</button>
+              <button class="icon-button" data-action="control" aria-label="电脑操作">${icon("shield")}</button>
               <span class="busy-spinner hidden" id="busySpinner" aria-label="任务运行中"></span>
               <span class="composer-spacer"></span>
               <button class="icon-button model-button" data-action="model" id="modelButton">选择模型</button>
-              <button class="primary-button send-button" data-action="send" id="sendButton" disabled>发送</button>
+              <button class="primary-button send-button" data-action="send" id="sendButton" aria-label="发送" disabled>${icon("send")}</button>
             </div>
           </div>
         </div>
@@ -177,6 +198,8 @@
     else if (action === "new-active") newTask(state.snapshot?.activeProjectId || state.snapshot?.projects?.[0]?.id);
     else if (action === "toggle-workspace") toggleWorkspace(target.dataset.projectId);
     else if (action === "organize") setOrganize(target.dataset.value);
+    else if (action === "collapse-all") collapseAll();
+    else if (action === "sort") toggleSort();
     else if (action === "screen") takeScreen();
     else if (action === "double") toggleDouble();
     else if (action === "control-key") control("key", { key: target.dataset.key });
@@ -212,6 +235,11 @@
     section.className = mobile ? "mobile-workspace" : "workspace-section";
     const open = state.expanded.has(project.id);
 
+    const header = document.createElement("div");
+    header.className = "workspace-header";
+    const folder = document.createElement("span");
+    folder.className = "workspace-folder";
+    folder.innerHTML = icon("folder");
     const head = document.createElement("button");
     head.className = "workspace-head";
     head.dataset.action = "toggle-workspace";
@@ -224,25 +252,29 @@
     name.textContent = project.name;
     const meta = document.createElement("span");
     meta.className = "workspace-meta";
-    meta.textContent = (project.isLocal ? "本地" : "远程") + " · " + ago(project.lastActivityAt);
+    const locality = document.createElement("span");
+    locality.className = "locality-pill";
+    locality.textContent = project.isLocal ? "本地" : "远程";
+    name.appendChild(locality);
+    meta.textContent = (project.path || "未提供路径") + " · " + ago(project.lastActivityAt);
     main.append(name, meta);
     const count = document.createElement("span");
     count.className = "workspace-count";
     count.textContent = threads.length + " 个任务";
-    head.append(main, count);
-    section.appendChild(head);
+    const chevron = document.createElement("span");
+    chevron.className = "workspace-chevron" + (open ? " open" : "");
+    chevron.innerHTML = icon("chevron");
+    head.append(main, count, chevron);
+    const add = document.createElement("button");
+    add.className = "icon-button workspace-add";
+    add.dataset.action = "new-task";
+    add.dataset.projectId = project.id;
+    add.setAttribute("aria-label", "在 " + project.name + " 新建任务");
+    add.innerHTML = icon("plus");
+    header.append(folder, head, add);
+    section.appendChild(header);
 
     if (open) {
-      const actions = document.createElement("div");
-      actions.className = "workspace-actions";
-      const add = document.createElement("button");
-      add.className = "ghost-button";
-      add.dataset.action = "new-task";
-      add.dataset.projectId = project.id;
-      add.textContent = "新建任务";
-      actions.appendChild(add);
-      section.appendChild(actions);
-
       const list = document.createElement("div");
       list.className = "task-list";
       if (!threads.length) {
@@ -269,7 +301,7 @@
     title.textContent = thread.title || "未命名任务";
     const meta = document.createElement("span");
     meta.className = "task-meta";
-    meta.textContent = (mobile ? activeProjectName(thread.projectId) + " · " : "") + ago(thread.updatedAt);
+    meta.textContent = (mobile && state.organizeBy === "timeline" ? activeProjectName(thread.projectId) + " · " : "") + ago(thread.updatedAt);
     copy.append(title, meta);
     const status = taskStatus(thread);
     const pill = document.createElement("span");
@@ -289,7 +321,7 @@
     const projects = snapshot.projects || [];
     const threads = snapshot.threads || [];
     $("desktopSummary").textContent = projects.length + " 个工作区 · " + threads.length + " 个任务";
-    $("mobileSummary").textContent = threads.length + " 个任务 · " + projects.length + " 个工作区";
+    $("mobileSummary").textContent = projects.length + " 个工作区 · " + threads.length + " 个任务";
     $("mobileConnected").textContent = "已连接到 " + (snapshot.hostname || "Mac");
 
     const desktop = $("desktopWorkspaces");
@@ -312,7 +344,10 @@
       list.appendChild(rows);
       mobile.appendChild(list);
     } else {
-      projects.forEach((project) => mobile.appendChild(workspaceElement(project, threads.filter((thread) => thread.projectId === project.id), true)));
+      const ordered = [...projects].sort((a, b) => state.sortBy === "name"
+        ? String(a.name || "").localeCompare(String(b.name || ""), "zh-CN")
+        : Number(b.lastActivityAt || 0) - Number(a.lastActivityAt || 0));
+      ordered.forEach((project) => mobile.appendChild(workspaceElement(project, threads.filter((thread) => thread.projectId === project.id), true)));
     }
     document.querySelectorAll('[data-action="organize"]').forEach((button) => button.classList.toggle("active", button.dataset.value === state.organizeBy));
   }
@@ -418,6 +453,18 @@
     if (value !== "workspace" && value !== "timeline") return;
     state.organizeBy = value;
     localStorage.setItem("tapgo-remote-organize", value);
+    renderWorkspaces();
+  }
+
+  function collapseAll() {
+    state.expanded.clear();
+    renderWorkspaces();
+  }
+
+  function toggleSort() {
+    state.sortBy = state.sortBy === "updated" ? "name" : "updated";
+    localStorage.setItem("tapgo-remote-sort", state.sortBy);
+    toast(state.sortBy === "updated" ? "按最近更新排序" : "按工作区名称排序");
     renderWorkspaces();
   }
 

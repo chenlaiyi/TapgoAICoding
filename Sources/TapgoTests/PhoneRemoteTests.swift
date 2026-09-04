@@ -456,7 +456,7 @@ func runPhoneRemotePage(_ t: TestRunner) {
     let token = PhoneRemote.makeToken()
     let html = PhoneRemote.pageHTML(token: token)
 
-    // v0.5.84: H5 页面拆为骨架 + 静态资源 (app.css / app.js / app-icon.png),
+    // H5 页面拆为骨架 + 静态资源；v0.5.96 全面重构 app.css 的移动端布局。
     // pageHTML() 只剩 32 行模板 + token + version 占位符 + 引导加载脚本。
     // 业务 JS / CSS / UI 元素全部搬到 Resources/PhoneRemote/{app.js,app.css}。
 
@@ -476,7 +476,7 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(!html.lowercased().contains("<link "), "page: 无硬编码外部 stylesheet")
     t.expect(!html.contains("https://"), "page: 无外网引用")
 
-    // 2. 引导脚本必须指向 /assets/app.{css,js}?v=<version>
+    // 2. 引导脚本必须指向 /assets/app.css 与 app.js?v=<version>
     t.expect(html.contains("assets/app.css"), "page: 引导加载 app.css")
     t.expect(html.contains("assets/app.js"), "page: 引导加载 app.js")
     t.expect(html.contains("?v="), "page: 资源带版本号防缓存")
@@ -577,16 +577,23 @@ func runPhoneRemotePage(_ t: TestRunner) {
         for cls in ["composer", "sidebar", "mobile-home", "busy-spinner", "modelSheet", "fileInput"] {
             t.expect(jsStr.contains(cls), "app.js: 含 class " + cls)
         }
+        t.expect(jsStr.contains("当前设备上的工作区和任务"), "app.js: ZCode 式工作区总览标题")
+        t.expect(jsStr.contains("data-action=\"collapse-all\"") && jsStr.contains("data-action=\"sort\""),
+                 "app.js: 工作区折叠与排序动作")
+        t.expect(jsStr.contains("chat-kicker\">任务会话"), "app.js: 双层任务会话导航")
+        t.expect(jsStr.contains("organizeBy: \"workspace\""), "app.js: 清理旧时间视图偏好并固定工作区层级")
     } else {
         t.expect(false, "app.js 资源读取失败")
     }
 
-    // 9. app.css 必须非空且含 :root + 关键变量
+    // 9. 当前 app.css 必须非空且含 :root + 关键变量及移动端首页约束
     if let cssAsset = PhoneRemote.webAsset(named: "app.css"),
        let cssStr = String(data: cssAsset.data, encoding: .utf8) {
         t.expect(cssStr.contains(":root"), "app.css: 含 :root 变量")
         t.expect(cssStr.contains("--background") || cssStr.contains("--brand"),
                  "app.css: 含主题色变量")
+        t.expect(cssStr.contains("data-mobile-view=\"home\"") && cssStr.contains("composer-dock"),
+                 "app.css: 首页强制隐藏输入器")
     } else {
         t.expect(false, "app.css 资源读取失败")
     }
@@ -820,4 +827,3 @@ func runPhoneRemoteControlSnapshot(_ t: TestRunner) {
         t.expect(inJS || inCSS || inHTML, "page 含 " + marker + " (inJS=" + String(inJS) + " inCSS=" + String(inCSS) + " inHTML=" + String(inHTML) + ")")
     }
 }
-

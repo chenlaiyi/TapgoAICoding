@@ -21,7 +21,7 @@ public enum PhoneRemote {
     /// 链接协议版本, 进 H5 页面与 /api/state 便于以后兼容判断。
     public static let linkVersion = 3
     /// Web Remote 静态客户端版本。资源 URL 带版本参数，升级后不会误用旧缓存。
-    public static let webClientVersion = 1
+    public static let webClientVersion = 2
 
     /// transcript 最多回带最近多少个 turn (H5 端向下翻由 Mac 端后续版本支持)。
     public static let maxTranscriptTurns = 30
