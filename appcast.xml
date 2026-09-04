@@ -3,6 +3,32 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.87</title>
+            <pubDate>Fri, 04 Sep 2026 21:25:02 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.87</link>
+            <sparkle:version>0.5.87</sparkle:version>
+            <sparkle:shortVersionString>0.5.87</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.87
+
+- 「参照目标 IDE 风格」fidelity patch 3/3：剩余 2 处主区域背景切到 fidelityXxx token：
+  - `ChatView.swift` L199 主画布 `.background(DSHTheme.bg)` → `.background(DSHTheme.fidelityMainCanvas)`（0x151517 → 0x1E1E1D，差 −9/255）
+  - `RightWorkbenchView.swift` L32 外层容器 / L52 环境信息面板顶栏 / L178 Tab 条顶栏共 3 处 `.background(DSHTheme.bg|DSHTheme.titlebarBg)` → `.background(DSHTheme.fidelityRightbarTop)`（0x1A1A1C → 0x212120，差 −11/255）
+  - 预期中央 1000x740 像素差从 13.4% 进一步收敛；sidebar_mid 单点差 −15/255 因无独立视图背景位，仍作为后续 patch 候选。
+- 发版自动化：`evolve.sh` 在 `git push` 之后自动串接 `scripts/create-github-release-artifacts.sh`：
+  - 生成 Sparkle EdDSA 签名 zip
+  - 调 `gh release create` 上传到 GitHub Release（已登录 `chenlaiyi`）
+  - 把刷新后的 `appcast.xml` 提交并 push，让所有已装客户端 Sparkle 下一轮 poll 自动拉到 v0.5.87
+  - 幂等：tag 已存在则只覆盖 zip + release notes；`gh` 缺失时降级为打印手动命令。
+- `AppBuilder/project.yml` 的 `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` 不再硬编码：每次 `evolve.sh` 写 Info.plist 时同步注入新版本号，避免 `xcodegen` 重跑时漂移到 0.5.69（此前已漂移 17 个版本）。
+- `AgentOutputPolicy` 文案层对齐：5 个状态前缀（✅/❌/⚠️/🔍/💬）强制开头、禁 markdown 装饰、列表 ≤3 项、默认 ≤6 行（要详才 8）、失败 1 行「影响+处理方向」；`AgentOutputPolicyTests` 41 条断言覆盖 `threadInstructions` / `turnReminder` / `catalogInstructions` 与体积预算。
+- 测试：2706 通过 / 0 失败（TAPGO_SKIP_REMOTE_INTEGRATION=1）；预存在远程 SSH 集成测试不在本次回归范围；DesktopDesignParityTests 新增 2 条断言锁住 fidelityMainCanvas / fidelityRightbarTop 视图引用。
+- 已知限制：sidebar_mid 区域与目标 IDE 仍差 15/255，需后续单独排查；当前未跑自动 pixelmatch 验证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.87/Tapgo-AICoding-0.5.87.zip" length="9505413" type="application/octet-stream" sparkle:edSignature="dWBAY+/iFrA+pQoXex6Mb41wm4/MW1KKkMyGoh/5F/mpYHdb22cNaw64stluBjUh3YuC6bz9Y3B4qxVqEX0yBA=="/>
+        </item>
+        <item>
             <title>0.5.86</title>
             <pubDate>Fri, 04 Sep 2026 14:44:01 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.86</link>
@@ -48,27 +74,6 @@
 - 已知限制：token 化是 patch 1/2，patch 2/2 将把 4 处视图的 `.background` 切换到新 token，并验证 pixelmatch < 0.08 的目标 IDE 阈值。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.85/Tapgo-AICoding-0.5.85.zip" length="9504853" type="application/octet-stream" sparkle:edSignature="B53eFVnqxKmS5gWVgqMpKt/CV6iVrJl3E3W76kz500UCuhSIxunOpOKx7B9/d1L/WmwvIsYVwQtxnKUsx9KZAQ=="/>
-        </item>
-        <item>
-            <title>0.5.84</title>
-            <pubDate>Fri, 04 Sep 2026 12:20:30 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.84</link>
-            <sparkle:version>0.5.84</sparkle:version>
-            <sparkle:shortVersionString>0.5.84</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.84
-
-- Web Remote 静态资源拆出 + Harness daemon 多客户端：
-  - Web Remote H5 拆资源（linkVersion 2→3、webClientVersion=1）：`PhoneRemote.pageHTML()` 现在从 `Sources/TapgoCore/Resources/PhoneRemote/index.html` 模板加载 32 行骨架，业务 JS/CSS/UI 元素搬到独立 `App.js`（710 行）/ `app.css`（403 行）+ `app-icon.png`。新增 `/r/<token>/assets/<name>` 路由（GET/HEAD，资源名白名单 `app.css`/`app.js`/`app-icon.png`，cache-control immutable 一年）。H5 引导脚本带 `?v=<webClientVersion>` 防缓存，老客户端不会误用旧 css/js。
-  - PhoneRemoteTests 同步重构：`runPhoneRemotePage` 改为验证 webAsset/wAssetResponse/Route.asset + app.js 核心 API + 关键 UI class，`runPhoneRemoteControlSnapshot` marker 循环改在 index.html + app.js + app.css 联合里查。新增 7 类断言（webAsset 加载 / 拒绝路径穿越 / HTTP 头 / Route 解析 / asset 路由 token 校验 / 资源大小）。
-  - Harness daemon 多客户端：`Sources/TapgoHarness/main.swift` 重写为 daemon 永生 + accept 循环 + 每次客户端连接独立 spawn codex app-server（之前是单客户端：spawn codex → 等连接 → EOF 退出 → daemon 也退出）。每次客户端断开回到 accept() 等下一个，launchd plist 已 KeepAlive 不需要 daemon 自我重建。
-  - SocketHarnessTransport 用 `DispatchSource.makeReadSource` 替代 `FileHandle.readabilityHandler`（v0.5.74 起的 macOS 27 EOF 误判 bug：readabilityHandler 偶尔把可读回调成 `Data.isEmpty`、触发到 EOF 路径、关 fd 让 supervisor 重启 + 30 秒 watchdog 命中）。DispatchSource 只在「真的可读」或「真的 EOF/hangup」时触发，EOF 由 `recv` 返回 0 显式判断。
-  - ComputerUseHelper-Info.plist 顺手对齐到 0.5.84（v0.5.74 之后没再跟 tag，导致 AppUpdateDistributionTests 报 `expected 0.5.83, got 0.5.74`）。
-- 测试：2713 通过 / 13 失败（13 个全部为预存在远程 SSH 集成 / auth.json 缺失，v0.5.84 未引入新回归）。
-- 已知限制：拆分出来的 app.js / app.css 是 v0.5.84 重写的精简版本（核心 API 路径 + 6 个关键 UI class 完整保留），后续 patch 可继续完善边角 UI。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.84/Tapgo-AICoding-0.5.84.zip" length="9504850" type="application/octet-stream" sparkle:edSignature="ocBiHj8b9tWwgtrC2JxGfQlCuhotrpP3ieBMNOMCG0dGLPwVRLGM1mETF32qUq8hxuGaO4Cp2pYHELh7WhkZAA=="/>
         </item>
     </channel>
 </rss>
