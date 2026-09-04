@@ -3,6 +3,24 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.95</title>
+            <pubDate>Sat, 05 Sep 2026 01:20:21 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.95</link>
+            <sparkle:version>0.5.95</sparkle:version>
+            <sparkle:shortVersionString>0.5.95</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.95
+
+- 修复干净安装的 Mac 扫描“连接手机”二维码后，因发布包缺少 SwiftPM 网页资源而触发 `Bundle.module` 断言并退出的问题。
+- 主 App 与内置 Computer Use Helper 均将手机网页资源嵌入标准 `Contents/Resources` 目录，并纳入 Developer ID 签名。
+- 已打包 App 不再用可能崩溃的 `Bundle.module` 查找可选资源；资源异常时安全降级，避免整个 App 退出。
+- 构建及 GitHub 发布脚本新增四项网页资源的源目录、App、Helper 和最终 ZIP 清单校验，防止同类漏包再次发布。
+- 在移除外部 `.build` 资源包后完成发布 App 回归：页面、CSS、JS、图标和状态 API 均为 HTTP 200，进程保持存活且无新增崩溃报告。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.95/Tapgo-AICoding-0.5.95.zip" length="11128126" type="application/octet-stream" sparkle:edSignature="6o4WODN4P1TnT4acnymuePgXEblb6VcCzOd1azvBgTiQgWDwIix8L+fHDrLIthq9AIkNCmvstttiKcbE3GDRCg=="/>
+        </item>
+        <item>
             <title>0.5.94</title>
             <pubDate>Sat, 05 Sep 2026 00:58:13 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.94</link>
@@ -37,29 +55,6 @@
 - 新增 6 项消息渲染与文件卡结构回归；同尺寸截图经过两轮并排视觉 QA。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.93/Tapgo-AICoding-0.5.93.zip" length="9439607" type="application/octet-stream" sparkle:edSignature="FFJRs3RKjoTOFq5k19RL7EvWpl+JZC5pjvZtPQk6u0YQ9/OX/gqbEr9cWNbIOEg7LqqsDXslC7ZV2mcW6pgkBA=="/>
-        </item>
-        <item>
-            <title>0.5.92</title>
-            <pubDate>Fri, 04 Sep 2026 23:38:19 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.92</link>
-            <sparkle:version>0.5.92</sparkle:version>
-            <sparkle:shortVersionString>0.5.92</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.92
-
-本版以 Codex Desktop 实机窗口为视觉真值，全面收紧消息阅读与流式输出界面。
-
-- 深色层级改为 Codex 的近黑消息画布、深灰侧栏与低对比选中态，侧栏和消息列按同视口比例重新对齐。
-- 流式过程只保留安静的单行进度；移除扫光动画、思考紫色与工具类别色，真实失败仍保留红色提示。
-- 完成态操作改为紧凑图标，不再常驻时间和长文字；时间、用量、时长继续可在提示中查看。
-- 文件变更改为 Codex 式结果卡：单文件直接显示文件名与增删行，点击“审核”查看真实差异；多文件默认折叠，避免淹没正文。
-- 输入框移除多余胶囊，权限与模型改为轻量文字控件，发送/停止改为圆形主动作，并降低空输入区高度。
-- 保留 Markdown 正文、表格、列表、代码块、复制、反馈、排队发送、电脑操作与差异审核等原有能力。
-
-验证：同一 1148 × 1344 视口与 Codex 实机并排复核通过；完整测试、Release 构建、Developer ID 深度签名及本机安装回读均纳入本次发布验收。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.92/Tapgo-AICoding-0.5.92.zip" length="9426614" type="application/octet-stream" sparkle:edSignature="LaOmFoxJrnlf9F/w6hgnHLvecC5bN5y9Uf1YEIYBkfEiexVDFDHtTq9FMx57W8/mcgkYUaKoq1ag6s0FjSoZAQ=="/>
         </item>
     </channel>
 </rss>
