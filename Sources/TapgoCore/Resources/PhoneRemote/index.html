@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f7f7f8">
+  <title>Tapgo AICoding · 远程工作区</title>
+  <style>
+    html,body{margin:0;min-height:100%;background:#f7f7f8;color:#18181b;font-family:system-ui,-apple-system,"PingFang SC",sans-serif}
+    .boot{min-height:100vh;display:grid;place-items:center;color:#71717a;font-size:14px}
+  </style>
+</head>
+<body>
+  <div id="app"><div class="boot">正在连接远程工作区…</div></div>
+  <script>
+    window.__TAPGO_REMOTE__ = {
+      token: __TAPGO_TOKEN_JSON__,
+      version: __TAPGO_WEB_VERSION__,
+      root: location.pathname.endsWith("/") ? location.pathname : location.pathname + "/"
+    };
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = window.__TAPGO_REMOTE__.root + "assets/app.css?v=" + window.__TAPGO_REMOTE__.version;
+    document.head.appendChild(css);
+    const app = document.createElement("script");
+    app.src = window.__TAPGO_REMOTE__.root + "assets/app.js?v=" + window.__TAPGO_REMOTE__.version;
+    app.defer = true;
+    document.head.appendChild(app);
+  </script>
+</body>
+</html>
