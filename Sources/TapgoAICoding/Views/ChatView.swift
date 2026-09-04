@@ -183,7 +183,7 @@ struct ChatView: View {
             // Keep one structural ComposerView for the entire lifetime of
             // ChatView. Moving between the empty and active layouts must not
             // recreate NSTextView while the user is entering the next prompt.
-            ComposerView(contentWidth: wideContent ? 980 : 720)
+            ComposerView(contentWidth: wideContent ? 980 : 760)
                 .padding(.horizontal, hasConversation ? 0 : 16)
 
             if !hasConversation {
@@ -416,8 +416,9 @@ struct ChatView: View {
                         }
                         Color.clear.frame(height: 1).id("BOTTOM")
                     }
-                    .padding(16)
-                    .frame(maxWidth: wideContent ? 980 : 720, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: wideContent ? 980 : 760, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .background(GeometryReader { g in
                         Color.clear.preference(

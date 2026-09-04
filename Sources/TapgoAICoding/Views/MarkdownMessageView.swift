@@ -18,7 +18,7 @@ struct MarkdownMessageView: View {
 
     var body: some View {
         let blocks = Self.blocks(MarkdownLite.parse(text))
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .para(let segs):
@@ -94,7 +94,9 @@ struct MarkdownMessageView: View {
             case .heading(let level, let content):
                 appendPara(&out, &acc)
                 out.append(.heading(level: level, content: content))
-            case .text, .inline, .bold, .link, .strikethrough:
+            case .text(let text):
+                appendText(text, to: &out, accumulator: &acc)
+            case .inline, .bold, .link, .strikethrough:
                 acc.append(seg)
             }
         }
@@ -109,6 +111,36 @@ struct MarkdownMessageView: View {
         }
     }
 
+    /// Markdown blank lines delimit paragraphs. `MarkdownLite` deliberately
+    /// keeps raw newlines inside text segments, so normalize them here before
+    /// SwiftUI lays out the transcript. Otherwise a blank line contributes a
+    /// full empty text row *and* the block gap, which is the main reason long
+    /// Tapgo replies looked much looser than Codex.
+    private static func appendText(
+        _ text: String,
+        to out: inout [Block],
+        accumulator acc: inout [MarkdownSegment]
+    ) {
+        let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
+        let hasLeadingBoundary = normalized.hasPrefix("\n")
+        let hasTrailingBoundary = normalized.hasSuffix("\n")
+        let core = normalized.trimmingCharacters(in: .newlines)
+
+        if hasLeadingBoundary { appendPara(&out, &acc) }
+        guard !core.isEmpty else {
+            if hasTrailingBoundary { appendPara(&out, &acc) }
+            return
+        }
+
+        let paragraphs = core.components(separatedBy: "\n\n")
+        for (index, paragraph) in paragraphs.enumerated() {
+            if index > 0 { appendPara(&out, &acc) }
+            let content = paragraph.trimmingCharacters(in: .newlines)
+            if !content.isEmpty { acc.append(.text(content)) }
+        }
+        if hasTrailingBoundary { appendPara(&out, &acc) }
+    }
+
     /// Convert an inline-level segment run (text / inline / bold) into an
     /// `AttributedString` so a paragraph or a list item can be rendered
     /// with mixed fonts in one drawing. `baseFontSize` 控制正文 / 行内代码 / 加粗
@@ -116,7 +148,7 @@ struct MarkdownMessageView: View {
     fileprivate static func inlineAttributed(
         _ segs: [MarkdownSegment],
         baseFontSize: CGFloat = AppFont.pointSize(for: .body, multiplier: 1),
-        baseWeight: Font.Weight = .regular
+        baseWeight: Font.Weight = .light
     ) -> AttributedString {
         var a = AttributedString()
         // 行内代码比正文略小一档，以中性色底纹保持区分，但不再渲染成高饱和标签。
@@ -129,23 +161,23 @@ struct MarkdownMessageView: View {
                 a += r
             case .inline(let s):
                 var r = AttributedString(s)
-                r.font = .system(size: inlineSize, weight: .medium, design: .monospaced)
-                r.foregroundColor = DSHTheme.labelDim
+                r.font = .system(size: inlineSize, weight: .regular, design: .monospaced)
+                r.foregroundColor = DSHTheme.messageText
                 r.backgroundColor = DSHTheme.inlineCodeBg
                 a += r
             case .bold(let s):
                 var r = AttributedString(s)
-                r.font = .system(size: baseFontSize, weight: .semibold)
+                r.font = .system(size: baseFontSize, weight: .medium)
                 a += r
             case .strikethrough(let s):
                 var r = AttributedString(s)
-                r.font = .system(size: baseFontSize)
+                r.font = .system(size: baseFontSize, weight: baseWeight)
                 r.strikethroughStyle = .single
                 a += r
             case .link(let title, let url):
                 var r = AttributedString(title)
                 r.link = URL(string: url)
-                r.font = .system(size: baseFontSize)
+                r.font = .system(size: baseFontSize, weight: baseWeight)
                 r.foregroundColor = DSHTheme.brand
                 a += r
             case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading:
@@ -167,14 +199,15 @@ struct MarkdownMessageView: View {
     }
 
 
-    /// 段落渲染：字号跟随 appFontScale，行间距放大到 3pt 让长段落在 chat 里更易扫读；
+    /// 段落渲染：字号跟随 appFontScale，保持 Codex 的紧凑正文节奏；
     /// `fixedSize(horizontal:false, vertical:true)` 确保段落被允许按内容撑开高度（避免某些容器
     /// 默认 single-line 行为）。
     @ViewBuilder
     private func paragraphView(segs: [MarkdownSegment]) -> some View {
-        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) + 0.5
+        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
         Text(Self.inlineAttributed(segs, baseFontSize: bodySize))
-            .lineSpacing(4)
+            .foregroundStyle(DSHTheme.messageText)
+            .lineSpacing(3)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -185,20 +218,21 @@ struct MarkdownMessageView: View {
         let ordered: Bool
 
         var body: some View {
-            // Marker 用 tertiary 弱化、字号比正文略小、靠右对齐的固定列宽；
-            // 6pt 行距保留 ZCode 长列表的扫读节奏。
-            let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) + 0.5
+            // Codex uses a small but clearly visible marker and a compact row
+            // rhythm; the previous 6pt gap amplified long tool inventories.
+            let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
             let markerSize = AppFont.pointSize(for: .footnote, multiplier: appFontScale.multiplier)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
                             .font(.system(size: markerSize, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(DSHTheme.labelTertiary)
+                            .foregroundStyle(DSHTheme.messageText)
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
                         Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
+                            .foregroundStyle(DSHTheme.messageText)
                             .textSelection(.enabled)
-                            .lineSpacing(3)
+                            .lineSpacing(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -249,16 +283,17 @@ private struct CodeBlockView: View {
             // code keeps its real column layout (like the harness block).
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
-                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
+                    .font(AppFont.monoScaled(size: 12, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.messageText)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 9)
             }
         }
-        .background(DSHTheme.codeBlockBg, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-        .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+        .background(DSHTheme.codeBlockBg, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private func copy(_ s: String) {
@@ -279,10 +314,11 @@ private struct HeadingView: View {
         Text(MarkdownMessageView.inlineAttributed(
             content,
             baseFontSize: pointSize,
-            baseWeight: .semibold
+            baseWeight: .medium
         ))
         .fixedSize(horizontal: false, vertical: true)
-        .padding(.top, level <= 2 ? 8 : 4)
+        .foregroundStyle(DSHTheme.messageText)
+        .padding(.top, level <= 2 ? 5 : 2)
         .padding(.bottom, 1)
     }
 

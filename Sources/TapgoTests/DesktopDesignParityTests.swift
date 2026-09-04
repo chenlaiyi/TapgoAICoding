@@ -43,7 +43,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(chat.contains("threadHeader(thread: thread)"), "desktop-design: 独立任务顶栏")
     t.expect(chat.contains("NotificationCenter.default.post(name: .tapgoToggleTrajectory"), "desktop-design: 轨迹栏切换可用")
     t.expect(chat.contains("activeThread == nil, let p = workspace.state.activeProject"), "desktop-design: 活跃任务输入器不重复项目入口")
-    t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 720)"), "desktop-design: 标准输入器与 Codex 消息列同宽")
+    t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 760)"), "desktop-design: 标准输入器与 Codex 消息列同宽")
     t.expect(!chat.contains("if hasConversation {\n                Divider()"), "desktop-design: 输入器上方没有贯穿会话区的分隔线")
     t.expect(message.contains("DSHTheme.surfaceRaised"), "desktop-design: 用户消息使用低对比灰色气泡")
     t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg"), "desktop-design: 桌面导航层级色完整")
@@ -136,8 +136,8 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 完成过程使用 Codex 的已处理时长文案")
     t.expect(chat.contains("FileEditBatchView(files: fileChanges)"),
              "desktop-design: 完成态保留独立文件变更摘要卡")
-    t.expect(fileChangeView.contains("@State private var expanded = false")
-             && fileChangeView.contains("Button(expanded ? \"收起\" : \"审核\")")
+    t.expect(fileChangeView.contains("@State private var selectedReviewPath: String?")
+             && fileChangeView.contains("selectedReviewPath == nil ? \"审核\" : \"收起\"")
              && fileChangeView.contains("DiffView(change: file)"),
              "desktop-design: 文件结果卡默认收起并提供真实差异审核")
     t.expect(chat.contains(".background(DSHTheme.brandPrimary, in: Circle())")
@@ -150,6 +150,26 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(!markdown.contains(".background(idx % 2 == 1")
              && markdown.contains(".overlay(alignment: .top) { Divider() }"),
              "desktop-design: 表格改为 Codex 式平面分隔，不再使用连续卡片底色")
+    // v0.5.93 — user-provided Codex/Tapgo crops exposed message-renderer
+    // drift that shell/layout parity alone could not catch.
+    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 8)")
+             && markdown.contains("appendText(text, to: &out, accumulator: &acc)")
+             && markdown.contains("trimmingCharacters(in: .newlines)"),
+             "desktop-design: Markdown 空行归一化且块间距收紧为 Codex 节奏")
+    t.expect(markdown.contains("AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)")
+             && !markdown.contains("multiplier: appFontScale.multiplier) + 0.5")
+             && markdown.contains("foregroundStyle(DSHTheme.messageText)"),
+             "desktop-design: 正文使用 Codex 密度字号与高对比文字")
+    t.expect(chat.contains(".frame(maxWidth: wideContent ? 980 : 760")
+             && chat.contains(".padding(.horizontal, 12)"),
+             "desktop-design: 标准消息列为 760pt 且内边距 12pt")
+    t.expect(fileChangeView.contains("ForEach(Array(visibleFiles.enumerated())")
+             && fileChangeView.contains("再显示 \\(files.count - Self.foldThreshold) 个文件")
+             && fileChangeView.contains("lineDelta(for: file)"),
+             "desktop-design: 多文件结果卡默认展示三行路径和右对齐增删统计")
+    t.expect(theme.contains("fileChangeCardBg") && theme.contains("0x222222")
+             && theme.contains("fileChangeRowBg") && theme.contains("0x1A1A1A"),
+             "desktop-design: 文件结果卡使用 Codex 实测深色层级")
     // v0.5.89 — ⌘\\ sidebar toggle + command palette 接入
     t.expect(content.contains("tapgoToggleSidebar") && content.contains("切换侧边栏"),
              "desktop-design: ContentView 接入 ⌘\\ 侧边栏切换（notification 模式 + command palette 双入口）")

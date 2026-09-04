@@ -33,12 +33,13 @@ public enum AppFontScale: String, CaseIterable, Identifiable {
     /// Multiplier applied to each base point size.
     ///   - small  → 0.85×  (~13% smaller, still readable)
     ///   - medium → 1.00×  (matches the pre-feature UI exactly)
-    ///   - large  → 1.20×  (~20% larger, accessibility-friendly)
+    ///   - large  → 1.10×  (~10% larger without turning dense transcripts
+    ///                          into a low-information layout)
     public var multiplier: CGFloat {
         switch self {
         case .small:  return 0.85
         case .medium: return 1.00
-        case .large:  return 1.20
+        case .large:  return 1.10
         }
     }
 

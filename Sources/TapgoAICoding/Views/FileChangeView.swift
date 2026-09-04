@@ -181,7 +181,7 @@ struct FileChangeSummaryBar: View {
 /// available from each row without flooding the surrounding transcript.
 struct FileEditBatchView: View {
     let files: [FileChange]
-    @State private var expanded = false
+    @State private var selectedReviewPath: String?
     @State private var showAll = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     private static let foldThreshold = 3
@@ -192,12 +192,13 @@ struct FileEditBatchView: View {
                 Image(systemName: files.count == 1 ? singleIcon : "doc.on.doc")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelDim)
-                    .frame(width: 26, height: 26)
-                    .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 7))
+                    .frame(width: 32, height: 32)
+                    .background(DSHTheme.fileChangeRowBg, in: RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(summaryTitle)
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .fontWeight(.medium)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(DSHTheme.messageText)
                         .lineLimit(1)
                     HStack(spacing: 6) {
                         if additions > 0 {
@@ -214,44 +215,87 @@ struct FileEditBatchView: View {
                 }
                 Spacer(minLength: 8)
                 if files.contains(where: { !$0.diff.isEmpty }) {
-                    Button(expanded ? "收起" : "审核") { expanded.toggle() }
+                    Button(selectedReviewPath == nil ? "审核" : "收起") {
+                        if selectedReviewPath == nil {
+                            selectedReviewPath = files.first(where: { !$0.diff.isEmpty })?.path
+                        } else {
+                            selectedReviewPath = nil
+                        }
+                    }
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .buttonStyle(.plain)
-                        .foregroundStyle(DSHTheme.labelDim)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 7))
-                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(DSHTheme.border, lineWidth: 1))
-                        .accessibilityLabel(expanded ? "收起文件审核" : "审核文件变更")
+                        .foregroundStyle(DSHTheme.messageText)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 6)
+                        .background(DSHTheme.fileChangeRowBg, in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DSHTheme.border, lineWidth: 1))
+                        .accessibilityLabel(selectedReviewPath == nil ? "审核文件变更" : "收起文件审核")
                 }
             }
-            if expanded {
-                Divider().padding(.vertical, 8)
-                if files.count == 1, let file = files.first, !file.diff.isEmpty {
-                    DiffView(change: file)
-                        .frame(maxHeight: 360)
-                } else {
-                    ForEach(Array(visibleFiles.enumerated()), id: \.offset) { _, file in
-                        FileChangeRowView(change: file)
-                    }
-                }
-                if files.count > Self.foldThreshold {
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            ForEach(Array(visibleFiles.enumerated()), id: \.element.id) { index, file in
+                VStack(alignment: .leading, spacing: 0) {
                     Button {
-                        showAll.toggle()
+                        guard !file.diff.isEmpty else { return }
+                        selectedReviewPath = selectedReviewPath == file.path ? nil : file.path
                     } label: {
-                        Text(showAll ? "收起文件" : "再显示 \(files.count - Self.foldThreshold) 个文件")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        HStack(spacing: 10) {
+                            Text(file.path)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(DSHTheme.labelDim)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 8)
+                            lineDelta(for: file)
+                        }
                     }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .accessibilityLabel("审核 \(file.path)")
+
+                    if selectedReviewPath == file.path, !file.diff.isEmpty {
+                        DiffView(change: file)
+                            .frame(maxHeight: 360)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 10)
+                    }
+
+                    if index < visibleFiles.count - 1 {
+                        Divider()
+                    }
                 }
+                .background(DSHTheme.fileChangeRowBg)
+            }
+
+            if files.count > Self.foldThreshold {
+                Divider()
+                Button {
+                    showAll.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(showAll ? "收起文件" : "再显示 \(files.count - Self.foldThreshold) 个文件")
+                        Image(systemName: "chevron.down")
+                            .rotationEffect(.degrees(showAll ? 180 : 0))
+                    }
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
             }
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 9)
-        .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 10))
+        .background(DSHTheme.fileChangeCardBg, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .contextMenu {
             Button { copy(pathsText) } label: {
                 Label("复制文件路径", systemImage: "doc.on.doc")
@@ -265,6 +309,21 @@ struct FileEditBatchView: View {
 
     private var visibleFiles: [FileChange] {
         showAll ? files : Array(files.prefix(Self.foldThreshold))
+    }
+
+    @ViewBuilder
+    private func lineDelta(for file: FileChange) -> some View {
+        let added = FileChangeRowView.addedLines(in: file.diff)
+        let removed = FileChangeRowView.removedLines(in: file.diff)
+        HStack(spacing: 7) {
+            if added > 0 {
+                Text("+\(added)").foregroundStyle(DSHTheme.success)
+            }
+            if removed > 0 {
+                Text("-\(removed)").foregroundStyle(DSHTheme.error)
+            }
+        }
+        .font(AppFont.monoScaled(size: 10, weight: .medium, multiplier: appFontScale.multiplier))
     }
 
     private var pathsText: String {

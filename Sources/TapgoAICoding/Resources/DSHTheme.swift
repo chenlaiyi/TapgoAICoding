@@ -71,12 +71,17 @@ enum DSHTheme {
     static let label = Color.dynamic(lightHex: 0x0F1115, darkHex: 0xF0F0F0)    // primary
     static let labelDim = Color.dynamic(lightHex: 0x61666B, darkHex: 0xC7C7C7)  // secondary
     static let labelTertiary = Color.dynamic(lightHex: 0x81858C, darkHex: 0x949494)
+    /// Transcript-specific primary. SwiftUI's default dark-mode `.primary`
+    /// resolves near #E0E0E0; Codex renders assistant prose closer to white.
+    static let messageText = Color.dynamic(lightHex: 0x171717, darkHex: 0xF7F7F7)
 
     // MARK: Markdown
     static let codeBlockBg = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x1E1E1E)
     static let codeBlockBanner = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x252525)
     /// Codex uses a muted grey patch behind inline code, never a brand tag.
     static let inlineCodeBg = Color.dynamic(lightHex: 0xECEDEF, darkHex: 0x343434)
+    static let fileChangeCardBg = Color.dynamic(lightHex: 0xF5F5F5, darkHex: 0x222222)
+    static let fileChangeRowBg = Color.dynamic(lightHex: 0xFAFAFA, darkHex: 0x1A1A1A)
 
     // MARK: Shadow
     static let cardShadow = Color.black.opacity(0.08)

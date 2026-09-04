@@ -1,3 +1,40 @@
+# Codex Desktop 消息正文与文件卡二次对齐 QA（v0.5.93）
+
+- source truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-message-renderer-v0593/01-codex-reference-message-and-files.png`（用户提供的 Codex Desktop 原始裁图，773 × 1076 px）
+- regression truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-message-renderer-v0593/02-tapgo-v0592-markdown-baseline.png`（用户提供的 Tapgo v0.5.92 原始裁图，746 × 967 px）
+- iteration 2: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-message-renderer-v0593/11-tapgo-v0593-iteration2-content.png`（签名 Release 预览的 773 × 1076 px 原始裁图）
+- final comparison: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-message-renderer-v0593/12-codex-vs-iteration2.png`（两侧各 773 × 1076 px，直接拼接、未缩放、未拉伸）
+- viewport: Tapgo 使用 1299 × 1344 px 真实窗口、292 pt 固定侧栏；裁出 773 × 1076 px 消息区域与 Codex 原图同尺寸比较。两端任务内容不同，因此只比较稳定的正文度量、列表节奏、代码卡、层级色和文件卡规则，不宣称全文像素一致。
+
+## 初始审计
+
+- P0: 无。
+- P1: v0.5.92 把 Markdown 文本段内保留的空行和外层 12 pt block spacing 同时绘制，段落间距被重复放大；此前整窗 QA 未发现这一正文渲染缺陷，本次用户近距离截图使旧“通过”结论失效。
+- P1: 本机“大”字号把 13 pt 正文放大到 15.6 pt，再叠加正文 0.5 pt 补偿，正文尺寸和重量明显超过 Codex。
+- P1: 批量文件卡默认隐藏全部文件，只有点击“审核”后才显示 Diff；Codex 完成卡默认直接展示前三个文件路径及逐文件增删数。
+- P2: 标准消息列外宽 720 pt、左右各 16 pt，正文仅 688 pt；Codex 参考正文有效宽度约 736 pt。
+- P2: 代码块 12 pt 圆角、10 pt 竖向内边距及正文/列表 4–6 pt 行距共同降低同屏信息密度。
+
+## 比较历史
+
+1. baseline: `03-baseline-side-by-side.png`，确认 v0.5.92 存在正文过大过粗、段间留白翻倍、代码卡偏松和文件卡信息结构不一致，未通过。
+2. iteration 1: 空行先归一化为段落边界、block spacing 收紧到 8 pt、标准列改为 760 pt + 12 pt padding、大字号倍率降为 1.10、文件卡默认展示三行；`09-codex-vs-iteration1.png` 显示宽度和节奏已对齐，但普通正文仍偏粗，保留 P2。
+3. iteration 2: 普通正文改为 light、强调由 semibold 降为 medium、行内代码由 medium 降为 regular；`12-codex-vs-iteration2.png` 显示长列表正文重量和代码卡信息密度已接近 Codex，P2 关闭。
+
+## 最终结论
+
+- P0: 0；消息阅读、文本选择、代码复制、文件路径复制及真实 Diff 审核能力均保留。
+- P1: 0；正文不再重复绘制空白行，默认三文件预览、逐文件增删数和折叠余量与 Codex 信息层级一致。
+- P2: 0；标准内容列、字号倍率、正文/强调字重、列表节奏、代码卡圆角和内边距均已按同尺寸参考图收敛。
+- 字体与内容：系统字体不变；正文 13 pt 基线，本机“大”字号为 1.10 倍；标题、强调和行内代码仍保留可辨识层级，不把全部文字加粗。
+- 颜色与图标：消息文字和文件卡新增语义 token，深色分别为 `#F7F7F7`、`#222222`、`#1A1A1A`；图标继续使用可访问的 SF Symbols，没有位图替代或伪造控件。
+- 响应式：普通窗口使用 760 pt 内容列，宽窗口仍保留 980 pt 模式；较窄窗口继续由 `maxWidth` 自适应收缩，不产生横向裁切。
+- 可接受差异：Codex 与 Tapgo 的真实任务文案和文件事件不同；Tapgo 没有可安全执行的“撤销整批变更”事务，因此没有放置无效“撤销”按钮，但每一行和“审核”按钮都打开真实 Diff。
+
+final result: passed
+
+---
+
 # Codex Desktop 消息界面对齐 QA
 
 - source truth: `/Users/chanlaiyi/TapgoAICoding/artifacts/codex-complete-parity-v0592/08-codex-vs-tapgo-natural-combined.png` 左侧 Codex Desktop 实机窗口

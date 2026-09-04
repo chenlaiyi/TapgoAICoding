@@ -1251,3 +1251,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 同视口并排完成两轮视觉复核，并补充 UI 结构回归测试。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.93 — feat(ui): match Codex message rendering density
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.93`)_
+**Tag**: v0.5.93
+**Test status**: — 2713 passed, 0 failed —
+**Changed**:
+- feat(ui): match Codex message rendering density
+- 修正 Markdown 空行与块间距叠加，收紧正文尺寸和字重；标准内容列改为 760pt；多文件卡默认展示前三个文件及逐文件增删统计。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.

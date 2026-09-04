@@ -31,6 +31,8 @@ func runAppFontScaleTests(_ runner: TestRunner) {
                        "medium.multiplier = 1.0 (pre-feature UI baseline)")
     runner.expect(AppFontScale.large.multiplier > 1.0,
                   "large.multiplier > 1.0 (got \(AppFontScale.large.multiplier))")
+    runner.expectEqual(AppFontScale.large.multiplier, 1.10,
+                       "large.multiplier = 1.10 (Codex-density accessibility step)")
     // Sanity bounds — picked so small is still readable and large doesn't
     // break layout. Tighten if you change the values.
     runner.expect(AppFontScale.small.multiplier >= 0.8,
