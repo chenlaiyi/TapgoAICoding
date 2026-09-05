@@ -1379,11 +1379,25 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 按实际区域尺寸滚动，支持半页等小数页数。
 - 真实回归覆盖延迟粘贴、滚动条回读及跨会话状态变化拦截。
 
-## v0.5.104 — 授权引导动态跟随系统设置
+
+## v0.5.105 — feat(scheduler): 定时任务执行历史 + 立即运行 + weekly 编辑器
 **Date**: 2026-09-05
-**Status**: 源码与 App 更新；未创建公开 Release
-**Validation**: Core 2807 passed / 0 failed；签名 App/Helper 构建通过；无权限隔离预览验证真实跟随、前后层级及原生拖拽。
+**Commit**: _(see `git log -1 v0.5.105`)_
+**Tag**: v0.5.105
+**Test status**: TBD
 **Changed**:
-- 引导跟随系统设置窗口的移动、尺寸及所在屏幕，下方留 12pt 间距，空间不足时收进可见区域。
-- 提高浮窗层级且不抢焦点；设置不可见时隐藏；关闭后清理监听。
-- 使用窗口元数据定位，避免授权引导本身依赖尚未授予的权限。
+- ScheduledTask 新增 `ExecutionRecord` (firedAt + outcome: success/failure/skipped + durationMs + errorMessage) + `executionHistory: [ExecutionRecord]?`（Optional 兼容 v0.5.102 旧 JSON，resolvedHistory 自动兜底）；最多保留 5 条。
+- ScheduledTaskBridge.inject 改成 `async throws`：注入失败会把 ExecutionRecord(.failure) 写回历史；目标 thread 找不到时抛 ScheduledTaskError.threadMissing。SessionStore 新建会话失败路径也作为 failure 记录。
+- ScheduledTaskBridge.runNow(_:)：UI 列表行 play 按钮立即触发，不影响 lastFiredAt / nextFireAt，不发通知；记录 outcome 到历史。inject 未配置时记 .skipped。
+- ScheduledTasksView 编辑器新增 weekly 选项（周一到周日 + HH:MM）；列表行加 ▶ 立即运行 / ✎ 编辑 / 🗑 删除；新增"上次执行"行（成功绿勾 / 失败红三角 / 跳过橙转，含相对时间和耗时 ms），以及"近 N 次"次数字标。
+- App.swift wireScheduledBridgeOnce 改为抛错注入：toThreadID 路径失败抛 ScheduledTaskError.threadMissing，新会话路径保持现状。
+- 新增 ExecutionHistoryTests（legacy decode 兼容 + 限长 5 + 3 种 outcome round-trip）；TestMain 挂载。
+**Why**: Self-evolution iteration — 上一轮 v0.5.102 只做了面板和调度，用户看不到执行结果；本轮把"触发 → 记录 → 回看"闭环，给失败以可见信号。
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+## v0.5.102 — feat(scheduler): 定时任务面板（60s tick runner + 4 种 ScheduleSpec + macOS 通知 + 文件级持久化）— *改名合并到 v0.5.105，本条目保留作历史*
+**Date**: 2026-09-05
+**Commit**: _(folded into v0.5.105)_
+**Tag**: _(superseded by v0.5.105)_
+**Changed (folded into v0.5.105)**:
+- 侧边栏一级导航加 定时任务 (clock.arrow.circlepath); TapgoCore 新增 ScheduledTask + ScheduledTaskStore (JSON 文件 0600) + ScheduledTaskRunner (60s tick, oneShot 触发后自动 disable); TapgoAICoding 新增 ScheduledTasksView (列表 + 编辑 sheet + 空态) + ScheduledTaskBridge (通知 + SessionStore.sendUserMessage 注入, 支持新会话或指定会话); App.swift 启动时 wire bridge + start runner; 新增 ScheduleSpecTests + ScheduledTaskStoreTests 共 23 条断言。

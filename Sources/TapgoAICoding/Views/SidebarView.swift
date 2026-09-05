@@ -27,6 +27,7 @@ struct SidebarView: View {
     @State private var showEvolutionRootMissing = false
     @State private var showConnectPhone = false
     @State private var showPluginManager = false
+    @State private var showScheduledTasks = false
     @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
     @State private var collapsedGroups: Set<String> = []
@@ -130,6 +131,9 @@ struct SidebarView: View {
         .sheet(isPresented: $showPluginManager) {
             PluginManagerView()
         }
+        .sheet(isPresented: $showScheduledTasks) {
+            ScheduledTasksView()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusSearch)) { _ in
             showSearchField = true
             searchFocused = true
@@ -169,6 +173,11 @@ struct SidebarView: View {
             }
             .help("浏览和管理插件")
             .accessibilityLabel("插件市场")
+            menuItem("定时任务", "clock.arrow.circlepath") {
+                showScheduledTasks = true
+            }
+            .help("定时任务：到点自动注入提示词")
+            .accessibilityLabel("定时任务")
         }
         .padding(.horizontal, 9)
         .padding(.top, 19)
