@@ -173,8 +173,10 @@ struct MarkdownMessageView: View {
         baseWeight: Font.Weight = .light
     ) -> AttributedString {
         var a = AttributedString()
-        // 行内代码比正文略小一档，以中性色底纹保持区分，但不再渲染成高饱和标签。
-        let inlineSize = max(baseFontSize - 1.5, 9)
+        // 行内代码与正文同大，仅靠 monospace + 浅底色区分；
+        // 字重抬到 medium，避免 monospace 在小字号下显得单薄、与正文形成可读对比。
+        let inlineSize = baseFontSize
+        let inlineWeight: Font.Weight = .medium
         for seg in segs {
             switch seg {
             case .text(let s):
@@ -183,7 +185,7 @@ struct MarkdownMessageView: View {
                 a += r
             case .inline(let s):
                 var r = AttributedString(s)
-                r.font = .system(size: inlineSize, weight: .regular, design: .monospaced)
+                r.font = .system(size: inlineSize, weight: inlineWeight, design: .monospaced)
                 r.foregroundColor = DSHTheme.messageText
                 r.backgroundColor = DSHTheme.inlineCodeBg
                 a += r
@@ -248,8 +250,10 @@ struct MarkdownMessageView: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
-                            .font(.system(size: markerSize, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(DSHTheme.messageText)
+                            // Bullet 比正文更淡一档（labelTertiary）+ 字重 .regular，
+                            // 让眼睛把 bullet 当成"装饰"而不是"内容"。
+                            .font(.system(size: markerSize, weight: .regular, design: .monospaced))
+                            .foregroundStyle(DSHTheme.labelTertiary)
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
                         Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
                             .foregroundStyle(DSHTheme.messageText)
@@ -264,6 +268,69 @@ struct MarkdownMessageView: View {
     }
 }
 
+
+/// 按代码块的语言返回一个图标和品牌色（Codex 风格）。
+/// 不支持的语言返回 nil，调用方退回到纯文本 lang 标签。
+private func codeBlockLanguageBadge(_ lang: String?) -> (symbol: String, color: Color)? {
+    guard let raw = lang?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !raw.isEmpty else {
+        return nil
+    }
+    switch raw {
+    case "php":
+        return ("chevron.left.forwardslash.chevron.right", Color(hex: 0x777BB4))
+    case "js", "javascript":
+        return ("curlybraces", Color(hex: 0xF7DF1E))
+    case "ts", "typescript":
+        return ("curlybraces", Color(hex: 0x3178C6))
+    case "tsx":
+        return ("curlybraces", Color(hex: 0x3178C6))
+    case "jsx":
+        return ("curlybraces", Color(hex: 0x61DAFB))
+    case "swift":
+        return ("swift", Color(hex: 0xFA7343))
+    case "py", "python":
+        return ("chevron.left.and.right", Color(hex: 0x3776AB))
+    case "go":
+        return ("circle.hexagongrid.fill", Color(hex: 0x00ADD8))
+    case "rs", "rust":
+        return ("gearshape.2.fill", Color(hex: 0xDEA584))
+    case "rb", "ruby":
+        return ("diamond.fill", Color(hex: 0xCC342D))
+    case "java":
+        return ("cup.and.saucer.fill", Color(hex: 0xE76F00))
+    case "kt", "kotlin":
+        return ("k.circle.fill", Color(hex: 0x7F52FF))
+    case "vue":
+        return ("v.square.fill", Color(hex: 0x42B883))
+    case "html":
+        return ("chevron.left.forwardslash.chevron.right", Color(hex: 0xE34F26))
+    case "css":
+        return ("paintbrush.fill", Color(hex: 0x1572B6))
+    case "scss", "sass":
+        return ("paintbrush.fill", Color(hex: 0xCD6799))
+    case "json":
+        return ("curlybraces", Color(hex: 0x9CA3AF))
+    case "yaml", "yml":
+        return ("list.bullet.indent", Color(hex: 0xCB171E))
+    case "toml":
+        return ("list.bullet.indent", Color(hex: 0x9C4221))
+    case "xml":
+        return ("chevron.left.forwardslash.chevron.right", Color(hex: 0x0060AC))
+    case "sql":
+        return ("cylinder.split.1x2.fill", Color(hex: 0xE38C00))
+    case "sh", "bash", "zsh", "shell", "console":
+        return ("terminal.fill", Color(hex: 0x4EAA25))
+    case "dockerfile", "docker":
+        return ("cube.transparent.fill", Color(hex: 0x2496ED))
+    case "md", "markdown":
+        return ("text.alignleft", Color(hex: 0x9CA3AF))
+    case "ini", "conf", "env":
+        return ("gearshape.fill", Color(hex: 0x6B7280))
+    default:
+        return ("doc.text.fill", Color(hex: 0x6B7280))
+    }
+}
+
 /// Monospaced, copyable code container for a fenced block.
 private struct CodeBlockView: View {
     let code: String
@@ -273,18 +340,20 @@ private struct CodeBlockView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            HStack(spacing: 6) {
                 if let lang, !lang.isEmpty {
+                    if let badge = codeBlockLanguageBadge(lang) {
+                        Image(systemName: badge.symbol)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(badge.color)
+                            .accessibilityHidden(true)
+                    }
                     Text(lang)
                         .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
                 Spacer()
-                Text("\(code.count) 字符")
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
-                    .textSelection(.enabled)
                 Button {
                     copy(code)
                     copied = true

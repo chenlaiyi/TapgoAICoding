@@ -1433,3 +1433,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 消息输出更接近 Codex 桌面端的阅读节奏：段落/列表/表格节奏收紧、连续 reasoning 合并到一行可展开、用户气泡与状态徽章更克制、行内代码底色更柔和、流式光标内联、聚合行携带 summaryText 通道。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.107 — feat(chat): 提升消息输出层次感
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.107`)_
+**Tag**: v0.5.107
+**Test status**: — 2886 passed, 0 failed —
+**Changed**:
+- feat(chat): 提升消息输出层次感
+bullet 颜色降一档 + 字重 regular；inline code 字号与正文同大、字重 medium；代码块顶栏去掉字符数，按 25 种语言返回彩色 SF Symbol 图标；列表层级与正文视觉解耦
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
