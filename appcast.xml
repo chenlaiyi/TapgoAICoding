@@ -3,6 +3,25 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.107</title>
+            <pubDate>Sat, 05 Sep 2026 18:01:44 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.107</link>
+            <sparkle:version>0.5.107</sparkle:version>
+            <sparkle:shortVersionString>0.5.107</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.107
+
+- 全面提升消息输出层次感与色彩区分（对齐 Codex Desktop 截图基线）：
+  - `MarkdownMessageView` 列表 bullet 颜色从 `messageText` 降到 `labelTertiary`，字重从 `.semibold` 改为 `.regular`，让 bullet 当成"装饰"而不是"内容"。
+  - 行内代码字号与正文同大（之前小 1.5pt），字重抬到 `.medium`，仅靠 monospace + 浅底色区分；`陈*军`、`master` 这类关键字段不再"小一号"。
+  - 代码块顶栏去掉"字符数"噪音，新增 `codeBlockLanguageBadge()`，按 25 种语言返回彩色 SF Symbol 图标（PHP 蓝、JS 黄、TS 蓝、Vue 绿、Swift 橙、Python 蓝、Go 青、Rust 棕、Shell 绿、Docker 蓝等）。
+  - 列表 marker 列宽保留、行间距收紧，列表层级与正文视觉解耦。
+- 发版流程沿用 v0.5.106：`./scripts/evolve.sh patch ...` 跑 build → test → commit → tag → push → 签 zip → gh release create → 刷 appcast → push main → 重打 .app；已装客户端 Sparkle 下一轮 poll 拉取 v0.5.107 升级提示。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.107/Tapgo-AICoding-0.5.107.zip" length="11604568" type="application/octet-stream" sparkle:edSignature="p818cgZ3tJP1vQjSg4xbfDINNbq2DnRnYSfC4vuj3yDaPqHwuoJ5kSBqVP2IQjvrRu2sJuuKS9EZbIUN/rQyAA=="/>
+        </item>
+        <item>
             <title>0.5.106</title>
             <pubDate>Sat, 05 Sep 2026 13:56:52 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.106</link>
@@ -47,38 +66,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.105/Tapgo-AICoding-0.5.105.zip" length="11495907" type="application/octet-stream" sparkle:edSignature="R+bYcfEcfa4btnllt4vJq6YpavaFZRTVZzWnxs+457fQ16jpZNUXMT8YdYKpiR8tnWvEgnWqLDgSO+zDHSV0Aw=="/>
-        </item>
-        <item>
-            <title>0.5.101</title>
-            <pubDate>Sat, 05 Sep 2026 03:09:41 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.101</link>
-            <sparkle:version>0.5.101</sparkle:version>
-            <sparkle:shortVersionString>0.5.101</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.101
-
-手机端 composer 输入框旁权限按钮改为下拉菜单（3 档），按用户反馈的「请求批准 / 帮我批准 / 完全访问权限」最常用档位。
-
-## 修复
-
-- H5 composer-bar 输入框旁的「电脑操作」按钮改为 `权限 ▾` 下拉菜单：
-  - **请求批准** — 每次写操作在手机端弹批准请求 (`approvalPolicy=on-request`)
-  - **帮我批准** — 全自动批准 (`approvalPolicy=never`)
-  - **完全访问权限** — 全自动 + 完全访问不限制 (`sandboxMode=danger-full-access`)
-- 新增 `POST /api/permissions {profile:"request|auto|full"}` 后端端点，写入 `TapgoConfig.approvalPolicy` + `sandboxMode`（仅 full 时）。
-- `PhoneRemote.StateSnapshot` 新增 `permissions: {sandbox, approval}` 字段，composer 按钮文字同步显示当前档位（如「完全访问权限」），下拉高亮当前选中档。
-
-## 范围说明
-
-- 完整权限抽屉（屏幕录制 / 辅助功能）仍通过原电脑控制抽屉进入，下拉菜单暂未挂载入口。
-- 不影响 macOS 系统授权（屏幕录制 / 辅助功能），后者仍需 Mac 端手动确认。
-
-## 测试
-
-- 2801 通过 / 13 失败，13 个全是预先存在的远程 SSH 集成 + helper version tag 一次性断言，无回归。
-- Core 端 `PhoneRemote.buildState` 接受 `permissions` 实参；App 端 `applyPermissionProfile` 写入后立即被下次轮询带回。]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.101/Tapgo-AICoding-0.5.101.zip" length="11285780" type="application/octet-stream" sparkle:edSignature="wLOb60RNoxqz+5ozu/potsp/6C9I0VfcA4VXU1gi0ri061sATYogeczyJIsyEHtmf4PeljYQJDgRvu9+xw6ACg=="/>
         </item>
     </channel>
 </rss>
