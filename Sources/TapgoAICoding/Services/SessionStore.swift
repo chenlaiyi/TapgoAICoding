@@ -559,7 +559,7 @@ final class SessionStore: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImages = !attachedImages.isEmpty
         guard !trimmed.isEmpty || hasImages else { return }
-        if setupError != nil { return }
+        if setupError != nil && (hasImages || ScheduledTaskCommands.parse(trimmed) == nil) { return }
         if activeThreadId == nil { newThread() }
         guard let targetThreadId = activeThreadId else { return }
         queueActionErrorsByThreadId.removeValue(forKey: targetThreadId)
@@ -656,6 +656,16 @@ final class SessionStore: ObservableObject {
         threads.save(liveThreads[idx])
         let cwd = liveThreads[idx].cwd
         let project = liveThreads[idx].projectId.flatMap { workspace.project(byId: $0) }
+
+        if !hasImages, let reply = LocalScheduledTaskCommand.reply(to: trimmed, isRemote: project?.isRemote == true) {
+            let turnIndex = liveThreads[idx].turns.count - 1
+            liveThreads[idx].turns[turnIndex].items.append(.assistantMessage(id: "scheduled-" + UUID().uuidString, text: reply))
+            liveThreads[idx].turns[turnIndex].status = .completed
+            liveThreads[idx].turns[turnIndex].completedAt = Date()
+            threads.save(liveThreads[idx])
+            finishTurnAndDrain(finishedThreadId: threadId)
+            return
+        }
 
         // For remote threads, inject a stable environment preamble
         // so the model *knows* it's on the remote host and won't
@@ -930,7 +940,7 @@ final class SessionStore: ObservableObject {
         - 只有当前回合中的具体工具调用真实失败，才能说该工具不可用；不得根据旧记忆或猜测宣布工具不可用。
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。
         - 使用简体中文；输出节奏严格遵守前面的强制协议。
-        """, ComputerUseMCP.agentInstructions]
+        """, ComputerUseMCP.agentInstructions, ScheduledTaskMCP.instructions]
         if let userMem = TapgoConfig.readMemoryForInjection(
             projectRoot: project?.worktreeRoot,
             gitBranch: Self.detectGitBranch(for: project)

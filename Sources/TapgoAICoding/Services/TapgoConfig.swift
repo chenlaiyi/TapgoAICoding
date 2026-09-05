@@ -994,9 +994,24 @@ enum TapgoConfig {
     /// upserts the bundled executable; disabling removes the server table.
     @discardableResult
     static func syncComputerUseMCPPreference() -> Bool {
-        computerUseEnabled
-            ? ensureComputerUseMCPSection()
-            : removeComputerUseMCPSection()
+        let computer = computerUseEnabled ? ensureComputerUseMCPSection() : removeComputerUseMCPSection()
+        let scheduler = ensureScheduledTaskMCPSection()
+        return computer && scheduler
+    }
+
+    @discardableResult
+    static func ensureScheduledTaskMCPSection() -> Bool {
+        guard let binary = computerUseMCPBinaryPath(),
+              let current = try? String(contentsOf: configPath, encoding: .utf8) else { return false }
+        let updated = ScheduledTaskMCP.upsertConfig(current, commandPath: binary)
+        guard updated != current else { return true }
+        do {
+            try atomicWrite(Data(updated.utf8), to: configPath)
+            return true
+        } catch {
+            log("定时任务工具注册失败：\(error)")
+            return false
+        }
     }
 
     /// Logs land next to the system-wide Logs directory so the user can

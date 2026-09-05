@@ -11,6 +11,7 @@
 // 诊断日志一律走 stderr, stdout 只输出 MCP 响应。
 
 import Foundation
+import AppKit
 import Darwin
 import TapgoComputerUse
 import TapgoCore
@@ -32,6 +33,18 @@ func permissionStatusData() -> Data? {
 /// through Launch Services so macOS evaluates the helper app's own TCC
 /// identity rather than inheriting the calling terminal/application context.
 let commandArguments = Array(CommandLine.arguments.dropFirst())
+if commandArguments.first == "--scheduled-tasks" {
+    let scheduler = ScheduledTaskMCP(applicationExists: {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
+    })
+    while let line = readLine() {
+        if let reply = scheduler.handle(Data(line.utf8)) {
+            FileHandle.standardOutput.write(reply)
+            FileHandle.standardOutput.write(Data("\n".utf8))
+        }
+    }
+    exit(EXIT_SUCCESS)
+}
 if commandArguments.first == "--permission-status" {
     if let data = permissionStatusData() {
         FileHandle.standardOutput.write(data)
@@ -114,10 +127,16 @@ let executor: ComputerUseMCP.Executor = { tool, args in
                     text: state + "\n\n应用窗口截图失败；目标窗口可能未显示在主桌面。", observationToken: ComputerUse.observationToken
                 )
             }
+            // ScreenCaptureKit can settle titlebar/accessibility decorations.
+            // Issue indices only after capture, so the returned token describes
+            // the final visible tree rather than the pre-capture tree.
+            guard let capturedState = ComputerUse.appStateDescription(appName: app) else {
+                return .init(isError: true, text: "截图后目标界面已变化，请重新观察。")
+            }
             let metadata = "\n\n窗口截图: \(capture.appLabel) \(Int(capture.pointWidth))x\(Int(capture.pointHeight)) pt，window_id=\(capture.windowID)。坐标工具传 app 时相对这张图。"
             return ComputerUseMCP.ToolOutcome(
                 isError: false,
-                text: state + metadata,
+                text: capturedState + metadata,
                 imageJPEGBase64: capture.jpeg.base64EncodedString(), observationToken: ComputerUse.observationToken
             )
         }

@@ -619,6 +619,7 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ScheduleSpec: nextFire correctness + Codable round-trip") {
             runScheduleSpecTests(runner)
+            runScheduledTaskCommandTests(runner)
         }
         await runIfInScope(runner, "ScheduledTaskStore: load/save round-trip + permissions") {
             runScheduledTaskStoreTests(runner)

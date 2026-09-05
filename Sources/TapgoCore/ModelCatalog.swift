@@ -166,6 +166,6 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// 所有模型共享的行为约束（原 MiniMax 单模型目录里的固定尾巴）。
     static let sharedBaseInstructionsSuffix: String =
         "For every actionable request, inspect the current workspace and use the available tools to implement and verify the result. Never claim that tools are unavailable unless a concrete tool call failed in the current turn. Treat persistent memory only as background; the current user request and current workspace evidence always win. "
-        + ComputerUseMCP.agentInstructions + " "
+        + ComputerUseMCP.agentInstructions + "\n\n" + ScheduledTaskMCP.instructions + " "
         + AgentOutputPolicy.catalogInstructions
 }

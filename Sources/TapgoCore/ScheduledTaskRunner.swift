@@ -1,6 +1,6 @@
 import Foundation
 
-/// 60-second polling loop that watches `ScheduledTaskStore` and fires any
+/// Five-second polling loop that watches `ScheduledTaskStore` and fires any
 /// task whose `nextFireAt` is in the past. Decoupled from the UI: it just
 /// invokes `onFire` (a closure set by the App) which is responsible for
 /// routing the prompt to the right `SessionStore`/thread.
@@ -9,8 +9,8 @@ import Foundation
 /// - mark `lastFiredAt = now`, recompute `nextFireAt`, persist
 /// - call `onFire(task)`; the caller can show notifications / log
 ///
-/// Tick interval is 60s to keep wall-clock drift small without pinning a
-/// thread; 60s latency is acceptable for hour-scale schedules. A oneShot
+/// A five-second tick keeps minute-level schedules close to their specified
+/// time without pinning a thread. A oneShot
 /// fired late still fires — better late than silently dropped.
 public final class ScheduledTaskRunner {
     public typealias OnFire = @MainActor (ScheduledTask) -> Void
@@ -24,7 +24,7 @@ public final class ScheduledTaskRunner {
 
     public init(
         store: ScheduledTaskStore = ScheduledTaskStore(),
-        tickInterval: TimeInterval = 60,
+        tickInterval: TimeInterval = 5,
         onFire: @escaping OnFire
     ) {
         self.store = store
@@ -75,7 +75,7 @@ public final class ScheduledTaskRunner {
                 } else {
                     task.nextFireAt = task.schedule.nextFire(after: now, lastFired: now)
                 }
-                do { try store.save(task) } catch { lastError = "save: \(error)" }
+                do { try store.save(task) } catch { lastError = "save: \(error)"; continue }
                 onFire(task)
             }
         }

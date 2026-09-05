@@ -13,6 +13,8 @@ public struct ScheduledTask: Codable, Identifiable, Equatable {
     public var schedule: ScheduleSpec
     /// nil → always spawn a new thread per fire; non-nil → inject into this thread.
     public var targetThreadId: UUID?
+    /// nil preserves legacy prompt-based execution; opening an app runs natively.
+    public var applicationBundleIdentifier: String?
     /// Soft kill-switch without deleting the task.
     public var enabled: Bool
     /// Last time the runner fired this task. nil = never.
@@ -31,6 +33,7 @@ public struct ScheduledTask: Codable, Identifiable, Equatable {
         prompt: String,
         schedule: ScheduleSpec,
         targetThreadId: UUID? = nil,
+        applicationBundleIdentifier: String? = nil,
         enabled: Bool = true,
         lastFiredAt: Date? = nil,
         nextFireAt: Date? = nil,
@@ -43,6 +46,7 @@ public struct ScheduledTask: Codable, Identifiable, Equatable {
         self.prompt = prompt
         self.schedule = schedule
         self.targetThreadId = targetThreadId
+        self.applicationBundleIdentifier = applicationBundleIdentifier
         self.enabled = enabled
         self.lastFiredAt = lastFiredAt
         self.nextFireAt = nextFireAt
@@ -85,8 +89,10 @@ public enum ScheduleSpec: Codable, Equatable {
     case interval(seconds: TimeInterval)
     /// Fire on the given weekday (1=Sun, 7=Sat per Calendar) at hour:minute local.
     case weekly(weekday: Int, hour: Int, minute: Int)
+    /// Monday through Friday, excluding Saturday and Sunday (not public holidays).
+    case weekdays(hour: Int, minute: Int)
 
-    private enum Kind: String, Codable { case oneShot, daily, interval, weekly }
+    private enum Kind: String, Codable { case oneShot, daily, interval, weekly, weekdays }
 
     private enum CodingKeys: String, CodingKey { case kind, fireAt, hour, minute, seconds, weekday }
 
@@ -96,6 +102,8 @@ public enum ScheduleSpec: Codable, Equatable {
         switch kind {
         case .oneShot:
             self = .oneShot(try c.decode(Date.self, forKey: .fireAt))
+        case .weekdays:
+            self = .weekdays(hour: try c.decode(Int.self, forKey: .hour), minute: try c.decode(Int.self, forKey: .minute))
         case .daily:
             self = .daily(hour: try c.decode(Int.self, forKey: .hour),
                           minute: try c.decode(Int.self, forKey: .minute))
@@ -113,6 +121,8 @@ public enum ScheduleSpec: Codable, Equatable {
         switch self {
         case .oneShot(let d):
             try c.encode(Kind.oneShot, forKey: .kind); try c.encode(d, forKey: .fireAt)
+        case .weekdays(let h, let m):
+            try c.encode(Kind.weekdays, forKey: .kind); try c.encode(h, forKey: .hour); try c.encode(m, forKey: .minute)
         case .daily(let h, let m):
             try c.encode(Kind.daily, forKey: .kind); try c.encode(h, forKey: .hour); try c.encode(m, forKey: .minute)
         case .interval(let s):
@@ -130,6 +140,8 @@ public enum ScheduleSpec: Codable, Equatable {
             let f = DateFormatter()
             f.dateStyle = .short; f.timeStyle = .short
             return "一次性 · \(f.string(from: d))"
+        case .weekdays(let h, let m):
+            return String(format: "周一至周五 %02d:%02d", h, m)
         case .daily(let h, let m):
             return String(format: "每天 %02d:%02d", h, m)
         case .interval(let s):
@@ -154,13 +166,20 @@ public enum ScheduleSpec: Codable, Equatable {
         switch self {
         case .oneShot(let d):
             return d > now ? d : nil
+        case .weekdays(let h, let m):
+            guard (0...23).contains(h), (0...59).contains(m) else { return nil }
+            return (2...6).compactMap { weekday in
+                cal.nextDate(after: now, matching: DateComponents(hour: h, minute: m, second: 0, weekday: weekday), matchingPolicy: .nextTime)
+            }.min()
         case .daily(let h, let m):
+            guard (0...23).contains(h), (0...59).contains(m) else { return nil }
             // Today at h:m, else tomorrow at h:m
             var comp = cal.dateComponents([.year, .month, .day], from: now)
             comp.hour = h; comp.minute = m; comp.second = 0
             if let today = cal.date(from: comp), today > now { return today }
             return cal.date(byAdding: .day, value: 1, to: cal.date(from: comp)!)
         case .weekly(let wd, let h, let m):
+            guard (1...7).contains(wd), (0...23).contains(h), (0...59).contains(m) else { return nil }
             var comp = cal.dateComponents([.year, .month, .day], from: now)
             comp.hour = h; comp.minute = m; comp.second = 0
             let today = cal.date(from: comp)!

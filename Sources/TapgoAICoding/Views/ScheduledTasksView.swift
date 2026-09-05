@@ -7,6 +7,7 @@ import UserNotifications
 /// last execution outcome (with failure badge) + a "play" button for manual
 /// fire. New tasks are added via the toolbar "+" button.
 struct ScheduledTasksView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var bridge: ScheduledTaskBridge
     @State private var tasks: [ScheduledTask] = []
     @State private var editing: ScheduledTask? = nil
@@ -40,7 +41,7 @@ struct ScheduledTasksView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(width: 720, height: 520, alignment: .topLeading)
         .background(DSHTheme.fidelityMainCanvas)
         .sheet(item: $editing) { task in
             editorSheet(for: task)
@@ -64,6 +65,16 @@ struct ScheduledTasksView: View {
             .buttonStyle(.borderless)
             .help("新建定时任务")
             .accessibilityLabel("新建定时任务")
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .disabled(editing != nil)
+            .help("关闭定时任务（Esc）")
+            .accessibilityLabel("关闭定时任务")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -225,18 +236,25 @@ struct ScheduledTasksView: View {
                 .font(.headline)
             Form {
                 TextField("任务名", text: $draftName)
+                if let bundleID = task.applicationBundleIdentifier {
+                    LabeledContent("打开应用", value: bundleID)
+                    Text("此任务直接打开应用，无需模型。运行时需保持 Tapgo 开启。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 TextField("提示词", text: $draftPrompt, axis: .vertical)
                     .lineLimit(3...8)
                     .textFieldStyle(.roundedBorder)
+                    .disabled(task.applicationBundleIdentifier != nil)
                 Picker("触发时机", selection: $draftScheduleKind) {
                     Text("每天 HH:MM").tag("daily")
+                    Text("周一至周五").tag("weekdays")
                     Text("每 N 分钟").tag("interval")
                     Text("每周某天").tag("weekly")
                     Text("一次性").tag("oneShot")
                 }
                 .pickerStyle(.segmented)
                 Group {
-                    if draftScheduleKind == "daily" {
+                    if draftScheduleKind == "daily" || draftScheduleKind == "weekdays" {
                         Stepper(value: $draftHour, in: 0...23) {
                             HStack { Text("小时"); Spacer(); Text(String(format: "%02d", draftHour)) }
                         }
@@ -271,6 +289,7 @@ struct ScheduledTasksView: View {
             .formStyle(.grouped)
             HStack {
                 Button("取消") { editing = nil }
+                    .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("保存") {
                     saveDraft(existing: task)
@@ -290,6 +309,8 @@ struct ScheduledTasksView: View {
         draftPrompt = t.prompt
         draftThreadMode = t.targetThreadId == nil ? "new" : "active"
         switch t.schedule {
+        case .weekdays(let h, let m):
+            draftScheduleKind = "weekdays"; draftHour = h; draftMinute = m
         case .daily(let h, let m):
             draftScheduleKind = "daily"; draftHour = h; draftMinute = m
         case .interval(let s):
@@ -303,6 +324,7 @@ struct ScheduledTasksView: View {
 
     private func buildSchedule() -> ScheduleSpec {
         switch draftScheduleKind {
+        case "weekdays": return .weekdays(hour: draftHour, minute: draftMinute)
         case "daily": return .daily(hour: draftHour, minute: draftMinute)
         case "interval": return .interval(seconds: TimeInterval(draftIntervalMin * 60))
         case "oneShot": return .oneShot(draftFireAt)

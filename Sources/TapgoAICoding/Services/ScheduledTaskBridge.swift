@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import TapgoCore
 import UserNotifications
 
@@ -70,7 +71,7 @@ public final class ScheduledTaskBridge: ObservableObject {
         let started = Date()
         let record: ExecutionRecord
         do {
-            try await inject?(task)
+            try await execute(task)
             record = ExecutionRecord(firedAt: started, outcome: .success, durationMs: nil)
         } catch {
             record = ExecutionRecord(
@@ -96,17 +97,7 @@ public final class ScheduledTaskBridge: ObservableObject {
         Task {
             let record: ExecutionRecord
             do {
-                guard let inject = self.inject else {
-                    record = ExecutionRecord(
-                        firedAt: started,
-                        outcome: .skipped,
-                        durationMs: nil,
-                        errorMessage: "inject 未配置（SessionStore 尚未就绪）"
-                    )
-                    self.appendHistory(taskID: task.id, record: record)
-                    return
-                }
-                try await inject(task)
+                try await self.execute(task)
                 let elapsedMs = Int(Date().timeIntervalSince(started) * 1000)
                 record = ExecutionRecord(
                     firedAt: started,
@@ -123,6 +114,25 @@ public final class ScheduledTaskBridge: ObservableObject {
             }
             self.appendHistory(taskID: task.id, record: record)
         }
+    }
+
+    @MainActor
+    private func execute(_ task: ScheduledTask) async throws {
+        if let bundleID = task.applicationBundleIdentifier {
+            guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+                throw NSError(domain: "TapgoScheduledTask", code: 1, userInfo: [NSLocalizedDescriptionKey: "目标应用未安装：\(bundleID)"])
+            }
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) { app, error in
+                    if let error { continuation.resume(throwing: error) }
+                    else if app != nil { continuation.resume() }
+                    else { continuation.resume(throwing: NSError(domain: "TapgoScheduledTask", code: 2)) }
+                }
+            }
+            return
+        }
+        guard let inject else { throw NSError(domain: "TapgoScheduledTask", code: 3, userInfo: [NSLocalizedDescriptionKey: "任务执行器尚未就绪"]) }
+        try await inject(task)
     }
 
     /// Append a record to the task's history and persist. Bounded at

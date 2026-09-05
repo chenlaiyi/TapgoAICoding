@@ -35,7 +35,10 @@ def call(name, **arguments):
         raise TimeoutError("Helper response exceeded 20 seconds")
     response = json.loads(process.stdout.readline())
     check(response.get("id") == sequence, "response id " + str(sequence))
-    return response["result"]
+    result = response["result"]
+    if result.get("isError"):
+        print("DETAIL:", name, text(result), flush=True)
+    return result
 
 
 def text(result):
@@ -71,7 +74,7 @@ try:
     check("Applied: 校准 alpha alpha" in state, "button effect readback")
     result = call("select_text", app=APP, element_index=index(state, 'id="fixture-input"'),
                   text="alpha", prefix="alpha ", selection_type="text")
-    check(not result.get("isError"), "disambiguated selection")
+    check(not result.get("isError"), "disambiguated selection" + (": " + text(result) if result.get("isError") else ""))
     result = call("paste", app=APP, text="beta", format="text")
     check(not result.get("isError"), "paste dispatch")
     state = observe()

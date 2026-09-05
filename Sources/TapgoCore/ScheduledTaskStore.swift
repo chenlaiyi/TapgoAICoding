@@ -33,17 +33,15 @@ public final class ScheduledTaskStore {
     public func save(_ task: ScheduledTask) throws {
         var stamped = task
         stamped.updatedAt = Date()
-        if stamped.nextFireAt == nil {
+        if !stamped.enabled {
+            stamped.nextFireAt = nil
+        } else if stamped.nextFireAt == nil {
             stamped.nextFireAt = stamped.schedule.nextFire(after: Date(), lastFired: stamped.lastFiredAt)
         }
         let data = try Self.encoder.encode(stamped)
         let url = baseDir.appendingPathComponent("\(task.id.uuidString).json")
-        let tmp = url.appendingPathExtension("tmp")
-        try data.write(to: tmp, options: .atomic)
-        if FileManager.default.fileExists(atPath: url.path) {
-            try? FileManager.default.removeItem(at: url)
-        }
-        try FileManager.default.moveItem(at: tmp, to: url)
+        // Atomic replacement retains the old record on write failure.
+        try data.write(to: url, options: .atomic)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 

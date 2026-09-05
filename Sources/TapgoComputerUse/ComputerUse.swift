@@ -274,7 +274,7 @@ public enum ComputerUse {
         guard let app = resolveApplication(named: appName, launchIfNeeded: true) else { return nil }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        let nodes = accessibilityNodes(for: app, maxElements: maxElements)
+        let nodes = settledAccessibilityNodes(for: app, maxElements: maxElements)
         guard !nodes.isEmpty else { return nil }
         let appLabel = app.localizedName ?? app.bundleIdentifier ?? "未知应用"
         let lines = nodes.enumerated().map { index, node in
@@ -564,6 +564,29 @@ public enum ComputerUse {
             usleep(50_000)
         } while Date() < deadline
         return nil
+    }
+
+    /// macOS can insert titlebar AX groups shortly after activation. Observe a
+    /// bounded stable tree before issuing ephemeral indices, keeping the action
+    /// guard strict instead of accepting an index from a moving tree.
+    private static func settledAccessibilityNodes(for app: NSRunningApplication, maxElements: Int) -> [AccessibilityNode] {
+        func signature(_ nodes: [AccessibilityNode]) -> String {
+            nodes.map { accessibilityLine(for: $0.element, depth: $0.depth)
+                + String(describing: elementFrame($0.element)) }.joined(separator: "\n")
+        }
+        var nodes = accessibilityNodes(for: app, maxElements: maxElements)
+        var previous = signature(nodes)
+        var stableSamples = 0
+        let deadline = Date().addingTimeInterval(0.6)
+        while stableSamples < 2 && Date() < deadline {
+            usleep(80_000)
+            let next = accessibilityNodes(for: app, maxElements: maxElements)
+            let current = signature(next)
+            stableSamples = current == previous && next.count > 1 ? stableSamples + 1 : 0
+            nodes = next
+            previous = current
+        }
+        return nodes
     }
 
     private static func accessibilityNodes(
