@@ -160,7 +160,7 @@ public enum ComputerUseMCP {
                  object(["app": str(), "element_index": integer(minimum: 0, maximum: 999),
                          "x": point(), "y": point(),
                          "direction": enumeration(["up", "down", "left", "right", "u", "d", "l", "r"]),
-                         "pages": integer(minimum: 1, maximum: 10), "dy": legacyNormalizedNumber()],
+                         "pages": ["type": "number", "exclusiveMinimum": 0, "maximum": 10], "dy": legacyNormalizedNumber()],
                         required: [])),
             tool("select_text",
                  "在可编辑元素中选择匹配文本，或把光标放在文本前/后；prefix/suffix 用于消除重复匹配。",
@@ -288,12 +288,19 @@ public enum ComputerUseMCP {
         return Int(value)
     }
 
-    public static func pagesArg(_ args: [String: Any]) -> Int? {
+    public static func pagesArg(_ args: [String: Any]) -> Double? {
         guard let number = args["pages"] as? NSNumber,
               CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
         let value = number.doubleValue
-        guard value >= 1, value <= 10, value.rounded(.towardZero) == value else { return nil }
-        return Int(value)
+        guard value.isFinite, value > 0, value <= 10 else { return nil }
+        return value
+    }
+
+    /// Scroll a viewport fraction with a small overlap between whole pages.
+    public static func scrollPixelAmount(pages: Double, viewport: Double) -> Int32? {
+        guard pages.isFinite, pages > 0, pages <= 10,
+              viewport.isFinite, viewport > 0 else { return nil }
+        return Int32(max(1, min(100_000, (pages * viewport * 0.9).rounded())))
     }
 
     public static func elementIndex(_ args: [String: Any]) -> Int? {

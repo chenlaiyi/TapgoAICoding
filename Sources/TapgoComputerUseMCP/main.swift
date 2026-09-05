@@ -410,7 +410,7 @@ let executor: ComputerUseMCP.Executor = { tool, args in
                 return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: x/y 必须成对提供。")
             }
             if args["pages"] != nil, ComputerUseMCP.pagesArg(args) == nil {
-                return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: pages 必须是 1...10 的整数。")
+                return ComputerUseMCP.ToolOutcome(isError: true, text: "参数错误: pages 必须大于 0 且不超过 10，支持小数。")
             }
             let result = ComputerUse.scroll(
                 appName: app,

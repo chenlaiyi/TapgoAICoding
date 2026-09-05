@@ -8,6 +8,7 @@ Only the test fixture is edited. stdout contains synthetic test results only.
 import json
 import re
 import subprocess
+import select
 import sys
 
 APP = "/tmp/Tapgo CU Fixture.app"
@@ -30,6 +31,8 @@ def call(name, **arguments):
     request = dict(jsonrpc="2.0", id=sequence, method="tools/call", params=dict(name=name, arguments=arguments))
     process.stdin.write(json.dumps(request) + "\n")
     process.stdin.flush()
+    if not select.select([process.stdout], [], [], 20)[0]:
+        raise TimeoutError("Helper response exceeded 20 seconds")
     response = json.loads(process.stdout.readline())
     check(response.get("id") == sequence, "response id " + str(sequence))
     return response["result"]
@@ -73,6 +76,26 @@ try:
     check(not result.get("isError"), "paste dispatch")
     state = observe()
     check('value="校准 alpha beta"' in state, "paste exact text readback")
+    # A second independent bridge changes the UI without invalidating the first
+    # bridge's cache: only the worker fingerprint can stop its stale action.
+    original = process
+    other = subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        process = other
+        other_state = observe()
+        check(not call("set_value", app=APP, element_index=index(other_state, 'id="fixture-input"'), value="external edit").get("isError"), "external bridge edit")
+    finally:
+        other.stdin.close()
+        other.wait(timeout=20)
+        process = original
+    check(call("click", app=APP, element_index=index(state, 'title="Apply fixture"')).get("isError"), "worker rejects externally changed AX fingerprint")
+    state = observe()
+    check("Applied: 校准 alpha alpha" in state, "stale button did not execute")
+    scroll_index = index(state, 'id="fixture-scroll"')
+    check(not call("scroll", app=APP, element_index=scroll_index, direction="down", pages=0.5).get("isError"), "fractional viewport scroll")
+    state = observe()
+    values = [float(v) for v in re.findall(r'AXScrollBar[^\n]*value="([0-9.]+)"', state)]
+    check(any(value > 0 for value in values), "scrollbar position readback")
     shot = call("get_screenshot", app=APP)
     check(any(item["type"] == "image" for item in shot["content"]), "real window screenshot")
     check(call("click", app=APP, element_index=field).get("isError"), "screenshot invalidates indices")

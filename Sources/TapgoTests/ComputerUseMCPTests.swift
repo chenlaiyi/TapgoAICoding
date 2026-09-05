@@ -352,6 +352,13 @@ func runComputerUseMCPConfigSection(_ t: TestRunner) {
 
 // Exercise the persistent bridge with independent simulated one-shot workers.
 func runComputerUseObservationSession(_ t: TestRunner) {
+    t.expectEqual(ComputerUseMCP.pagesArg(["pages": 0.5]), 0.5, "scroll: accepts fractional pages")
+    t.expect(ComputerUseMCP.pagesArg(["pages": true]) == nil, "scroll: rejects boolean pages")
+    t.expect(ComputerUseMCP.pagesArg(["pages": Double.infinity]) == nil, "scroll: rejects infinite pages")
+    t.expectEqual(ComputerUseMCP.scrollPixelAmount(pages: 1, viewport: 800), 720, "scroll: scales to viewport")
+    t.expectEqual(ComputerUseMCP.scrollPixelAmount(pages: 0.5, viewport: 400), 180, "scroll: half-page distance")
+    t.expect(ComputerUseMCP.scrollPixelAmount(pages: 1, viewport: 0) == nil, "scroll: rejects unknown viewport")
+    t.expect(ComputerUseMCP.scrollPixelAmount(pages: -1, viewport: 800) == nil, "scroll: rejects negative pages")
     let session = ComputerUseObservationSession()
     var calls = 0
     var receivedToken: String?

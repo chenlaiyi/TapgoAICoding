@@ -1369,3 +1369,12 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 修复短生命周期 Helper 的元素编号失效风险；按最近观察指纹核验后操作。
 - 修正前方对话框定位、无效滚动目标回退与并发剪贴板保护。
 - 增加可重现隔离窗口验收与能力差距说明。
+
+## v0.5.103 — Computer Use 慢粘贴与区域滚动
+**Date**: 2026-09-05
+**Status**: 源码迭代；未创建公开 Release
+**Validation**: Core 2795 passed / 0 failed；签名 App/Helper 构建通过；真实窗口 62 checks passed。
+**Changed**:
+- 粘贴等待数据读取后恢复剪贴板，修复慢应用取到旧内容的问题，并明确返回超时/并发变化。
+- 按实际区域尺寸滚动，支持半页等小数页数。
+- 真实回归覆盖延迟粘贴、滚动条回读及跨会话状态变化拦截。

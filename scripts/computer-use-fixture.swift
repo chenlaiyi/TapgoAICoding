@@ -11,9 +11,10 @@ final class Fixture: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
         let edit = NSMenu(title: "Edit")
-        edit.addItem(withTitle: "Copy", action: Selector(("copy:")), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: Selector(("paste:")), keyEquivalent: "v")
-        edit.addItem(withTitle: "Select All", action: Selector(("selectAll:")), keyEquivalent: "a")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        let paste = edit.addItem(withTitle: "Paste", action: #selector(delayedPaste), keyEquivalent: "v")
+        paste.target = self
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit
         menu.addItem(editItem)
         NSApp.mainMenu = menu
@@ -30,8 +31,21 @@ final class Fixture: NSObject, NSApplicationDelegate {
         let small = NSButton(title: "Open small dialog", target: self, action: #selector(openDialog))
         small.frame = NSRect(x: 210, y: 210, width: 180, height: 32)
         window.contentView?.addSubview(small)
+        let scroll = NSScrollView(frame: NSRect(x: 24, y: 20, width: 580, height: 150))
+        scroll.hasVerticalScroller = true
+        scroll.setAccessibilityIdentifier("fixture-scroll")
+        let document = NSTextView(frame: NSRect(x: 0, y: 0, width: 560, height: 2400))
+        document.string = (1...120).map { "Fixture row \($0)" }.joined(separator: "\n")
+        scroll.documentView = document
+        window.contentView?.addSubview(scroll)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+    @objc func delayedPaste(_ sender: Any?) {
+        // Deterministically reproduce apps that consume pasteboard data late.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            (self.window.firstResponder as? NSTextView)?.paste(nil)
+        }
     }
     @objc func apply() { status.stringValue = "Applied: " + field.stringValue }
     @objc func openDialog() {

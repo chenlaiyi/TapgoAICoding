@@ -787,7 +787,7 @@ public enum ComputerUse {
         x: Double?,
         y: Double?,
         direction: String,
-        pages: Int
+        pages: Double
     ) -> ElementActionResult {
         guard let app = resolveApplication(named: appName, launchIfNeeded: true) else {
             return .init(success: false, message: "未找到目标应用 \(appName)。")
@@ -802,7 +802,14 @@ public enum ComputerUse {
         }
         CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
                 mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
-        let amount = Int32(max(1, min(10, pages)) * 8)
+        let isHorizontal = ["left", "right", "l", "r"].contains(direction)
+        let nodes = elementIndex == nil ? [] : validatedNodes(for: app)
+        let targetFrame = elementIndex.flatMap { nodes.indices.contains($0) ? elementFrame(nodes[$0].element) : nil }
+        let viewport = targetFrame ?? primaryWindowInfo(for: app)?.bounds
+        guard let viewport,
+              let amount = ComputerUseMCP.scrollPixelAmount(
+                pages: pages, viewport: Double(isHorizontal ? viewport.width : viewport.height)
+              ) else { return .init(success: false, message: "无法确定滚动区域尺寸或 pages 超出范围。") }
         let vertical: Int32
         let horizontal: Int32
         switch direction {
@@ -815,7 +822,7 @@ public enum ComputerUse {
         }
         let event = CGEvent(
             scrollWheelEvent2Source: nil,
-            units: .line,
+            units: .pixel,
             wheelCount: 2,
             wheel1: vertical,
             wheel2: horizontal,
@@ -927,6 +934,20 @@ public enum ComputerUse {
         return .init(success: true, message: "已向应用 \(appName) 输入 \(text.count) 个字符。")
     }
 
+    private final class PastePayload: NSObject, NSPasteboardItemDataProvider {
+        let representations: [NSPasteboard.PasteboardType: Data]
+        private(set) var wasRead = false
+        init(_ representations: [NSPasteboard.PasteboardType: Data]) {
+            self.representations = representations
+        }
+        func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem,
+                        provideDataForType type: NSPasteboard.PasteboardType) {
+            guard let data = representations[type] else { return }
+            item.setData(data, forType: type)
+            wasRead = true
+        }
+    }
+
     /// Paste plain text, Markdown, or HTML while preserving every existing
     /// pasteboard item and UTI. The user's clipboard is restored after Cmd+V.
     @discardableResult
@@ -953,19 +974,13 @@ public enum ComputerUse {
             if !items.isEmpty { pasteboard.writeObjects(items) }
         }
 
-        pasteboard.clearContents()
+        var representations: [NSPasteboard.PasteboardType: Data] = [.string: Data(text.utf8)]
+        if format == "md" { representations[.init("net.daringfireball.markdown")] = Data(text.utf8) }
+        if format == "html" { representations[.html] = Data(text.utf8) }
+        let payload = PastePayload(representations)
         let item = NSPasteboardItem()
-        item.setString(text, forType: .string)
-        switch format {
-        case "md":
-            item.setData(Data(text.utf8), forType: .init("net.daringfireball.markdown"))
-        case "html":
-            item.setData(Data(text.utf8), forType: .html)
-        case "text": break
-        default:
-            restorePasteboard()
-            return .init(success: false, message: "format 必须是 text、md 或 html。")
-        }
+        item.setDataProvider(payload, forTypes: Array(representations.keys))
+        pasteboard.clearContents()
         guard pasteboard.writeObjects([item]) else {
             restorePasteboard()
             return .init(success: false, message: "无法写入临时剪贴板。")
@@ -977,15 +992,20 @@ public enum ComputerUse {
             return .init(success: false, message: "剪贴板已被其他操作修改；已取消粘贴并保留新内容。")
         }
         let pasted = pressKeySyntax("super+v", targetPID: app.processIdentifier)
-        usleep(180_000)
+        let deadline = Date().addingTimeInterval(2)
+        while pasted && !payload.wasRead && pasteboard.changeCount == temporaryChangeCount && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        // Allow the requesting app to finish its pasteboard transaction.
+        if payload.wasRead { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
         let unchanged = pasteboard.changeCount == temporaryChangeCount
         if unchanged { restorePasteboard() }
         let clipboardStatus = unchanged ? "已恢复原剪贴板" : "已保留用户新复制的内容"
         return .init(
-            success: pasted,
-            message: pasted
-                ? "已发送粘贴快捷键，\(clipboardStatus)。请读取目标控件核对内容。"
-                : "粘贴快捷键发送失败，\(clipboardStatus)。"
+            success: pasted && payload.wasRead,
+            message: pasted && payload.wasRead
+                ? "已提供粘贴内容，\(clipboardStatus)。请读取目标控件核对最终结果。"
+                : "未确认剪贴板内容被读取（快捷键失败、超时或剪贴板变化），\(clipboardStatus)。"
         )
     }
 

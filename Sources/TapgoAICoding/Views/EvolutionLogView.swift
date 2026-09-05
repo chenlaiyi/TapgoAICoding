@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.103",
+                    date: "2026-09-05",
+                    commit: "见源码提交",
+                    tag: "未公开发布",
+                    summary: "Computer Use：慢应用粘贴与按区域滚动。",
+                    changes: [
+                        "粘贴使用延迟数据提供者，等待剪贴板读取后再恢复；超时或并发变化明确报告。",
+                        "滚动距离跟随控件或窗口尺寸，支持 0.5 页等小数，拒绝无效参数。",
+                        "隔离测试窗口覆盖延迟粘贴、长文滚动和跨会话旧状态拦截。"
+                    ],
+                    why: "继续以真实界面回读校准 Codex 原生工具行为。",
+                    next: "浏览器 tab/DOM 与持久 JavaScript 仍待实现。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.102",
                     date: "2026-09-05",
                     commit: "见源码提交",

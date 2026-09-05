@@ -15,3 +15,11 @@
 可重现脚本：scripts/computer-use-fixture.swift、scripts/computer-use-smoke.py。仅操作 /tmp/Tapgo CU Fixture.app 的合成数据，不访问用户文件或网络，不更改系统权限。
 
 尚未提供：Codex 持久 JavaScript cua 运行时、浏览器 tab/DOM、独立浏览器会话。不能宣称全能力 1:1。签名与系统 TCC 授权分开验收；此阶段尚未公开发布。
+
+## 第二轮 0.5.103
+
+- 粘贴改为 NSPasteboardItemDataProvider 延迟提供数据；最多等待 2 秒读取，随后恢复原剪贴板；并发复制时保留新内容。数据读取不等于最终 UI 完成，仍须目标值回读。
+- 滚动改为目标区域尺寸的 90% 每页，支持大于 0、不超过 10 的小数页数，保留旧版 dy 行滚动。
+- 全量 Core：2795 passed / 0 failed；签名 App/Helper 构建与 codesign --verify --deep --strict 通过。
+- 真实 Launch Services Helper：62 checks passed。新增 450ms 延迟粘贴回读、第二个独立桥接改变文本后首个桥接旧编号被拒绝（且按钮效果不变）、0.5 页滚动及滚动条位置回读。
+- 本次 GitHub 源码合并与三机 App 更新不代表已创建公开 GitHub Release 或更新 Sparkle appcast。
