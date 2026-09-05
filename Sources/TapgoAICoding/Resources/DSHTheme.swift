@@ -79,7 +79,7 @@ enum DSHTheme {
     static let codeBlockBg = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x1E1E1E)
     static let codeBlockBanner = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x252525)
     /// Codex uses a muted grey patch behind inline code, never a brand tag.
-    static let inlineCodeBg = Color.dynamic(lightHex: 0xECEDEF, darkHex: 0x343434)
+    static let inlineCodeBg = Color.dynamic(lightHex: 0xEFEFF1, darkHex: 0x2E2E2F)
     static let fileChangeCardBg = Color.dynamic(lightHex: 0xF5F5F5, darkHex: 0x222222)
     static let fileChangeRowBg = Color.dynamic(lightHex: 0xFAFAFA, darkHex: 0x1A1A1A)
 

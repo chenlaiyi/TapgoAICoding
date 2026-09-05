@@ -161,10 +161,11 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 表格改为 Codex 式平面分隔，不再使用连续卡片底色")
     // v0.5.93 — user-provided Codex/Tapgo crops exposed message-renderer
     // drift that shell/layout parity alone could not catch.
-    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 8)")
+    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 6)")
              && markdown.contains("appendText(text, to: &out, accumulator: &acc)")
-             && markdown.contains("trimmingCharacters(in: .newlines)"),
-             "desktop-design: Markdown 空行归一化且块间距收紧为 Codex 节奏")
+             && markdown.contains("trimmingCharacters(in: .newlines)")
+             && markdown.contains(".lineSpacing(2.5)"),
+             "desktop-design: Markdown 空行归一化、块间距 6pt、行距 2.5 的 Codex 节奏")
     t.expect(markdown.contains("AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)")
              && !markdown.contains("multiplier: appFontScale.multiplier) + 0.5")
              && markdown.contains("foregroundStyle(DSHTheme.messageText)"),

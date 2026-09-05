@@ -55,27 +55,39 @@ struct ActivityRollupView: View {
             for: activity,
             turnIsRunning: turnIsRunning
         )
-        HStack(spacing: 8) {
-            if turnIsRunning && activity.isTail && display.isRunning {
-                ProgressView()
-                    .controlSize(.mini)
-                    .frame(width: 18, height: 18)
-            } else if let icon = display.systemImage {
-                Image(systemName: icon)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .frame(width: 18)
+
+        // 合并后的推理 rollup：复用 ReasoningDisclosure 的可展开样式，summaryText
+        // 是拼接后的完整正文；运行中保留实时 "正在思考 · …" 提示。
+        if display.kind == .reasoning, let summary = display.summaryText, !summary.isEmpty {
+            ReasoningDisclosure(
+                text: summary,
+                label: L10n.reasoning,
+                icon: "brain",
+                isRunning: display.isRunning
+            )
+        } else {
+            HStack(spacing: 7) {
+                if turnIsRunning && activity.isTail && display.isRunning {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .frame(width: 16, height: 16)
+                } else if let icon = display.systemImage {
+                    Image(systemName: icon)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .frame(width: 16)
+                }
+                Text(display.text)
+                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            Text(display.text)
-                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
-                .lineLimit(1)
-                .truncationMode(.tail)
+            // Codex keeps ordinary work events neutral; color is reserved for a
+            // real failure instead of encoding every tool category.
+            .foregroundStyle(display.isFailure ? DSHTheme.error : DSHTheme.labelDim)
+            .opacity(turnIsRunning && display.isRunning ? 0.92 : 0.66)
+            .animation(nil, value: activity.latest.id)
+            .accessibilityLabel(display.text)
         }
-        // Codex keeps ordinary work events neutral; color is reserved for a
-        // real failure instead of encoding every tool category.
-        .foregroundStyle(display.isFailure ? DSHTheme.error : DSHTheme.labelDim)
-        .opacity(turnIsRunning && display.isRunning ? 0.9 : 0.72)
-        .animation(nil, value: activity.latest.id)
-        .accessibilityLabel(display.text)
     }
 }
 
@@ -145,11 +157,19 @@ struct MessageBubble: View {
                     if text != "(图片)" || userImagePaths.isEmpty {
                         Text(text)
                             .foregroundStyle(DSHTheme.label)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
+                            // Codex keeps the user bubble airy but quiet: a
+                            // hairline outline instead of a heavy raised card,
+                            // with padding tuned so multi-line prompts don't
+                            // look like a chat sticker.
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 7)
                             .background(
                                 DSHTheme.surfaceRaised,
                                 in: RoundedRectangle(cornerRadius: 12)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(DSHTheme.border, lineWidth: 0.5)
                             )
                             .textSelection(.enabled)
                             .contextMenu {
@@ -352,6 +372,9 @@ private struct ImagePreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 }
 
+/// 思考过程：默认折起成一行（带字符数提示），点击展开完整正文。连续多次
+/// `reasoning` / `reasoningSummary` 由 `TurnPresentation` 合并到同一个
+/// `ReasoningDisclosure`，正文是换行拼接的总和，避免出现多行灰色 log。
 struct ReasoningDisclosure: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
@@ -359,29 +382,75 @@ struct ReasoningDisclosure: View {
     var label: String = L10n.reasoning
     var icon: String = "brain"
     var isRunning: Bool = false
+    /// `TurnPresentation` 聚合多段思考后传进来的总字符数；为 0 时回退到
+    /// `text.count`，避免空字符串时显示 "0 字符"。
+    var summaryCharCount: Int = 0
+
+    @State private var isExpanded = false
+
+    private var displayText: String {
+        text.isEmpty ? (isRunning ? "思考中…" : label) : text
+    }
+
+    private var totalChars: Int {
+        summaryCharCount > 0 ? summaryCharCount : text.count
+    }
 
     var body: some View {
-        // Codex treats reasoning as process metadata, not a purple log row.
-        HStack(spacing: 7) {
-            if isRunning {
-                ProgressView()
-                    .controlSize(.mini)
-                    .frame(width: 16, height: 16)
-            } else {
-                Image(systemName: icon)
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .frame(width: 16)
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                guard !text.isEmpty else { return }
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 7) {
+                    if isRunning {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: icon)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .frame(width: 16)
+                    }
+                    Text(displayText)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    if totalChars > 0 && !text.isEmpty {
+                        Text("· \(totalChars) 字符")
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.labelTertiary)
+                    }
+                    Spacer(minLength: 0)
+                    if !text.isEmpty {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.labelTertiary)
+                            .frame(width: 14)
+                    }
+                }
+                .foregroundStyle(DSHTheme.labelTertiary)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
             }
-            Text(text.isEmpty ? (isRunning ? "思考中…" : label) : text)
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 0)
+            .buttonStyle(.plain)
+            .help(isExpanded ? "折叠思考过程" : "展开思考过程")
+            .accessibilityLabel(isExpanded ? "折叠思考过程" : "展开思考过程")
+
+            if isExpanded && !text.isEmpty {
+                Text(text)
+                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .lineSpacing(3)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 23) // 与图标列对齐
+                    .padding(.vertical, 2)
+            }
         }
-        .foregroundStyle(DSHTheme.labelTertiary)
-        .padding(.vertical, 2)
-        .help(text)
-        .accessibilityLabel("思考过程")
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -466,30 +535,49 @@ struct ToolCallRow: View {
     }
 }
 
+/// 状态徽章：Codex 用一个不抢戏的小色点 + 文字即可，避免每个工具行都像
+/// 一个贴纸；色点饱和度低，文字保持二级标签色，仅 `failed` 时上提对比度。
 struct StatusBadge: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let status: String
     var body: some View {
-        let (label, icon, color): (String, String, Color) = {
+        let (label, icon, color, accent): (String, String, Color, Color) = {
             switch status {
-            case "succeeded": return ("完成", "checkmark", .green)
-            case "failed": return ("失败", "xmark", .red)
-            case "denied": return ("已拒绝", "hand.raised.slash", .red)
-            case "running": return ("运行中", "gearshape.2", .blue)
-            case "awaitingApproval": return ("待批准", "hand.raised", .orange)
-            default: return ("待执行", "clock", .secondary)
+            case "succeeded":      return ("完成",  "checkmark",         .secondary, DSHTheme.success)
+            case "failed":         return ("失败",  "xmark",             DSHTheme.error, DSHTheme.error)
+            case "denied":         return ("已拒绝", "hand.raised.slash", DSHTheme.error, DSHTheme.error)
+            case "running":        return ("运行中", "gearshape.2",      .secondary, DSHTheme.brand)
+            case "awaitingApproval": return ("待批准", "hand.raised",    .secondary, DSHTheme.warn)
+            default:               return ("待执行", "clock",            .secondary, .secondary)
             }
         }()
-        return HStack(spacing: 3) {
-            Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-            Text(label).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+        return HStack(spacing: 4) {
+            // 5pt 色点，仅在失败时使用红色，普通状态用品牌色/灰色，让
+            // 大段连续工具行不会被一排彩色徽章淹没。
+            Circle()
+                .fill(accent)
+                .frame(width: 5, height: 5)
+            Text(label)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .foregroundStyle(color)
+                .accessibilityLabel(label)
+            // icon 仍然保留，让屏幕阅读器可以拿到语义。
+            Image(systemName: icon)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .foregroundStyle(accent)
+                .accessibilityHidden(true)
         }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.18), in: Capsule())
-            .foregroundStyle(color)
-            .accessibilityLabel(label)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1)
+        // 失败徽章上提一档底色，普通徽章只描边不填色，避免视觉污染。
+        .background(
+            accent.opacity(status == "failed" || status == "denied" ? 0.10 : 0),
+            in: Capsule()
+        )
+        .overlay(
+            Capsule().stroke(accent.opacity(0.25), lineWidth: 0.5)
+        )
     }
 }
 

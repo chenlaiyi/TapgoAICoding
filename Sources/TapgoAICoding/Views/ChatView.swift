@@ -400,7 +400,7 @@ struct ChatView: View {
             }
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
+                    LazyVStack(alignment: .leading, spacing: 8) {
                         // The thread title now lives in the window title
                         // (`.navigationTitle`), so the chat body starts
                         // directly with the turns — no duplicate header.
@@ -862,7 +862,7 @@ struct ChatView: View {
             guard case .fileChange(let change) = item else { return nil }
             return change
         }
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             // Codex-style work log. Live activity stays in the transcript;
             // completed activity folds into one quiet duration row. File
             // changes are promoted into their own persistent summary card.

@@ -53,19 +53,24 @@ public struct TurnActivityDisplay: Hashable {
     public let systemImage: String?
     public let isRunning: Bool
     public let isFailure: Bool
+    /// 多段聚合时的合并正文（仅 `.reasoning` / `.search` 类目使用），单行活动为空。
+    /// 渲染层基于它计算字符数与展开后的完整内容。
+    public let summaryText: String?
 
     fileprivate init(
         kind: Kind,
         text: String,
         systemImage: String?,
         isRunning: Bool,
-        isFailure: Bool = false
+        isFailure: Bool = false,
+        summaryText: String? = nil
     ) {
         self.kind = kind
         self.text = text
         self.systemImage = systemImage
         self.isRunning = isRunning
         self.isFailure = isFailure
+        self.summaryText = summaryText
     }
 
     fileprivate func appendingSuffix(_ suffix: String) -> TurnActivityDisplay {
@@ -74,7 +79,8 @@ public struct TurnActivityDisplay: Hashable {
             text: text + " · " + suffix,
             systemImage: systemImage,
             isRunning: isRunning,
-            isFailure: isFailure
+            isFailure: isFailure,
+            summaryText: summaryText
         )
     }
 }
@@ -91,6 +97,7 @@ public enum TurnPresentation {
     public static func compactBlocks(_ items: [TurnItem]) -> [TurnPresentationBlock] {
         var blocks: [TurnPresentationBlock] = []
         var searchGroup: TurnActivityRollup?
+        var reasoningGroup: TurnActivityRollup?
         var files: [FileChange] = []
 
         func flushSearches() {
@@ -98,6 +105,13 @@ public enum TurnPresentation {
                 blocks.append(.activity(group))
             }
             searchGroup = nil
+        }
+
+        func flushReasoning() {
+            if let group = reasoningGroup {
+                blocks.append(.activity(group))
+            }
+            reasoningGroup = nil
         }
 
         func flushFiles() {
@@ -113,10 +127,12 @@ public enum TurnPresentation {
             && !item.isWorktreeStatsSnapshot {
             switch item {
             case .fileChange(let file):
+                flushReasoning()
                 flushSearches()
                 files.append(file)
 
             case .toolCall(let call):
+                flushReasoning()
                 flushFiles()
                 if Self.isSearchToolCall(.toolCall(call)) {
                     if searchGroup == nil {
@@ -129,18 +145,32 @@ public enum TurnPresentation {
                     blocks.append(.activity(TurnActivityRollup(firstItem: item)))
                 }
 
-            case .reasoning, .reasoningSummary, .commandExecution:
+            case .reasoning, .reasoningSummary:
+                // 连续 reasoning / reasoningSummary 合并到同一行：点开后才看得到
+                // 完整正文，避免一次回合里出现 5–10 行灰色 "思考中"。
+                flushSearches()
+                flushFiles()
+                if reasoningGroup == nil {
+                    reasoningGroup = TurnActivityRollup(firstItem: item)
+                } else {
+                    reasoningGroup?.append(item)
+                }
+
+            case .commandExecution:
+                flushReasoning()
                 flushSearches()
                 flushFiles()
                 blocks.append(.activity(TurnActivityRollup(firstItem: item)))
 
             default:
+                flushReasoning()
                 flushSearches()
                 flushFiles()
                 blocks.append(.item(item))
             }
         }
 
+        flushReasoning()
         flushSearches()
         flushFiles()
         return blocks
@@ -181,7 +211,37 @@ public enum TurnPresentation {
                 text: display.text,
                 systemImage: "exclamationmark.triangle",
                 isRunning: false,
-                isFailure: true
+                isFailure: true,
+                summaryText: display.summaryText
+            )
+        }
+
+        // 合并后的 reasoning / reasoningSummary 组：折起成一行 "思考过程"，并把
+        // 完整正文与字符数塞进 `summaryText`，渲染层（ReasoningDisclosure）据此显示
+        // 字符数徽标和点开展开的内容。运行中仍只展示尾部最新一条的 "正在思考 · …"。
+        if activity.events.count > 1,
+           activity.events.allSatisfy({ Self.isReasoningEvent($0) }) {
+            let joined = reasoningJoinedText(activity.events)
+            let totalChars = joined.count
+            let tail = activity.latest
+            if liveTail, latestRunning {
+                var tailDisplay = activityDisplay(for: tail)
+                return TurnActivityDisplay(
+                    kind: tailDisplay.kind,
+                    text: tailDisplay.text,
+                    systemImage: tailDisplay.systemImage,
+                    isRunning: true,
+                    isFailure: false,
+                    summaryText: joined
+                )
+            }
+            return TurnActivityDisplay(
+                kind: .reasoning,
+                text: "思考过程 · \(totalChars) 字符",
+                systemImage: "brain",
+                isRunning: false,
+                isFailure: false,
+                summaryText: joined
             )
         }
 
@@ -243,6 +303,10 @@ public enum TurnPresentation {
     fileprivate static func semantic(for item: TurnItem, running: Bool) -> TurnActivitySemantic {
         switch item {
         case .reasoning(_, let text), .reasoningSummary(_, let text):
+            // summaryText 仍写入 trimmed 文本供多段合并时使用；单条推理时
+            // 渲染层（ReasoningDisclosure）按 text 自身决定是否展开，单行文字
+            // 仍保持 "思考" 这种极简标签，避免在每次推理都加字符数噪音。
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             return semantic(
                 key: "reasoning",
                 kind: .reasoning,
@@ -251,7 +315,8 @@ public enum TurnPresentation {
                 continuationText: "思考",
                 icon: "brain",
                 running: running,
-                failed: false
+                failed: false,
+                summaryText: trimmed.isEmpty ? nil : trimmed
             )
 
         case .commandExecution(let execution):
@@ -376,14 +441,16 @@ public enum TurnPresentation {
         continuationText: String,
         icon: String?,
         running: Bool,
-        failed: Bool
+        failed: Bool,
+        summaryText: String? = nil
     ) -> TurnActivitySemantic {
         let display = TurnActivityDisplay(
             kind: kind,
             text: failed ? completedText : (running ? activeText : completedText),
             systemImage: failed ? "exclamationmark.triangle" : icon,
             isRunning: running,
-            isFailure: failed
+            isFailure: failed,
+            summaryText: summaryText
         )
         return TurnActivitySemantic(
             display: display
@@ -414,6 +481,29 @@ public enum TurnPresentation {
         guard case .toolCall(let call) = item else { return false }
         let name = call.name.lowercased()
         return ["search", "grep", "query", "find", "glob", "list", "ls"].contains(where: name.contains)
+    }
+
+    /// 推理事件（reasoning 或 reasoningSummary）。`compactBlocks` 把连续的
+    /// 此类事件合并成一个 rollup，`activityDisplay` 走聚合路径。
+    fileprivate static func isReasoningEvent(_ item: TurnItem) -> Bool {
+        switch item {
+        case .reasoning, .reasoningSummary: return true
+        default: return false
+        }
+    }
+
+    /// 把多段思考文本用双换行拼接，便于 `ReasoningDisclosure` 一次展开显示。
+    fileprivate static func reasoningJoinedText(_ events: [TurnItem]) -> String {
+        events.compactMap { event -> String? in
+            switch event {
+            case .reasoning(_, let t), .reasoningSummary(_, let t):
+                return t.trimmingCharacters(in: .whitespacesAndNewlines)
+            default:
+                return nil
+            }
+        }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n\n")
     }
 
     fileprivate static func isFailedEvent(_ item: TurnItem) -> Bool {

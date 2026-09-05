@@ -18,7 +18,7 @@ struct MarkdownMessageView: View {
 
     var body: some View {
         let blocks = Self.blocks(MarkdownLite.parse(text))
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .para(let segs):
@@ -41,11 +41,33 @@ struct MarkdownMessageView: View {
                     HeadingView(level: level, content: content)
                 }
             }
-            if isStreaming {
-                StreamingReplyCursor()
+            // 流式光标紧贴最后一段（避免光标独立成行撑高卡片）。
+            if isStreaming, let lastPara = lastParagraphRange() {
+                InlineStreamingCursor()
+                    .padding(.leading, 1)
+                    .padding(.top, -3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id(lastPara)
+            } else if isStreaming {
+                InlineStreamingCursor()
+                    .padding(.top, -2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// 当前助手消息的 markdown 块列表。缓存避免 `lastParagraphRange()` 重复解析。
+    private var resolvedBlocks: [Block] {
+        Self.blocks(MarkdownLite.parse(text))
+    }
+
+    /// 找到 blocks 中最后一个段落的位置（用于把光标定位到该段落末尾的同一行）。
+    /// 仅在助手消息里有 .para 块时返回非空；否则光标退回到独立一行。
+    private func lastParagraphRange() -> String? {
+        for (offset, block) in resolvedBlocks.enumerated().reversed() {
+            if case .para = block { return "cursor-after-\(offset)" }
+        }
+        return nil
     }
 
     private enum Block {
@@ -207,7 +229,7 @@ struct MarkdownMessageView: View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
         Text(Self.inlineAttributed(segs, baseFontSize: bodySize))
             .foregroundStyle(DSHTheme.messageText)
-            .lineSpacing(3)
+            .lineSpacing(2.5)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -222,7 +244,7 @@ struct MarkdownMessageView: View {
             // rhythm; the previous 6pt gap amplified long tool inventories.
             let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
             let markerSize = AppFont.pointSize(for: .footnote, multiplier: appFontScale.multiplier)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
@@ -232,7 +254,7 @@ struct MarkdownMessageView: View {
                         Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
                             .foregroundStyle(DSHTheme.messageText)
                             .textSelection(.enabled)
-                            .lineSpacing(2)
+                            .lineSpacing(1.5)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -333,17 +355,18 @@ private struct HeadingView: View {
     }
 }
 
-/// A restrained text caret for the partial markdown block. The composer owns
-/// the stop control; the transcript only needs a subtle streaming cue.
-private struct StreamingReplyCursor: View {
+/// 行内流式光标：Codex 风格 2pt × 0.85em 文本高度，柔和呼吸，挂在最后一段
+/// 同一行；多个段落时通过 SwiftUI 的 `lastTextBaseline` 锚定保持对齐。
+private struct InlineStreamingCursor: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     @State private var visible = false
 
     var body: some View {
         Capsule()
-            .fill(DSHTheme.labelDim)
-            .frame(width: 2, height: 13)
-            .opacity(reduceMotion || visible ? 0.72 : 0.2)
+            .fill(DSHTheme.label)
+            .frame(width: 2, height: 12 * appFontScale.multiplier)
+            .opacity(reduceMotion || visible ? 0.85 : 0.18)
             .onAppear {
                 guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
@@ -387,7 +410,7 @@ private struct TableView: View {
     var body: some View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) - 0.5
         ScrollView(.horizontal, showsIndicators: false) {
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
+            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
                 GridRow {
                     ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
                         Text(MarkdownMessageView.inlineAttributed(
@@ -412,7 +435,7 @@ private struct TableView: View {
                             .textSelection(.enabled)
                         }
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 1)
                 }
             }
             .padding(.horizontal, 2)
@@ -454,7 +477,7 @@ private struct TaskListView: View {
 
     var body: some View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: item.checked ? "checkmark.square.fill" : "square")

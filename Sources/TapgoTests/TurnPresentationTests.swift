@@ -125,4 +125,54 @@ func runTurnPresentationTests(_ t: TestRunner) {
         for: .reasoning(id: "reasoning", text: "分析中\nInvestigating editor refresh")
     )
     t.expectEqual(reasoning.text, "思考", "a plain reasoning read shows the quiet label")
+    t.expectEqual(reasoning.summaryText, "分析中\nInvestigating editor refresh", "single reasoning still carries summary text for expansion")
+
+    // 多段连续 reasoning 合并为一个 rollup，渲染成 "思考过程 · N 字符"。
+    let multiReasoning = TurnPresentation.compactBlocks([
+        .userMessage(id: "u", text: "修复"),
+        .reasoning(id: "r1", text: "先看 SettingsView 的字体逻辑"),
+        .reasoning(id: "r2", text: "然后看 MarkdownMessageView 的 block 间距"),
+        .reasoningSummary(id: "r3", text: "结论: 段落 lineSpacing 从 3 → 2.5"),
+        .assistantMessage(id: "m", text: "改完了"),
+    ])
+    t.expectEqual(multiReasoning.count, 3, "user + grouped reasoning + assistant = 3 blocks")
+    if case .activity(let rollup) = multiReasoning[1] {
+        let display = TurnPresentation.activityDisplay(for: rollup, turnIsRunning: false)
+        t.expect(display.text.contains("思考过程"), "folded reasoning shows 思考过程 label")
+        t.expect(display.text.contains("字符"), "folded reasoning carries character count")
+        t.expectNotNil(display.summaryText, "folded reasoning exposes joined text")
+        if let joined = display.summaryText {
+            t.expect(joined.contains("先看 SettingsView"), "joined text preserves the first reasoning body")
+            t.expect(joined.contains("结论"), "joined text preserves the summary body")
+        }
+        t.expectEqual(rollup.events.count, 3, "rollup aggregates exactly the three reasoning events")
+    } else {
+        t.expect(false, "second block is a reasoning rollup")
+    }
+
+    // 同理: reasoning 紧跟一条 commandExecution 必须断开合并，每段都各自成单事件活动。
+    let interruptedReasoning = TurnPresentation.compactBlocks([
+        .reasoning(id: "r1", text: "看代码"),
+        .commandExecution(CommandExecution(
+            id: "c1", command: "rg foo", status: .succeeded, startedAt: Date()
+        )),
+        .reasoning(id: "r2", text: "执行后"),
+    ])
+    t.expectEqual(interruptedReasoning.count, 3, "r1 / cmd / r2 are three independent activity rollups")
+    if case .activity(let reasoningOnly) = interruptedReasoning[0] {
+        t.expectEqual(reasoningOnly.events.count, 1, "first reasoning stays a single-event rollup")
+    } else {
+        t.expect(false, "first block is reasoning")
+    }
+    if case .activity(let commandRollup) = interruptedReasoning[1] {
+        let display = TurnPresentation.activityDisplay(for: commandRollup, turnIsRunning: false)
+        t.expect(display.text.contains("终端 · rg foo"), "commandExecution between reasonings stays its own row")
+    } else {
+        t.expect(false, "second block is the commandExecution rollup")
+    }
+    if case .activity(let trailingReasoning) = interruptedReasoning[2] {
+        t.expectEqual(trailingReasoning.events.count, 1, "r2 stays a single-event rollup after the command")
+    } else {
+        t.expect(false, "third block is a reasoning rollup")
+    }
 }
