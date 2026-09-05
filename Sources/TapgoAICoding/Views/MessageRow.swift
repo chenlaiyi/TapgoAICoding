@@ -66,15 +66,17 @@ struct ActivityRollupView: View {
                 isRunning: display.isRunning
             )
         } else {
+            let isLiveTail = turnIsRunning && activity.isTail && display.isRunning
             HStack(spacing: 7) {
-                if turnIsRunning && activity.isTail && display.isRunning {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .frame(width: 16, height: 16)
-                } else if let icon = display.systemImage {
+                // Codex 用具体类别图标（terminal / magnifyingglass / pencil …）配合一颗小脉动
+                // 圆点表示「仍在进行中」，比裸 ProgressView 更安静，也保留了动作语义。
+                if let icon = display.systemImage {
                     Image(systemName: icon)
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .frame(width: 16)
+                }
+                if isLiveTail {
+                    LivePulseDot()
                 }
                 Text(display.text)
                     .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
@@ -84,10 +86,30 @@ struct ActivityRollupView: View {
             // Codex keeps ordinary work events neutral; color is reserved for a
             // real failure instead of encoding every tool category.
             .foregroundStyle(display.isFailure ? DSHTheme.error : DSHTheme.labelDim)
-            .opacity(turnIsRunning && display.isRunning ? 0.92 : 0.66)
+            .opacity(isLiveTail ? 0.92 : 0.66)
             .animation(nil, value: activity.latest.id)
             .accessibilityLabel(display.text)
         }
+    }
+}
+
+/// 极小脉动圆点，跟在活动图标右侧，表示「该动作仍在进行中」。比
+/// `ProgressView` 更安静、更像 Codex 截图里的呼吸点，不会抢正文注意力。
+private struct LivePulseDot: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    var body: some View {
+        Circle()
+            .fill(DSHTheme.label)
+            .frame(width: 5, height: 5)
+            .opacity(reduceMotion || pulse ? 0.95 : 0.25)
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 0.85).repeatForever(autoreverses: true),
+                value: pulse
+            )
+            .onAppear { pulse = true }
+            .accessibilityHidden(true)
     }
 }
 

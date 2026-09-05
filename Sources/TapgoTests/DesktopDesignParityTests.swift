@@ -192,4 +192,22 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: SidebarView 底栏背景切到 fidelityTitlebar token")
     t.expect(workbench.contains("DSHTheme.fidelityTitlebar"),
              "desktop-design: RightWorkbenchView 工具栏背景切到 fidelityTitlebar token")
+    // v0.5.108 — message-renderer upgrade: 列表 / 段落 / 标题 / 引用 / 表格 / 任务都
+    // 走 `MarkdownInlineFlow`，从而把行内代码渲染为真正的圆角 pill；不再依赖
+    // `AttributedString.backgroundColor` 画出来的直角色块。
+    t.expect(markdown.contains("struct MarkdownInlineFlow: View")
+             && markdown.contains("InlineFlowLayout"),
+             "desktop-design: MarkdownMessageView 引入 MarkdownInlineFlow + InlineFlowLayout 渲染器")
+    t.expect(markdown.contains("RoundedRectangle(cornerRadius: 4, style: .continuous)")
+             && markdown.contains("DSHTheme.inlineCodeBg"),
+             "desktop-design: 行内代码段使用 4pt 圆角 + inlineCodeBg 浅底色 pill")
+    t.expect(!markdown.contains("Text(Self.inlineAttributed(")
+             && !markdown.contains("Text(MarkdownMessageView.inlineAttributed("),
+             "desktop-design: 段落/列表/表格不再用 AttributedString + 平面背景，切换到 MarkdownInlineFlow")
+    // 活动行不再用裸 ProgressView 抢占视觉，改用类别图标 + 脉动圆点。
+    t.expect(message.contains("LivePulseDot")
+             && message.contains("struct LivePulseDot: View"),
+             "desktop-design: ActivityRollupView 改用类别图标 + LivePulseDot 脉动圆点")
+    t.expect(!message.contains("ProgressView()\n                        .controlSize(.mini)\n                        .frame(width: 16, height: 16)"),
+             "desktop-design: 活动行不再使用裸 ProgressView 抢视线")
 }

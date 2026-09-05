@@ -229,10 +229,8 @@ struct MarkdownMessageView: View {
     @ViewBuilder
     private func paragraphView(segs: [MarkdownSegment]) -> some View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-        Text(Self.inlineAttributed(segs, baseFontSize: bodySize))
-            .foregroundStyle(DSHTheme.messageText)
+        MarkdownInlineFlow(segments: segs, baseFontSize: bodySize, baseWeight: .light)
             .lineSpacing(2.5)
-            .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -255,9 +253,7 @@ struct MarkdownMessageView: View {
                             .font(.system(size: markerSize, weight: .regular, design: .monospaced))
                             .foregroundStyle(DSHTheme.labelTertiary)
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
-                        Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
-                            .foregroundStyle(DSHTheme.messageText)
-                            .textSelection(.enabled)
+                        MarkdownInlineFlow(segments: item, baseFontSize: bodySize, baseWeight: .light)
                             .lineSpacing(1.5)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -402,13 +398,12 @@ private struct HeadingView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
-        Text(MarkdownMessageView.inlineAttributed(
-            content,
+        MarkdownInlineFlow(
+            segments: content,
             baseFontSize: pointSize,
             baseWeight: .medium
-        ))
+        )
         .fixedSize(horizontal: false, vertical: true)
-        .foregroundStyle(DSHTheme.messageText)
         .padding(.top, level <= 2 ? 5 : 2)
         .padding(.bottom, 1)
     }
@@ -459,8 +454,7 @@ private struct QuoteView: View {
             RoundedRectangle(cornerRadius: 1)
                 .fill(DSHTheme.borderStrong)
                 .frame(width: 2)
-            Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
-                .textSelection(.enabled)
+            MarkdownInlineFlow(segments: segs, baseFontSize: bodySize, baseWeight: .light)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
         }
@@ -482,12 +476,11 @@ private struct TableView: View {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
                 GridRow {
                     ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
-                        Text(MarkdownMessageView.inlineAttributed(
-                            MarkdownMessageView.inlineSegments(h),
+                        MarkdownInlineFlow(
+                            segments: MarkdownMessageView.inlineSegments(h),
                             baseFontSize: bodySize,
                             baseWeight: .semibold
-                        ))
-                        .textSelection(.enabled)
+                        )
                     }
                 }
                 .padding(.bottom, 2)
@@ -497,11 +490,11 @@ private struct TableView: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     GridRow {
                         ForEach(Array(headers.enumerated()), id: \.offset) { i, _ in
-                            Text(MarkdownMessageView.inlineAttributed(
-                                MarkdownMessageView.inlineSegments(i < row.count ? row[i] : ""),
-                                baseFontSize: bodySize
-                            ))
-                            .textSelection(.enabled)
+                            MarkdownInlineFlow(
+                                segments: MarkdownMessageView.inlineSegments(i < row.count ? row[i] : ""),
+                                baseFontSize: bodySize,
+                                baseWeight: .light
+                            )
                         }
                     }
                     .padding(.vertical, 1)
@@ -554,8 +547,7 @@ private struct TaskListView: View {
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(item.checked ? DSHTheme.success : DSHTheme.labelTertiary)
                         .frame(width: bodySize + 2, alignment: .leading)
-                    Text(MarkdownMessageView.inlineAttributed(item.content, baseFontSize: bodySize))
-                        .textSelection(.enabled)
+                    MarkdownInlineFlow(segments: item.content, baseFontSize: bodySize, baseWeight: .light)
                         .fixedSize(horizontal: false, vertical: true)
                         // 已勾选项视觉上略暗；SwiftUI Text 自身支持 strikethrough，这里靠
                         // segment 走 inlineAttributed 的 strikethrough 段，未来若 segment 模型
@@ -617,6 +609,126 @@ private struct ImageView: View {
             } label: {
                 Label("复制图片 URL", systemImage: "doc.on.doc")
             }
+        }
+    }
+}
+
+/// Codex-style inline flow: paints inline code spans as rounded pills that
+/// sit on the text baseline, with the surrounding plain text rendered as
+/// regular `Text`. Wraps `Layout` so SwiftUI handles line-breaking exactly
+/// the same way `Text` does, but lets us layer real rounded backgrounds on
+/// individual spans — `AttributedString.backgroundColor` only paints a flat
+/// rectangle behind the glyphs, which is the v0.5.107 shortcoming.
+struct MarkdownInlineFlow: View {
+    let segments: [MarkdownSegment]
+    let baseFontSize: CGFloat
+    let baseWeight: Font.Weight
+    var depth: Int = 0
+
+    var body: some View {
+        InlineFlowLayout(hSpacing: 0, lineSpacing: 1) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                segmentView(seg)
+            }
+        }
+        .foregroundStyle(DSHTheme.messageText)
+        .textSelection(.enabled)
+    }
+
+    @ViewBuilder
+    private func segmentView(_ seg: MarkdownSegment) -> some View {
+        switch seg {
+        case .text(let s):
+            // Plain text follows body rhythm; nested lists deepen the colour
+            // by one notch so multi-level bullets stay readable.
+            Text(s)
+                .font(.system(size: baseFontSize, weight: baseWeight))
+                .foregroundStyle(depth >= 1 ? DSHTheme.messageText.opacity(0.92) : DSHTheme.messageText)
+        case .inline(let s):
+            // Inline code: same size as body, monospace + medium weight, then a
+            // rounded grey pill behind the glyphs. The pill stays tight to the
+            // cap-height by using `padding(.vertical, 0.5)` instead of `.small`,
+            // which is what the Codex reference capture shows.
+            Text(s)
+                .font(.system(size: baseFontSize, weight: .medium, design: .monospaced))
+                .foregroundStyle(DSHTheme.messageText)
+                .padding(.horizontal, 3.5)
+                .padding(.vertical, 0.5)
+                .background(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(DSHTheme.inlineCodeBg)
+                )
+        case .bold(let s):
+            Text(s)
+                .font(.system(size: baseFontSize, weight: .medium))
+                .foregroundStyle(DSHTheme.messageText)
+        case .strikethrough(let s):
+            Text(s)
+                .font(.system(size: baseFontSize, weight: baseWeight))
+                .strikethrough()
+                .foregroundStyle(DSHTheme.messageText)
+        case .link(let title, _):
+            Text(title)
+                .font(.system(size: baseFontSize, weight: baseWeight))
+                .foregroundStyle(DSHTheme.brand)
+                .underline()
+        case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading:
+            EmptyView()
+        }
+    }
+}
+
+/// Custom flow layout for inline markdown segments. Behaves like `Text`'s
+/// internal line-breaker but lets each child be a real SwiftUI view (so we can
+/// paint pill backgrounds on inline code spans without losing wrapping).
+struct InlineFlowLayout: Layout {
+    var hSpacing: CGFloat = 0
+    var lineSpacing: CGFloat = 0
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var totalHeight: CGFloat = 0
+        var maxRowWidth: CGFloat = 0
+        var rowWidth: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if rowWidth > 0, rowWidth + hSpacing + size.width > maxWidth {
+                totalHeight += rowHeight + lineSpacing
+                maxRowWidth = max(maxRowWidth, rowWidth)
+                rowWidth = 0
+                rowHeight = 0
+            }
+            rowWidth += size.width + (rowWidth > 0 ? hSpacing : 0)
+            rowHeight = max(rowHeight, size.height)
+        }
+        totalHeight += rowHeight
+        maxRowWidth = max(maxRowWidth, rowWidth)
+        let width = proposal.width ?? maxRowWidth
+        return CGSize(width: max(0, width), height: totalHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let maxWidth = bounds.width
+        var x: CGFloat = bounds.minX
+        var y: CGFloat = bounds.minY
+        var rowHeight: CGFloat = 0
+        var rowHasContent = false
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if rowHasContent, x - bounds.minX + hSpacing + size.width > maxWidth {
+                x = bounds.minX
+                y += rowHeight + lineSpacing
+                rowHeight = 0
+                rowHasContent = false
+            }
+            if rowHasContent { x += hSpacing }
+            subview.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+            rowHasContent = true
         }
     }
 }
