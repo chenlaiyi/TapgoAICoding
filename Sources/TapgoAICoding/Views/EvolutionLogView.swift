@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.106",
+                    date: "2026-09-05",
+                    commit: "见源码提交",
+                    tag: "未公开发布",
+                    summary: "独立操作光标与真实点击、输入。",
+                    changes: [
+                        "浅色空心箭头、圆角描边与淡青色柔光，操作时显示。",
+                        "输入框不支持 AXPress 时按可见区域点击；定向鼠标事件补齐窗口坐标。",
+                        "点击、拖动、滚动与输入沿用真实工具链路，动作后回读结果。"
+                    ],
+                    why: "补齐只有截图反馈、控件点击失败与鼠标事件未命中窗口的问题。",
+                    next: "持续验证不同 macOS 和应用的定向输入兼容性。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.104",
                     date: "2026-09-05",
                     commit: "见源码提交",

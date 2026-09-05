@@ -665,7 +665,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             SettingsCard(
                 title: "电脑控制",
-                description: "控制 Agent 是否获得截屏、鼠标、键盘与启动应用等本机操作能力。",
+                description: "允许 Agent 截图、点击、输入和拖动；操作时显示带柔光的独立光标。",
                 icon: "display"
             ) {
                 VStack(spacing: 0) {

@@ -308,9 +308,33 @@ public enum ComputerUse {
         guard nodes.indices.contains(index) else {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
-        let error = AXUIElementPerformAction(nodes[index].element, kAXPressAction as CFString)
+        let element = nodes[index].element
+        guard (attribute(element, kAXEnabledAttribute) as? NSNumber)?.boolValue != false else {
+            return .init(success: false, message: "目标控件已禁用，未执行点击。")
+        }
+        if let frame = elementFrame(element) {
+            AgentCursor.show(at: CGPoint(x: frame.midX, y: frame.midY), action: "点击")
+        }
+        let error = AXUIElementPerformAction(element, kAXPressAction as CFString)
+        if error == .actionUnsupported || error == .notImplemented {
+            // Text fields and web content commonly have no AXPress action.
+            // Fall back only on explicit unsupported errors: a timeout may
+            // already have executed the action and must never be double-clicked.
+            guard let frame = elementFrame(element), frame.width > 0, frame.height > 0,
+                  let window = primaryWindowInfo(for: app) else {
+                return .init(success: false, message: "控件不支持 AXPress，且没有可见点击区域。")
+            }
+            let point = CGPoint(x: frame.midX, y: frame.midY)
+            guard window.bounds.contains(point) else {
+                return .init(success: false, message: "控件位于可见窗口外，请先滚动并重新观察。")
+            }
+            guard postMouseClick(at: point, button: .left, count: 1, targetPID: app.processIdentifier) else {
+                return .init(success: false, message: "当前 macOS 无法定向发送鼠标事件；请使用可用的 AX 动作。")
+            }
+            return .init(success: true, message: "已向元素 \(index) 的可见位置发送点击，请重新观察确认焦点或界面变化。")
+        }
         guard error == .success else {
-            return .init(success: false, message: "元素 \(index) 不支持按下操作（AXError \(error.rawValue)）。")
+            return .init(success: false, message: "元素 \(index) 操作结果未确认（AXError \(error.rawValue)）；请重新观察，未自动重复点击。")
         }
         return .init(success: true, message: "已按下元素 \(index)。请重新调用 get_app_state 或 screenshot 核对结果。")
     }
@@ -389,6 +413,9 @@ public enum ComputerUse {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
         let element = nodes[index].element
+        if let frame = elementFrame(element) {
+            AgentCursor.show(at: CGPoint(x: frame.midX, y: frame.midY), action: "输入")
+        }
         var settable = DarwinBoolean(false)
         guard AXUIElementIsAttributeSettable(
             element,
@@ -657,6 +684,7 @@ public enum ComputerUse {
         appName: String? = nil
     ) -> ElementActionResult {
         let pt: CGPoint
+        var targetPID: pid_t?
         if let appName {
             guard let app = resolveApplication(named: appName) else {
                 return .init(success: false, message: "未找到目标应用 \(appName)。")
@@ -666,6 +694,7 @@ public enum ComputerUse {
             guard let window = primaryWindowInfo(for: app) else {
                 return .init(success: false, message: "未找到 \(appName) 的可见主窗口。")
             }
+            targetPID = app.processIdentifier
             pt = CGPoint(
                 x: window.bounds.minX + CGFloat(nx) * window.bounds.width,
                 y: window.bounds.minY + CGFloat(ny) * window.bounds.height
@@ -677,21 +706,8 @@ public enum ComputerUse {
                 y: bounds.minY + CGFloat(ny) * bounds.height
             )
         }
-        let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                           mouseCursorPosition: pt, mouseButton: .left)
-        move?.post(tap: .cghidEventTap)
-        usleep(20_000)
-        let clicks = doubleClick ? 2 : 1
-        for state in 1...clicks {
-            let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
-                               mouseCursorPosition: pt, mouseButton: .left)
-            down?.setIntegerValueField(.mouseEventClickState, value: Int64(state))
-            down?.post(tap: .cghidEventTap)
-            let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
-                             mouseCursorPosition: pt, mouseButton: .left)
-            up?.setIntegerValueField(.mouseEventClickState, value: Int64(state))
-            up?.post(tap: .cghidEventTap)
-            if state < clicks { usleep(120_000) }
+        guard postMouseClick(at: pt, button: .left, count: doubleClick ? 2 : 1, targetPID: targetPID) else {
+            return .init(success: false, message: "当前 macOS 不支持定向鼠标操作。")
         }
         let scope = appName.map { "应用 \($0) 窗口" } ?? "主屏"
         return .init(success: true, message: "已在\(scope)相对坐标 (\(nx), \(ny)) 完成点击。")
@@ -730,7 +746,9 @@ public enum ComputerUse {
         guard let button = cgMouseButton(mouseButton) else {
             return .init(success: false, message: "mouse_button 必须是 left/right/middle（或 l/r/m）。")
         }
-        postMouseClick(at: point, button: button, count: max(1, min(3, clickCount)))
+        guard postMouseClick(at: point, button: button, count: max(1, min(3, clickCount)), targetPID: app.processIdentifier) else {
+            return .init(success: false, message: "当前 macOS 不支持定向鼠标操作。")
+        }
         return .init(
             success: true,
             message: "已在应用 \(appName) 执行 \(mouseButton) 键 \(max(1, min(3, clickCount))) 次点击。"
@@ -745,6 +763,9 @@ public enum ComputerUse {
         toX: Double,
         toY: Double
     ) -> ElementActionResult {
+        guard setWindowLocation != nil else {
+            return .init(success: false, message: "当前 macOS 不支持定向鼠标操作。")
+        }
         guard let app = resolveApplication(named: appName, launchIfNeeded: true) else {
             return .init(success: false, message: "未找到目标应用 \(appName)。")
         }
@@ -760,23 +781,25 @@ public enum ComputerUse {
         guard window.bounds.contains(start), window.bounds.contains(end) else {
             return .init(success: false, message: "拖拽坐标必须位于目标应用窗口内。")
         }
-        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                mouseCursorPosition: start, mouseButton: .left)?.post(tap: .cghidEventTap)
+        AgentCursor.show(at: start, action: "拖拽")
+        postEvent(CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                          mouseCursorPosition: start, mouseButton: .left), targetPID: app.processIdentifier)
         usleep(20_000)
-        CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
-                mouseCursorPosition: start, mouseButton: .left)?.post(tap: .cghidEventTap)
+        postEvent(CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
+                          mouseCursorPosition: start, mouseButton: .left), targetPID: app.processIdentifier)
         for step in 1...12 {
             let fraction = CGFloat(step) / 12
             let point = CGPoint(
                 x: start.x + (end.x - start.x) * fraction,
                 y: start.y + (end.y - start.y) * fraction
             )
-            CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged,
-                    mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+            AgentCursor.show(at: point, action: "拖拽")
+            postEvent(CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged,
+                          mouseCursorPosition: point, mouseButton: .left), targetPID: app.processIdentifier)
             usleep(12_000)
         }
-        CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
-                mouseCursorPosition: end, mouseButton: .left)?.post(tap: .cghidEventTap)
+        postEvent(CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
+                          mouseCursorPosition: end, mouseButton: .left), targetPID: app.processIdentifier)
         return .init(success: true, message: "已在应用 \(appName) 完成拖拽。")
     }
 
@@ -800,8 +823,8 @@ public enum ComputerUse {
         guard let point = point ?? fallback else {
             return .init(success: false, message: "无法确定目标应用的滚动位置。")
         }
-        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+        postEvent(CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                          mouseCursorPosition: point, mouseButton: .left), targetPID: app.processIdentifier)
         let isHorizontal = ["left", "right", "l", "r"].contains(direction)
         let nodes = elementIndex == nil ? [] : validatedNodes(for: app)
         let targetFrame = elementIndex.flatMap { nodes.indices.contains($0) ? elementFrame(nodes[$0].element) : nil }
@@ -828,7 +851,14 @@ public enum ComputerUse {
             wheel2: horizontal,
             wheel3: 0
         )
-        event?.post(tap: .cghidEventTap)
+        AgentCursor.show(at: point, action: "滚动")
+        event?.location = point
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier else {
+            return .init(success: false, message: "目标应用已失去焦点，未发送滚动；请重新观察。")
+        }
+        // Wheel events require WindowServer annotation. An explicit location
+        // targets the scroll view without relocating the hardware pointer.
+        event?.post(tap: .cgSessionEventTap)
         return .init(success: true, message: "已在应用 \(appName) 向 \(direction) 滚动 \(pages) 页。")
     }
 
@@ -872,7 +902,9 @@ public enum ComputerUse {
         }
     }
 
-    private static func postMouseClick(at point: CGPoint, button: CGMouseButton, count: Int) {
+    private static func postMouseClick(at point: CGPoint, button: CGMouseButton, count: Int, targetPID: pid_t? = nil) -> Bool {
+        guard targetPID == nil || setWindowLocation != nil else { return false }
+        AgentCursor.show(at: point, action: "点击")
         let downType: CGEventType
         let upType: CGEventType
         switch button {
@@ -880,20 +912,21 @@ public enum ComputerUse {
         case .center: downType = .otherMouseDown; upType = .otherMouseUp
         default: downType = .leftMouseDown; upType = .leftMouseUp
         }
-        CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                mouseCursorPosition: point, mouseButton: button)?.post(tap: .cghidEventTap)
+        postEvent(CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                          mouseCursorPosition: point, mouseButton: button), targetPID: targetPID)
         usleep(20_000)
         for state in 1...count {
             let down = CGEvent(mouseEventSource: nil, mouseType: downType,
                                mouseCursorPosition: point, mouseButton: button)
             down?.setIntegerValueField(.mouseEventClickState, value: Int64(state))
-            down?.post(tap: .cghidEventTap)
+            postEvent(down, targetPID: targetPID)
             let up = CGEvent(mouseEventSource: nil, mouseType: upType,
                              mouseCursorPosition: point, mouseButton: button)
             up?.setIntegerValueField(.mouseEventClickState, value: Int64(state))
-            up?.post(tap: .cghidEventTap)
+            postEvent(up, targetPID: targetPID)
             if state < count { usleep(100_000) }
         }
+        return true
     }
 
     /// 滚轮: `lines` 行, 正数向下。限幅 ±20 行防误操作把页面滚飞。
@@ -930,6 +963,7 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(80_000)
+        showInputCursor(for: app)
         typeText(text, targetPID: app.processIdentifier)
         return .init(success: true, message: "已向应用 \(appName) 输入 \(text.count) 个字符。")
     }
@@ -991,6 +1025,7 @@ public enum ComputerUse {
         guard pasteboard.changeCount == temporaryChangeCount else {
             return .init(success: false, message: "剪贴板已被其他操作修改；已取消粘贴并保留新内容。")
         }
+        showInputCursor(for: app)
         let pasted = pressKeySyntax("super+v", targetPID: app.processIdentifier)
         let deadline = Date().addingTimeInterval(2)
         while pasted && !payload.wasRead && pasteboard.changeCount == temporaryChangeCount && Date() < deadline {
@@ -1129,9 +1164,53 @@ public enum ComputerUse {
         postEvent(up, targetPID: targetPID)
     }
 
+    private static func showInputCursor(for app: NSRunningApplication) {
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        if let focused = attribute(root, kAXFocusedUIElementAttribute),
+           CFGetTypeID(focused) == AXUIElementGetTypeID(),
+           let frame = elementFrame(focused as! AXUIElement) {
+            AgentCursor.show(at: CGPoint(x: frame.midX, y: frame.midY), action: "输入")
+        }
+    }
+
+    // Quartz keeps separate screen and window-local positions. Remote mouse
+    // events need both; setting only CGEvent.location yields (-1,-1) hit tests
+    // in AppKit. Resolve the optional OS entry point rather than hard-link it.
+    private typealias WindowLocationSetter = @convention(c) (CGEvent, CGPoint) -> Void
+    private static let setWindowLocation: WindowLocationSetter? = {
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGEventSetWindowLocation") else { return nil }
+        return unsafeBitCast(symbol, to: WindowLocationSetter.self)
+    }()
+
     private static func postEvent(_ event: CGEvent?, targetPID: pid_t?) {
-        guard let event else { return }
+        guard var event else { return }
         if let targetPID {
+            let mouseTypes: Set<CGEventType> = [.mouseMoved, .leftMouseDown, .leftMouseUp,
+                .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp,
+                .leftMouseDragged, .rightMouseDragged, .otherMouseDragged, .scrollWheel]
+            if mouseTypes.contains(event.type),
+               let app = NSRunningApplication(processIdentifier: targetPID),
+               let window = primaryWindowInfo(for: app) {
+                if event.type != .scrollWheel,
+                   let type = NSEvent.EventType(rawValue: UInt(event.type.rawValue)),
+                   let mouse = NSEvent.mouseEvent(
+                    with: type,
+                    location: NSPoint(x: event.location.x - window.bounds.minX,
+                                      y: window.bounds.maxY - event.location.y),
+                    modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: Int(window.id), context: nil, eventNumber: 1,
+                    clickCount: Int(event.getIntegerValueField(.mouseEventClickState)),
+                    pressure: [.leftMouseDown, .leftMouseDragged, .rightMouseDown, .otherMouseDown].contains(event.type) ? 1 : 0
+                   )?.cgEvent {
+                    mouse.location = event.location
+                    event = mouse
+                }
+                event.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(window.id))
+                event.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(window.id))
+                setWindowLocation?(event, CGPoint(x: event.location.x - window.bounds.minX,
+                                                  y: event.location.y - window.bounds.minY))
+            }
+            event.setIntegerValueField(.eventTargetUnixProcessID, value: Int64(targetPID))
             event.postToPid(targetPID)
         } else {
             event.post(tap: .cghidEventTap)

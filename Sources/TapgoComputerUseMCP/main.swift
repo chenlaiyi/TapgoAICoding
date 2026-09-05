@@ -619,7 +619,10 @@ if commandArguments.first == "--execute-request-file",
             stderrLog("one-shot request rejected: request exceeds 1 MiB")
             exit(EXIT_FAILURE)
         }
-        guard let response = ComputerUseMCP.handle(requestData: requestData, executor: executor) else {
+        AgentCursor.enable()
+        let handled = ComputerUseMCP.handle(requestData: requestData, executor: executor)
+        AgentCursor.finish()
+        guard let response = handled else {
             exit(EXIT_SUCCESS)
         }
         try response.write(to: responseURL, options: .atomic)

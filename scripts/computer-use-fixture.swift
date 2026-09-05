@@ -5,9 +5,19 @@ final class Fixture: NSObject, NSApplicationDelegate {
     let window = NSWindow(contentRect: NSRect(x: 150, y: 150, width: 640, height: 420),
                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
     let field = NSTextField(string: "initial")
+    let otherField = NSTextField(string: "leave this field unchanged")
     let status = NSTextField(labelWithString: "Idle")
     var dialog: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp, .leftMouseDragged]) { event in
+            let record = "type=\(event.type.rawValue) window=\(event.windowNumber) local=\(event.locationInWindow) global=\(String(describing: event.cgEvent?.location))\n"
+            let path = "/tmp/tapgo-cu-fixture-events.log"
+            if !FileManager.default.fileExists(atPath: path) { FileManager.default.createFile(atPath: path, contents: nil) }
+            if let file = FileHandle(forWritingAtPath: path) {
+                file.seekToEndOfFile(); file.write(Data(record.utf8)); try? file.close()
+            }
+            return event
+        }
         let menu = NSMenu()
         let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
         let edit = NSMenu(title: "Edit")
@@ -19,6 +29,9 @@ final class Fixture: NSObject, NSApplicationDelegate {
         menu.addItem(editItem)
         NSApp.mainMenu = menu
         window.title = "Tapgo CU Fixture"
+        otherField.frame = NSRect(x: 24, y: 375, width: 580, height: 30)
+        otherField.setAccessibilityIdentifier("fixture-other-input")
+        window.contentView?.addSubview(otherField)
         field.frame = NSRect(x: 24, y: 330, width: 580, height: 30)
         field.setAccessibilityIdentifier("fixture-input")
         status.frame = NSRect(x: 24, y: 270, width: 580, height: 30)
@@ -39,6 +52,7 @@ final class Fixture: NSObject, NSApplicationDelegate {
         scroll.documentView = document
         window.contentView?.addSubview(scroll)
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(otherField)
         NSApp.activate(ignoringOtherApps: true)
     }
     @objc func delayedPaste(_ sender: Any?) {

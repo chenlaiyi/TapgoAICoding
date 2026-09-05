@@ -38,6 +38,8 @@ public enum ComputerUseMCP {
     【电脑控制工作流·使用电脑控制工具时强制执行】
     - 优先使用专用连接器、API 或 CLI；需要界面操作时先 list_apps，目标 app 使用显示名、完整路径或 bundle id。名称解析失败时用 list_apps 的准确 bundle id 重试。
     - 日常观察使用 get_ax_state（只读 AX、不截屏）；需要视觉上下文时用 get_screenshot 或 get_ax_state_and_screenshot。get_app_state 保留旧版兼容。读取会自动启动应用并等待状态，无需额外 sleep。
+    - 用户要求操作时，观察只是第一步；使用 click/type_text/paste/press_key/drag/scroll 执行已授权动作并回读，不得只截图就宣称完成，也不得把没有可用 AXPress 误报为只能截图。
+    - 操作时屏幕显示独立的 Tapgo 光标；应用内点击和拖动投递到目标进程，滚动使用目标窗口位置，键盘操作仍可能激活目标应用，不代表有第二套独立桌面或键盘焦点。
     - 始终把操作绑定到同一个 app；优先 click(element_index)、set_value；缺少可用 AX 元素时才使用最新窗口截图内的点坐标。图像像素与逻辑点可能不同，按返回的窗口 pt 尺寸换算。
     - 每次动作后重新 get_ax_state 核对结果，重新取得元素编号。默认差量，disableDiffing=true 返回完整树（旧版 disableDiff 仍有效）。截图后必须重读完整 AX 树再使用编号。
     - 工具返回“已发送”只表示动作已派发；必须看到目标界面或值才能认定完成。无变化时不要无动作重复读取；改用截图补足上下文。连续两次失败时停止坐标猜测。
