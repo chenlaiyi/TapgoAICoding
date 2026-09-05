@@ -3,6 +3,24 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.108</title>
+            <pubDate>Sat, 05 Sep 2026 21:20:12 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.108</link>
+            <sparkle:version>0.5.108</sparkle:version>
+            <sparkle:shortVersionString>0.5.108</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.108
+
+- 消息输出层次感第二轮升级（对齐 Codex Desktop 截图基线）：
+  - 新增 `MarkdownInlineFlow` + `InlineFlowLayout` 渲染器：行内代码段真正按 `RoundedRectangle(cornerRadius: 4)` 画在浅灰底色上，并把 monospace 文字与背景 pill 一起随正文自动换行；之前 `AttributedString.backgroundColor` 画的是直角色块、跨行时和正文 baseline 对不齐。段落、列表项、表格单元、引用、任务项、标题全部从 `Text(inlineAttributed(...))` 切到 `MarkdownInlineFlow`，风格保持一致。
+  - `ActivityRollupView` 移除裸 `ProgressView()`，改用类别图标（`terminal` / `magnifyingglass` / `pencil` …）加一颗 5pt 脉动 `LivePulseDot` 表示「仍在进行中」。视觉更安静，也保留了动作语义，并新增 `accessibilityReduceMotion` 兼容。
+- 新增 5 条 `DesktopDesignParity` 断言锁定上述行为（`MarkdownInlineFlow` 渲染器、4pt 圆角 pill、`LivePulseDot`、去除裸 `ProgressView`）。
+- 发版流程沿用 v0.5.107：`./scripts/evolve.sh patch ...` 跑 build → test → commit → tag → push → 签 zip → gh release create → 刷 appcast → push main → 重打 .app；已装客户端 Sparkle 下一轮 poll 拉取 v0.5.108 升级提示。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.108/Tapgo-AICoding-0.5.108.zip" length="11615415" type="application/octet-stream" sparkle:edSignature="8DnnAzy+0JuvNx197XD09rsg25HlZm2DyyreFHXS/9Uf0IUPMy29KjvrWtGjSElTYrZ8lzO4GSfeXhrSKd4LDA=="/>
+        </item>
+        <item>
             <title>0.5.107</title>
             <pubDate>Sat, 05 Sep 2026 18:01:44 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.107</link>
@@ -44,28 +62,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.106/Tapgo-AICoding-0.5.106.zip" length="11602233" type="application/octet-stream" sparkle:edSignature="7ou6AVWw+/kI977OyxPT0Wm+M08iPPCQ1bzRw37bO7CcLjusFdhh5dPpdXdvkPomFjza/KxcxeXu3ZAbFLaNDQ=="/>
-        </item>
-        <item>
-            <title>0.5.105</title>
-            <pubDate>Sat, 05 Sep 2026 10:40:39 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.105</link>
-            <sparkle:version>0.5.105</sparkle:version>
-            <sparkle:shortVersionString>0.5.105</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.105
-
-- 定时任务面板升级：**每次执行都留痕**，触发 / 注入结果可见可回看
-  - 新增 `ExecutionRecord`（firedAt + outcome: success / failure / skipped + durationMs + errorMessage），每个任务最多保留最近 5 条
-  - 旧 v0.5.102 任务的 JSON 文件零迁移：`executionHistory` 为 Optional，缺失字段自动兜底为空
-  - `ScheduledTaskBridge.inject` 改为 `async throws`，目标会话丢失时抛 `ScheduledTaskError.threadMissing`；注入成功 / 失败都会写入历史
-- 列表行加 ▶ 立即运行按钮：跳过 `lastFiredAt` / `nextFireAt`，不发通知，立刻把当前 prompt 注入并把 outcome 记入历史（用于"写完先试一次"）
-- 编辑器新增 `每周某天` 选项：周一到周日 + HH:MM，映射到底层 `ScheduleSpec.weekly`
-- 列表行新增「上次执行」行：成功绿色 ✓ + 耗时、失败红色 ⚠ + 错误摘要、跳过橙色 ↪ + 原因；并显示 `近 N 次` 计数
-- macOS 通知逻辑保留，但失败时错误会同时出现在历史里（双通道：用户不必打开控制台就能看到失败原因）
-
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.105/Tapgo-AICoding-0.5.105.zip" length="11495907" type="application/octet-stream" sparkle:edSignature="R+bYcfEcfa4btnllt4vJq6YpavaFZRTVZzWnxs+457fQ16jpZNUXMT8YdYKpiR8tnWvEgnWqLDgSO+zDHSV0Aw=="/>
         </item>
     </channel>
 </rss>
