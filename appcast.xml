@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.105</title>
+            <pubDate>Sat, 05 Sep 2026 10:40:39 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.105</link>
+            <sparkle:version>0.5.105</sparkle:version>
+            <sparkle:shortVersionString>0.5.105</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.105
+
+- 定时任务面板升级：**每次执行都留痕**，触发 / 注入结果可见可回看
+  - 新增 `ExecutionRecord`（firedAt + outcome: success / failure / skipped + durationMs + errorMessage），每个任务最多保留最近 5 条
+  - 旧 v0.5.102 任务的 JSON 文件零迁移：`executionHistory` 为 Optional，缺失字段自动兜底为空
+  - `ScheduledTaskBridge.inject` 改为 `async throws`，目标会话丢失时抛 `ScheduledTaskError.threadMissing`；注入成功 / 失败都会写入历史
+- 列表行加 ▶ 立即运行按钮：跳过 `lastFiredAt` / `nextFireAt`，不发通知，立刻把当前 prompt 注入并把 outcome 记入历史（用于"写完先试一次"）
+- 编辑器新增 `每周某天` 选项：周一到周日 + HH:MM，映射到底层 `ScheduleSpec.weekly`
+- 列表行新增「上次执行」行：成功绿色 ✓ + 耗时、失败红色 ⚠ + 错误摘要、跳过橙色 ↪ + 原因；并显示 `近 N 次` 计数
+- macOS 通知逻辑保留，但失败时错误会同时出现在历史里（双通道：用户不必打开控制台就能看到失败原因）
+
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.105/Tapgo-AICoding-0.5.105.zip" length="11495907" type="application/octet-stream" sparkle:edSignature="R+bYcfEcfa4btnllt4vJq6YpavaFZRTVZzWnxs+457fQ16jpZNUXMT8YdYKpiR8tnWvEgnWqLDgSO+zDHSV0Aw=="/>
+        </item>
+        <item>
             <title>0.5.101</title>
             <pubDate>Sat, 05 Sep 2026 03:09:41 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.101</link>
@@ -63,23 +85,6 @@
 - 之前：用户报告"不能配置主机 / 无法添加远程项目"。保存按钮永远 disabled，alias 含中文/特殊字符无法保存。
 - 现在：字段填完后保存按钮即时启用；非法字段会立刻显示精确的红字错误。已在本机实测添加 `mac-mini_jk` / `chenlaiyi@192.168.1.20:22` 成功。]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.100/Tapgo-AICoding-0.5.100.zip" length="11271194" type="application/octet-stream" sparkle:edSignature="1VGM3+z8X85U0SdHZQNbPKGbSKPLXoajk5m0NHHASo6cjS4YZUy6dTgyxSZdgMMBIQf/Gr0s6L4AdARMiDZtCw=="/>
-        </item>
-        <item>
-            <title>0.5.99</title>
-            <pubDate>Sat, 05 Sep 2026 02:28:20 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.99</link>
-            <sparkle:version>0.5.99</sparkle:version>
-            <sparkle:shortVersionString>0.5.99</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.99
-
-- 延续 0.5.98 的 Web Remote 模型切换和权限配置闭环。
-- 修复手机端 Markdown 表格单元格内加粗、行内代码、删除线和安全链接显示为源码的问题。
-- 窄屏表格改为保持可读列宽并横向滚动，不再把 `validCode` 等标识符逐字拆行。
-- 新增表头行内代码、单元格加粗和 Markdown 源码不泄露回归。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.99/Tapgo-AICoding-0.5.99.zip" length="11164171" type="application/octet-stream" sparkle:edSignature="Vh0yfYvV9g8ZL41qXy2FvCqA3QjEycEKQF3fZD3b3/Pcj6sN0DXX/cZf8wevbppgtkd0fU3GJ71T4/pRBeL4CQ=="/>
         </item>
     </channel>
 </rss>

@@ -20,3 +20,9 @@ test-evidence/
 # Editor
 .vscode/
 .idea/
+
+# Local sandbox caches (generated during self-evolution / computer-use)
+.zcode/
+artifacts/
+node_modules/
+scripts/fidelity/

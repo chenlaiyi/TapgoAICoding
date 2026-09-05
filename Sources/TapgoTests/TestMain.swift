@@ -168,6 +168,8 @@ let allSections: [String] = [
     "MemoryCloudSync: availability",
     "MemoryCloudSync: relative path round-trip",
     "AgentOutputPolicy: incremental progress contract",
+    "ScheduleSpec: nextFire correctness + Codable round-trip",
+    "ScheduledTaskStore: load/save round-trip + permissions",
     "DiffParser: empty input returns no files",
     "DiffParser: whitespace-only input returns no files",
     "DiffParser: single-file diff parses file + hunk + lines",
@@ -614,6 +616,15 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "AgentOutputPolicy: incremental progress contract") {
             runAgentOutputPolicyContract(runner)
+        }
+        await runIfInScope(runner, "ScheduleSpec: nextFire correctness + Codable round-trip") {
+            runScheduleSpecTests(runner)
+        }
+        await runIfInScope(runner, "ScheduledTaskStore: load/save round-trip + permissions") {
+            runScheduledTaskStoreTests(runner)
+        }
+        await runIfInScope(runner, "ExecutionHistory: legacy decode + cap-at-5 + round-trip") {
+            runExecutionHistoryTests(runner)
         }
         await runIfInScope(runner, "DiffParser: empty input returns no files") {
             runDiffParserEmpty(runner)
