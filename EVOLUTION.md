@@ -1421,3 +1421,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 **Tag**: _(superseded by v0.5.105)_
 **Changed (folded into v0.5.105)**:
 - 侧边栏一级导航加 定时任务 (clock.arrow.circlepath); TapgoCore 新增 ScheduledTask + ScheduledTaskStore (JSON 文件 0600) + ScheduledTaskRunner (60s tick, oneShot 触发后自动 disable); TapgoAICoding 新增 ScheduledTasksView (列表 + 编辑 sheet + 空态) + ScheduledTaskBridge (通知 + SessionStore.sendUserMessage 注入, 支持新会话或指定会话); App.swift 启动时 wire bridge + start runner; 新增 ScheduleSpecTests + ScheduledTaskStoreTests 共 23 条断言。
+
+
+## v0.5.106 — feat(chat): 全面升级消息输出样式和内容
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.106`)_
+**Tag**: v0.5.106
+**Test status**: — 2886 passed, 0 failed —
+**Changed**:
+- feat(chat): 全面升级消息输出样式和内容
+消息输出更接近 Codex 桌面端的阅读节奏：段落/列表/表格节奏收紧、连续 reasoning 合并到一行可展开、用户气泡与状态徽章更克制、行内代码底色更柔和、流式光标内联、聚合行携带 summaryText 通道。
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
