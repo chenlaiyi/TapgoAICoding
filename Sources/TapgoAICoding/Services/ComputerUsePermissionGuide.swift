@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import SwiftUI
+import TapgoCore
 
 enum ComputerUsePermissionKind: String, Sendable {
     case accessibility
@@ -142,6 +143,9 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
 
     private var panel: NSPanel?
     private var completion: (() -> Void)?
+    private var trackingTimer: Timer?
+    private var workspaceObservers: [NSObjectProtocol] = []
+    private var screenObserver: NSObjectProtocol?
 
     func present(
         permission: ComputerUsePermissionKind,
@@ -163,7 +167,7 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
         let size = NSSize(width: 590, height: 142)
         let panel = ComputerUsePermissionGuidePanel(
             contentRect: NSRect(origin: .zero, size: size),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -173,7 +177,7 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        panel.level = .floating
+        panel.level = .statusBar
         panel.hidesOnDeactivate = false
         // The panel itself must stay anchored above System Settings. If
         // background movement is enabled, AppKit consumes the pointer drag
@@ -185,14 +189,75 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
         panel.becomesKeyOnlyIfNeeded = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
-        position(panel: panel, size: size)
         self.panel = panel
-        // System Settings becomes active after opening its privacy pane. Make
-        // this small panel the key Tapgo window so its native drag view can
-        // receive the initial mouse-down and the following drag sequence.
-        // The panel stays floating above the still-visible destination list.
-        NSApp.activate(ignoringOtherApps: true)
-        panel.makeKeyAndOrderFront(nil)
+        startTracking()
+        updatePosition()
+    }
+
+    private func startTracking() {
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updatePosition() }
+        }
+        timer.tolerance = 0.05
+        // Common modes keep following while the user moves windows or drags
+        // the Helper. AX access is deliberately not required for this guide.
+        RunLoop.main.add(timer, forMode: .common)
+        trackingTimer = timer
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didActivateApplicationNotification,
+                     NSWorkspace.didTerminateApplicationNotification,
+                     NSWorkspace.activeSpaceDidChangeNotification] {
+            workspaceObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updatePosition() }
+            })
+        }
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.updatePosition() } }
+    }
+
+    private func stopTracking() {
+        trackingTimer?.invalidate()
+        trackingTimer = nil
+        let center = NSWorkspace.shared.notificationCenter
+        workspaceObservers.forEach { center.removeObserver($0) }
+        workspaceObservers.removeAll()
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        screenObserver = nil
+    }
+
+    private func updatePosition() {
+        guard let panel else { return }
+        guard let settingsFrame = settingsWindowFrame(),
+              let frame = PermissionGuideLayout.frame(
+                below: settingsFrame, visibleScreens: NSScreen.screens.map(\.visibleFrame)
+              ) else {
+            // Opening System Settings is asynchronous. Wait for its actual
+            // window; also hide when it is closed, minimized or on another Space.
+            panel.orderOut(nil)
+            return
+        }
+        if panel.frame != frame { panel.setFrame(frame, display: true) }
+        // Raise without activating Tapgo or taking focus from the permission list.
+        panel.orderFrontRegardless()
+    }
+
+    private func settingsWindowFrame() -> CGRect? {
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.systempreferences").first,
+              !app.isHidden,
+              let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
+              let desktopTop = NSScreen.screens.first?.frame.maxY else { return nil }
+        // CG window bounds are available without reading UI content or asking
+        // for Accessibility / Screen Recording grants, which may still be missing.
+        for item in windows {
+            guard (item[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == app.processIdentifier,
+                  (item[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+                  let raw = item[kCGWindowBounds as String] as? [String: Any],
+                  let rect = CGRect(dictionaryRepresentation: raw as CFDictionary),
+                  rect.width >= 400, rect.height >= 300 else { continue }
+            return CGRect(x: rect.minX, y: desktopTop - rect.maxY, width: rect.width, height: rect.height)
+        }
+        return nil
     }
 
     func dismiss() {
@@ -201,20 +266,13 @@ final class ComputerUsePermissionGuideController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        stopTracking()
         panel = nil
         let completion = completion
         self.completion = nil
         completion?()
     }
 
-    private func position(panel: NSPanel, size: NSSize) {
-        let screen = NSScreen.main ?? NSScreen.screens.first
-        guard let frame = screen?.visibleFrame else { return }
-        panel.setFrameOrigin(NSPoint(
-            x: frame.midX - size.width / 2,
-            y: frame.minY + 34
-        ))
-    }
 }
 
 /// Borderless `NSPanel` defaults to a non-key window. Allowing it to become
@@ -284,7 +342,8 @@ private struct ComputerUsePermissionGuideView: View {
             .help("关闭授权引导")
         }
         .padding(.horizontal, 20)
-        .frame(width: 590, height: 142)
+        .frame(maxWidth: .infinity)
+        .frame(height: 142)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .overlay {
             RoundedRectangle(cornerRadius: 16)

@@ -7,6 +7,7 @@ import Foundation
 // MARK: - JSON-RPC 分发 + 工具注册表
 
 func runComputerUseMCPProtocol(_ t: TestRunner) {
+    runPermissionGuideLayoutTests(t)
     let noop: ComputerUseMCP.Executor = { _, _ in ComputerUseMCP.ToolOutcome(text: "ok") }
 
     runComputerUseObservationSession(t)
