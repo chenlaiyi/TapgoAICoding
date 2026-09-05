@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import CoreGraphics
+import CryptoKit
 import TapgoCore
 
 /// 电脑控制原语 (v0.5.18) — 截屏 + 鼠标/键盘注入 + 系统命令。
@@ -101,7 +102,7 @@ public enum ComputerUse {
         let bounds: CGRect
     }
 
-    /// Capture only the target application's largest visible normal window.
+    /// Capture only the target application's frontmost visible normal window.
     /// `/usr/sbin/screencapture -l` is used because the modern SDK removes the
     /// legacy per-window CoreGraphics image API; the child remains attributed
     /// to this signed Helper's Screen Recording identity.
@@ -171,9 +172,7 @@ public enum ComputerUse {
                   ),
                   bounds.width >= 120, bounds.height >= 80 else { return nil }
             return .init(id: CGWindowID(number.uint32Value), bounds: bounds)
-        }.max { lhs, rhs in
-            lhs.bounds.width * lhs.bounds.height < rhs.bounds.width * rhs.bounds.height
-        }
+        }.first // CGWindowList is front-to-back: dialogs must win over larger background windows.
     }
 
     /// 等比缩放 CGImage 到最长边 `maxSide` (若已小于则返回 nil 让调用方用原图)。
@@ -270,6 +269,8 @@ public enum ComputerUse {
     /// fields are always redacted. Indices are ephemeral and must be refreshed
     /// after navigation/state changes before `click_element` is called.
     public static func appStateDescription(appName: String?, maxElements: Int = 600) -> String? {
+        observationToken = nil
+        observedNodes.removeAll()
         guard let app = resolveApplication(named: appName, launchIfNeeded: true) else { return nil }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
@@ -279,6 +280,13 @@ public enum ComputerUse {
         let lines = nodes.enumerated().map { index, node in
             "\(index) " + accessibilityLine(for: node.element, depth: node.depth)
         }
+        observedNodes[app.processIdentifier] = nodes
+        let window = primaryWindowInfo(for: app)
+        let identity = "pid=\(app.processIdentifier);launch=\(app.launchDate?.timeIntervalSince1970 ?? 0);window=\(window?.id ?? 0);bounds=\(String(describing: window?.bounds))"
+        let evidence = identity + "\n" + lines.joined(separator: "\n") + "\n" + nodes.map {
+            String(describing: elementFrame($0.element))
+        }.joined(separator: "\n")
+        observationToken = SHA256.hash(data: Data(evidence.utf8)).map { String(format: "%02x", $0) }.joined()
         let suffix = nodes.count >= maxElements ? "\n… 已达到 \(maxElements) 个元素上限" : ""
         return "App: \(appLabel) (\(app.bundleIdentifier ?? "无 bundle id"))\n"
             + lines.joined(separator: "\n") + suffix
@@ -296,7 +304,7 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        let nodes = accessibilityNodes(for: app, maxElements: max(600, index + 1))
+        let nodes = validatedNodes(for: app)
         guard nodes.indices.contains(index) else {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
@@ -324,7 +332,7 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        let nodes = accessibilityNodes(for: app, maxElements: max(600, index + 1))
+        let nodes = validatedNodes(for: app)
         guard nodes.indices.contains(index) else {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
@@ -376,7 +384,7 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        let nodes = accessibilityNodes(for: app, maxElements: max(600, index + 1))
+        let nodes = validatedNodes(for: app)
         guard nodes.indices.contains(index) else {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
@@ -421,7 +429,7 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        let nodes = accessibilityNodes(for: app, maxElements: max(600, index + 1))
+        let nodes = validatedNodes(for: app)
         guard nodes.indices.contains(index) else {
             return .init(success: false, message: "元素索引 \(index) 已失效或不存在；请重新调用 get_app_state。")
         }
@@ -481,6 +489,19 @@ public enum ComputerUse {
         return .init(success: true, message: "已在元素 \(index) 完成 \(selectionType) 文本选择。")
     }
 
+    public private(set) static var observationToken: String?
+    private static var observedNodes: [pid_t: [AccessibilityNode]] = [:]
+
+    /// Bind actions to exactly the objects just verified by the one-shot worker.
+    /// A new enumeration must never silently reinterpret a previous index.
+    private static func validatedNodes(for app: NSRunningApplication) -> [AccessibilityNode] {
+        guard let observed = observedNodes[app.processIdentifier] else { return [] }
+        let current = accessibilityNodes(for: app, maxElements: 600)
+        guard current.count == observed.count,
+              zip(current, observed).allSatisfy({ CFEqual($0.element, $1.element) }) else { return [] }
+        return observed
+    }
+
     private struct AccessibilityNode {
         let element: AXUIElement
         let depth: Int
@@ -501,10 +522,12 @@ public enum ComputerUse {
                 || $0.bundleIdentifier?.lowercased() == lowered
                 || $0.localizedName?.lowercased() == lowered
         }) { return exact }
-        if let partial = apps.first(where: {
+        let partials = apps.filter {
             $0.bundleIdentifier?.lowercased().contains(lowered) == true
                 || $0.localizedName?.lowercased().contains(lowered) == true
-        }) { return partial }
+        }
+        if partials.count == 1 { return partials[0] }
+        if partials.count > 1 { return nil }
         guard launchIfNeeded, openApplication(named: needle) else { return nil }
         let deadline = Date().addingTimeInterval(5)
         repeat {
@@ -690,7 +713,7 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        if let elementIndex, x == nil, y == nil, mouseButton == "left", clickCount == 1 {
+        if let elementIndex, x == nil, y == nil, ["left", "l"].contains(mouseButton), clickCount == 1 {
             return pressElement(appName: appName, index: elementIndex)
         }
         guard let point = targetPoint(
@@ -771,8 +794,10 @@ public enum ComputerUse {
         }
         app.activate(options: [.activateAllWindows])
         usleep(120_000)
-        guard let point = targetPoint(for: app, elementIndex: elementIndex, x: x, y: y)
-                ?? primaryWindowInfo(for: app).map({ CGPoint(x: $0.bounds.midX, y: $0.bounds.midY) }) else {
+        let hasTarget = elementIndex != nil || x != nil || y != nil
+        let point = targetPoint(for: app, elementIndex: elementIndex, x: x, y: y)
+        let fallback = hasTarget ? nil : primaryWindowInfo(for: app).map { CGPoint(x: $0.bounds.midX, y: $0.bounds.midY) }
+        guard let point = point ?? fallback else {
             return .init(success: false, message: "无法确定目标应用的滚动位置。")
         }
         CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
@@ -807,7 +832,7 @@ public enum ComputerUse {
         y: Double?
     ) -> CGPoint? {
         if let elementIndex {
-            let nodes = accessibilityNodes(for: app, maxElements: max(600, elementIndex + 1))
+            let nodes = validatedNodes(for: app)
             guard nodes.indices.contains(elementIndex),
                   let frame = elementFrame(nodes[elementIndex].element) else { return nil }
             return CGPoint(x: frame.midX, y: frame.midY)
@@ -906,6 +931,9 @@ public enum ComputerUse {
     /// pasteboard item and UTI. The user's clipboard is restored after Cmd+V.
     @discardableResult
     public static func paste(appName: String, text: String, format: String) -> ElementActionResult {
+        guard ["text", "md", "html"].contains(format) else {
+            return .init(success: false, message: "format 必须是 text、md 或 html。")
+        }
         guard let app = resolveApplication(named: appName, launchIfNeeded: true) else {
             return .init(success: false, message: "未找到目标应用 \(appName)。")
         }
@@ -942,16 +970,22 @@ public enum ComputerUse {
             restorePasteboard()
             return .init(success: false, message: "无法写入临时剪贴板。")
         }
+        let temporaryChangeCount = pasteboard.changeCount
         app.activate(options: [.activateAllWindows])
         usleep(80_000)
+        guard pasteboard.changeCount == temporaryChangeCount else {
+            return .init(success: false, message: "剪贴板已被其他操作修改；已取消粘贴并保留新内容。")
+        }
         let pasted = pressKeySyntax("super+v", targetPID: app.processIdentifier)
         usleep(180_000)
-        restorePasteboard()
+        let unchanged = pasteboard.changeCount == temporaryChangeCount
+        if unchanged { restorePasteboard() }
+        let clipboardStatus = unchanged ? "已恢复原剪贴板" : "已保留用户新复制的内容"
         return .init(
             success: pasted,
             message: pasted
-                ? "已粘贴 \(text.count) 个字符并恢复原剪贴板。"
-                : "粘贴快捷键发送失败，原剪贴板已恢复。"
+                ? "已发送粘贴快捷键，\(clipboardStatus)。请读取目标控件核对内容。"
+                : "粘贴快捷键发送失败，\(clipboardStatus)。"
         )
     }
 

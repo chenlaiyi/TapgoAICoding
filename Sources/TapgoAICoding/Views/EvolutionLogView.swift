@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.102",
+                    date: "2026-09-05",
+                    commit: "见源码提交",
+                    tag: "未公开发布",
+                    summary: "Computer Use 再校准：分离观察、旧元素拦截与窗口定位。",
+                    changes: [
+                        "新增 AX 状态、截图、组合读取工具，兼容 disableDiffing 与旧接口。",
+                        "常驻桥接保存观察指纹，短生命周期 Helper 执行前核验应用、窗口及 AX 树，拒绝失效元素编号。",
+                        "截图选择前方窗口；无效滚动目标明确失败；粘贴保留用户新复制内容。",
+                        "明确原生应用能力与尚未实现的浏览器 tab/DOM、持久 JavaScript 接口边界。"
+                    ],
+                    why: "依据当前 Codex CUA 实际接口重新校准并修复误操作风险。",
+                    next: "继续补齐浏览器与持久脚本能力；系统权限按每台 Mac 实际授权。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.101",
                     date: "2026-09-05",
                     commit: "待 commit",

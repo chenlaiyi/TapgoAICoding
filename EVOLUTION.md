@@ -1359,3 +1359,13 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 窄屏表格保持最小列宽并横向滚动，避免标识符逐字拆行。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+## v0.5.102 — Computer Use 原生能力再校准
+**Date**: 2026-09-05
+**Status**: 源码迭代；未创建公开 Release
+**Validation**: Core 2788 passed / 0 failed；签名 App/Helper 构建通过；真实窗口 42 checks passed。
+**Changed**:
+- 分离 AX、截图和组合读取；兼容 disableDiffing 与旧工具。
+- 修复短生命周期 Helper 的元素编号失效风险；按最近观察指纹核验后操作。
+- 修正前方对话框定位、无效滚动目标回退与并发剪贴板保护。
+- 增加可重现隔离窗口验收与能力差距说明。

@@ -61,6 +61,17 @@ let invalidCoordHint = "参数错误: x/y 必须是 0...1 的归一化坐标（�
 
 /// 工具执行器: MCP 协议层 → ComputerUse 原语。
 let executor: ComputerUseMCP.Executor = { tool, args in
+    if args["element_index"] != nil {
+        guard ComputerUse.accessibilityAllowed else {
+            return .init(isError: true, text: accessibilityHint)
+        }
+        guard let token = args["_observation_token"] as? String,
+              let app = ComputerUseMCP.appNameArg(args),
+              ComputerUse.appStateDescription(appName: app) != nil,
+              ComputerUse.observationToken == token else {
+            return .init(isError: true, text: "目标应用、窗口或 AX 树已变化，旧元素编号已拒绝；请重新 get_ax_state（disableDiffing=true）。")
+        }
+    }
     switch tool {
     case "list_apps":
         let descriptors = ComputerUse.applicationDescriptors()
@@ -75,7 +86,7 @@ let executor: ComputerUseMCP.Executor = { tool, args in
             isError: false,
             text: ComputerUse.runningApplicationsDescription())
 
-    case "get_app_state":
+    case "get_app_state", "get_ax_state", "get_ax_state_and_screenshot":
         guard ComputerUse.accessibilityAllowed else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: accessibilityHint)
         }
@@ -88,30 +99,29 @@ let executor: ComputerUseMCP.Executor = { tool, args in
                 text: "无法读取 \(app) 的辅助功能界面树。请先调用 list_applications，并确认辅助功能权限。")
         }
         let explicitlyRequestedLegacyScreenshot = args["include_screenshot"] != nil
-        let includeScreenshot = explicitlyRequestedLegacyScreenshot
-            ? ComputerUseMCP.boolArg(args, "include_screenshot")
-            : true
+        let includeScreenshot = tool == "get_ax_state" ? false : (explicitlyRequestedLegacyScreenshot
+            ? ComputerUseMCP.boolArg(args, "include_screenshot") : true)
         if includeScreenshot {
             guard ComputerUse.screenCaptureAllowed else {
                 return ComputerUseMCP.ToolOutcome(
                     isError: false,
-                    text: state + "\n\n" + screenPermissionHint
+                    text: state + "\n\n" + screenPermissionHint, observationToken: ComputerUse.observationToken
                 )
             }
             guard let capture = ComputerUse.applicationScreenshotJPEG(appName: app) else {
                 return ComputerUseMCP.ToolOutcome(
                     isError: false,
-                    text: state + "\n\n应用窗口截图失败；目标窗口可能未显示在主桌面。"
+                    text: state + "\n\n应用窗口截图失败；目标窗口可能未显示在主桌面。", observationToken: ComputerUse.observationToken
                 )
             }
             let metadata = "\n\n窗口截图: \(capture.appLabel) \(Int(capture.pointWidth))x\(Int(capture.pointHeight)) pt，window_id=\(capture.windowID)。坐标工具传 app 时相对这张图。"
             return ComputerUseMCP.ToolOutcome(
                 isError: false,
                 text: state + metadata,
-                imageJPEGBase64: capture.jpeg.base64EncodedString()
+                imageJPEGBase64: capture.jpeg.base64EncodedString(), observationToken: ComputerUse.observationToken
             )
         }
-        return ComputerUseMCP.ToolOutcome(isError: false, text: state)
+        return ComputerUseMCP.ToolOutcome(isError: false, text: state, observationToken: ComputerUse.observationToken)
 
     case "click":
         guard ComputerUse.accessibilityAllowed else {
@@ -283,7 +293,10 @@ let executor: ComputerUseMCP.Executor = { tool, args in
         let result = ComputerUse.paste(appName: app, text: text, format: format)
         return ComputerUseMCP.ToolOutcome(isError: !result.success, text: result.message)
 
-    case "screenshot":
+    case "screenshot", "get_screenshot":
+        if tool == "get_screenshot", ComputerUseMCP.appNameArg(args) == nil {
+            return .init(isError: true, text: "get_screenshot 需要非空 app。")
+        }
         guard ComputerUse.screenCaptureAllowed else {
             return ComputerUseMCP.ToolOutcome(isError: true, text: screenPermissionHint)
         }
@@ -467,10 +480,17 @@ func bridgeFailureResponse(requestData: Data, message: String) -> Data? {
 var previousAppStates: [String: String] = [:]
 
 func applyingAppStateDiff(requestData: Data, responseData: Data) -> Data {
+    if let request = (try? JSONSerialization.jsonObject(with: requestData)) as? [String: Any],
+       let params = request["params"] as? [String: Any],
+       let tool = params["name"] as? String,
+       ComputerUseObservationSession.screenshotTools.contains(tool) {
+        previousAppStates.removeAll()
+    }
     guard let request = (try? JSONSerialization.jsonObject(with: requestData)) as? [String: Any],
           request["method"] as? String == "tools/call",
           let params = request["params"] as? [String: Any],
-          params["name"] as? String == "get_app_state",
+          let tool = params["name"] as? String,
+          ComputerUseObservationSession.stateTools.contains(tool),
           let arguments = params["arguments"] as? [String: Any],
           let app = ComputerUseMCP.appNameArg(arguments),
           let response = (try? JSONSerialization.jsonObject(with: responseData)) as? [String: Any],
@@ -484,7 +504,7 @@ func applyingAppStateDiff(requestData: Data, responseData: Data) -> Data {
     guard let state = pieces.first, state.hasPrefix("App: ") else { return responseData }
     let key = app.lowercased()
     let legacyCall = arguments["include_screenshot"] != nil
-    let disableDiff = ComputerUseMCP.boolArg(arguments, "disableDiff")
+    let disableDiff = ComputerUseMCP.boolArg(arguments, "disableDiff") || ComputerUseMCP.boolArg(arguments, "disableDiffing")
     defer { previousAppStates[key] = state }
     guard !legacyCall, !disableDiff, let previous = previousAppStates[key] else {
         return responseData
@@ -565,7 +585,7 @@ func launchServicesResponse(requestData: Data, helperAppURL: URL) -> Data? {
         let deadline = Date().addingTimeInterval(15)
         repeat {
             if let data = try? Data(contentsOf: responseURL), !data.isEmpty {
-                return applyingAppStateDiff(requestData: requestData, responseData: data)
+                return data
             }
             usleep(20_000)
         } while Date() < deadline
@@ -616,16 +636,17 @@ if commandArguments.first == "--execute-request-file",
 
 stderrLog("started (pid \(ProcessInfo.processInfo.processIdentifier), tools: \(ComputerUseMCP.toolNames.count))")
 let helperAppURL = containingHelperAppURL()
+let observationSession = ComputerUseObservationSession()
 while let line = readLine(strippingNewline: true) {
     let data = Data(line.utf8)
     guard !data.isEmpty else { continue }
     let method = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["method"] as? String
-    let response: Data?
-    if method == "tools/call", let helperAppURL {
-        response = launchServicesResponse(requestData: data, helperAppURL: helperAppURL)
-    } else {
-        response = ComputerUseMCP.handle(requestData: data, executor: executor)
-    }
+    let response = observationSession.respond(to: data) { forwarded in
+        if method == "tools/call", let helperAppURL {
+            return launchServicesResponse(requestData: forwarded, helperAppURL: helperAppURL)
+        }
+        return ComputerUseMCP.handle(requestData: forwarded, executor: executor)
+    }.map { applyingAppStateDiff(requestData: data, responseData: $0) }
     guard let response else { continue }
     FileHandle.standardOutput.write(response)
     FileHandle.standardOutput.write(Data("\n".utf8))

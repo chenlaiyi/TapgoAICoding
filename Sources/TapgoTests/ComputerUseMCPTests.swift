@@ -9,6 +9,8 @@ import Foundation
 func runComputerUseMCPProtocol(_ t: TestRunner) {
     let noop: ComputerUseMCP.Executor = { _, _ in ComputerUseMCP.ToolOutcome(text: "ok") }
 
+    runComputerUseObservationSession(t)
+
     // initialize 握手
     let initReq = #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#
     if let data = ComputerUseMCP.handle(requestData: Data(initReq.utf8), executor: noop),
@@ -37,7 +39,7 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
        let result = obj["result"] as? [String: Any],
        let tools = result["tools"] as? [[String: Any]] {
         t.expectEqual(tools.count, ComputerUseMCP.toolNames.count, "mcp: 工具数与注册表一致")
-        t.expectEqual(tools.count, 19, "mcp: 11 个 Codex 主工具 + 8 个旧版别名")
+        t.expectEqual(tools.count, 22, "mcp: 11 个原生动作 + 3 个分离观察工具 + 8 个旧版别名")
         let names = tools.compactMap { $0["name"] as? String }
         for required in ComputerUseMCP.toolNames {
             t.expect(names.contains(required), "mcp: 工具 \(required) 已注册")
@@ -209,11 +211,11 @@ func runComputerUseMCPProtocol(_ t: TestRunner) {
     t.expect(!ComputerUseMCP.boolArg([:], "include_screenshot"), "bool: 缺省 false")
     t.expect(ComputerUseMCP.agentInstructions.contains("list_apps"),
              "workflow: 使用 Codex 同名应用发现")
-    t.expect(ComputerUseMCP.agentInstructions.contains("disableDiff=true"),
+    t.expect(ComputerUseMCP.agentInstructions.contains("disableDiffing=true"),
              "workflow: 说明状态差量与完整树")
     t.expect(ComputerUseMCP.agentInstructions.contains("连续两次"),
              "workflow: 禁止反复盲点坐标")
-    t.expect(ComputerUseMCP.agentInstructions.contains("操作发生前始终确认"),
+    t.expect(ComputerUseMCP.agentInstructions.contains("动作发生前确认"),
              "workflow: 注入 Computer Use 风险确认策略")
     t.expectEqual(ComputerUseMCP.elementIndex(["element_index": 42]), 42,
                   "element: 非负整数合法")
@@ -346,4 +348,60 @@ func runComputerUseMCPConfigSection(_ t: TestRunner) {
              "toml: 移除电脑控制时保留相邻 MCP")
     t.expect(removedMiddle.contains("command = \"/bin/true\""),
              "toml: 相邻 MCP command 不被误删")
+}
+
+// Exercise the persistent bridge with independent simulated one-shot workers.
+func runComputerUseObservationSession(_ t: TestRunner) {
+    let session = ComputerUseObservationSession()
+    var calls = 0
+    var receivedToken: String?
+    var failObservation = false
+    let instant = Date(timeIntervalSince1970: 1000)
+    func request(_ tool: String, _ args: [String: Any] = [:]) -> Data {
+        try! JSONSerialization.data(withJSONObject: ["jsonrpc": "2.0", "id": 31, "method": "tools/call", "params": ["name": tool, "arguments": args]])
+    }
+    func call(_ tool: String, _ args: [String: Any] = [:], at date: Date? = nil) -> Bool {
+        let response = session.respond(to: request(tool, args), now: date ?? instant) { data in
+            calls += 1
+            return ComputerUseMCP.handle(requestData: data) { name, forwarded in
+                receivedToken = forwarded["_observation_token"] as? String
+                let isState = ComputerUseObservationSession.stateTools.contains(name)
+                return .init(isError: isState && failObservation, text: "state", observationToken: isState && !failObservation ? "worker-hash" : nil)
+            }
+        }
+        let object = response.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+        return (object?["result"] as? [String: Any])?["isError"] as? Bool == true
+    }
+    let index: [String: Any] = ["app": "Editor", "element_index": 4]
+    t.expect(call("click", index), "observation: unobserved index rejected")
+    t.expectEqual(calls, 0, "observation: rejected action never dispatches")
+    t.expect(!call("get_ax_state", ["app": "Editor", "_observation_token": "forged"]), "observation: AX-only read succeeds")
+    t.expect(receivedToken == nil, "observation: caller cannot inject internal token")
+    t.expect(call("click", ["app": "Other", "element_index": 4]), "observation: index cannot cross apps")
+    t.expect(!call("click", index), "observation: recent same-app index dispatches")
+    t.expectEqual(receivedToken, "worker-hash", "observation: exact prior worker hash forwarded")
+    t.expect(call("click", index), "observation: second action requires fresh observation")
+    _ = call("get_app_state", ["app": "Editor"])
+    _ = call("get_screenshot", ["app": "Editor"])
+    t.expect(call("set_value", index), "observation: screenshot invalidates AX indexes")
+    _ = call("get_ax_state_and_screenshot", ["app": "Editor"])
+    t.expect(!call("set_value", index), "observation: combined read provides valid indexes")
+    _ = call("get_ax_state", ["app": "Editor"])
+    t.expect(call("click", index, at: instant.addingTimeInterval(121)), "observation: old snapshot expires")
+    t.expect(call("click", index, at: instant.addingTimeInterval(-1)), "observation: clock reversal rejects snapshot")
+    _ = call("get_ax_state", ["app": "Editor"])
+    failObservation = true
+    t.expect(call("get_ax_state", ["app": "Editor"]), "observation: failed observation surfaced")
+    t.expect(call("click", index), "observation: failed reread discards previous snapshot")
+    failObservation = false
+    _ = call("get_ax_state", ["app": "Editor"])
+    _ = call("press_key", ["app": "Other", "key": "Return"])
+    t.expect(call("click", index), "observation: cross-app mutation invalidates stale focus")
+    _ = call("get_ax_state", ["app": "Editor"])
+    _ = call("list_apps")
+    t.expect(!call("click", index), "observation: discovery preserves observation")
+    let newSession = ComputerUseObservationSession()
+    var dispatched = false
+    _ = newSession.respond(to: request("click", index)) { _ in dispatched = true; return nil }
+    t.expect(!dispatched, "observation: restarted bridge does not inherit stale state")
 }
