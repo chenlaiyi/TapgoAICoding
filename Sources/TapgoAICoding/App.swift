@@ -9,6 +9,7 @@ struct TapgoAICodingApp: App {
     @StateObject private var store: SessionStore
     @StateObject private var remote: PhoneRemoteController
     @StateObject private var authStore: AdminAuthStore
+    @StateObject private var scheduledBridge: ScheduledTaskBridge
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
     private let forceAdminLoginPreview = ProcessInfo.processInfo.environment["TAPGO_ADMIN_LOGIN_PREVIEW"] == "1"
@@ -25,6 +26,7 @@ struct TapgoAICodingApp: App {
         // .task 里 startIfNeeded()。
         _remote = StateObject(wrappedValue: PhoneRemoteController(store: sessionStore, workspace: workspace))
         _authStore = StateObject(wrappedValue: AdminAuthStore())
+        _scheduledBridge = StateObject(wrappedValue: ScheduledTaskBridge())
         // Cross-device durable memory: pull any newer memory files from the
         // iCloud Drive mirror at startup so the user sees what they wrote on
         // their other Macs (JKmacmini / fafamacmini / laptop). Detached so a
@@ -44,6 +46,23 @@ struct TapgoAICodingApp: App {
             await MemoryConsolidator.consolidate(url: TapgoConfig.userMemoryURL)
             await MemoryConsolidator.consolidate(url: TapgoConfig.globalMemoryURL)
         }
+    }
+
+    /// Wire the ScheduledTaskBridge to the SessionStore once both exist,
+    /// and start the 60-second polling loop. Idempotent.
+    @State private var didWireScheduledBridge = false
+    private func wireScheduledBridgeOnce() {
+        if didWireScheduledBridge { scheduledBridge.refresh(); return }
+        didWireScheduledBridge = true
+        scheduledBridge.inject = { [store] task in
+            if let tid = task.targetThreadId {
+                _ = store.sendUserMessage(task.prompt, toThreadID: tid.uuidString)
+            } else {
+                store.newThread()
+                store.sendUserMessage(task.prompt)
+            }
+        }
+        scheduledBridge.start()
     }
 
     /// Resolve the pinned appearance (system / light / dark) from settings.
@@ -75,6 +94,8 @@ struct TapgoAICodingApp: App {
                 }
             }
             .environmentObject(authStore)
+                    .environmentObject(scheduledBridge)
+                    .onAppear { wireScheduledBridgeOnce() }
             .preferredColorScheme(resolvedScheme)
             .appFontScale(resolvedFontScale)
             .frame(minWidth: 920, minHeight: 640)

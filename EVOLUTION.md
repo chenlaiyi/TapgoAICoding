@@ -1378,3 +1378,15 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 - 粘贴等待数据读取后恢复剪贴板，修复慢应用取到旧内容的问题，并明确返回超时/并发变化。
 - 按实际区域尺寸滚动，支持半页等小数页数。
 - 真实回归覆盖延迟粘贴、滚动条回读及跨会话状态变化拦截。
+
+
+## v0.5.102 — feat(scheduler): v0.5.102 — 定时任务面板（60s tick runner + 4 种 ScheduleSpec + macOS 通知 + 文件级持久化）
+**Date**: 2026-09-05
+**Commit**: _(see `git log -1 v0.5.102`)_
+**Tag**: v0.5.102
+**Test status**: — 2818 passed, 0 failed —
+**Changed**:
+- feat(scheduler): v0.5.102 — 定时任务面板（60s tick runner + 4 种 ScheduleSpec + macOS 通知 + 文件级持久化）
+侧边栏一级导航加 定时任务 (clock.arrow.circlepath); TapgoCore 新增 ScheduledTask + ScheduledTaskStore (JSON 文件 0600) + ScheduledTaskRunner (60s tick, oneShot 触发后自动 disable); TapgoAICoding 新增 ScheduledTasksView (列表 + 编辑 sheet + 空态) + ScheduledTaskBridge (通知 + SessionStore.sendUserMessage 注入, 支持新会话或指定会话); App.swift 启动时 wire bridge + start runner; 新增 ScheduleSpecTests + ScheduledTaskStoreTests 共 23 条断言
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
