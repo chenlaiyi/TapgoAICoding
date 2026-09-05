@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.106</title>
+            <pubDate>Sat, 05 Sep 2026 13:56:52 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.106</link>
+            <sparkle:version>0.5.106</sparkle:version>
+            <sparkle:shortVersionString>0.5.106</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.106
+
+全面升级消息输出样式和内容，更接近 Codex 桌面端的阅读节奏。
+
+- 节奏收紧：段落 / 列表 / 表格的行距与段距下调，markdown 块更紧凑、对话更易扫读。
+- 思考合并：连续 reasoning / reasoningSummary 合并到同一行 `思考过程 · N 字符`，点击展开完整正文；单段思考保留极简标签。
+- 用户气泡更克制：padding 收紧、增加细描边，不再像聊天贴纸。
+- 状态徽章轻量化：替换为低饱和度小色点 + 描边胶囊，避免彩色堆叠。
+- 行内代码底色更柔和：`#EFEFF1` / `#2E2E2F`，与正文对比更自然。
+- 流式光标内联：2pt 胶囊紧贴最后一段，不再独立成行。
+- 工具 / 查阅汇总：连续搜索类工具合并到 `查阅 · N 搜索, M 列表`；多段思考同样合并。
+- 渲染层加 `summaryText` 通道：聚合行携带完整正文与字符数，UI 据此显示字符徽标和展开内容。
+
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.106/Tapgo-AICoding-0.5.106.zip" length="11602233" type="application/octet-stream" sparkle:edSignature="7ou6AVWw+/kI977OyxPT0Wm+M08iPPCQ1bzRw37bO7CcLjusFdhh5dPpdXdvkPomFjza/KxcxeXu3ZAbFLaNDQ=="/>
+        </item>
+        <item>
             <title>0.5.105</title>
             <pubDate>Sat, 05 Sep 2026 10:40:39 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.105</link>
@@ -55,36 +79,6 @@
 - 2801 通过 / 13 失败，13 个全是预先存在的远程 SSH 集成 + helper version tag 一次性断言，无回归。
 - Core 端 `PhoneRemote.buildState` 接受 `permissions` 实参；App 端 `applyPermissionProfile` 写入后立即被下次轮询带回。]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.101/Tapgo-AICoding-0.5.101.zip" length="11285780" type="application/octet-stream" sparkle:edSignature="wLOb60RNoxqz+5ozu/potsp/6C9I0VfcA4VXU1gi0ri061sATYogeczyJIsyEHtmf4PeljYQJDgRvu9+xw6ACg=="/>
-        </item>
-        <item>
-            <title>0.5.100</title>
-            <pubDate>Sat, 05 Sep 2026 02:52:57 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.100</link>
-            <sparkle:version>0.5.100</sparkle:version>
-            <sparkle:shortVersionString>0.5.100</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.100
-
-添加远程主机/项目可用性回归。SwiftUI `Form` 在 macOS 上会阻断 `@State` 与 NSTextField 的双向绑定，导致"保存"按钮永远 disabled；改成自绘字段 + 实时校验后下划线/中文等真实命名的主机也能成功添加。
-
-## 修复
-
-- `SettingsView.AddRemoteHostSheet`：去掉 `.formStyle(.grouped)`，改用直接 `TextField(_, text: $binding)` + 自定义 `canSave` 校验；保存按钮的 `disabled` 现在实时反映字段合法性。
-- 新增 `RemoteCommandBuilder.validateAlias(_:)` 公开校验函数，alias / host / user 各自的错误信息分别精确提示（"别名只允许字母/数字/点/下划线/连字符" / "主机含非法字符" / "用户只允许…"）。
-- 端口字段改用 `String` + `Int()` 解析，非法端口给红色错误（覆盖之前的 silently disabled），范围限制 1–65535。
-
-## 测试
-
-- 新增 14 个 v0.5.100 验证：host / user / alias 含下划线（`mac-mini_jk` / `john_doe` / `dev_box`）必须通过；空格 / 斜杠 必须拒绝。
-- `RemoteCommandBuilder` 4 节测试共 47 个断言全绿。
-- 总体回归 2802 通过 / 12 失败（12 个全是预先存在的远程 SSH 集成测试，与本版本无关）。
-
-## 影响
-
-- 之前：用户报告"不能配置主机 / 无法添加远程项目"。保存按钮永远 disabled，alias 含中文/特殊字符无法保存。
-- 现在：字段填完后保存按钮即时启用；非法字段会立刻显示精确的红字错误。已在本机实测添加 `mac-mini_jk` / `chenlaiyi@192.168.1.20:22` 成功。]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.100/Tapgo-AICoding-0.5.100.zip" length="11271194" type="application/octet-stream" sparkle:edSignature="1VGM3+z8X85U0SdHZQNbPKGbSKPLXoajk5m0NHHASo6cjS4YZUy6dTgyxSZdgMMBIQf/Gr0s6L4AdARMiDZtCw=="/>
         </item>
     </channel>
 </rss>
