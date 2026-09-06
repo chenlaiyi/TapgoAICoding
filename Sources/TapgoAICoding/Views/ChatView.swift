@@ -411,10 +411,18 @@ struct ChatView: View {
                         )
                     })
                 }
+                // 打开会话直接从底部开始布局。此前靠 scrollChatToBottom 延迟
+                // scrollTo("BOTTOM")，而 LazyVStack 对未实例化的目标行只能从
+                // 当前位置沿途布局找过去——大会话（数百轮、超长消息/表格）会
+                // 被一次性全量布局，主线程卡死数秒到数十秒。原生底部锚定让
+                // LazyVStack 第一帧就只布局底部可视区。
+                .defaultScrollAnchor(.bottom)
                 .coordinateSpace(name: "chat")
                 .onReceive(NotificationCenter.default.publisher(for: .tapgoJumpToTurn)) { note in
                     if let id = note.object as? String {
-                        withAnimation(.easeOut(duration: 0.25)) {
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
                             proxy.scrollTo(id, anchor: .top)
                         }
                     }
@@ -447,7 +455,9 @@ struct ChatView: View {
                     VStack(alignment: .trailing, spacing: 6) {
                         if !isNearBottom {
                             Button {
-                                withAnimation(.easeOut(duration: 0.2)) {
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
                                     proxy.scrollTo("TOP", anchor: .top)
                                 }
                             } label: {
@@ -460,7 +470,9 @@ struct ChatView: View {
                         }
                         if showNewMessage {
                             Button {
-                                withAnimation(.easeOut(duration: 0.2)) {
+                                var transaction = Transaction()
+                                transaction.disablesAnimations = true
+                                withTransaction(transaction) {
                                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                                 }
                                 showNewMessage = false
@@ -535,7 +547,11 @@ struct ChatView: View {
     /// we delay briefly before scrolling.
     private func scrollChatToBottom(_ proxy: ScrollViewProxy) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            withAnimation(.easeOut(duration: 0.2)) {
+            // 动画滚动会沿途布局 LazyVStack 的全部行（大会话数百条），直接
+            // 跳转只布局目标区，打开会话/新消息定位不再卡顿。
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
                 proxy.scrollTo("BOTTOM", anchor: .bottom)
             }
         }
