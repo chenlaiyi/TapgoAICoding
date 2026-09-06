@@ -26,8 +26,8 @@ struct MarkdownMessageView: View {
                     paragraphView(segs: segs)
                 case .code(let code, let lang):
                     CodeBlockView(code: code, lang: lang)
-                case .list(let items, let ordered, let depths):
-                    ListView(items: items, ordered: ordered, depths: depths)
+                case .list(let items, let ordered, let depths, let startNumber):
+                    ListView(items: items, ordered: ordered, depths: depths, startNumber: startNumber)
                 case .quote(let segs):
                     QuoteView(segs: segs)
                 case .rule:
@@ -52,7 +52,7 @@ struct MarkdownMessageView: View {
         /// 以保证 inline / bold / 行内代码的字号、字重、行内代码底色等跟随用户字号偏好。
         case para([MarkdownSegment])
         case code(code: String, lang: String?)
-        case list(items: [[MarkdownSegment]], ordered: Bool, depths: [Int])
+        case list(items: [[MarkdownSegment]], ordered: Bool, depths: [Int], startNumber: Int)
         case quote([MarkdownSegment])
         case rule
         case table(headers: [String], rows: [[String]])
@@ -64,37 +64,52 @@ struct MarkdownMessageView: View {
     private static func blocks(_ segs: [MarkdownSegment]) -> [Block] {
         var out: [Block] = []
         var acc: [MarkdownSegment] = []
+        // 有序列表跨块连续编号：作者常在 "1." 项下用 "- " 写子要点，旧逻辑
+        // 遇嵌套 bullet 就把列表切断、每段从 1 重新编号，渲染成 "1. 1. 1."。
+        // bullet 打断视为子列表（编号延续）；段落/标题/代码块等打断才重置。
+        var orderedCounter = 0
+        func resetOrderedCounter() { orderedCounter = 0 }
         for seg in segs {
             switch seg {
             case .codeFence(let code, let lang):
                 appendPara(&out, &acc)
                 out.append(.code(code: code, lang: lang))
+                resetOrderedCounter()
             case .bulletList(let items, let depths):
                 appendPara(&out, &acc)
-                out.append(.list(items: items, ordered: false, depths: depths))
+                out.append(.list(items: items, ordered: false, depths: depths, startNumber: 1))
             case .numberedList(let items, let depths):
                 appendPara(&out, &acc)
-                out.append(.list(items: items, ordered: true, depths: depths))
+                let start = orderedCounter + 1
+                out.append(.list(items: items, ordered: true, depths: depths, startNumber: start))
+                orderedCounter = start + items.count - 1
             case .blockquote(let segs):
                 appendPara(&out, &acc)
                 out.append(.quote(segs))
+                resetOrderedCounter()
             case .horizontalRule:
                 appendPara(&out, &acc)
                 out.append(.rule)
+                resetOrderedCounter()
             case .table(let headers, let rows):
                 appendPara(&out, &acc)
                 out.append(.table(headers: headers, rows: rows))
+                resetOrderedCounter()
             case .taskList(let items):
                 appendPara(&out, &acc)
                 out.append(.task(items))
+                resetOrderedCounter()
             case .image(let alt, let url):
                 appendPara(&out, &acc)
                 out.append(.image(alt: alt, url: url))
+                resetOrderedCounter()
             case .heading(let level, let content):
                 appendPara(&out, &acc)
                 out.append(.heading(level: level, content: content))
+                resetOrderedCounter()
             case .text(let text):
                 appendText(text, to: &out, accumulator: &acc)
+                resetOrderedCounter()
             case .inline, .bold, .link, .strikethrough, .fileReference:
                 acc.append(seg)
             }
@@ -152,16 +167,17 @@ struct MarkdownMessageView: View {
         var a = AttributedString()
         // Monospace is optically wider than body text. Keep it quiet so
         // paragraphs with paths remain readable rather than a grid of tiles.
-        let inlineSize = baseFontSize * 0.92
-        // ZCode 参考样式：行内代码画一块圆角胶囊底。Text 的 backgroundColor
-        // 是平矩形且紧贴字形，所以前后各染一个空格充当水平内边距；上下留白
-        // 随行高自动出现，断行后每行都保有底色。相比按 view 拆段的 flow
-        // 布局，这条路线不干扰 Text 的原生断词/逐字换行。
+        let inlineSize = baseFontSize * 0.95
+        // ZCode 参考样式的行内代码胶囊。代码密集的消息（诊断报告、SQL 路径）
+        // 一段能出现七八个胶囊：底色必须非常淡（正文字色 9% 透明度，GitHub
+        // dark 风格），字号贴近正文、regular 字重，否则整段被实色灰块切碎、
+        // 视觉上"花"得没法读。Text 的 backgroundColor 是平矩形且紧贴字形，
+        // 前后各染一个空格充当水平内边距；断行后每行都保有底色。
         func pill(_ s: String) -> AttributedString {
             var r = AttributedString(" " + s + " ")
-            r.font = .system(size: inlineSize, weight: .medium, design: .monospaced)
+            r.font = .system(size: inlineSize, weight: .regular, design: .monospaced)
             r.foregroundColor = DSHTheme.messageText
-            r.backgroundColor = DSHTheme.inlineCodeBg
+            r.backgroundColor = DSHTheme.messageText.opacity(0.09)
             return r
         }
         for seg in segs {
@@ -242,6 +258,8 @@ struct MarkdownMessageView: View {
         let items: [[MarkdownSegment]]
         let ordered: Bool
         var depths: [Int] = []
+        /// 有序列表跨块延续的起始编号（见 `blocks(_:)` 的 orderedCounter）。
+        var startNumber: Int = 1
 
         var body: some View {
             // Codex uses a small but clearly visible marker and a compact row
@@ -254,7 +272,7 @@ struct MarkdownMessageView: View {
                     // 档位，让眼睛立刻能分辨"主层级"和"更深层级"。
                     let depth = (idx < depths.count) ? depths[idx] : 0
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(ordered ? "\(idx + 1)." : "•")
+                        Text(ordered ? "\(startNumber + idx)." : "•")
                             .font(.system(size: markerSize, weight: .regular, design: .monospaced))
                             .foregroundStyle(DSHTheme.labelTertiary)
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
