@@ -163,6 +163,7 @@ struct MessageBubble: View {
     @State private var showEditSheet = false
     @State private var editedText = ""
     @State private var hoveringUser = false
+    @State private var copiedToClipboard = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     private func copy(_ s: String) {
@@ -211,8 +212,11 @@ struct MessageBubble: View {
                 }
                 userActionBar
                     .frame(height: 24)
+                    // 视觉随 hover 淡入，但命中常开：若 allowsHitTesting 也跟随
+                    // hover，鼠标从下方/侧方直接进入按钮条（不经过气泡）时第一下
+                    // 点击会落在 hover 尚未建立的禁用区里穿透落空——复制按钮
+                    // 表现为"点了没反应"。
                     .opacity(hoveringUser ? 1 : 0)
-                    .allowsHitTesting(hoveringUser)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
             .contentShape(Rectangle())
@@ -249,6 +253,7 @@ struct MessageBubble: View {
                     Image(systemName: "arrow.uturn.backward")
                 }
                 .buttonStyle(.borderless)
+                .contentShape(Rectangle())
                 .foregroundStyle(.secondary)
                 .help("重发此问题")
                 .accessibilityLabel("重发此问题")
@@ -261,19 +266,24 @@ struct MessageBubble: View {
                     Image(systemName: "pencil")
                 }
                 .buttonStyle(.borderless)
+                .contentShape(Rectangle())
                 .foregroundStyle(.secondary)
                 .help("编辑并重发")
                 .accessibilityLabel("编辑并重发")
             }
             Button {
                 copy(text)
+                copiedToClipboard = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copiedToClipboard = false }
             } label: {
-                Image(systemName: "doc.on.doc")
+                // 复制成功后图标短暂变绿勾，用户不再靠猜判断有没有生效。
+                Image(systemName: copiedToClipboard ? "checkmark" : "doc.on.doc")
+                    .foregroundStyle(copiedToClipboard ? Color.green : .secondary)
             }
             .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
             .help("复制")
-            .accessibilityLabel("复制")
+            .accessibilityLabel(copiedToClipboard ? "已复制" : "复制")
         }
         .font(.system(size: 13))
         .padding(.trailing, 2)
