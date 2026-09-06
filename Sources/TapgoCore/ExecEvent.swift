@@ -87,10 +87,21 @@ public enum ExecEvent: Hashable {
     /// Streaming deltas (assistant text, reasoning, reasoning summary,
     /// command output) return `false` so they coalesce into one write
     /// per debounce window. Turn boundary, plan, diff, error, rate limit,
+    /// True for the high-frequency streaming text deltas. SessionStore
+    /// buffers these (see `bufferStreamingDelta`) so each one does not
+    /// trigger a full transcript re-render on the main actor.
+    public var isStreamingDelta: Bool {
+        switch self {
+        case .agentMessageDelta, .reasoningDelta, .reasoningSummaryDelta:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// token usage and approval events all return `true` because the
     /// UI depends on them being durable the moment they happen.
-    public var isPersistenceTerminal: Bool {
-        switch self {
+    public var isPersistenceTerminal: Bool {        switch self {
         case .threadStarted,
              .turnStarted,
              .turnCompleted,

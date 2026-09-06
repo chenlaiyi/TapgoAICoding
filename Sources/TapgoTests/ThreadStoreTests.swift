@@ -443,8 +443,14 @@ func runThreadStoreScheduleSaveDebounces(_ t: TestRunner) async {
     )
     store.scheduleSave(thread, immediate: true)
     let fileURL = tmp.appendingPathComponent("\(thread.id).json")
-    let initialMTime = (try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.modificationDate] as? Date
-    t.expectNotNil(initialMTime, "debounce: initial immediate save writes file")
+    // immediate 走后台 utility 队列：轮询等待落盘（最多 2s）。
+    var initialMTime: Date?
+    for _ in 0..<40 {
+        initialMTime = (try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.modificationDate] as? Date
+        if initialMTime != nil { break }
+        try? await Task.sleep(until: ContinuousClock.now.advanced(by: .milliseconds(50)), clock: .continuous)
+    }
+    t.expectNotNil(initialMTime, "debounce: initial immediate save writes file (async writer)")
 
     // Schedule 50 non-terminal updates back-to-back. Each call must
     // reset the debounce window. After the final schedule we wait the
@@ -492,11 +498,15 @@ func runThreadStoreScheduleSaveImmediate(_ t: TestRunner) async {
     var updated = thread
     updated.title = "Updated via immediate"
     store.scheduleSave(updated, immediate: true)
-    t.expectEqual(FileManager.default.fileExists(atPath: fileURL.path), true,
-                  "immediate: scheduleSave(immediate:true) writes synchronously")
-    let decoded = try? JSONDecoder().decode(TapgoCore.Thread.self, from: Data(contentsOf: fileURL))
+    // immediate 在后台 utility 队列落盘：轮询等待并校验内容（最多 2s）。
+    var decoded: TapgoCore.Thread?
+    for _ in 0..<40 {
+        decoded = try? JSONDecoder().decode(TapgoCore.Thread.self, from: Data(contentsOf: fileURL))
+        if decoded?.title == "Updated via immediate" { break }
+        try? await Task.sleep(until: ContinuousClock.now.advanced(by: .milliseconds(50)), clock: .continuous)
+    }
     t.expectEqual(decoded?.title, "Updated via immediate",
-                  "immediate: file contains the strictly newer snapshot")
+                  "immediate: background writer commits the strictly newer snapshot")
 
     // No pending debounced task should still be alive for this id —
     // we want the immediate write to supersede any in-flight flush.

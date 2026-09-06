@@ -61,7 +61,10 @@ final class SessionStore: ObservableObject {
     private final class RunContext {
         let runner: CodexHarnessClient
         let turnId: String
-        let worktreeBaseline: WorktreeChangeBaseline?
+        /// Turn 开始时的 git 改动基线。采集在后台 utility 队列跑（发送路径
+        /// 不再等 3 个 git 子进程），turn 刚开始还没有文件改动，晚几百毫秒
+        /// 的基线不影响结束时的统计。
+        var worktreeBaseline: WorktreeChangeBaseline?
         var task: Task<Void, Never>?
         var worktreeStatsTask: Task<Void, Never>?
 
@@ -386,7 +389,7 @@ final class SessionStore: ObservableObject {
             mode: TapgoCore.Thread.evolutionMode
         )
         liveThreads.insert(t, at: 0)
-        threads.save(t)
+        threads.scheduleSave(t, immediate: true)
         activeThreadId = t.id
         persistActiveThread()
         NotificationCenter.default.post(name: .tapgoClearComposer, object: nil)
@@ -412,7 +415,7 @@ final class SessionStore: ObservableObject {
             turns: []
         )
         liveThreads.insert(t, at: 0)
-        threads.save(t)
+        threads.scheduleSave(t, immediate: true)
         activeThreadId = t.id
         persistActiveThread()
         NotificationCenter.default.post(name: .tapgoClearComposer, object: nil)
@@ -436,7 +439,7 @@ final class SessionStore: ObservableObject {
             mode: TapgoCore.Thread.auxiliaryMode
         )
         liveThreads.insert(thread, at: 0)
-        threads.save(thread)
+        threads.scheduleSave(thread, immediate: true)
         return thread.id
     }
 
@@ -474,7 +477,7 @@ final class SessionStore: ObservableObject {
               let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
         liveThreads[idx].title = trimmed
         liveThreads[idx].updatedAt = Date()
-        threads.save(liveThreads[idx])
+        threads.scheduleSave(liveThreads[idx], immediate: true)
     }
 
     /// Set / clear the active thread's session goal (`/goal` command, or the
@@ -544,21 +547,21 @@ final class SessionStore: ObservableObject {
         var all = liveThreads
         all[idx] = updated
         liveThreads = all
-        threads.save(updated)
+        threads.scheduleSave(updated, immediate: true)
     }
 
     func togglePinned(_ id: String) {
         guard let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
         liveThreads[idx].isPinned.toggle()
         liveThreads[idx].updatedAt = Date()
-        threads.save(liveThreads[idx])
+        threads.scheduleSave(liveThreads[idx], immediate: true)
     }
 
     func updateThreadHarness(threadId: String, harnessThreadId: String) {
         guard let idx = liveThreads.firstIndex(where: { $0.id == threadId }) else { return }
         liveThreads[idx].harnessThreadId = harnessThreadId
         liveThreads[idx].updatedAt = Date()
-        threads.save(liveThreads[idx])
+        threads.scheduleSave(liveThreads[idx], immediate: true)
     }
 
     /// Re-validate setup after the user runs `init-tapgo.sh`.
@@ -664,7 +667,7 @@ final class SessionStore: ObservableObject {
         if liveThreads[idx].hasDefaultTitle, !displayText.isEmpty {
             liveThreads[idx].title = TapgoCore.Thread.autoTitle(from: displayText)
         }
-        threads.save(liveThreads[idx])
+        threads.scheduleSave(liveThreads[idx], immediate: true)
         let cwd = liveThreads[idx].cwd
         let project = liveThreads[idx].projectId.flatMap { workspace.project(byId: $0) }
 
@@ -673,7 +676,7 @@ final class SessionStore: ObservableObject {
             liveThreads[idx].turns[turnIndex].items.append(.assistantMessage(id: "scheduled-" + UUID().uuidString, text: reply))
             liveThreads[idx].turns[turnIndex].status = .completed
             liveThreads[idx].turns[turnIndex].completedAt = Date()
-            threads.save(liveThreads[idx])
+            threads.scheduleSave(liveThreads[idx], immediate: true)
             finishTurnAndDrain(finishedThreadId: threadId)
             return
         }
@@ -713,25 +716,33 @@ final class SessionStore: ObservableObject {
             liveThreads[idx].turns[ti].status = .failed
             liveThreads[idx].turns[ti].completedAt = Date()
             liveThreads[idx].turns[ti].items.append(.error(id: "route-" + UUID().uuidString, message: error.localizedDescription))
-            threads.save(liveThreads[idx])
+            threads.scheduleSave(liveThreads[idx], immediate: true)
             runnerStatesByThreadId[threadId] = .failed(error.localizedDescription)
             finishTurnAndDrain(finishedThreadId: threadId)
             return
         }
-        let worktreeBaseline: WorktreeChangeBaseline?
-        if project?.isRemote == true {
-            worktreeBaseline = nil
-        } else if let cwd {
-            worktreeBaseline = WorktreeChangeTracker.captureBaseline(
-                cwd: URL(fileURLWithPath: cwd, isDirectory: true)
-            )
-        } else {
-            worktreeBaseline = nil
+        // Worktree baseline moves to a utility task: the send path used to
+        // spawn three synchronous `git` subprocesses on the main actor, which
+        // is the multi-second stall after every message on large worktrees.
+        // Nothing has touched the worktree yet at turn start, so a baseline
+        // captured a few hundred ms late is still correct for the end-of-turn
+        // diff.
+        if project?.isRemote != true, let cwd {
+            let cwdURL = URL(fileURLWithPath: cwd, isDirectory: true)
+            Task.detached(priority: .utility) { [weak self] in
+                let baseline = WorktreeChangeTracker.captureBaseline(cwd: cwdURL)
+                guard let self else { return }
+                await MainActor.run { [weak self] in
+                    guard let self,
+                          let context = self.runsByThreadId[threadId],
+                          context.turnId == turnId else { return }
+                    context.worktreeBaseline = baseline
+                }
+            }
         }
         let context = RunContext(
             runner: newRunner,
-            turnId: turnId,
-            worktreeBaseline: worktreeBaseline
+            turnId: turnId
         )
         runsByThreadId[threadId] = context
         runnerStatesByThreadId[threadId] = .running(threadId: resumeId)
@@ -1042,7 +1053,7 @@ final class SessionStore: ObservableObject {
                         request.decision = decide
                         items[itemIdx] = .approval(request)
                         liveThreads[threadIdx].turns[turnIdx].items = items
-                        threads.save(liveThreads[threadIdx])
+                        threads.scheduleSave(liveThreads[threadIdx], immediate: true)
                         return
                     }
                 }
@@ -1235,7 +1246,7 @@ final class SessionStore: ObservableObject {
             .userMessage(id: "steer-" + item.id, text: displayText)
         )
         liveThreads[threadIdx].updatedAt = Date()
-        threads.save(liveThreads[threadIdx])
+        threads.scheduleSave(liveThreads[threadIdx], immediate: true)
     }
 
     /// Called when one conversation's turn finishes. Only that conversation's
@@ -1272,6 +1283,9 @@ final class SessionStore: ObservableObject {
     // MARK: - Event application
 
     private func handle(event: ExecEvent, threadId: String, turnId: String) {
+        // 流式 delta 先进缓冲（见 bufferStreamingDelta）；任何结构化事件到
+        // 来前先把缓冲刷掉，保证消息顺序（delta 文本不会跑到 command 行之后）。
+        if !event.isStreamingDelta { flushStreamingDeltas() }
         guard let threadIdx = liveThreads.firstIndex(where: { $0.id == threadId }),
               let turnIdx = liveThreads[threadIdx].turns.firstIndex(where: { $0.id == turnId })
         else { return }
@@ -1382,25 +1396,22 @@ final class SessionStore: ObservableObject {
             }
             if turn.status == .awaitingApproval { turn.status = .running }
         case .agentMessageDelta(let id, let delta):
-            appendToStreamingMessage(id: id, delta: delta, in: &turn) {
-                .assistantMessage(id: $0, text: "")
-            }
+            bufferStreamingDelta(id: id, threadId: threadId, turnId: turnId, kind: .assistant, delta: delta)
+            return
         case .agentMessageStarted(let id, let phase):
             if let phase { turn.assistantPhases[id] = phase }
         case .agentMessage(let id, let text, let phase):
             if let phase { turn.assistantPhases[id] = phase }
             replaceAssistantText(id: id, text: text, in: &turn)
         case .reasoningDelta(let id, let delta):
-            appendToStreamingMessage(id: id, delta: delta, in: &turn) {
-                .reasoning(id: $0, text: "")
-            }
+            bufferStreamingDelta(id: id, threadId: threadId, turnId: turnId, kind: .reasoning, delta: delta)
+            return
         case .reasoningSummaryDelta(let id, _ , let delta):
             // The condensed reasoning summary streams separately from the
             // raw `reasoning/textDelta` trace; we keep it in its own
             // disclosure.
-            appendToStreamingMessage(id: id, delta: delta, in: &turn) {
-                .reasoningSummary(id: $0, text: "")
-            }
+            bufferStreamingDelta(id: id, threadId: threadId, turnId: turnId, kind: .reasoningSummary, delta: delta)
+            return
         case .reasoning(let id, let summary):
             // Keep the detailed streamed trace (collapsed behind the
             // disclosure) rather than throwing it away in favour of the
@@ -1605,6 +1616,82 @@ final class SessionStore: ObservableObject {
             turn.items.append(make(id))
         }
     }
+
+    // MARK: - Streaming delta throttle
+    //
+    // Codex 每秒可发几十个 delta；此前每个 delta 都在主 actor 上走完整链路：
+    // 写回 liveThreads → TurnPresentation 全量重算 → 正在流式的消息全文重新
+    // parse + AttributedString 重建 + Text 全文排版。消息越大主线程越接近
+    // 100%，用户看到的就是"每条消息发送后整个 App 卡住几秒"。
+    //
+    // 缓冲把应用频率上限压到 ~8 次/秒（120ms 合并窗口），流式观感依旧连贯。
+
+    private enum StreamingDeltaKind {
+        case assistant, reasoning, reasoningSummary
+    }
+
+    private struct PendingDelta {
+        let threadId: String
+        let turnId: String
+        let kind: StreamingDeltaKind
+        var text: String
+    }
+
+    private static let deltaFlushInterval: Duration = .milliseconds(120)
+    private var pendingDeltas: [String: PendingDelta] = [:]
+    private var deltaFlushTask: Task<Void, Never>?
+
+    private func bufferStreamingDelta(
+        id: String, threadId: String, turnId: String,
+        kind: StreamingDeltaKind, delta: String
+    ) {
+        var entry = pendingDeltas[id] ?? PendingDelta(threadId: threadId, turnId: turnId, kind: kind, text: "")
+        entry.text += delta
+        pendingDeltas[id] = entry
+        guard deltaFlushTask == nil else { return }
+        deltaFlushTask = Task { [weak self] in
+            do {
+                try await Task.sleep(until: ContinuousClock.now.advanced(by: Self.deltaFlushInterval), clock: .continuous)
+            } catch {
+                return // cancelled — flushStreamingDeltas took over
+            }
+            await self?.flushStreamingDeltas()
+        }
+    }
+
+    /// Apply all buffered deltas at once. Also the ordering gate: any
+    /// structured event flushes first, so buffered text can never land after
+    /// a command row that arrived later in the stream.
+    private func flushStreamingDeltas() {
+        deltaFlushTask?.cancel()
+        deltaFlushTask = nil
+        guard !pendingDeltas.isEmpty else { return }
+        let batch = pendingDeltas
+        pendingDeltas.removeAll()
+        var touchedThreadIds = Set<String>()
+        for (id, entry) in batch {
+            guard let threadIdx = liveThreads.firstIndex(where: { $0.id == entry.threadId }),
+                  let turnIdx = liveThreads[threadIdx].turns.firstIndex(where: { $0.id == entry.turnId })
+            else { continue }
+            var turn = liveThreads[threadIdx].turns[turnIdx]
+            appendToStreamingMessage(id: id, delta: entry.text, in: &turn) { itemId in
+                switch entry.kind {
+                case .assistant: return .assistantMessage(id: itemId, text: "")
+                case .reasoning: return .reasoning(id: itemId, text: "")
+                case .reasoningSummary: return .reasoningSummary(id: itemId, text: "")
+                }
+            }
+            liveThreads[threadIdx].turns[turnIdx] = turn
+            touchedThreadIds.insert(entry.threadId)
+        }
+        for threadId in touchedThreadIds {
+            if let threadIdx = liveThreads.firstIndex(where: { $0.id == threadId }) {
+                liveThreads[threadIdx].updatedAt = Date()
+                threads.scheduleSave(liveThreads[threadIdx], immediate: false)
+            }
+        }
+    }
+
     private func replaceAssistantText(id: String, text: String, in turn: inout Turn) {
         if let i = turn.items.firstIndex(where: { $0.id == id }) {
             turn.items[i] = .assistantMessage(id: id, text: text)

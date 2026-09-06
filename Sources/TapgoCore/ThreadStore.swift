@@ -81,6 +81,32 @@ public final class ThreadStore: ObservableObject {
         }
     }
 
+    /// Serial background writer. Turn boundaries and sends must persist
+    /// without stalling the main actor on multi-MB thread JSON, and same-id
+    /// writes must land in submission order.
+    private static let writeQueue = DispatchQueue(label: "tapgo.threadstore.write", qos: .utility)
+
+    /// Encode + write `thread` on the utility queue. Submission order per
+    /// thread id is preserved (serial queue), and any pending debounced
+    /// snapshot for the same id is dropped so a strictly-newer write can
+    /// never be overwritten by an older coalesced one.
+    public func saveOffMain(_ thread: Thread) {
+        Self.pendingBox.lock.lock()
+        Self.pendingBox.pending[thread.id] = nil
+        Self.pendingBox.lock.unlock()
+        let url = baseDir.appendingPathComponent("\(thread.id).json")
+        let fm = fileManager
+        Self.writeQueue.async {
+            do {
+                let data = try Self.encoder.encode(thread)
+                try data.write(to: url, options: [.atomic])
+                try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            } catch {
+                NSLog("[ThreadStore] save failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     // MARK: - Debounced persistence (v0.5.70)
     //
     // Streaming harness notifications (`agentMessage/delta`,
@@ -112,18 +138,15 @@ public final class ThreadStore: ObservableObject {
     }
     private static let pendingBox = PendingBox()
 
-    /// Schedule a save for `thread`. With `immediate: true` the write
-    /// happens synchronously on the caller's actor. With `immediate:
-    /// false` the write is coalesced with other pending saves for up to
-    /// `Self.saveDebounce`; the latest snapshot wins.
+    /// Schedule a save for `thread`. With `immediate: true` the write is
+    /// committed right away — encoded and written on the background utility
+    /// queue (order-preserved), so turn boundaries stay durable without
+    /// blocking the caller (historically the main actor) on large threads.
+    /// With `immediate: false` the write is coalesced with other pending
+    /// saves for up to `Self.saveDebounce`; the latest snapshot wins.
     public func scheduleSave(_ thread: Thread, immediate: Bool) {
         if immediate {
-            // Cancel any pending debounced write for this id; we are
-            // about to commit a strictly-newer snapshot.
-            Self.pendingBox.lock.lock()
-            Self.pendingBox.pending[thread.id] = nil
-            Self.pendingBox.lock.unlock()
-            save(thread)
+            saveOffMain(thread)
             return
         }
         Self.pendingBox.lock.lock()
