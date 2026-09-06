@@ -796,13 +796,6 @@ struct ChatView: View {
         return f.string(from: date)
     }
 
-    private func turnMetadataHelp(_ turn: Turn) -> String {
-        var parts = ["复制本回合", turnTime(turn.startedAt)]
-        if let duration = turn.durationText, !duration.isEmpty { parts.append(duration) }
-        if let usage = turn.usage { parts.append(usage.summary) }
-        return parts.joined(separator: " · ")
-    }
-
     /// A centered date banner for the first turn of each new day, styled
     /// like Codex's "今天 / 昨天 / 2026年3月1日" separators.
     private func dateDivider(for date: Date) -> some View {

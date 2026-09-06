@@ -23,17 +23,55 @@ public enum MarkdownSegment: Equatable {
     case bold(String)
     case strikethrough(String)
     case link(title: String, url: String)
+    /// 路径 + 可选行号：识别 `path/to/file.ext:line` 与
+    /// `path/to/file.ext (line N)` 两种 Codex 截图里的写法；不带行号时 line=nil。
+    case fileReference(path: String, line: Int?)
     case image(alt: String, url: String)
     case heading(level: Int, content: [MarkdownSegment])
     case blockquote([MarkdownSegment])
     case horizontalRule
-    case bulletList([[MarkdownSegment]])
-    case numberedList([[MarkdownSegment]])
+    case bulletList(items: [[MarkdownSegment]], depths: [Int])
+    case numberedList(items: [[MarkdownSegment]], depths: [Int])
     case taskList([TaskItem])
     case table(headers: [String], rows: [[String]])
 }
 
+
+
 public enum MarkdownLite {
+    /// 解析结果缓存。消息视图每次刷新都会对同一段文本重新 parse，超大消息
+    /// （数十万字符）会把主线程拖死；keyed by (count, hash)，命中即免解析。
+    private static let cacheLock = NSLock()
+    private static var cachedParses: [ParseKey: [MarkdownSegment]] = [:]
+    private static let parseCacheLimit = 32
+
+    private struct ParseKey: Hashable {
+        let charCount: Int
+        let hash: Int
+    }
+
+    /// `parse` 的缓存版本，供渲染层高频调用。流式增量会不断产生新 key，
+    /// 超过上限后随机逐出，避免缓存无界增长。
+    public static func parseCached(_ s: String) -> [MarkdownSegment] {
+        let key = ParseKey(charCount: s.count, hash: s.hashValue)
+        cacheLock.lock()
+        if let hit = cachedParses[key] {
+            cacheLock.unlock()
+            return hit
+        }
+        cacheLock.unlock()
+
+        let parsed = parse(s)
+
+        cacheLock.lock()
+        if cachedParses.count >= parseCacheLimit {
+            cachedParses.removeValue(forKey: cachedParses.keys.first!)
+        }
+        cachedParses[key] = parsed
+        cacheLock.unlock()
+        return parsed
+    }
+
     /// Tokenize a whole message. Fenced code blocks become `.codeFence`,
     /// contiguous bullet/numbered lines become a `.bulletList` /
     /// `.numberedList`, and the surrounding text is split into
@@ -133,6 +171,7 @@ public enum MarkdownLite {
 
             if let item = classifyList(line) {
                 var items: [[MarkdownSegment]] = []
+                var depths: [Int] = []
                 let ordered = item.ordered
                 while i < n {
                     let t = lines[i].trimmingCharacters(in: .whitespaces)
@@ -143,9 +182,14 @@ public enum MarkdownLite {
                     if t.hasPrefix("|"), parseTable(lines, at: i) != nil { break }
                     guard let it = classifyList(lines[i]), it.ordered == ordered, classifyTask(lines[i]) == nil else { break }
                     items.append(parseInline(it.content))
+                    depths.append(listDepth(of: lines[i]))
                     i += 1
                 }
-                segs.append(ordered ? .numberedList(items) : .bulletList(items))
+                if ordered {
+                    segs.append(.numberedList(items: items, depths: depths))
+                } else {
+                    segs.append(.bulletList(items: items, depths: depths))
+                }
                 continue
             }
 
@@ -274,6 +318,16 @@ public enum MarkdownLite {
         return nil
     }
 
+    /// Count nested-list depth by measuring the leading whitespace before the
+    /// marker. Each 2-space indent is one depth level (matches the common
+    /// markdown convention and is forgiving for both 2- and 4-space authors).
+    /// Lines that are already trimmed at column 0 stay at depth 0.
+    static func listDepth(of line: String) -> Int {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let leading = line.distance(from: line.startIndex, to: line.range(of: trimmed)?.lowerBound ?? line.startIndex)
+        return max(0, leading / 2)
+    }
+
     /// Split a run of text into `.text` / `.inline` / `.bold` /
     /// `.link` segments. Inline code takes a single backtick on each
     /// side and never spans newlines; bold uses double asterisks; links
@@ -286,7 +340,7 @@ public enum MarkdownLite {
 
         func flushLiteral() {
             if !literal.isEmpty {
-                out.append(contentsOf: splitAutolinks(literal))
+                out.append(contentsOf: splitFileReferences(splitAutolinks(literal)))
                 literal = ""
             }
         }
@@ -392,6 +446,79 @@ public enum MarkdownLite {
         }
         if last < ns.length {
             out.append(.text(ns.substring(from: last)))
+        }
+        if out.isEmpty { out.append(.text(s)) }
+        return out
+    }
+
+    /// Split `path/to/file.ext:line` and `path/to/file.ext (line N)` out of a
+    /// literal run. Each match becomes a `.fileReference(path:line:)` segment;
+    /// anything else (already-typed plain text or `.link` segments) is left
+    /// untouched. The path must contain a `/` or end with a recognised file
+    /// extension to avoid matching bare numbers like `123` or `:8080`.
+    private static func splitFileReferences(
+        _ segs: [MarkdownSegment]
+    ) -> [MarkdownSegment] {
+        var out: [MarkdownSegment] = []
+        out.reserveCapacity(segs.count)
+        for seg in segs {
+            guard case .text(let s) = seg else {
+                out.append(seg); continue
+            }
+            out.append(contentsOf: splitFileReferencesInString(s))
+        }
+        return out
+    }
+
+    private static let fileReferenceColonPattern: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"(?<path>[A-Za-z0-9_./-]+?\.[A-Za-z0-9]+):(?<line>\d+)\b"#)
+    }()
+
+    private static let fileReferenceParenPattern: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"(?<path>[A-Za-z0-9_./-]+?\.[A-Za-z0-9]+)\s+\(line\s+(?<line>\d+)\)"#)
+    }()
+
+    private static func splitFileReferencesInString(
+        _ s: String
+    ) -> [MarkdownSegment] {
+        // We walk s once, matching either pattern; longer matches win by scanning
+        // colon first then paren at each position. Both regexes are anchored to
+        // a path ending in `.ext` and a trailing line number, so ordinary
+        // numbers / URLs / prose don't trip.
+        var out: [MarkdownSegment] = []
+        let ns = s as NSString
+        var cursor = 0
+        while cursor < ns.length {
+            let from = NSRange(location: cursor, length: ns.length - cursor)
+            // Find the earliest match of either pattern from `cursor`.
+            var best: (range: NSRange, path: String, line: Int)? = nil
+            if let re = fileReferenceColonPattern,
+               let m = re.firstMatch(in: ns as String, options: [], range: from) {
+                let path = ns.substring(with: m.range(withName: "path"))
+                let lineStr = ns.substring(with: m.range(withName: "line"))
+                if let ln = Int(lineStr) {
+                    best = (m.range, path, ln)
+                }
+            }
+            if let re = fileReferenceParenPattern,
+               let m = re.firstMatch(in: ns as String, options: [], range: from) {
+                let path = ns.substring(with: m.range(withName: "path"))
+                let lineStr = ns.substring(with: m.range(withName: "line"))
+                if let ln = Int(lineStr) {
+                    if best == nil || m.range.location < best!.range.location {
+                        best = (m.range, path, ln)
+                    }
+                }
+            }
+            guard let hit = best else {
+                out.append(.text(ns.substring(from: cursor)))
+                break
+            }
+            if hit.range.location > cursor {
+                out.append(.text(ns.substring(with: NSRange(location: cursor, length: hit.range.location - cursor))))
+            }
+            out.append(.fileReference(path: hit.path, line: hit.line))
+            cursor = hit.range.location + hit.range.length
         }
         if out.isEmpty { out.append(.text(s)) }
         return out

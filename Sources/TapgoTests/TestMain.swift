@@ -62,6 +62,7 @@ let allSections: [String] = [
     "RemoteCodexHomeSync: trusted projects are remote-only",
     "RemoteCodexHomeSync: harness wrapper script",
     "RemoteCodexHomeSync: literal key is never present anywhere in the public surface",
+    "RemoteCodexHomeSync: version check survives GUI minimal PATH",
     "RemoteSSH: push config + catalog (no auth)",
     "protocol-1: ssh connection + remote codex",
     "protocol-2: ssh round-trip",
@@ -107,6 +108,8 @@ let allSections: [String] = [
     "MarkdownLite: images",
     "MarkdownLite: headings",
     "MarkdownLite: strikethrough",
+    "MarkdownLite: nested lists depths",
+    "MarkdownLite: file reference",
     "MobilePairing: protocol + URL round-trip",
     "PhoneRemote: token 生成与校验",
     "PhoneRemote: 链接构建与路由鉴权",
@@ -474,6 +477,12 @@ struct TapgoTestMain {
         await runIfInScope(runner, "MarkdownLite: strikethrough") {
             runMarkdownLiteStrikethrough(runner)
         }
+        await runIfInScope(runner, "MarkdownLite: nested lists depths") {
+            runMarkdownLiteNestedLists(runner)
+        }
+        await runIfInScope(runner, "MarkdownLite: file reference") {
+            runMarkdownLiteFileReference(runner)
+        }
         await runIfInScope(runner, "FakeHarnessTransport: start + send + exit") {
             runFakeHarnessTransportStartSendExit(runner)
         }
@@ -777,6 +786,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "RemoteCodexHomeSync: literal key is never present anywhere in the public surface") {
             runRemoteCodexHomeSyncNoLiteralKey(runner)
+        }
+        await runIfInScope(runner, "RemoteCodexHomeSync: version check survives GUI minimal PATH") {
+            runRemoteCodexHomeSyncVersionCheckMinimalPath(runner)
         }
         await runIfInScope(runner, "RemoteSSH: push config + catalog (no auth)") {
             await runRemoteSSHPushConfigNoAuth(runner)

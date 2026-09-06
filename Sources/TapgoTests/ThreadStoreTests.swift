@@ -57,9 +57,10 @@ func runThreadStoreSaveLoad(_ t: TestRunner) {
         "resume policy: failed turn reuses harness thread"
     )
     resumeCandidate.turns[0].status = .interrupted
-    t.expectNil(
+    t.expectEqual(
         resumeCandidate.resumableHarnessThreadId,
-        "resume policy: interrupted turn starts safely"
+        "01abc",
+        "resume policy: interrupted turn still reuses harness thread (v0.5.109: interrupted is a safe terminal state; excluding it orphaned 96 turns of harness history)"
     )
     resumeCandidate.turns.append(Turn(
         id: "new", userInput: "next", status: .running, startedAt: Date()

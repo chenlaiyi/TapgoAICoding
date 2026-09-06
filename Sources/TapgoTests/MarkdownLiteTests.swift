@@ -63,13 +63,14 @@ func runMarkdownLiteLists(_ t: TestRunner) {
     """
     let segs = MarkdownLite.parse(bullet)
     t.expectEqual(segs.count, 1, "bullet: single list block")
-    guard case .bulletList(let items) = segs[0] else {
+    guard case .bulletList(let items, let depths) = segs[0] else {
         t.expect(false, "bullet: seg[0] is bulletList"); return
     }
     t.expectEqual(items.count, 3, "bullet: 3 items")
     t.expectEqual(items[0], [.text("first")], "bullet: item 0")
     t.expectEqual(items[1], [.bold("second"), .text(" item")], "bullet: item 1 inline bold")
     t.expectEqual(items[2], [.text("third")], "bullet: item 2")
+    t.expectEqual(depths, [0, 0, 0], "bullet: depths all 0 at column 0")
 
     let ordered = """
     1. alpha
@@ -77,11 +78,12 @@ func runMarkdownLiteLists(_ t: TestRunner) {
     """
     let segs2 = MarkdownLite.parse(ordered)
     t.expectEqual(segs2.count, 1, "ordered: single list block")
-    guard case .numberedList(let items2) = segs2[0] else {
+    guard case .numberedList(let items2, let depths2) = segs2[0] else {
         t.expect(false, "ordered: seg[0] is numberedList"); return
     }
     t.expectEqual(items2.count, 2, "ordered: 2 items")
     t.expectEqual(items2[0], [.text("alpha")], "ordered: item 0")
+    t.expectEqual(depths2, [0, 0], "ordered: depths all 0 at column 0")
 
     // Text, then list, then text.
     let mixed = "intro\n- a\n- b\noutro"
@@ -201,4 +203,85 @@ func runMarkdownLiteStrikethrough(_ t: TestRunner) {
     t.expectEqual(segs[0], .text("struck "), "strike: lead")
     t.expectEqual(segs[1], .strikethrough("this"), "strike: inner")
     t.expectEqual(segs[2], .text(" done"), "strike: tail")
+}
+
+
+@MainActor
+func runMarkdownLiteNestedLists(_ t: TestRunner) {
+    // 2-space indent per level。常见 markdown 都用 2 空格或 4 空格，
+    // listDepth 把每 2 空格算一级，2 空格作者得到 [0,1,2]，4 空格作者也得到 [0,1,2]。
+    let nested = """
+    - top
+      - mid
+        - deep
+      - mid again
+    """
+    let segs = MarkdownLite.parse(nested)
+    t.expectEqual(segs.count, 1, "nested: single block")
+    guard case .bulletList(let items, let depths) = segs[0] else {
+        t.expect(false, "nested: seg[0] is bulletList"); return
+    }
+    t.expectEqual(items.count, 4, "nested: 4 items")
+    t.expectEqual(depths, [0, 1, 2, 1], "nested: depths follow 2-space indent")
+
+    // 4-space 缩进也算同一档深度
+    let fourSpace = "- a\n    - b\n        - c"
+    let segs2 = MarkdownLite.parse(fourSpace)
+    guard case .bulletList(_, let d2) = segs2[0] else {
+        t.expect(false, "4-space nested: bulletList"); return
+    }
+    t.expectEqual(d2, [0, 1, 2], "4-space nested: depths match")
+
+    // 编号列表嵌套也要带 depths
+    let numNested = "1. x\n   1. y\n      1. z"
+    let segs3 = MarkdownLite.parse(numNested)
+    guard case .numberedList(_, let d3) = segs3[0] else {
+        t.expect(false, "num nested: numberedList"); return
+    }
+    t.expectEqual(d3, [0, 1, 2], "numbered nested: depths follow 3-space indent floor")
+}
+
+@MainActor
+func runMarkdownLiteFileReference(_ t: TestRunner) {
+    // `path/to/file.ext:line` 形式
+    let colon = MarkdownLite.parseInline("see Sources/Foo.swift:42 here")
+    t.expectEqual(colon.count, 3, "fileRef colon: 3 segments")
+    t.expectEqual(colon[0], .text("see "), "fileRef colon: lead")
+    t.expectEqual(colon[1], .fileReference(path: "Sources/Foo.swift", line: 42),
+                 "fileRef colon: path+line")
+    t.expectEqual(colon[2], .text(" here"), "fileRef colon: tail")
+
+    // `path/to/file.ext (line N)` 形式
+    let paren = MarkdownLite.parseInline("看 Withdrawal.php (line 19) 这行")
+    t.expectEqual(paren.count, 3, "fileRef paren: 3 segments")
+    t.expectEqual(paren[1], .fileReference(path: "Withdrawal.php", line: 19),
+                 "fileRef paren: path+line")
+
+    // 深路径也认
+    let deep = MarkdownLite.parseInline("a/very/deep/path/to/file.rs:123 ok")
+    t.expectEqual(deep.count, 3, "fileRef deep: 3 segments")
+    t.expectEqual(deep[1], .fileReference(path: "a/very/deep/path/to/file.rs", line: 123),
+                 "fileRef deep: path+line")
+
+    // 单个文件没有扩展名 → 不识别，避免误伤普通数字
+    t.expectEqual(
+        MarkdownLite.parseInline("just 42 here"),
+        [.text("just 42 here")],
+        "fileRef: bare number stays text"
+    )
+
+    // 路径不带行号 → 不识别，避免吞掉 URL / 正常文本
+    t.expectEqual(
+        MarkdownLite.parseInline("see https://example.com/foo/bar.html end"),
+        [.text("see "),
+         .link(title: "https://example.com/foo/bar.html", url: "https://example.com/foo/bar.html"),
+         .text(" end")],
+        "fileRef: bare URL stays autolink, not fileReference"
+    )
+
+    // 同一段里有多个 fileReference
+    let multi = MarkdownLite.parseInline("Sources/A.swift:1 and Sources/B.swift:2 done")
+    var hits = 0
+    for s in multi { if case .fileReference = s { hits += 1 } }
+    t.expectEqual(hits, 2, "fileRef: 2 references in same line")
 }

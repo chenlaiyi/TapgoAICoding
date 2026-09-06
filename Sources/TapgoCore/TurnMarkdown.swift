@@ -50,4 +50,36 @@ public enum TurnMarkdown {
         }
         return blocks.joined(separator: "\n\n")
     }
+
+    /// 渲染结果缓存。`render` 会在每次界面刷新时对已完成回合重复执行，
+    /// 超大回合（数十万字符）下每次都是整段字符串重建；已完成的回合内容
+    /// 不再变化，按 (turn id, item 数) 缓存即可。仅对已完成回合使用。
+    private static let cacheLock = NSLock()
+    private static var cachedRenders: [RenderKey: String] = [:]
+    private static let renderCacheLimit = 64
+
+    private struct RenderKey: Hashable {
+        let turnID: String
+        let itemCount: Int
+    }
+
+    public static func renderCached(_ turn: Turn) -> String {
+        let key = RenderKey(turnID: turn.id, itemCount: turn.items.count)
+        cacheLock.lock()
+        if let hit = cachedRenders[key] {
+            cacheLock.unlock()
+            return hit
+        }
+        cacheLock.unlock()
+
+        let rendered = render(turn)
+
+        cacheLock.lock()
+        if cachedRenders.count >= renderCacheLimit {
+            cachedRenders.removeValue(forKey: cachedRenders.keys.first!)
+        }
+        cachedRenders[key] = rendered
+        cacheLock.unlock()
+        return rendered
+    }
 }
