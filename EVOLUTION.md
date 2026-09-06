@@ -1,5 +1,21 @@
 # Evolution Log
 
+## v0.5.115 — feat(plugin-marketplace): 接入 Tapgo 官方市场（plugins.itapgo.com）
+**Date**: 2026-09-06
+**Tag**: v0.5.115
+**Test status**: 2903 passed / 2 failed（2 pre-existing：desktop-design Markdown 空行归一化 / HarnessDaemonLauncher socket 假设；本次 0 回归，新增 12 个 PluginCatalog: Tapgo 解析与 pluginId 安全断言）
+**Changed**:
+- PluginMarketplace 枚举新增 `.tapgo` case，displayName 为「Tapgo 官方」。
+- 新增 TapgoPluginListPayload / TapgoPluginRecord JSON 结构：可用字段 pluginId、name、displayName、version、description、repo、channel、capabilities；本地已安装列表由文件系统推导，不需要服务端维护清单。
+- PluginCatalogParser.decodeTapgo(\_:installedIds:) 解析官方目录；安装项排前，已装项合并 `.tapgo-plugin.json` 写回的 pluginId。
+- PluginManagerService 新增 `loadTapgoCatalog()`：6s 超时、ephemeral URLSession 拉 https://plugins.itapgo.com/catalog.json，失败静默降级不影响其它市场。
+- install/uninstall 加 `.tapgo` 分支：install = `git clone --depth 1 <repo> [--branch <channel>]` 到 `~/.tapgo/plugins/<id>/`，卸载 = `rm -rf` 同名目录；pluginId 经 `PluginConfigEditor.isSafePluginId` 校验防路径穿越。
+- PluginManagerView：Tab 加 `.tapgo`（"Tapgo 官方"），visibleItems / tabButton count / emptyMessage / content sourceNote 全部加分支；ViewModel.tapgoCount 计算属性；icon 用 `bolt.shield.fill`，色调 0x0EA5E9。
+- 新增单元测试：`PluginCatalog: Tapgo parsing`（8 用例，覆盖 install 排前、displayName、repo 用作 installSpecifier、缺失版本占位、search 大小写无关）与 `PluginCatalog: Tapgo safe pluginId`（4 用例，覆盖 pluginId 安全过滤与协议级容忍）。
+**Why**: Jacky 要求 Tapgo 官方插件市场拥有自己的分类与可装入口。plugins.itapgo.com 由用户侧自行 DNS 解析指向 TapgoServer，本地通过 git clone 安装到 `~/.tapgo/plugins/`，无需额外 CLI。
+**Next**: 待 plugins.itapgo.com 解析上线 + 服务端发布首份 catalog.json 后，UI 上「Tapgo 官方」Tab 即会自动渲染首批插件；下一步在 PluginManagerService 增加 `setTapgoEnabled` 与 PluginConfigEditor 写入 `~/.tapgo/plugins.toml` 的启用/停用切换（当前已安装只显示卸载菜单，跟 DeepSeek 风格对齐）。
+
+
 ## v0.5.114 — 2026-09-06
 
 - 修复远程 SSH 会话找不到已安装执行器的问题；端口、密钥与连接测试保持一致。

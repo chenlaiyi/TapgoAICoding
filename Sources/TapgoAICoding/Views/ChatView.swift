@@ -849,7 +849,7 @@ struct ChatView: View {
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
                 // Copy the answer, keeping diagnostics in explicit full export.
                 HStack(spacing: 10) {
-                    CopyIconButton(text: TurnMarkdown.renderCached(turn), help: turnMetadataHelp(turn))
+                    CopyIconButton(text: TurnMarkdown.response(turn), help: "复制回复")
                         .disabled(presentation.answerText.isEmpty)
                         .controlSize(.mini)
                     if isLast, turn.status == .completed {

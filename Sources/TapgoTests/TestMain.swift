@@ -212,6 +212,8 @@ let allSections: [String] = [
     "PluginCatalog: Codex parsing",
     "PluginCatalog: config editing",
     "PluginCatalog: DeepSeek filtering",
+    "PluginCatalog: Tapgo parsing",
+    "PluginCatalog: Tapgo safe pluginId",
     "Thread: usage & duration summary",
     "RemoteDirectoryLister: argv shape (pure)",
     "RemoteDirectoryLister: live on remotehost",
@@ -754,6 +756,12 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "PluginCatalog: DeepSeek filtering") {
             runPluginCatalogDeepSeekFiltering(runner)
+        }
+        await runIfInScope(runner, "PluginCatalog: Tapgo parsing") {
+            runPluginCatalogTapgoParsing(runner)
+        }
+        await runIfInScope(runner, "PluginCatalog: Tapgo safe pluginId") {
+            runPluginCatalogTapgoSafeId(runner)
         }
         await runIfInScope(runner, "Thread: usage & duration summary") {
             runThreadSummary(runner)
