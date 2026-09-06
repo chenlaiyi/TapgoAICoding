@@ -10,6 +10,8 @@ public enum MarkdownPlainText {
             switch segment {
             case .text(let text), .inline(let text): return text
             case .bold(let text), .strikethrough(let text): return renderSegments(MarkdownLite.parseInline(text))
+            case .fileReference(let path, let line): return line.map { "\(path):\($0)" } ?? path
+            case .image(_, let url): return url
             case .link(let title, _): return title
             case .fileReference(let path, let line): return line.map { path + ":\($0)" } ?? path
             case .image(let alt, _): return alt

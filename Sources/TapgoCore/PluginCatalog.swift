@@ -3,11 +3,13 @@ import Foundation
 public enum PluginMarketplace: String, Codable, CaseIterable, Sendable {
     case codex
     case deepSeek
+    case tapgo
 
     public var displayName: String {
         switch self {
         case .codex: return "Codex 官方"
         case .deepSeek: return "DeepSeek 官方"
+        case .tapgo: return "Tapgo 官方"
         }
     }
 }
@@ -170,6 +172,22 @@ public enum PluginCatalogParser {
             }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
+
+    public static func decodeTapgo(
+        _ data: Data,
+        installedIds: Set<String>
+    ) throws -> [PluginCatalogItem] {
+        let payload = try JSONDecoder().decode(TapgoPluginListPayload.self, from: data)
+        return payload.available
+            .map { record -> PluginCatalogItem in
+                let installed = installedIds.contains(record.pluginId)
+                return record.catalogItem(installed: installed)
+            }
+            .sorted {
+                if $0.installed != $1.installed { return $0.installed && !$1.installed }
+                return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+            }
+    }
 }
 
 public enum PluginConfigEditor {
@@ -203,3 +221,46 @@ public enum PluginConfigEditor {
         return value.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 }
+
+
+// MARK: - Tapgo 官方插件目录
+//
+// Tapgo 官方插件目录由 https://plugins.itapgo.com/catalog.json 提供。
+// 协议保持最小：每个插件必须包含 pluginId、name、repo；displayName/version/
+// description/channel/capabilities 可选，方便运维侧后期补全。
+// 安装通过 `git clone <repo> --branch <channel>` 到 `~/.tapgo/plugins/<pluginId>/`
+// 完成；卸载即 `rm -rf` 同名目录。本地已安装列表由文件系统直接推导，不需要
+// 在服务端维护一份清单。
+
+public struct TapgoPluginListPayload: Decodable, Sendable {
+    public let available: [TapgoPluginRecord]
+}
+
+public struct TapgoPluginRecord: Decodable, Sendable {
+    public let pluginId: String
+    public let name: String
+    public let displayName: String?
+    public let version: String?
+    public let description: String?
+    public let repo: String
+    public let channel: String?
+    public let capabilities: [String]?
+
+    public func catalogItem(installed: Bool) -> PluginCatalogItem {
+        let resolvedName = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return PluginCatalogItem(
+            id: "tapgo:\(pluginId)",
+            name: name,
+            displayName: (resolvedName?.isEmpty == false ? resolvedName : nil),
+            version: version ?? "—",
+            summary: description ?? "Tapgo 官方插件",
+            marketplace: .tapgo,
+            marketplaceName: "plugins.itapgo.com",
+            installSpecifier: repo,
+            installed: installed,
+            enabled: installed,
+            capabilities: capabilities ?? ["Tapgo 插件"]
+        )
+    }
+}
+

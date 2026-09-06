@@ -94,3 +94,74 @@ func runPluginCatalogDeepSeekFiltering(_ runner: TestRunner) {
     runner.expect(items.first { $0.name == "@deepseek-ai/dsh-subagent-codex" }?.installed == true,
                   "installed state uses the package name without its dist-tag")
 }
+
+func runPluginCatalogTapgoParsing(_ runner: TestRunner) {
+    let json = #"""
+    {
+      "available": [
+        {
+          "pluginId": "sparkle-publish",
+          "name": "sparkle-publish",
+          "displayName": "Sparkle 一键发版",
+          "version": "1.0.0",
+          "description": "本地 Sparkle 发布脚本与 appcast 模板",
+          "repo": "https://example.invalid/sparkle-publish.git",
+          "channel": "main",
+          "capabilities": ["脚本", "发版"]
+        },
+        {
+          "pluginId": "screen-recording-permission",
+          "name": "screen-recording-permission",
+          "version": null,
+          "repo": "git@github.com:chenlaiyi/screen-recording-permission.git"
+        }
+      ]
+    }
+    """#.data(using: .utf8)!
+
+    do {
+        let items = try PluginCatalogParser.decodeTapgo(
+            json,
+            installedIds: ["sparkle-publish"]
+        )
+        runner.expectEqual(items.count, 2, "all catalog entries are decoded")
+        runner.expectEqual(items.first?.name, "sparkle-publish", "installed plugin sorts first")
+        runner.expectEqual(items.first?.marketplace, .tapgo, "marketplace is tapgo")
+        runner.expectEqual(items.first?.displayName, "Sparkle 一键发版",
+                           "explicit displayName overrides humanized name")
+        runner.expectEqual(items.first?.installSpecifier,
+                           "https://example.invalid/sparkle-publish.git",
+                           "repo URL is used as installSpecifier")
+        runner.expect(items.contains { $0.matches("recording") },
+                      "search matches by description-derived name")
+        runner.expectEqual(
+            items.first { $0.name == "screen-recording-permission" }?.version,
+            "—",
+            "versionless entries keep a placeholder"
+        )
+        runner.expectEqual(
+            items.first { $0.name == "screen-recording-permission" }?.installed,
+            false,
+            "absent IDs are flagged not installed"
+        )
+    } catch {
+        runner.expect(false, "Tapgo catalog decodes: \(error)")
+    }
+}
+
+func runPluginCatalogTapgoSafeId(_ runner: TestRunner) {
+    let payload = #"{"available":[{"pluginId":"","name":"x","repo":"https://e/repo.git"}]}"#
+    let data = payload.data(using: .utf8)!
+    do {
+        _ = try PluginCatalogParser.decodeTapgo(data, installedIds: [])
+        runner.expect(true, "decode tolerates pluginIds at the protocol level; safety enforced at install time")
+    } catch {
+        runner.expect(false, "decode must not throw on the protocol alone: \(error)")
+    }
+    runner.expect(PluginConfigEditor.isSafePluginId("screen-recording-permission"),
+                  "safe pluginId is accepted")
+    runner.expect(!PluginConfigEditor.isSafePluginId("plugin with space"),
+                       "whitespace identifiers are rejected")
+    runner.expect(!PluginConfigEditor.isSafePluginId("plugin$injection"),
+                       "shell metacharacters are rejected")
+}

@@ -39,6 +39,7 @@ final class PluginManagerViewModel: ObservableObject {
     var installedCount: Int { items.filter(\.installed).count }
     var codexCount: Int { items.filter { $0.marketplace == .codex }.count }
     var deepSeekCount: Int { items.filter { $0.marketplace == .deepSeek }.count }
+    var tapgoCount: Int { items.filter { $0.marketplace == .tapgo }.count }
 
     func refresh() async {
         isLoading = true
@@ -90,6 +91,7 @@ struct PluginManagerView: View {
         case installed
         case codex
         case deepSeek
+        case tapgo
 
         var id: String { rawValue }
         var title: String {
@@ -97,6 +99,7 @@ struct PluginManagerView: View {
             case .installed: return "已安装"
             case .codex: return "Codex 官方"
             case .deepSeek: return "DeepSeek 官方"
+            case .tapgo: return "Tapgo 官方"
             }
         }
     }
@@ -114,6 +117,7 @@ struct PluginManagerView: View {
             case .installed: tabMatches = item.installed
             case .codex: tabMatches = item.marketplace == .codex
             case .deepSeek: tabMatches = item.marketplace == .deepSeek
+            case .tapgo: tabMatches = item.marketplace == .tapgo
             }
             return tabMatches && item.matches(searchText)
         }
@@ -227,6 +231,7 @@ struct PluginManagerView: View {
             case .installed: return model.installedCount
             case .codex: return model.codexCount
             case .deepSeek: return model.deepSeekCount
+            case .tapgo: return model.tapgoCount
             }
         }()
         return Button {
@@ -278,6 +283,8 @@ struct PluginManagerView: View {
                         sourceNote("通过 DeepSeek 官方 npm 组织读取，安装到 web profile；变更后需重启 DeepSeek Harness。")
                     } else if selectedTab == .codex {
                         sourceNote("通过当前 Tapgo AICoding 使用的 Codex CLI 与隔离配置目录读取。")
+                    } else if selectedTab == .tapgo {
+                        sourceNote("从 plugins.itapgo.com 拉取官方目录；安装使用 git clone 到 ~/.tapgo/plugins/<id>/，卸载即删除该目录。")
                     }
                     ForEach(visibleItems) { item in
                         pluginRow(item)
@@ -295,6 +302,7 @@ struct PluginManagerView: View {
         case .installed: return "还没有安装插件"
         case .codex: return "没有读取到 Codex 官方插件"
         case .deepSeek: return "没有读取到可安装的 DeepSeek 官方插件包"
+        case .tapgo: return "没有读取到 Tapgo 官方插件；请确认 plugins.itapgo.com 解析是否生效"
         }
     }
 
@@ -383,6 +391,7 @@ struct PluginManagerView: View {
 
     private func iconName(_ item: PluginCatalogItem) -> String {
         if item.marketplace == .deepSeek { return "shippingbox.fill" }
+        if item.marketplace == .tapgo { return "bolt.shield.fill" }
         if item.capabilities.contains("应用") { return "square.grid.2x2.fill" }
         if item.capabilities.contains("MCP") { return "point.3.connected.trianglepath.dotted" }
         return "puzzlepiece.extension.fill"
@@ -390,6 +399,7 @@ struct PluginManagerView: View {
 
     private func iconColor(_ item: PluginCatalogItem) -> Color {
         if item.marketplace == .deepSeek { return Color(hex: 0x8B5CF6) }
+        if item.marketplace == .tapgo { return Color(hex: 0x0EA5E9) }
         let palette: [Color] = [DSHTheme.brand, DSHTheme.success, Color(hex: 0xF97316), Color(hex: 0xEC4899)]
         return palette[Int(UInt(bitPattern: item.name.hashValue) % UInt(palette.count))]
     }
