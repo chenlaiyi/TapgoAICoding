@@ -131,6 +131,18 @@ func runWorkspaceStoreRemoveRemoteHostCascade(_ t: TestRunner) {
     t.expectEqual(store.state.projects[0].kind, .remote, "before: project is remote")
     store.removeRemoteHost("host-cascade")
     let after = store.state.projects[0]
-    t.expectEqual(after.kind, .local, "after cascade: project is local")
-    t.expectNil(after.remoteHostId, "after cascade: remoteHostId cleared")
+    t.expectEqual(after.kind, .remote, "removing a host must not turn its projects into local execution")
+    t.expectEqual(after.remoteHostId, "host-cascade", "remote host identity is retained")
+    do {
+        _ = try RemoteExecutionContext.resolve(project: after, hosts: store.state.remoteHosts)
+        t.expect(false, "removed host must block execution")
+    } catch {
+        t.expect(error is RemoteExecutionContext.ConfigurationError, "missing host produces a configuration error")
+    }
+    do {
+        let context = try RemoteExecutionContext.resolve(project: p1, hosts: [host])
+        t.expectEqual(context?.path, p1.remotePath, "valid route uses remote path")
+        t.expect(context?.instructions.contains(host.host) == true, "prompt identifies the actual SSH target")
+        t.expect(context?.instructions.contains(p1.worktreeRoot.path) == false, "prompt excludes local mirror")
+    } catch { t.expect(false, "valid remote route resolves") }
 }

@@ -84,9 +84,8 @@ public final class WorkspaceStore: ObservableObject {
     }
 
     /// Create the local mirror directory for a remote project if it
-    /// is missing. The mirror never has real content — it's only
-    /// there so the harness has a valid cwd to chdir into before
-    /// `RemoteExecutor` swaps the result with the SSH output.
+    /// is missing. This is compatibility storage for old project records,
+    /// never a command execution directory.
     @discardableResult
     public func ensureRemoteMirrorExists(_ project: Project) -> Bool {
         guard project.kind == .remote else { return false }
@@ -102,7 +101,7 @@ public final class WorkspaceStore: ObservableObject {
             // `ls` it. Hidden by default.
             let marker = url.appendingPathComponent(".tapgo-mirror")
             let body = "Tapgo AICoding local mirror for remote project \(project.displayName)\n"
-                + "harness cwd: \(url.path)\n"
+                + "client storage: \(url.path)\n"
                 + "remote target: \(project.displayPath)\n"
                 + "Do not edit by hand. Safe to delete; will be re-created on next launch.\n"
             try? body.data(using: .utf8)?.write(to: marker, options: [.atomic])
@@ -151,9 +150,7 @@ public final class WorkspaceStore: ObservableObject {
             updateProjectLastUsed(existing.id)
             return
         }
-        // Make sure the local mirror exists for a brand-new remote
-        // project. codex's harness chdir's into this directory on
-        // every turn.
+        // Retain compatibility storage for existing project/bookmark UI.
         ensureRemoteMirrorExists(p)
         state.projects.append(p)
         state.activeProjectId = p.id
@@ -255,16 +252,8 @@ public final class WorkspaceStore: ObservableObject {
 
     public func removeRemoteHost(_ id: String) {
         state.remoteHosts.removeAll { $0.id == id }
-        // Cascade: any project bound to this host becomes "dangling".
-        for i in state.projects.indices where state.projects[i].remoteHostId == id {
-            state.projects[i].remoteHostId = nil
-            state.projects[i].kind = .local
-        }
-        if let active = state.activeProjectId,
-           let idx = state.projects.firstIndex(where: { $0.id == active }),
-           state.projects[idx].remoteHostId == nil {
-            // keep selection; user just sees it as local now
-        }
+        // Preserve remote identity so existing tasks fail closed. Converting
+        // these records to local used to execute against the empty mirror.
         state.lastProjectIdByHost[id] = nil
         save()
     }

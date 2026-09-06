@@ -100,6 +100,8 @@ public enum RemoteCommandBuilder {
         case invalidCommand
         case commandTooLong
         case sshNotFound
+        case invalidPort
+        case invalidIdentity
         public var errorDescription: String? {
             switch self {
             case .invalidPath: return "远程路径不合法"
@@ -108,8 +110,33 @@ public enum RemoteCommandBuilder {
             case .invalidCommand: return "命令不合法"
             case .commandTooLong: return "命令过长"
             case .sshNotFound: return "找不到 ssh"
+            case .invalidPort: return "SSH 端口须在 1–65535 之间"
+            case .invalidIdentity: return "找不到所选 SSH 密钥，请检查密钥路径"
             }
         }
+    }
+
+    /// Shared by connection checks, directory browsing and the actual harness.
+    public static func connectionArgv(sshPath: String, host: RemoteHost) throws -> [String] {
+        guard let hostname = validateHost(host.host) else { throw BuildError.invalidHost }
+        guard let user = validateUser(host.user) else { throw BuildError.invalidUser }
+        guard (1...65535).contains(host.port) else { throw BuildError.invalidPort }
+        guard FileManager.default.isExecutableFile(atPath: sshPath) else { throw BuildError.sshNotFound }
+        var args = [sshPath, "-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+                    "-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=2"]
+        if host.port != 22 { args += ["-p", String(host.port)] }
+        if let hint = host.identityHint?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !hint.isEmpty, hint != "default" {
+            let path = (hint as NSString).expandingTildeInPath
+            guard FileManager.default.isReadableFile(atPath: path) else { throw BuildError.invalidIdentity }
+            args += ["-i", path]
+        }
+        args += ["\(user)@\(hostname)"]
+        return args
+    }
+
+    public static func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     /// Build an argv that runs `command` inside `remotePath` over SSH.
@@ -124,8 +151,8 @@ public enum RemoteCommandBuilder {
         modelCommand: String
     ) throws -> [String] {
         guard let safeRemote = validatePath(remotePath) else { throw BuildError.invalidPath }
-        guard let safeHost = validateHost(host.host) else { throw BuildError.invalidHost }
-        guard let safeUser = validateUser(host.user) else { throw BuildError.invalidUser }
+        guard validateHost(host.host) != nil else { throw BuildError.invalidHost }
+        guard validateUser(host.user) != nil else { throw BuildError.invalidUser }
         guard let safeCommand = validateCommand(modelCommand) else {
             if modelCommand.count > maxCommandLength {
                 throw BuildError.commandTooLong
@@ -148,25 +175,7 @@ public enum RemoteCommandBuilder {
             .replacingOccurrences(of: "'", with: "'\\''")
         let remoteCommand = "cd \(safeRemote) && bash -lc '\(escaped)'"
 
-        var args: [String] = [sshPath]
-        if host.port != 22 {
-            args += ["-p", String(host.port)]
-        }
-        if let id = host.identityHint, !id.isEmpty, id != "default" {
-            // identity path: only allow typical ssh key filenames
-            let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
-            if FileManager.default.fileExists(atPath: trimmed) {
-                args += ["-i", trimmed]
-            }
-        }
-        args += [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=8",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "\(safeUser)@\(safeHost)",
-            remoteCommand,
-        ]
-        return args
+        return try connectionArgv(sshPath: sshPath, host: host) + [remoteCommand]
     }
 
     /// Build argv for the "test connection" probe — pwd + uname.
@@ -174,28 +183,11 @@ public enum RemoteCommandBuilder {
         sshPath: String,
         host: RemoteHost
     ) throws -> [String] {
-        guard let safeHost = validateHost(host.host) else { throw BuildError.invalidHost }
-        guard let safeUser = validateUser(host.user) else { throw BuildError.invalidUser }
+        guard validateHost(host.host) != nil else { throw BuildError.invalidHost }
+        guard validateUser(host.user) != nil else { throw BuildError.invalidUser }
         guard FileManager.default.isExecutableFile(atPath: sshPath) else { throw BuildError.sshNotFound }
 
-        var args: [String] = [sshPath]
-        if host.port != 22 {
-            args += ["-p", String(host.port)]
-        }
-        if let id = host.identityHint, !id.isEmpty, id != "default" {
-            let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
-            if FileManager.default.fileExists(atPath: trimmed) {
-                args += ["-i", trimmed]
-            }
-        }
-        args += [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=8",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "\(safeUser)@\(safeHost)",
-            "pwd; uname -a",
-        ]
-        return args
+        return try connectionArgv(sshPath: sshPath, host: host) + ["pwd; uname -a"]
     }
 
     /// Build argv for "list the immediate sub-directories of `remotePath`".
@@ -224,29 +216,12 @@ public enum RemoteCommandBuilder {
         remotePath: String
     ) throws -> [String] {
         guard let safeRemote = validatePath(remotePath) else { throw BuildError.invalidPath }
-        guard let safeHost = validateHost(host.host) else { throw BuildError.invalidHost }
-        guard let safeUser = validateUser(host.user) else { throw BuildError.invalidUser }
+        guard validateHost(host.host) != nil else { throw BuildError.invalidHost }
+        guard validateUser(host.user) != nil else { throw BuildError.invalidUser }
         guard FileManager.default.isExecutableFile(atPath: sshPath) else { throw BuildError.sshNotFound }
 
         let remoteCommand = "cd \(safeRemote) && ls -1Ap"
 
-        var args: [String] = [sshPath]
-        if host.port != 22 {
-            args += ["-p", String(host.port)]
-        }
-        if let id = host.identityHint, !id.isEmpty, id != "default" {
-            let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
-            if FileManager.default.fileExists(atPath: trimmed) {
-                args += ["-i", trimmed]
-            }
-        }
-        args += [
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=8",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "\(safeUser)@\(safeHost)",
-            remoteCommand,
-        ]
-        return args
+        return try connectionArgv(sshPath: sshPath, host: host) + [remoteCommand]
     }
 }

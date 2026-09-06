@@ -150,10 +150,10 @@ struct MarkdownMessageView: View {
         baseWeight: Font.Weight = .regular
     ) -> AttributedString {
         var a = AttributedString()
-        // 行内代码与正文同大，仅靠 monospace + 浅底色区分；
-        // 字重抬到 medium，避免 monospace 在小字号下显得单薄、与正文形成可读对比。
-        let inlineSize = baseFontSize
-        let inlineWeight: Font.Weight = .medium
+        // Monospace is optically wider than body text. Keep it quiet so
+        // paragraphs with paths remain readable rather than a grid of tiles.
+        let inlineSize = baseFontSize * 0.9
+        let inlineWeight: Font.Weight = .regular
         for seg in segs {
             switch seg {
             case .text(let s):
@@ -164,7 +164,6 @@ struct MarkdownMessageView: View {
                 var r = AttributedString(s)
                 r.font = .system(size: inlineSize, weight: inlineWeight, design: .monospaced)
                 r.foregroundColor = DSHTheme.messageText
-                r.backgroundColor = DSHTheme.inlineCodeBg
                 a += r
             case .bold(let s):
                 var r = AttributedString(s)

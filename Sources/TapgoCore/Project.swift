@@ -9,18 +9,16 @@ import Foundation
 ///   could still re-acquire access across launches (we ship
 ///   un-sandboxed today, but the bookmark is the right shape to keep).
 /// - `remote` projects carry a `remoteHostId` + `remotePath`. The
-///   actual cwd we hand to codex is the *local* mirror path; UI
-///   shows the remote target, and `RemoteExecutor` runs the same
-///   command over SSH and surfaces the remote output.
+///   harness itself runs over SSH. Local mirrors are only compatibility
+///   storage; they must never become an execution directory.
 public struct Project: Identifiable, Codable, Hashable {
     public let id: String
     public var displayName: String
     public var kind: Kind
     public var addedAt: Date
     public var lastUsedAt: Date
-    /// The directory we hand to codex as `cwd`. For local projects this
-    /// is the user-picked path; for remote projects it is the local
-    /// mirror dir.
+    /// Local workspace root, or compatibility storage for a remote project.
+    /// Remote execution always uses remotePath on the SSH target.
     public var worktreeRoot: URL
     /// Extra source folders that belong to this project (the "primary"
     /// `worktreeRoot` is always included). Lets one project span several
@@ -122,7 +120,7 @@ public struct Project: Identifiable, Codable, Hashable {
 
     /// Convenience for code that needs the actual path the harness
     /// will see in `cwd`.
-    public var harnessCwd: String { worktreeRoot.path }
+    public var harnessCwd: String { isRemote ? (remotePath ?? "") : worktreeRoot.path }
 }
 
 /// An SSH host that a `Project(.remote)` can be bound to. We never

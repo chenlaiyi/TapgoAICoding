@@ -40,7 +40,7 @@ let allSections: [String] = [
     "WorkspaceStore: ensureRemoteMirrorExists",
     "WorkspaceStore: load after save round-trips",
     "WorkspaceStore: removeProject + cascade",
-    "WorkspaceStore: removeRemoteHost cascades projects to local",
+    "WorkspaceStore: removeRemoteHost preserves remote execution boundary",
     "ThreadStore: load from fresh state",
     "ThreadStore: save + load round-trips per-id file",
     "ThreadStore: delete removes file",
@@ -232,7 +232,7 @@ func runIfInScope(_ runner: TestRunner, _ name: String, _ body: @escaping @MainA
     let environment = ProcessInfo.processInfo.environment
     if environment["TAPGO_SKIP_REMOTE_TESTS"] == "1"
         || environment["TAPGO_SKIP_REMOTE_INTEGRATION"] == "1" {
-        if name.hasPrefix("protocol-") || name.hasPrefix("RemoteSSH:") || name.hasPrefix("RemoteCodexHomeSync:") || name.hasPrefix("RemoteDirectoryLister:") || name.hasPrefix("e2e:") || name.hasPrefix("local: JSON-RPC") {
+        if name.hasPrefix("protocol-") || name.hasPrefix("RemoteSSH:") || name == "RemoteDirectoryLister: live on remotehost" || name.hasPrefix("e2e:") || name.hasPrefix("local: JSON-RPC") {
             print("[skip-remote] \(name)")
             return
         }
@@ -318,7 +318,7 @@ struct TapgoTestMain {
         await runIfInScope(runner, "WorkspaceStore: removeProject + cascade") {
             runWorkspaceStoreRemoveProject(runner)
         }
-        await runIfInScope(runner, "WorkspaceStore: removeRemoteHost cascades projects to local") {
+        await runIfInScope(runner, "WorkspaceStore: removeRemoteHost preserves remote execution boundary") {
             runWorkspaceStoreRemoveRemoteHostCascade(runner)
         }
         await runIfInScope(runner, "ThreadStore: load from fresh state") {

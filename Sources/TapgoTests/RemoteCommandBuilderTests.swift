@@ -90,6 +90,19 @@ func runRemoteCommandBuilderInputValidation(_ t: TestRunner) {
 
 @MainActor
 func runRemoteCommandBuilderBuildSshArgvShape(_ t: TestRunner) {
+    let key = FileManager.default.temporaryDirectory.appendingPathComponent("tapgo-test-key-" + UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: key) }
+    do {
+        try Data().write(to: key)
+        let host = makeHost(port: 2222, identityHint: key.path)
+        let connection = try RemoteCommandBuilder.connectionArgv(sshPath: "/usr/bin/ssh", host: host)
+        let probe = try RemoteCommandBuilder.buildProbeArgv(sshPath: "/usr/bin/ssh", host: host)
+        t.expectEqual(Array(probe.dropLast()), connection, "probe and harness use identical SSH options")
+        t.expect(connection.contains("2222") && connection.contains(key.path), "configured port and identity are preserved")
+        t.expectThrows({ _ = try RemoteCommandBuilder.connectionArgv(sshPath: "/usr/bin/ssh", host: makeHost(port: 0)) }, "invalid port rejected")
+        t.expectThrows({ _ = try RemoteCommandBuilder.connectionArgv(sshPath: "/usr/bin/ssh", host: makeHost(identityHint: key.path + "-missing")) }, "missing identity must not silently fall back")
+    } catch { t.expect(false, "shared SSH options: \(error)") }
+
     let h = makeHost()
     do {
         let argv = try RemoteCommandBuilder.buildSshArgv(

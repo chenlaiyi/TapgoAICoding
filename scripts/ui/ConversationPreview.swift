@@ -10,6 +10,7 @@ struct ConversationPreview: App {
     }
 }
 private struct ConversationPreviewContent: View {
+    @State private var remoteReply = true
     @State private var work = false
     @State private var dark = true
     @State private var large = false
@@ -30,7 +31,13 @@ private struct ConversationPreviewContent: View {
             items.append(.error(id: "notice", message: "需要确认后才能继续。"))
         }
         if done || streaming {
-            items.append(.assistantMessage(id: "final", text: streaming ? "已统一会话过程和总结的显示，正在补充验证结果。" : """
+            items.append(.assistantMessage(id: "final", text: streaming ? "已确认执行主机，正在核对项目目录。" : remoteReply ? """
+            当前项目在远程 Mac mini 上，目录是 `/Users/developer/Acorn`。
+
+            该目录对应 **Acorn** 仓库，已通过远端的 `hostname`、`pwd` 和 Git 地址核实。
+
+            后续命令会在这个远程目录执行。
+            """ : """
             已统一会话过程和总结的显示，关闭开关后只保留回复与必要提示。
 
             - 过程入口、执行清单和工具详情一起隐藏。
@@ -62,6 +69,7 @@ private struct ConversationPreviewContent: View {
                 HStack {
                     Text("会话输出验收").font(.headline)
                     Spacer()
+                    Toggle("远程回复", isOn: $remoteReply)
                     Toggle("显示过程", isOn: $work)
                     Toggle("深色", isOn: $dark)
                     Toggle("大字体", isOn: $large)
@@ -77,11 +85,16 @@ private struct ConversationPreviewContent: View {
                 }.pickerStyle(.segmented)
             }.padding(18)
             Divider()
+            if remoteReply {
+                RemoteProjectBanner(
+                    project: Project(id: "fixture", displayName: "Mac mini:~/Acorn", kind: .remote, addedAt: Date(), lastUsedAt: Date(), worktreeRoot: URL(fileURLWithPath: "/tmp/fixture-mirror"), remoteHostId: "fixture-host", remotePath: "~/Acorn"),
+                    host: RemoteHost(id: "fixture-host", alias: "Mac mini", host: "100.64.0.10", user: "developer", port: 22, addedAt: Date()))
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
                     HStack {
                         Spacer(minLength: 36)
-                        ConversationUserMessageLabel(text: "请统一会话过程和总结的显示，特别注意关闭过程后的体验。")
+                        ConversationUserMessageLabel(text: remoteReply ? "当前项目在哪里？" : "请统一会话过程和总结的显示。")
                     }
                     ConversationResponseView(turn: turn, showWorkProcess: work) {
                         if phase == .awaitingApproval {

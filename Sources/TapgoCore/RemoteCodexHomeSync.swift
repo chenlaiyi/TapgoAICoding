@@ -23,6 +23,22 @@ public enum RemoteCodexHomeSync {
     public static let defaultRemoteHome = "~/.tapgo-aicoding/remote"
     public static let minimumHarnessVersion = "0.149.1"
 
+    /// Per-process overrides avoid changing a remote user's Codex config or
+    /// racing another task's selected provider. Credentials remain on stdin.
+    public static func runtimeOverrides(model: String, provider: String, baseURL: String, contextWindow: Int) -> [String] {
+        func quote(_ value: String) -> String {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.withoutEscapingSlashes]
+            return String(data: try! encoder.encode(value), encoding: .utf8)!
+        }
+        return [
+            "model=\(quote(model))",
+            "model_provider=\(quote(provider))",
+            "model_context_window=\(contextWindow)",
+            "model_providers.\(provider)={name=\(quote(provider)),base_url=\(quote(baseURL)),wire_api=\"responses\",env_key=\"OPENAI_API_KEY\"}",
+        ]
+    }
+
     /// Locate the `ssh` binary on this Mac. Falls back to
     /// `/usr/bin/env` (which the user can extend via PATH) if
     /// none of the standard locations is present.
@@ -354,7 +370,9 @@ public enum RemoteCodexHomeSync {
     /// ignoring JSON-RPC" from "key never arrived at the remote".
     public static func remoteHarnessWrapper(
         remoteHome: String,
-        codexPathOnRemote: String = "codex"
+        codexPathOnRemote: String = "codex",
+        workingDirectory: String? = nil,
+        runtimeOverrides: [String] = []
     ) -> String {
         // Single-quoted strings in shell do NOT expand `~`. If the
         // caller passes `~/.tapgo-aicoding/remote`, codex would
@@ -370,9 +388,25 @@ public enum RemoteCodexHomeSync {
         //
         // The caller is expected to pass a non-empty `remoteHome`;
         // we pass it through `printf %q` to make it shell-safe.
+        let quote = RemoteCommandBuilder.shellQuote
+        let directory = workingDirectory.map { path in
+            """
+            TAPGO_WORKDIR=\(quote(path))
+            case "$TAPGO_WORKDIR" in '~') TAPGO_WORKDIR="$HOME";; '~/'*) TAPGO_WORKDIR="$HOME/${TAPGO_WORKDIR#??}";; esac
+            cd -- "$TAPGO_WORKDIR" || { echo 'tapgo:invalid-cwd' >&2; exit 5; }
+            printf 'tapgo:cwd=%s\\n' "$(pwd -P)" >&2
+            """
+        } ?? ""
+        let overrides = runtimeOverrides.map { "-c " + quote($0) }.joined(separator: " ")
         return #"""
         set -e
-        VERSION_OUTPUT=$(\#(codexPathOnRemote) --version 2>/dev/null) || {
+        TAPGO_CODEX=\#(quote(codexPathOnRemote))
+        if [ "$TAPGO_CODEX" = codex ] && ! command -v codex >/dev/null 2>&1; then
+          for candidate in /opt/homebrew/bin/codex /usr/local/bin/codex "$HOME/.local/bin/codex"; do
+            if [ -x "$candidate" ]; then TAPGO_CODEX="$candidate"; break; fi
+          done
+        fi
+        VERSION_OUTPUT=$("$TAPGO_CODEX" --version 2>/dev/null) || {
           echo "tapgo:unsupported-version actual=unavailable required=\#(minimumHarnessVersion)" 1>&2
           exit 4
         }
@@ -401,15 +435,17 @@ public enum RemoteCodexHomeSync {
         # Resolve `~` in the home path *before* we exec codex, so
         # codex sees an absolute path. We do this OUTSIDE single
         # quotes so the remote shell expands the tilde.
-        CODEX_HOME_RESOLVED=\#(remoteHome)
+        CODEX_HOME_RESOLVED=\#(quote(remoteHome))
         if [ "${CODEX_HOME_RESOLVED#\~}" != "$CODEX_HOME_RESOLVED" ]; then
           CODEX_HOME_RESOLVED="$HOME${CODEX_HOME_RESOLVED#\~}"
         fi
+        \#(runtimeOverrides.isEmpty ? "" : "umask 077\nmkdir -p -- \"$CODEX_HOME_RESOLVED\"")
         if [ ! -d "$CODEX_HOME_RESOLVED" ]; then
           echo "tapgo:no-home dir=$CODEX_HOME_RESOLVED" 1>&2
           exit 3
         fi
-        exec env CODEX_HOME="$CODEX_HOME_RESOLVED" \#(codexPathOnRemote) app-server --listen stdio://
+        \#(directory)
+        exec env CODEX_HOME="$CODEX_HOME_RESOLVED" "$TAPGO_CODEX" app-server --listen stdio:// \#(overrides)
         """#
     }
 }

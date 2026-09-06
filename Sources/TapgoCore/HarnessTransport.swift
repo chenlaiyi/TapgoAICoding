@@ -283,6 +283,10 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
     /// Code path on the remote host, e.g. "codex" or "/opt/homebrew/bin/codex".
     public let codexPathOnRemote: String
     public let apiKey: String
+    public let workingDirectory: String?
+    public let runtimeOverrides: [String]
+    public private(set) var resolvedWorkingDirectory: String?
+    public private(set) var startupFailure: String?
 
     public var onNotification: ((JSONValue) -> Void)?
     public var onClose: ((Int32) -> Void)?
@@ -343,13 +347,17 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
         host: RemoteHost,
         remoteCodexHome: String,
         codexPathOnRemote: String = "codex",
-        apiKey: String
+        apiKey: String,
+        workingDirectory: String? = nil,
+        runtimeOverrides: [String] = []
     ) {
         self.sshPath = sshPath
         self.host = host
         self.remoteCodexHome = remoteCodexHome
         self.codexPathOnRemote = codexPathOnRemote
         self.apiKey = apiKey
+        self.workingDirectory = workingDirectory
+        self.runtimeOverrides = runtimeOverrides
     }
 
     public var isRunning: Bool {
@@ -358,9 +366,21 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
 
     public func start() throws {
         guard process == nil else { return }
+        resolvedWorkingDirectory = nil
+        startupFailure = nil
+        keySent = false
+        keyReceivedConfirmed = false
+        guard RemoteCommandBuilder.validatePath(remoteCodexHome) != nil else {
+            throw RemoteCommandBuilder.BuildError.invalidPath
+        }
+        if let workingDirectory, RemoteCommandBuilder.validatePath(workingDirectory) == nil {
+            throw RemoteCommandBuilder.BuildError.invalidPath
+        }
         let wrapper = RemoteCodexHomeSync.remoteHarnessWrapper(
             remoteHome: remoteCodexHome,
-            codexPathOnRemote: codexPathOnRemote
+            codexPathOnRemote: codexPathOnRemote,
+            workingDirectory: workingDirectory,
+            runtimeOverrides: runtimeOverrides
         )
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: sshPath)
@@ -368,13 +388,7 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
         // -T = no TTY, -o BatchMode=yes = no password prompt,
         // ConnectTimeout=8 = fail fast.
         // Then the remote command is the wrapper string verbatim.
-        proc.arguments = [
-            "-T",
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=8",
-            "\(host.user)@\(host.host)",
-            wrapper,
-        ]
+        proc.arguments = Array(try RemoteCommandBuilder.connectionArgv(sshPath: sshPath, host: host).dropFirst()) + [wrapper]
         var env = ProcessInfo.processInfo.environment
         // The Mac's own `ssh` runs in batch mode; force UTF-8 to
         // avoid locale issues when the JSON-RPC frames cross the
@@ -480,6 +494,22 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
     private func consumeStdout(_ chunk: Data) {
         stdoutBuffer.append(chunk)
         while let line = stdoutBuffer.popLine() {
+            if line.hasPrefix("tapgo:cwd=") {
+                resolvedWorkingDirectory = String(line.dropFirst("tapgo:cwd=".count))
+                continue
+            }
+            if line.hasPrefix("tapgo:unsupported-version") {
+                startupFailure = "远程主机缺少可用的 Codex 执行器（需要 \(RemoteCodexHomeSync.minimumHarnessVersion) 或更新版本）。"
+                continue
+            }
+            if line.hasPrefix("tapgo:invalid-cwd") {
+                startupFailure = "远程项目目录不存在或无法访问，请重新选择远程目录。"
+                continue
+            }
+            if line.hasPrefix("tapgo:no-home") {
+                startupFailure = "远程执行环境目录尚未准备好。"
+                continue
+            }
             if line.hasPrefix("tapgo:received=") {
                 let v = String(line).replacingOccurrences(of: "tapgo:received=", with: "")
                 if v.hasPrefix("true") {
@@ -489,11 +519,8 @@ public final class RemoteSSHHarnessTransport: HarnessTransport {
                 }
                 continue
             }
-            // Log every line so the integration test can see the
-            // wrapper's `env | grep …` output and codex's banner.
-            if !line.isEmpty {
-                print("[transport] line: \(line.prefix(300))")
-            }
+            // Raw JSON-RPC frames can contain user text and command output.
+            // They belong to the transcript, never the process log.
             guard !line.isEmpty,
                   let bytes = String(line).data(using: .utf8),
                   let value = try? JSONDecoder().decode(JSONValue.self, from: bytes)

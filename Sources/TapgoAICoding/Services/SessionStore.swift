@@ -683,7 +683,8 @@ final class SessionStore: ObservableObject {
         // try to `ssh` again from there.
         let effectivePrompt = Self.composeEffectivePrompt(
             userPrompt: trimmed,
-            project: project
+            project: project,
+            hosts: workspace.state.remoteHosts
         )
 
         // Persistent memory (user-level memory.md + project MEMORY.md) is
@@ -701,7 +702,22 @@ final class SessionStore: ObservableObject {
         // Build the right transport for this thread and retain it in a context
         // keyed by the local conversation. Cancellation and approval routing
         // never consult whichever conversation happens to be selected later.
-        let newRunner = makeRunner(for: project)
+        let newRunner: CodexHarnessClient
+        do {
+            if liveThreads[idx].projectId != nil, project == nil {
+                throw RemoteExecutionContext.ConfigurationError.missingProject
+            }
+            newRunner = try makeRunner(for: project)
+        } catch {
+            let ti = liveThreads[idx].turns.count - 1
+            liveThreads[idx].turns[ti].status = .failed
+            liveThreads[idx].turns[ti].completedAt = Date()
+            liveThreads[idx].turns[ti].items.append(.error(id: "route-" + UUID().uuidString, message: error.localizedDescription))
+            threads.save(liveThreads[idx])
+            runnerStatesByThreadId[threadId] = .failed(error.localizedDescription)
+            finishTurnAndDrain(finishedThreadId: threadId)
+            return
+        }
         let worktreeBaseline: WorktreeChangeBaseline?
         if project?.isRemote == true {
             worktreeBaseline = nil
@@ -847,30 +863,21 @@ final class SessionStore: ObservableObject {
     /// only when the daemon cannot be reached or spawned. See
     /// `HarnessDaemonLauncher.ensureDaemonRunning` for the
     /// spawn-and-poll contract.
-    private func makeRunner(for project: Project?) -> CodexHarnessClient {
-        let apiKey: String
-        do {
-            apiKey = try Self.readApiKey()
-        } catch {
-            // Should never happen — `sendUserMessage` already
-            // returned early if there was a setup error. If we
-            // land here, build a local client with an empty key
-            // and let it fail loudly.
-            return CodexHarnessClient(transport: LocalHarnessTransport(
-                harnessPath: Self.findHarness(),
-                codexHome: TapgoConfig.codexHome,
-                apiKey: ""
-            ))
-        }
-        if let project, project.kind == .remote,
-           let hostId = project.remoteHostId,
-           let host = workspace.remoteHost(byId: hostId) {
-            let sshPath = Self.findSSH()
+    private func makeRunner(for project: Project?) throws -> CodexHarnessClient {
+        let apiKey = try Self.readApiKey()
+        if let project,
+           let remote = try RemoteExecutionContext.resolve(project: project, hosts: workspace.state.remoteHosts) {
+            let selected = TapgoConfig.resolveSelected()
             return CodexHarnessClient(transport: RemoteSSHHarnessTransport(
-                sshPath: sshPath,
-                host: host,
-                remoteCodexHome: host.codexHomePath,
-                apiKey: apiKey
+                sshPath: Self.findSSH(),
+                host: remote.host,
+                remoteCodexHome: remote.host.codexHomePath,
+                apiKey: apiKey,
+                workingDirectory: remote.path,
+                runtimeOverrides: RemoteCodexHomeSync.runtimeOverrides(
+                    model: selected.apiModel, provider: selected.providerId,
+                    baseURL: selected.baseURL, contextWindow: selected.contextWindow
+                )
             ))
         }
         if HarnessDaemonLauncher.ensureDaemonRunning(
@@ -894,29 +901,19 @@ final class SessionStore: ObservableObject {
     /// Inject a small environment preamble for remote threads.
     /// The model sees the same `host` / `user` / `pwd` the user
     /// sees, and is explicitly told not to nest `ssh` again.
-    static func composeEffectivePrompt(userPrompt: String, project: Project?) -> String {
-        let policyWrappedPrompt = AgentOutputPolicy.wrap(userPrompt: userPrompt)
-        guard let project, project.kind == .remote,
-              project.remoteHostId != nil else {
-            return policyWrappedPrompt
+    static func composeEffectivePrompt(userPrompt: String, project: Project?, hosts: [RemoteHost] = []) -> String {
+        let prompt = AgentOutputPolicy.wrap(userPrompt: userPrompt)
+        guard let project, let remote = try? RemoteExecutionContext.resolve(project: project, hosts: hosts) else {
+            return prompt
         }
-        // The host alias is the second half of `displayPath`. We
-        // deliberately keep this short — long system prompts eat
-        // tokens.
-        let display = project.displayPath
-        return """
-        [环境] 你正在远程主机上工作 (display path: \(display))。
-        所有 `exec_command` 工具调用都会在远端实际执行,stdout/stderr/exitCode 就是远端真实结果。
-        不要在远端 shell 里再 `ssh` 到当前主机,会失败。
-        \(policyWrappedPrompt)
-        """
+        return remote.instructions + "\n\n" + prompt
     }
 
     /// Detect the current git branch for `project` (best effort, never throws).
     /// Returns `nil` if the project has no root, no `.git`, or git isn't
     /// available. Used to filter per-branch KEY memory files.
     static func detectGitBranch(for project: Project?) -> String? {
-        guard let root = project?.worktreeRoot else { return nil }
+        guard project?.isRemote != true, let root = project?.worktreeRoot else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["git", "-C", root.path, "rev-parse", "--abbrev-ref", "HEAD"]
@@ -951,7 +948,11 @@ final class SessionStore: ObservableObject {
         - 只有当前回合中的具体工具调用真实失败，才能说该工具不可用；不得根据旧记忆或猜测宣布工具不可用。
         - 当前用户请求与当前文件、Git、测试、构建证据优先于长期记忆。长期记忆只用于补充稳定偏好和项目背景，不能充当当前任务。
         - 使用简体中文；输出节奏严格遵守前面的强制协议。
-        """, ComputerUseMCP.agentInstructions, ScheduledTaskMCP.instructions]
+        """]
+        // Client memory and local MCP paths belong to this Mac, not the SSH
+        // target. The remote harness discovers its own project instructions.
+        if project?.isRemote == true { return parts.joined(separator: "\n\n") }
+        parts += [ComputerUseMCP.agentInstructions, ScheduledTaskMCP.instructions]
         if let userMem = TapgoConfig.readMemoryForInjection(
             projectRoot: project?.worktreeRoot,
             gitBranch: Self.detectGitBranch(for: project)

@@ -24,8 +24,8 @@ func runProjectDisplayPathHarnessCwd(_ t: TestRunner) {
     t.expectEqual(remote.isRemote, true, "remote.isRemote = true")
     t.expectEqual(remote.displayPath, "remote://host-remotehost/Users/remoteuser",
                   "remote.displayPath uses remote target, NOT mirror")
-    t.expectEqual(remote.harnessCwd, "/tmp/mirror-abc",
-                  "remote.harnessCwd = local mirror (the cwd the harness actually sees)")
+    t.expectEqual(remote.harnessCwd, "/Users/remoteuser",
+                  "remote.harnessCwd uses the remote path")
     t.expectNotEqual(remote.displayPath, remote.harnessCwd,
                      "remote.displayPath != harnessCwd (no fake-cwd rule)")
 

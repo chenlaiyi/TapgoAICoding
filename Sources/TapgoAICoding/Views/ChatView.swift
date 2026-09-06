@@ -377,7 +377,7 @@ struct ChatView: View {
             }
             if let project = thread.projectId.flatMap({ workspace.project(byId: $0) }),
                project.isRemote {
-                RemoteBanner(project: project, host: workspace.remoteHost(byId: project.remoteHostId ?? ""))
+                RemoteProjectBanner(project: project, host: workspace.remoteHost(byId: project.remoteHostId ?? ""))
             }
             if thread.isEvolution {
                 EvolutionPanel(thread: thread) { showEvolutionLog = true }
@@ -1071,39 +1071,6 @@ private struct StreamingIndicator: View {
     }
 }
 
-private struct RemoteBanner: View {
-    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
-
-    let project: Project
-    let host: RemoteHost?
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "globe.americas.fill").foregroundStyle(.blue)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.remoteBanner)
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier)).bold()
-                Text(L10n.remoteBannerHint)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            Spacer()
-            if let host = host {
-                Button {
-                    let cmd = "ssh \(host.user)@\(host.host)"
-                    NSWorkspace.shared.open(URL(string: "ssh://" + cmd) ?? URL(fileURLWithPath: "/"))
-                } label: {
-                    Label(L10n.openInTerminal, systemImage: "terminal")
-                }
-                .controlSize(.small)
-            }
-        }
-        .padding(.horizontal, 16).padding(.vertical, 8)
-        .background(DSHTheme.brand.opacity(0.08))
-        .accessibilityElement(children: .combine)
-    }
-}
 
 struct ComposerView: View {
     @EnvironmentObject var store: SessionStore

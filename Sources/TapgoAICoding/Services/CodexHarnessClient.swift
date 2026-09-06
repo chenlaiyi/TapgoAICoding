@@ -254,11 +254,21 @@ final class CodexHarnessClient {
             try? await Task.sleep(nanoseconds: 400_000_000)
             try throwIfCancelled()
 
+            let executionCwd: String?
+            if let remote = transport as? RemoteSSHHarnessTransport, remote.workingDirectory != nil {
+                guard let resolved = remote.resolvedWorkingDirectory, resolved.hasPrefix("/") else {
+                    throw HarnessError.invalidResponse("未能确认远程执行目录，已停止本次任务。")
+                }
+                executionCwd = resolved
+            } else {
+                executionCwd = cwd
+            }
+
             let threadId: String
             if let resumeThreadId {
                 do {
                     var params = threadRuntimeParams(
-                        cwd: cwd,
+                        cwd: executionCwd,
                         baseInstructions: resumeBaseInstructions,
                         includeServiceName: false,
                         clearBaseInstructionsWhenNil: true
@@ -273,10 +283,10 @@ final class CodexHarnessClient {
                     // thread with the bounded recovery baseInstructions built
                     // by SessionStore instead of dropping the user's context.
                     TapgoConfig.log("[harness] rollout unavailable; recovering with thread/start")
-                    threadId = try await startThread(cwd: cwd, baseInstructions: baseInstructions)
+                    threadId = try await startThread(cwd: executionCwd, baseInstructions: baseInstructions)
                 }
             } else {
-                threadId = try await startThread(cwd: cwd, baseInstructions: baseInstructions)
+                threadId = try await startThread(cwd: executionCwd, baseInstructions: baseInstructions)
             }
             activeThreadId = threadId
             activeThreadIdSnapshot = threadId
@@ -335,7 +345,8 @@ final class CodexHarnessClient {
                 eventHandler = nil
                 return state
             }
-            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            let message = (transport as? RemoteSSHHarnessTransport)?.startupFailure
+                ?? (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             state = .failed(message)
             activeTurnId = nil
             eventHandler = nil
