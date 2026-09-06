@@ -165,3 +165,30 @@ func runPluginCatalogTapgoSafeId(_ runner: TestRunner) {
     runner.expect(!PluginConfigEditor.isSafePluginId("plugin$injection"),
                        "shell metacharacters are rejected")
 }
+
+func runPluginCatalogRepoExample(_ runner: TestRunner) {
+    // 校验 Plugins/catalog.example.json 在真实仓库结构里也能解析成功，
+    // 防止 demo 协议与解析器漂移。
+    let url = URL(fileURLWithPath: "Plugins/catalog.example.json")
+    guard let data = try? Data(contentsOf: url) else {
+        runner.expect(false, "Plugins/catalog.example.json 必须存在并可读取")
+        return
+    }
+    do {
+        let items = try PluginCatalogParser.decodeTapgo(data, installedIds: [])
+        runner.expectEqual(items.count, 2, "catalog.example.json 暴露 2 条 demo 插件")
+        let ids = Set(items.map { $0.id })
+        runner.expect(ids.contains("tapgo:tapgo-plugin-sparkle-publish"),
+                      "sparkle-publish demo 进目录")
+        runner.expect(ids.contains("tapgo:tapgo-plugin-screen-permission"),
+                      "screen-permission demo 进目录")
+        for item in items {
+            runner.expect(item.installSpecifier.hasPrefix("https://github.com/chenlaiyi/"),
+                          "demo repo URL 必须指向 github.com/chenlaiyi/")
+            runner.expect(item.capabilities.count >= 1,
+                          "demo 必须填写 capabilities 列表")
+        }
+    } catch {
+        runner.expect(false, "catalog.example.json 协议必须兼容 decodeTapgo: \(error)")
+    }
+}

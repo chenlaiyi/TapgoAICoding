@@ -1,5 +1,17 @@
 # Evolution Log
 
+## v0.5.116 — feat(plugin-marketplace): 起 Tapgo 官方插件模板与 catalog 协议校验
+**Date**: 2026-09-06
+**Tag**: v0.5.116
+**Test status**: 3059 passed / 0 failed（新增 7 个 PluginCatalog: repo example parses 断言，与 v0.5.115 合并后无回归）
+**Changed**:
+- 新增 `Plugins/` 模板：`tapgo-plugin-sparkle-publish`（薄封装 Sparkle 发版脚本）+ `tapgo-plugin-screen-permission`（macOS TCC 自检）；含 README、LICENSE、scripts/。
+- 新增 `Plugins/catalog.example.json`：符合 `TapgoPluginListPayload` 协议的两条 demo 目录，作为 `plugins.itapgo.com/catalog.json` 的发布示例。
+- 新增单元测试 `PluginCatalog: repo example parses`（7 断言）：实时读取仓库内 `Plugins/catalog.example.json`、断言 `PluginCatalogParser.decodeTapgo` 仍能解析、demo pluginId 列表正确、repo URL 指向 `github.com/chenlaiyi/`。
+- `Plugins/README.md` 列出从模板到 `plugins.itapgo.com` 部署的四步流程，便于用户后续按 demo 复制新插件。
+**Why**: 用户要求"起 catalog.json 模板 + demo 插件"，保证从模板复制 → 建 GitHub repo → 部署静态文件 → TapgoAICoding UI 安装的链路无需任何代码改动即可闭环。
+**Next**: 用户在 `github.com/chenlaiyi/` 下建两个真实 repo 并推上 demo 内容，把 `Plugins/catalog.example.json` 部署到 TapgoServer 的 `plugins.itapgo.com/catalog.json`，UI 上「Tapgo 官方」Tab 即可立即渲染并安装。
+
 ## v0.5.115 — feat(plugin-marketplace): 接入 Tapgo 官方市场（plugins.itapgo.com）
 **Date**: 2026-09-06
 **Tag**: v0.5.115
