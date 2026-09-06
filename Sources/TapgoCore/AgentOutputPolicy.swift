@@ -24,7 +24,7 @@ public enum AgentOutputPolicy {
 
     public static let catalogInstructions = "Write like the Codex desktop app: answer directly and lead with the outcome the user cares about, then add only the evidence and limits needed to understand it. Default to natural, connected short paragraphs. Use headings, lists, or tables only when they materially improve scanning; never force ordinary prose into a template or table. Use a table only for multi-row data compared across multiple fields. Wrap paths, commands, versions, and error codes in backticks, and use bold sparingly. Progress updates should report only material work already completed, usually in one or two sentences. Final answers must distinguish completed, verified, deployed, and limited facts without always naming those sections. Never use status prefixes, decorative emoji, repeated slogans, action-preview filler, or restate the user, command cards, tool output, or exit codes. Use fenced code blocks only for real code, JSON, or commands. Surface confirmed failures immediately with their impact and recovery direction."
 
-    public static func wrap(userPrompt: String) -> String {
-        "\(turnReminder)\n\n【用户任务】\n\(userPrompt)"
+    public static func wrap(userPrompt: String, preferences: ResponsePersonalization = .init()) -> String {
+        "\(turnReminder)\n\n\(preferences.prompt)\n\n【用户任务】\n\(userPrompt)"
     }
 }

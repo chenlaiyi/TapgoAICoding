@@ -46,6 +46,10 @@ struct SettingsView: View {
     /// so users can flip it back on without digging through a hidden
     /// settings path.
     @AppStorage("tapgo.showWorkProcess") private var showWorkProcess = false
+    @AppStorage(ResponsePersonalization.lengthKey) private var responseLength = "concise"
+    @AppStorage(ResponsePersonalization.toneKey) private var responseTone = "natural"
+    @AppStorage(ResponsePersonalization.languageKey) private var responseLanguage = "chinese"
+    @AppStorage(ResponsePersonalization.instructionsKey) private var customInstructions = ""
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     init(initialTab: Tab = .general, onDismiss: (() -> Void)? = nil) {
@@ -56,6 +60,7 @@ struct SettingsView: View {
     enum Tab: String, CaseIterable, Identifiable {
         case general = "常规"
         case appearance = "外观"
+        case personalization = "个性化"
         case model = "模型设置"
         case computer = "电脑控制"
         case memory = "记忆"
@@ -70,6 +75,7 @@ struct SettingsView: View {
             switch self {
             case .general: return "slider.horizontal.3"
             case .appearance: return "paintpalette"
+            case .personalization: return "person.text.rectangle"
             case .model: return "cube"
             case .computer: return "display"
             case .memory: return "brain.head.profile"
@@ -85,6 +91,7 @@ struct SettingsView: View {
             switch self {
             case .general: return "审批、安全与 Agent 运行方式"
             case .appearance: return "主题、字号与实时预览"
+            case .personalization: return "回复风格、语言与自定义偏好"
             case .model: return "选择、添加并维护模型供应商"
             case .computer: return "工具注册与 macOS 权限状态"
             case .memory: return "跨会话记忆与跨设备同步"
@@ -104,7 +111,7 @@ struct SettingsView: View {
     }
 
     private let navigationSections = [
-        NavigationSection(title: "基础设置", tabs: [.general, .appearance, .model, .computer]),
+        NavigationSection(title: "基础设置", tabs: [.general, .appearance, .personalization, .model, .computer]),
         NavigationSection(title: "工作区", tabs: [.projects, .remote]),
         NavigationSection(title: "Agent 能力", tabs: [.memory, .plugins]),
         NavigationSection(title: "账户与支持", tabs: [.account, .about]),
@@ -272,6 +279,7 @@ struct SettingsView: View {
                     switch tab {
                     case .general: generalTab
                     case .appearance: appearanceTab
+                    case .personalization: personalizationTab
                     case .model: modelTab
                     case .computer: computerTab
                     case .memory: memoryTab
@@ -638,7 +646,7 @@ struct SettingsView: View {
 
                     settingsControlRow(
                         title: "显示工作过程",
-                        description: "关闭后已完成回合只保留最终回复与文件修改摘要；每条思考、终端、读取、编辑卡片默认隐藏。"
+                        description: "关闭后，运行中和历史回合都收起过程，只显示状态、回复和修改摘要；需要时可单独展开。"
                     ) {
                         Toggle("显示工作过程", isOn: $showWorkProcess)
                             .labelsHidden()
@@ -654,6 +662,63 @@ struct SettingsView: View {
             ) {
                 previewRow(scale: scale)
                     .padding(4)
+            }
+        }
+    }
+
+    // MARK: - Personalization
+
+    private var personalizationTab: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            SettingsCard(title: "回复偏好", description: "自动保存，从下一条消息生效；已有任务也适用。", icon: "text.bubble") {
+                VStack(spacing: 0) {
+                    settingsControlRow(title: "回复长度", description: "选择解释的详细程度，必要的结果和限制始终保留。") {
+                        Picker("回复长度", selection: $responseLength) {
+                            ForEach(ResponsePersonalization.Length.allCases) { Text($0.label).tag($0.rawValue) }
+                        }.labelsHidden().frame(width: 180)
+                    }
+                    Divider()
+                    settingsControlRow(title: "语气", description: "调整表达方式。") {
+                        Picker("语气", selection: $responseTone) {
+                            ForEach(ResponsePersonalization.Tone.allCases) { Text($0.label).tag($0.rawValue) }
+                        }.labelsHidden().frame(width: 180)
+                    }
+                    Divider()
+                    settingsControlRow(title: "回复语言", description: "默认使用简体中文；本次消息的明确要求优先。") {
+                        Picker("回复语言", selection: $responseLanguage) {
+                            ForEach(ResponsePersonalization.Language.allCases) { Text($0.label).tag($0.rawValue) }
+                        }.labelsHidden().frame(width: 180)
+                    }
+                }
+            }
+            SettingsCard(title: "自定义指令", description: "例如：先给结论；解释术语；使用我熟悉的编程语言举例。", icon: "square.and.pencil") {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextEditor(text: $customInstructions)
+                        .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .frame(height: 140)
+                        .background(DSHTheme.bg, in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DSHTheme.border))
+                        .accessibilityLabel("自定义回复指令")
+                        .onChange(of: customInstructions) { _, value in
+                            if value.count > ResponsePersonalization.instructionLimit {
+                                customInstructions = String(value.prefix(ResponsePersonalization.instructionLimit))
+                            }
+                        }
+                    HStack {
+                        Text("仅保存在此 Mac，随新消息发送给所选模型。请勿填写密码或密钥。")
+                        Spacer()
+                        Text("\(customInstructions.count)/\(ResponsePersonalization.instructionLimit)")
+                    }.font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier)).foregroundStyle(DSHTheme.labelDim)
+                }
+            }
+            SettingsCard(title: "风格预览", description: "示例展示篇幅差异；实际回复取决于任务内容。", icon: "text.alignleft") {
+                MarkdownMessageView(responseLength == "detailed"
+                    ? "已修复消息显示。\n\n工作过程会统一收起，最终回复单独显示。你可以按需展开过程，查看执行记录。\n\n验证覆盖运行中、历史回合和重启后的设置恢复。"
+                    : responseLength == "balanced"
+                        ? "已修复消息显示。工作过程统一收起，最终回复单独显示；需要时可以展开查看。\n\n已检查运行中和历史回合。"
+                        : "已修复消息显示，工作过程默认收起。运行中与历史回合均已检查。")
             }
         }
     }

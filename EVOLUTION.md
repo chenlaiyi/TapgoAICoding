@@ -1457,3 +1457,16 @@ bullet 颜色降一档 + 字重 regular；inline code 字号与正文同大、�
 v0.5.108 引入 MarkdownInlineFlow 渲染器和 LivePulseDot，让行内代码和活动行更接近 Codex Desktop 截图风格。
 **Why**: Self-evolution iteration — see commit message + diff.
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
+
+
+## v0.5.109 — 消息过程、最终回复与个性化
+**Date**: 2026-09-06
+**Tag**: v0.5.109
+**Changed**:
+- 修复关闭工作过程后运行中仍展示工具命令和过程文字；每回合统一折叠，局部展开不修改全局设置。
+- 保存消息阶段，兼容旧历史；最终回复、原始过程和审批错误各自呈现，复制只包含回复，手机端共用结果选择。
+- 个性化支持长度、语气、语言及自定义指令，每回合重新读取偏好。
+- 原生连续文字排版修复混合 Markdown 换行和链接，历史正文不再错误显示流式光标。
+- 修复测试错误使用真实 daemon 目录，改为临时路径和正确清理范围。
+**Validation**: Core 2916 passed / 0 failed；后续打包与安装回读见本次发布验收记录。
+**Limits**: 无 phase 的旧模型在回合完成后显示最终回复；个性化仅保存于当前 Mac。

@@ -32,26 +32,13 @@ import TapgoCore
 @MainActor
 func runHarnessDaemonLauncherReturnsTrueWhenSocketPresent(_ t: TestRunner) {
     t.section("HarnessDaemonLauncher: returns true when launcher socket file exists")
-    let realSocketPath = HarnessDaemonLauncher.socketPath
-    let existed = FileManager.default.fileExists(atPath: realSocketPath)
-    if !existed {
-        // Create the file in the launcher's expected location.
-        // The launcher's "file exists" check is just
-        // `FileManager.fileExists` — no socket-level handshake.
-        let dir = (realSocketPath as NSString).deletingLastPathComponent
-        try? FileManager.default.createDirectory(
-            atPath: dir,
-            withIntermediateDirectories: true
-        )
-        FileManager.default.createFile(atPath: realSocketPath, contents: Data())
-        defer {
-            try? FileManager.default.removeItem(atPath: realSocketPath)
-        }
-    }
-
+    let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("tapgo-launcher-test-" + UUID().uuidString)
+    FileManager.default.createFile(atPath: fixture.path, contents: Data())
+    defer { try? FileManager.default.removeItem(at: fixture) }
     let ok = HarnessDaemonLauncher.ensureDaemonRunning(
-        codexHome: URL(fileURLWithPath: NSTemporaryDirectory()),
-        apiKey: "irrelevant"
+        codexHome: FileManager.default.temporaryDirectory,
+        apiKey: "irrelevant",
+        socketPath: fixture.path
     )
     t.expect(ok, "ensureDaemonRunning returns true when launcher socket file exists")
 }

@@ -5,6 +5,11 @@ import Foundation
 /// assistant text passes through, commands/executions become fenced
 /// code blocks, file changes and errors are labelled.
 public enum TurnMarkdown {
+    /// The ordinary copy action follows the visible answer. Full export stays available via render.
+    public static func response(_ turn: Turn) -> String {
+        TurnResponsePresentation(turn).answerText
+    }
+
     public static func render(_ turn: Turn) -> String {
         var blocks: [String] = []
         for item in turn.items {

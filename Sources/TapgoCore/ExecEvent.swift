@@ -27,7 +27,8 @@ public enum ExecEvent: Hashable {
     case turnDiffUpdated(turnId: String, diff: String)
 
     case agentMessageDelta(id: String, delta: String)
-    case agentMessage(id: String, text: String)
+    case agentMessage(id: String, text: String, phase: String? = nil)
+    case agentMessageStarted(id: String, phase: String?)
 
     case reasoningDelta(id: String, delta: String)
     case reasoning(id: String, summary: [String])
@@ -104,7 +105,8 @@ public enum ExecEvent: Hashable {
              .tokenUsageUpdated,
              .error:
             return true
-        case .agentMessageDelta,
+        case .agentMessageStarted,
+             .agentMessageDelta,
              .agentMessage,
              .reasoningDelta,
              .reasoning,
@@ -280,9 +282,9 @@ public enum ExecEventParser {
         case "agentMessage":
             let text = item["text"]?.stringValue ?? ""
             if completed {
-                return .agentMessage(id: id, text: text)
+                return .agentMessage(id: id, text: text, phase: item["phase"]?.stringValue)
             } else {
-                return nil  // we'll get the text either via deltas or item/completed
+                return .agentMessageStarted(id: id, phase: item["phase"]?.stringValue)
             }
         case "reasoning":
             if completed {

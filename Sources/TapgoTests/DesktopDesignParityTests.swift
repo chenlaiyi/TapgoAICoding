@@ -136,13 +136,13 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 助手正文无色条与外层卡片")
     t.expect(message.contains("MarkdownMessageView(text, isStreaming: isStreaming)"),
              "desktop-design: 流式状态由正文内轻量光标承担")
-    t.expect(!chat.contains("Text(turnTime(turn.startedAt))") && chat.contains("turnMetadataHelp(turn)"),
-             "desktop-design: 完成态页脚只显示图标，时间与 token 收入 tooltip")
+    t.expect(!chat.contains("Text(turnTime(turn.startedAt))") && chat.contains("TurnMarkdown.response(turn)"),
+             "desktop-design: 完成态页脚只显示图标，复制动作只复制最终回复")
     t.expect(chat.contains("Image(systemName: \"arrow.turn.up.right\")")
              && !chat.contains("Label(\"以此输入开新任务\", systemImage:"),
              "desktop-design: 新任务动作使用 Codex 式图标，不常驻长标签")
-    t.expect(chat.contains("Text(\"已处理 \\(localizedWorkDuration(turn.duration))\")"),
-             "desktop-design: 完成过程使用 Codex 的已处理时长文案")
+    t.expect(chat.contains("workDurationChip(turn: turn)") && !chat.contains("showWorkProcess = true"),
+             "desktop-design: 单回合过程展开不修改全局偏好")
     t.expect(chat.contains("FileEditBatchView(files: fileChanges)"),
              "desktop-design: 完成态保留独立文件变更摘要卡")
     t.expect(fileChangeView.contains("@State private var selectedReviewPath: String?")
@@ -161,11 +161,11 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 表格改为 Codex 式平面分隔，不再使用连续卡片底色")
     // v0.5.93 — user-provided Codex/Tapgo crops exposed message-renderer
     // drift that shell/layout parity alone could not catch.
-    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 6)")
+    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 10)")
              && markdown.contains("appendText(text, to: &out, accumulator: &acc)")
              && markdown.contains("trimmingCharacters(in: .newlines)")
              && markdown.contains(".lineSpacing(2.5)"),
-             "desktop-design: Markdown 空行归一化、块间距 6pt、行距 2.5 的 Codex 节奏")
+             "desktop-design: Markdown 空行归一化、块间距 10pt、行距 2.5 的 Codex 节奏")
     t.expect(markdown.contains("AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)")
              && !markdown.contains("multiplier: appFontScale.multiplier) + 0.5")
              && markdown.contains("foregroundStyle(DSHTheme.messageText)"),
@@ -192,18 +192,10 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: SidebarView 底栏背景切到 fidelityTitlebar token")
     t.expect(workbench.contains("DSHTheme.fidelityTitlebar"),
              "desktop-design: RightWorkbenchView 工具栏背景切到 fidelityTitlebar token")
-    // v0.5.108 — message-renderer upgrade: 列表 / 段落 / 标题 / 引用 / 表格 / 任务都
-    // 走 `MarkdownInlineFlow`，从而把行内代码渲染为真正的圆角 pill；不再依赖
-    // `AttributedString.backgroundColor` 画出来的直角色块。
-    t.expect(markdown.contains("struct MarkdownInlineFlow: View")
-             && markdown.contains("InlineFlowLayout"),
-             "desktop-design: MarkdownMessageView 引入 MarkdownInlineFlow + InlineFlowLayout 渲染器")
-    t.expect(markdown.contains("RoundedRectangle(cornerRadius: 4, style: .continuous)")
-             && markdown.contains("DSHTheme.inlineCodeBg"),
-             "desktop-design: 行内代码段使用 4pt 圆角 + inlineCodeBg 浅底色 pill")
-    t.expect(!markdown.contains("Text(Self.inlineAttributed(")
-             && !markdown.contains("Text(MarkdownMessageView.inlineAttributed("),
-             "desktop-design: 段落/列表/表格不再用 AttributedString + 平面背景，切换到 MarkdownInlineFlow")
+    t.expect(markdown.contains("Text(MarkdownMessageView.inlineAttributed(")
+             && markdown.contains("Text(MarkdownMessageView.inlineAttributed(")
+             && markdown.contains("r.link = URL(string: url)"),
+             "desktop-design: 原生连续排版保留换行、选择与可点击链接")
     // 活动行不再用裸 ProgressView 抢占视觉，改用类别图标 + 脉动圆点。
     t.expect(message.contains("LivePulseDot")
              && message.contains("struct LivePulseDot: View"),

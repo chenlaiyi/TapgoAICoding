@@ -47,7 +47,7 @@ public enum HarnessDaemonLauncher {
 
     /// 确保 daemon 在跑：socket 在就直接返回；不在则尝试启动并等待。
     /// - Returns: daemon 是否就绪（socket 文件可连）
-    public static func ensureDaemonRunning(codexHome: URL, apiKey: String) -> Bool {
+    public static func ensureDaemonRunning(codexHome: URL, apiKey: String, socketPath: String = Self.socketPath) -> Bool {
         if FileManager.default.fileExists(atPath: socketPath) {
             return true
         }
@@ -55,13 +55,13 @@ public enum HarnessDaemonLauncher {
         guard FileManager.default.isExecutableFile(atPath: binPath) else {
             return false
         }
-        guard spawnDaemon(binaryPath: binPath, codexHome: codexHome, apiKey: apiKey) else {
+        guard spawnDaemon(binaryPath: binPath, codexHome: codexHome, apiKey: apiKey, socketPath: socketPath) else {
             return false
         }
         return waitForSocket(at: socketPath, timeoutSeconds: 3.0)
     }
 
-    private static func spawnDaemon(binaryPath: String, codexHome: URL, apiKey: String) -> Bool {
+    private static func spawnDaemon(binaryPath: String, codexHome: URL, apiKey: String, socketPath: String) -> Bool {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: binaryPath)
         proc.arguments = [

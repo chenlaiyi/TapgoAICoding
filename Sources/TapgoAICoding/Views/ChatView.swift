@@ -144,6 +144,7 @@ struct ChatView: View {
     /// Codex-style fold state: completed turns collapse their work log into
     /// an "已处理 …" row. File edits remain visible as a separate summary card.
     @State private var expandedWork: Set<String> = []
+    @State private var collapsedWork: Set<String> = []
     @State private var showShortcuts = false
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
@@ -153,9 +154,8 @@ struct ChatView: View {
     /// because the per-row stream drowned the actual answer for users who
     /// do not care about the agent's internal mechanics. The chip +
     /// summary bar still appear; only the per-event rows hide.
-    /// Individual `expandedWork` ids are AND-ed with this flag, so
-    /// turning it off immediately collapses every expanded turn and
-    /// the per-row chip toggles are inert until it is back on.
+    /// The global flag controls automatic expansion; per-turn disclosure
+    /// never mutates the persisted preference. Turning it off collapses all.
     @AppStorage("tapgo.showWorkProcess") private var showWorkProcess = false
     @FocusState private var searchFieldFocused: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
@@ -520,6 +520,10 @@ struct ChatView: View {
                     }
                 }
                 // When switching threads, land at the latest message.
+                .onChange(of: showWorkProcess) { _, _ in
+                    expandedWork.removeAll()
+                    collapsedWork.removeAll()
+                }
                 .onChange(of: thread.id) { _, _ in
                     streamScrollCoalescer.cancel()
                     scrollChatToBottom(proxy)
@@ -856,51 +860,56 @@ struct ChatView: View {
 
     @ViewBuilder
     private func turnSection(turn: Turn, isLast: Bool = false) -> some View {
-        let isRunning = turn.status == .running
-        let blocks = TurnPresentation.compactBlocks(turn.items)
+        let isRunning = turn.status == .running || turn.status == .awaitingApproval
+        let presentation = TurnResponsePresentation(turn)
         let fileChanges = turn.items.compactMap { item -> FileChange? in
             guard case .fileChange(let change) = item else { return nil }
             return change
         }
         VStack(alignment: .leading, spacing: 8) {
-            // Codex-style work log. Live activity stays in the transcript;
-            // completed activity folds into one quiet duration row. File
-            // changes are promoted into their own persistent summary card.
-            ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
-                switch block {
-                case .item:
-                    renderBlock(block, turn: turn)
-                case .activity:
-                    if isRunning {
-                        renderBlock(block, turn: turn)
-                    } else {
-                        if index == firstActivityBlockIndex(blocks) {
-                            workDurationChip(turn: turn)
+            ForEach(presentation.users) { item in
+                renderBlock(.item(item), turn: turn)
+            }
+            if !presentation.work.isEmpty {
+                workDurationChip(turn: turn)
+                if workIsExpanded(turn) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(TurnPresentation.compactBlocks(presentation.work)) { block in
+                            renderBlock(block, turn: turn)
                         }
-                        let revealed = showWorkProcess && expandedWork.contains(turn.id)
-                        if revealed { renderBlock(block, turn: turn) }
                     }
-                case .fileBatch:
-                    if isRunning {
-                        // During execution, show the current file batch where
-                        // it happened. Completed turns consolidate all edits
-                        // into one card below the answer, like Codex.
-                        renderBlock(block, turn: turn)
+                    .padding(.leading, 14)
+                    .overlay(alignment: .leading) {
+                        Rectangle().fill(DSHTheme.border).frame(width: 1)
                     }
                 }
             }
-            if !isRunning, !fileChanges.isEmpty {
-                FileEditBatchView(files: fileChanges)
-                    .padding(.top, 2)
+            ForEach(presentation.notices) { item in
+                renderBlock(.item(item), turn: turn)
             }
-            if isRunning && !hasRollingActivityTail(turn) && !hasStreamingAssistant(turn) {
+            ForEach(presentation.messages) { item in
+                renderBlock(.item(item), turn: turn)
+            }
+            if !isRunning, !fileChanges.isEmpty {
+                FileEditBatchView(files: fileChanges).padding(.top, 6)
+            }
+            if isRunning && presentation.messages.isEmpty && presentation.work.isEmpty {
                 runningActivityLine(turn: turn)
             }
+            if turn.status == .interrupted || turn.status == .failed {
+                Text(turn.status == .interrupted ? "任务已中断，可重试或展开查看工作过程。" : "任务未完成，请查看错误说明后重试。")
+                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+            } else if turn.status == .completed && presentation.messages.isEmpty {
+                Text("任务已结束，未返回最终回复。可展开查看工作过程。")
+                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(DSHTheme.labelDim)
+            }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
-                // Codex keeps completion actions as a quiet icon row. Time,
-                // usage and duration remain discoverable in the copy tooltip.
+                // Copy the answer, keeping diagnostics in explicit full export.
                 HStack(spacing: 10) {
-                    CopyIconButton(text: TurnMarkdown.render(turn), help: turnMetadataHelp(turn))
+                    CopyIconButton(text: TurnMarkdown.response(turn), help: "复制回复")
+                        .disabled(presentation.answerText.isEmpty)
                         .controlSize(.mini)
                     if isLast, turn.status == .completed {
                         Button {
@@ -962,7 +971,7 @@ struct ChatView: View {
         switch block {
         case .item(let item):
             MessageRow(item: item,
-                       isRunning: turn.status == .running,
+                       isRunning: turn.status == .running && turn.items.last?.id == item.id,
                        userImagePaths: turn.userImagePaths,
                        startedAt: turn.startedAt,
                        onReply: userReplyClosure(item),
@@ -979,13 +988,16 @@ struct ChatView: View {
 
     /// "已处理 8 分 53 秒 >" — Codex's quiet completed-work boundary.
     private func workDurationChip(turn: Turn) -> some View {
-        let expanded = expandedWork.contains(turn.id)
+        let expanded = workIsExpanded(turn)
         return HStack(spacing: 9) {
             Button {
-                toggleWork(turn.id)
+                toggleWork(turn)
             } label: {
                 HStack(spacing: 5) {
-                    Text("已处理 \(localizedWorkDuration(turn.duration))")
+                    if turn.status == .running {
+                        ProgressView().controlSize(.mini).accessibilityHidden(true)
+                    }
+                    Text(turn.status == .running ? "正在处理" : (turn.status == .awaitingApproval ? "等待确认" : "工作过程 · \(localizedWorkDuration(turn.duration))"))
                     Image(systemName: "chevron.right")
                         .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         .rotationEffect(.degrees(expanded ? 90 : 0))
@@ -1003,38 +1015,18 @@ struct ChatView: View {
         .padding(.vertical, 2)
     }
 
-    private func firstActivityBlockIndex(_ blocks: [TurnPresentationBlock]) -> Int? {
-        blocks.firstIndex { block in
-            switch block {
-            case .activity: return true
-            case .item, .fileBatch: return false
-            }
-        }
+    private func workIsExpanded(_ turn: Turn) -> Bool {
+        expandedWork.contains(turn.id) || (showWorkProcess && (turn.status == .running || turn.status == .awaitingApproval) && !collapsedWork.contains(turn.id))
     }
 
-    private func toggleWork(_ id: String) {
-        if !showWorkProcess { showWorkProcess = true }
-        if expandedWork.contains(id) {
-            expandedWork.remove(id)
+    private func toggleWork(_ turn: Turn) {
+        if workIsExpanded(turn) {
+            expandedWork.remove(turn.id)
+            collapsedWork.insert(turn.id)
         } else {
-            expandedWork.insert(id)
+            collapsedWork.remove(turn.id)
+            expandedWork.insert(turn.id)
         }
-    }
-
-    /// Reasoning, command and tool events are already represented by the
-    /// single rolling activity row. Do not append a second generic row.
-    private func hasRollingActivityTail(_ turn: Turn) -> Bool {
-        guard let last = turn.items.last else { return false }
-        switch last {
-        case .reasoning, .reasoningSummary, .commandExecution, .toolCall: return true
-        default: return false
-        }
-    }
-
-    private func hasStreamingAssistant(_ turn: Turn) -> Bool {
-        guard let last = turn.items.last else { return false }
-        if case .assistantMessage = last { return true }
-        return false
     }
 
     private func localizedWorkDuration(_ duration: TimeInterval?) -> String {
@@ -1073,12 +1065,12 @@ struct ChatView: View {
         guard let last = turn.items.last else { return "思考中…" }
         switch last {
         case .reasoning, .reasoningSummary: return "正在思考"
-        case .commandExecution(let execution):
-            return TurnPresentation.activityDisplay(for: .commandExecution(execution)).text
-        case .toolCall(let call):
-            return TurnPresentation.activityDisplay(for: .toolCall(call)).text
-        case .fileChange(let change):
-            return TurnPresentation.activityDisplay(for: .fileChange(change)).text
+        case .commandExecution:
+            return "正在执行"
+        case .toolCall:
+            return "正在处理"
+        case .fileChange:
+            return "正在编辑文件"
         case .assistantMessage: return "正在生成回复"
         default: return "正在处理"
         }

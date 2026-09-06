@@ -140,6 +140,7 @@ let allSections: [String] = [
     "ConversationRunRegistry: per-thread isolation",
     "TurnSteerPayload: native same-turn steering",
     "TurnPresentation: semantic activity summaries",
+    "Response: quiet transcript and personalization",
     "TurnProgressSummary: plan + diff statistics",
     "AdaptiveEnvironmentLayout: responsive visibility threshold",
     "ApprovalTimeoutTracker: arm / disarm basics",
@@ -511,6 +512,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "TurnSteerPayload: native same-turn steering") {
             runTurnSteerPayloadTests(runner)
+        }
+        await runIfInScope(runner, "Response: quiet transcript and personalization") {
+            runResponsePresentationTests(runner)
         }
         await runIfInScope(runner, "TurnPresentation: semantic activity summaries") {
             runTurnPresentationTests(runner)

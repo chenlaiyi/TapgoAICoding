@@ -830,11 +830,7 @@ public enum PhoneRemote {
     /// 助手回复: 拼接所有非 app-progress- 的 assistantMessage。
     /// 与 App 层 `SessionStore.turnAssistantText` 同语义。
     public static func assistantText(_ turn: Turn) -> String {
-        turn.items.compactMap { item -> String? in
-            if case .assistantMessage(let id, let text) = item,
-               !id.hasPrefix("app-progress-") { return text }
-            return nil
-        }.joined(separator: "\n")
+        TurnResponsePresentation(turn).answerText
     }
 
     private static func truncate(_ s: String) -> String {

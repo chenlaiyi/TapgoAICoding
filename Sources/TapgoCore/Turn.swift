@@ -20,6 +20,7 @@ public struct Turn: Identifiable, Hashable, Codable {
     /// Token usage reported by the harness for this turn (nil until the
     /// turn completes and the harness reports usage).
     public var usage: TokenUsage?
+    public var assistantPhases: [String: String] = [:]
 
     public enum Status: String, Hashable, Codable {
         case pending
@@ -31,7 +32,7 @@ public struct Turn: Identifiable, Hashable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, userInput, status, startedAt, completedAt, userImagePaths, items, usage
+        case id, userInput, status, startedAt, completedAt, userImagePaths, items, usage, assistantPhases
     }
 
     public init(from decoder: Decoder) throws {
@@ -46,6 +47,7 @@ public struct Turn: Identifiable, Hashable, Codable {
         // to empty so we don't fail to decode an existing thread.
         items = try c.decodeIfPresent([TurnItem].self, forKey: .items) ?? []
         usage = try c.decodeIfPresent(TokenUsage.self, forKey: .usage)
+        assistantPhases = try c.decodeIfPresent([String: String].self, forKey: .assistantPhases) ?? [:]
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -58,6 +60,7 @@ public struct Turn: Identifiable, Hashable, Codable {
         try c.encode(userImagePaths, forKey: .userImagePaths)
         try c.encode(items, forKey: .items)
         try c.encodeIfPresent(usage, forKey: .usage)
+        try c.encode(assistantPhases, forKey: .assistantPhases)
     }
 
     public init(

@@ -1373,7 +1373,10 @@ final class SessionStore: ObservableObject {
             appendToStreamingMessage(id: id, delta: delta, in: &turn) {
                 .assistantMessage(id: $0, text: "")
             }
-        case .agentMessage(let id, let text):
+        case .agentMessageStarted(let id, let phase):
+            if let phase { turn.assistantPhases[id] = phase }
+        case .agentMessage(let id, let text, let phase):
+            if let phase { turn.assistantPhases[id] = phase }
             replaceAssistantText(id: id, text: text, in: &turn)
         case .reasoningDelta(let id, let delta):
             appendToStreamingMessage(id: id, delta: delta, in: &turn) {
