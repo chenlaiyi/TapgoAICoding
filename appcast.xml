@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.112</title>
+            <pubDate>Sun, 06 Sep 2026 13:56:05 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.112</link>
+            <sparkle:version>0.5.112</sparkle:version>
+            <sparkle:shortVersionString>0.5.112</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## v0.5.112 — 2026-09-06
+
+- 侧栏统一导航、项目与任务的对齐线、行高和留白；支持 220–360pt 拖拽宽度。
+- 项目悬停操作预留固定位置，长标题截断，日期和状态保持右侧对齐。
+- 项目折叠状态跨重启保存；选择任务不再改变项目排序。
+- 搜索自动展示折叠项目中的命中项；键盘只在当前可见任务中切换。
+- 显示方式收进轻量菜单，修复添加项目入口；底部账户与设置改为完整尺寸弹出菜单。
+
+2937 项回归检查通过；组件验收覆盖深浅色、大字体、窄侧栏与长标题。
+Developer ID 签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.112/Tapgo-AICoding-0.5.112.zip" length="11674196" type="application/octet-stream" sparkle:edSignature="z5dbBsizIF2PQdT6VMyMRn/vybvaxogjqDtgvxVmAfgNqT4qqJQPWHDv6hEH+RpE+b343XxT6p/+NskMaoprAA=="/>
+        </item>
+        <item>
             <title>0.5.111</title>
             <pubDate>Sun, 06 Sep 2026 13:16:43 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.111</link>
@@ -44,28 +65,6 @@ Developer ID 签名有效；尚未完成 Apple 公证。
 Developer ID 签名有效；尚未完成 Apple 公证。本轮未新增语音会话。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.110/Tapgo-AICoding-0.5.110.zip" length="11634970" type="application/octet-stream" sparkle:edSignature="hIsDjrP9TpV+HrMFVc6jM8PuBPRX0+qNnp+15PzgxGXZr4ELIF/pxKtxn+a1MzZAg9KmoaDDOwbKbS13VYSpBw=="/>
-        </item>
-        <item>
-            <title>0.5.109</title>
-            <pubDate>Sun, 06 Sep 2026 12:08:08 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.109</link>
-            <sparkle:version>0.5.109</sparkle:version>
-            <sparkle:shortVersionString>0.5.109</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.109
-
-- 工作过程统一收起，关闭开关后运行中也不会铺满命令、推理与过程文字。
-- 每回合可单独展开过程；审批、错误和文件修改摘要始终可见。
-- 最终回复单独显示，复制回复不再夹带原始工具日志；历史消息不再显示流式光标。
-- 新增「设置 → 个性化」：回复长度、语气、回复语言、自定义指令，自动保存，下一条消息生效。
-- 改善正文、列表、引用与表格的连续排版、换行和链接点击。
-
-个性化设置仅保存在当前 Mac。未提供消息阶段的旧模型，在回合完成后显示最终回复。
-
-发行状态：Developer ID 签名有效；此版本尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.109/Tapgo-AICoding-0.5.109.zip" length="11571683" type="application/octet-stream" sparkle:edSignature="N0aJ0fMJUXSLZNJMetkl6/ZjJfoJBu59OFMklPHdcovRkn8nSg2/Nuv3QqnOjlo39N3ZmrLNKGuX7zM6XYdpDg=="/>
         </item>
     </channel>
 </rss>
