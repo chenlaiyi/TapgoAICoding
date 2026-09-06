@@ -23,30 +23,30 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(sidebar.contains("menuItem(\"插件市场\""), "desktop-design: 插件市场位于一级导航")
     t.expect(sidebar.contains("case groups") && sidebar.contains("case projects"), "desktop-design: 分组与项目视图可切换")
     t.expect(sidebar.contains("flattenedThreads") && sidebar.contains("flatTaskThreads"), "desktop-design: 分组扁平列表与项目层级分别渲染")
-    t.expect(sidebar.contains("sidebarSectionHeading(\"项目\"") && sidebar.contains("sidebarSectionHeading(\"任务\""), "desktop-design: 项目模式具有项目与任务双分区")
+    t.expect(sidebar.contains("projectGroupHeader(group)") && sidebar.contains("sidebarSectionHeading(\"其他任务\""), "desktop-design: 项目模式具有项目行与其他任务分区")
     t.expect(sidebar.contains("ScrollView") && sidebar.contains("LazyVStack"), "desktop-design: 侧栏使用无系统玻璃材质的平面滚动容器")
     t.expect(sidebar.contains("relativeDate(for: t.updatedAt)"), "desktop-design: 任务行显示相对日期")
     t.expect(sidebar.contains("showConnectPhone = true"), "desktop-design: 连接手机入口保留")
     t.expect(sidebar.contains("updater.checkForUpdates()"), "desktop-design: 更新入口保留")
-    t.expect(sidebar.contains("Label(\"连接手机\""), "desktop-design: 连接手机收进账户菜单")
-    t.expect(sidebar.contains("Label(\"自进化日志\""), "desktop-design: 自进化日志收进账户菜单")
+    t.expect(sidebar.contains("accountAction(\"连接手机\""), "desktop-design: 连接手机收进账户菜单")
+    t.expect(sidebar.contains("accountAction(\"自进化日志\""), "desktop-design: 自进化日志收进账户菜单")
     t.expect(!sidebar.contains("Label(\"检查更新\", systemImage"), "desktop-design: 账户菜单不再放检查更新项（改为昵称右侧常驻徽章）")
     t.expect(sidebar.contains("updateBadgeButton") && sidebar.contains("arrow.down.circle.fill") && sidebar.contains("arrow.up.circle"),
              "desktop-design: 昵称右侧常驻更新徽章（有新版蓝色实心 / 无新版灰色向上箭头）")
     t.expect(sidebar.contains("updater.updateFound"), "desktop-design: 徽章状态由 AppUpdateController.updateFound 驱动")
     // 徽章与 Menu 同处一个 HStack（头像/姓名/更新按钮同一行），而不是 VStack 里的独立一行
-    t.expect(sidebar.contains("HStack(alignment: .center, spacing: 6) {\n            Menu {"),
-             "desktop-design: 头像姓名与更新徽章同一行（Menu+徽章共 HStack）")
-    t.expect(sidebar.contains("UserAvatar(url: user.avatarURL, name: user.displayName, size: 22)")
+    t.expect(sidebar.contains("SidebarAccountLabel") && sidebar.contains(".popover(isPresented: $showAccountMenu)"),
+             "desktop-design: 头像姓名与更新徽章同一行（自定义账户按钮与徽章）")
+    t.expect(sidebar.contains("UserAvatar(url: user.avatarURL, name: user.displayName, size: 24)")
              && !sidebar.contains("private var userBarSubtitle"),
-             "desktop-design: 左下角账号栏使用 22pt 头像和单行结构")
+             "desktop-design: 左下角账号栏使用 24pt 头像和单行结构")
     t.expect(sidebar.contains(".help(\"账户与快捷操作\\n\\(modelQuotaSummary)\")")
-             && sidebar.contains(".accessibilityValue(modelQuotaSummary)"),
-             "desktop-design: 模型与额度移入提示和辅助功能值，不再常驻占高")
+             && sidebar.contains(".accessibilityLabel(\"用户与快捷操作菜单\")"),
+             "desktop-design: 模型与额度移入提示，不再常驻占高")
     t.expect(sidebar.contains(".overlay(alignment: .top)")
              && sidebar.contains(".frame(width: 24, height: 24)"),
              "desktop-design: 左下角账号栏有安静顶部分隔和紧凑更新触点")
-    t.expect(sidebar.contains("Label(\"设置\""), "desktop-design: 设置收进账户菜单")
+    t.expect(sidebar.contains("accountAction(\"设置\""), "desktop-design: 设置收进账户菜单")
     t.expect(!sidebar.contains(".help(\"连接手机与应用工具\""), "desktop-design: 底部工具菜单移除")
     t.expect(!sidebar.contains(".help(L10n.tooltipSettings)\n            .accessibilityLabel(L10n.tooltipSettings)"), "desktop-design: 底部设置按钮移除")
     t.expect(chat.contains("threadHeader(thread: thread)"), "desktop-design: 独立任务顶栏")
@@ -57,7 +57,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(message.contains("DSHTheme.surfaceRaised"), "desktop-design: 用户消息使用低对比灰色气泡")
     t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg"), "desktop-design: 桌面导航层级色完整")
     t.expect(content.contains("HSplitView") && content.contains("UnevenRoundedRectangle"), "desktop-design: 灰色整窗底板承载右侧圆角覆盖层")
-    t.expect(content.contains("idealWidth: 292, maxWidth: 292"), "desktop-design: 侧栏默认宽度锁定 Codex 同视口比例")
+    t.expect(content.contains("idealWidth: 260, maxWidth: 360"), "desktop-design: 侧栏默认紧凑且允许扩宽")
     t.expect(content.contains("ignoresSafeArea(.container, edges: .top)"), "desktop-design: 右侧覆盖层贯穿标题栏顶部")
     t.expect(content.contains("AdaptiveEnvironmentLayout.shouldShow") && content.contains("manualDetailVisible: showTrajectory"), "desktop-design: 自适应环境卡在宽窗口自动出现且不与工作台共存")
     t.expect(content.contains("RightWorkbenchView") && content.contains("HSplitView"), "desktop-design: 右侧工作台是独立可拖拽分栏")
@@ -128,8 +128,8 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: RightWorkbenchView 外层 + 顶栏背景切到 fidelityRightbarTop token (>=2 处)")
     // Message canvas follows the current Codex Desktop evidence:
     // user = quiet raised bubble, assistant = unadorned markdown on canvas.
-    t.expect(sidebar.contains("DSHTheme.fidelitySidebarMid"),
-             "desktop-design: SidebarView 视图模式切换器背景切到 fidelitySidebarMid token (closes sidebar_mid -15/255)")
+    t.expect(sidebar.contains(".popover(isPresented: $showViewOptions)"),
+             "desktop-design: 侧栏显示方式收进轻量弹出菜单")
     t.expect(!message.contains(".fill(DSHTheme.trajectoryUser"),
              "desktop-design: 用户消息不再叠加角色色条")
     t.expect(!message.contains(".fill(DSHTheme.trajectoryAssistant"),
@@ -188,8 +188,8 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     // v0.5.86 — fidelity patch 2/2: 视图 .background 切到 DSHTheme.fidelityTitlebar
     t.expect(chat.contains("DSHTheme.fidelityTitlebar"),
              "desktop-design: ChatView composer 工具栏背景切到 fidelityTitlebar token")
-    t.expect(sidebar.contains("DSHTheme.fidelityTitlebar"),
-             "desktop-design: SidebarView 底栏背景切到 fidelityTitlebar token")
+    t.expect(sidebar.contains(".background(DSHTheme.sidebarBg)"),
+             "desktop-design: SidebarView 底栏与侧栏表面保持统一")
     t.expect(workbench.contains("DSHTheme.fidelityTitlebar"),
              "desktop-design: RightWorkbenchView 工具栏背景切到 fidelityTitlebar token")
     t.expect(markdown.contains("Text(MarkdownMessageView.inlineAttributed(")

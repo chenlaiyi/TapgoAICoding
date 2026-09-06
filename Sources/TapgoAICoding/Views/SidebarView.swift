@@ -3,11 +3,6 @@ import TapgoCore
 import UniformTypeIdentifiers
 
 struct SidebarView: View {
-    private enum Layout {
-        static let projectIconWidth: CGFloat = 20
-        static let threadTitleIndent: CGFloat = projectIconWidth + 6
-    }
-
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     @EnvironmentObject var authStore: AdminAuthStore
@@ -28,9 +23,14 @@ struct SidebarView: View {
     @State private var showConnectPhone = false
     @State private var showPluginManager = false
     @State private var showScheduledTasks = false
-    @State private var hoveredThreadId: String? = nil
     @State private var hoveredProjectId: String? = nil
-    @State private var collapsedGroups: Set<String> = []
+    @AppStorage("tapgo.sidebarCollapsedProjects") private var collapsedGroupsJSON = "[]"
+    @State private var showViewOptions = false
+    @State private var showAccountMenu = false
+    private var collapsedGroups: Set<String> {
+        get { SidebarPresentation.collapsedIDs(collapsedGroupsJSON) }
+        nonmutating set { collapsedGroupsJSON = SidebarPresentation.encodeCollapsedIDs(newValue) }
+    }
     /// 每个分组的展开阈值：默认每组只展示最新 5 条；点一次"展开显示"按钮 +10。
     /// 搜索激活时不限制，全部命中结果都会展示，便于用户快速定位。
     @State private var expandedThreadLimits: [String: Int] = [:]
@@ -179,32 +179,13 @@ struct SidebarView: View {
             .help("定时任务：到点自动注入提示词")
             .accessibilityLabel("定时任务")
         }
-        .padding(.horizontal, 9)
-        .padding(.top, 19)
+        .padding(.horizontal, SidebarMetrics.inset)
+        .padding(.top, 14)
         .padding(.bottom, 8)
     }
 
     private func menuItem(_ title: String, _ icon: String, shortcut: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                Text(title)
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                Spacer()
-                if let shortcut {
-                    Text(shortcut)
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        SidebarNavigationRow(title: title, icon: icon, shortcut: shortcut, action: action)
     }
 
     private var sidebarViewMode: SidebarViewMode {
@@ -212,67 +193,59 @@ struct SidebarView: View {
     }
 
     private var sidebarViewControl: some View {
-        HStack(spacing: 5) {
-            HStack(spacing: 2) {
-                ForEach(SidebarViewMode.allCases) { mode in
-                    Button {
-                        sidebarViewModeRaw = mode.rawValue
-                    } label: {
-                        Text(mode.title)
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                            .background(sidebarViewMode == mode ? DSHTheme.sidebarSelection : Color.clear,
-                                        in: RoundedRectangle(cornerRadius: 5))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("按\(mode.title)显示")
-                }
+        HStack(spacing: 8) {
+            Text("任务").font(.system(size: 11 * appFontScale.multiplier, weight: .medium)).foregroundStyle(DSHTheme.labelDim)
+            Spacer()
+            Button { showViewOptions = true } label: {
+                Image(systemName: "line.3.horizontal.decrease").frame(width: 22, height: 24)
             }
-            .padding(2)
-            .background(DSHTheme.fidelitySidebarMid, in: RoundedRectangle(cornerRadius: 7))
-
-            Button {
-                updater.checkForUpdates()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
-            }
-            .buttonStyle(.borderless)
-            .disabled(!updater.canCheckForUpdates)
-            .help("检查并安装更新")
-            .accessibilityLabel("检查更新")
-            if sidebarViewMode == .projects {
-                Button {
-                    let ids = Set(grouped.filter { $0.project != nil }.map(\.id))
-                    if ids.isSubset(of: collapsedGroups) {
-                        collapsedGroups.subtract(ids)
-                    } else {
-                        collapsedGroups.formUnion(ids)
+            .buttonStyle(.plain)
+            .help("显示方式与筛选")
+            .accessibilityLabel("显示方式与筛选")
+            .popover(isPresented: $showViewOptions) {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(SidebarViewMode.allCases) { mode in
+                        accountAction(mode.title, icon: sidebarViewMode == mode ? "checkmark" : "circle") {
+                            sidebarViewModeRaw = mode.rawValue
+                            showViewOptions = false
+                        }
                     }
-                } label: {
-                    Image(systemName: "rectangle.compress.vertical")
-                }
-                .buttonStyle(.borderless)
-                .help("全部展开或收起")
+                    Divider()
+                    accountAction("搜索任务", icon: "magnifyingglass") {
+                        showViewOptions = false; showSearchField = true; searchFocused = true
+                    }
+                    if sidebarViewMode == .projects {
+                        accountAction("全部展开或收起", icon: "rectangle.compress.vertical") {
+                            let ids = Set(grouped.filter { $0.project != nil }.map(\.id))
+                            if ids.isSubset(of: collapsedGroups) { collapsedGroups.subtract(ids) }
+                            else { collapsedGroups.formUnion(ids) }
+                            showViewOptions = false
+                        }
+                    }
+                    accountAction("浏览远程目录与更多项目…", icon: "globe") {
+                        showViewOptions = false
+                        NotificationCenter.default.post(name: .tapgoRequestProjectPicker, object: nil)
+                    }
+                }.padding(8).frame(width: 250)
             }
             Button {
-                withAnimation(.easeOut(duration: 0.16)) { showSearchField.toggle() }
-                if showSearchField { searchFocused = true }
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease")
-            }
-            .buttonStyle(.borderless)
-            .help("筛选任务")
+                NotificationCenter.default.post(name: .tapgoRequestOpenLocalFolder, object: nil)
+            } label: { Image(systemName: "folder.badge.plus").frame(width: 22, height: 24) }
+            .buttonStyle(.plain)
+            .help("添加项目")
+            .accessibilityLabel("添加项目")
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 7)
+        .font(.system(size: 12))
+        .foregroundStyle(DSHTheme.labelDim)
+        .padding(.horizontal, 18)
+        .padding(.top, 12).padding(.bottom, 6)
     }
 
     private enum SidebarViewMode: String, CaseIterable, Identifiable {
         case groups
         case projects
         var id: String { rawValue }
-        var title: String { self == .groups ? "分组" : "项目" }
+        var title: String { self == .groups ? "所有任务" : "按项目分组" }
     }
 
     // MARK: - Search
@@ -283,12 +256,13 @@ struct SidebarView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-            TextField("搜索会话", text: $searchQuery)
+            TextField("搜索任务", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
                 .focused($searchFocused)
                 .onExitCommand {
                     if !searchQuery.isEmpty { searchQuery = "" }
+                    else { showSearchField = false; searchFocused = false }
                 }
             if !searchQuery.isEmpty {
                 Button {
@@ -316,8 +290,7 @@ struct SidebarView: View {
         .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: DSHTheme.radiusPill))
         .padding(.horizontal, 12)
         .padding(.bottom, 7)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("搜索会话")
+        .accessibilityLabel("搜索任务")
     }
 
     // MARK: - TapgoCore.Thread list
@@ -326,7 +299,7 @@ struct SidebarView: View {
     private var threadList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 3) {
-            if grouped.isEmpty {
+            if grouped.isEmpty || (sidebarViewMode == .groups && flattenedThreads.isEmpty) {
                 emptyState
             } else if sidebarViewMode == .groups {
                 ForEach(flattenedThreads) { thread in
@@ -339,14 +312,11 @@ struct SidebarView: View {
                     .contextMenu { contextMenu(for: thread) }
                 }
             } else {
-                sidebarSectionHeading("项目", actionIcon: "folder.badge.plus") {
-                    showNewTask()
-                }
                 ForEach(grouped.filter { $0.project != nil }, id: \.id) { group in
                     threadSection(for: group)
                 }
-                sidebarSectionHeading("任务", actionIcon: "plus") {
-                    store.newThread()
+                if !flatTaskThreads.isEmpty {
+                    sidebarSectionHeading("其他任务", actionIcon: "plus") { showNewTask() }
                 }
                 ForEach(flatTaskThreads) { thread in
                     Button {
@@ -359,7 +329,7 @@ struct SidebarView: View {
                 }
             }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, SidebarMetrics.inset)
             .padding(.bottom, 10)
         }
         .background(DSHTheme.sidebarBg)
@@ -378,8 +348,8 @@ struct SidebarView: View {
             .buttonStyle(.borderless)
             .accessibilityLabel(title == "项目" ? "添加项目" : "新建任务")
         }
-        .padding(.top, 6)
-        .padding(.horizontal, 2)
+        .padding(.top, 14).padding(.bottom, 4)
+        .padding(.horizontal, SidebarMetrics.rowInset)
     }
 
     /// Render a single project (or the legacy "未分类" bucket) as a
@@ -391,7 +361,7 @@ struct SidebarView: View {
         let limit = threadLimit(for: group)
         VStack(alignment: .leading, spacing: 2) {
             projectGroupHeader(group)
-            if !collapsedGroups.contains(group.id) {
+            if isSearching || !collapsedGroups.contains(group.id) {
                 // Keep project children visually flat and compact:
                 // one title per row, ordered by recency.
                 ForEach(Array(visible)) { t in
@@ -444,15 +414,15 @@ struct SidebarView: View {
             HStack(spacing: 4) {
                 Image(systemName: "chevron.down")
                     .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                Text("展开显示 \(target) 条")
+                Text("显示更多")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Text("(还剩 \(remaining) 条)")
+                Text("\(remaining)")
                     .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
             }
-            .foregroundStyle(DSHTheme.brand)
-            .padding(.vertical, 4)
-            .padding(.leading, Layout.threadTitleIndent)
+            .foregroundStyle(DSHTheme.labelDim)
+            .padding(.vertical, 7)
+            .padding(.leading, SidebarMetrics.childInset)
         }
         .buttonStyle(.plain)
         .help("点击展开，再多显示 10 条会话")
@@ -509,39 +479,35 @@ struct SidebarView: View {
         if group.isEvolutionGroup {
             evolutionGroupHeader(group)
         } else if let p = group.project {
-            HStack(spacing: 6) {
-                Image(systemName: p.isRemote ? "globe" : "folder.fill")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                    .frame(width: Layout.projectIconWidth, alignment: .leading)
-                Text(p.displayName)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                if workspace.isProjectPinned(p.id) {
-                    Image(systemName: "pin.fill")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(DSHTheme.brand)
+            HStack(spacing: 2) {
+                Button { toggleGroup(group.id) } label: {
+                    SidebarProjectLabel(title: p.displayName, remote: p.isRemote,
+                                        collapsed: !isSearching && collapsedGroups.contains(group.id),
+                                        pinned: workspace.isProjectPinned(p.id), running: groupHasRunningTask(group),
+                                        hovering: hoveredProjectId == p.id)
                 }
-                if groupHasRunningTask(group) {
-                    runningDot
-                }
-                Spacer()
-                if hoveredProjectId == p.id {
-                    projectMoreMenu(p)
-                }
-                projectCollapseButton(group.id)
+                .buttonStyle(.plain)
+                .disabled(isSearching)
+                .accessibilityLabel("项目：\(p.displayName)")
+                .accessibilityValue(isSearching || !collapsedGroups.contains(group.id) ? "已展开" : "已折叠")
+                Button {
+                    store.setActiveProject(p.id)
+                    showNewTask()
+                } label: { Image(systemName: "plus").font(.system(size: 11)).frame(width: 20, height: 24) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("在 \(p.displayName) 中新建任务")
+                .help("在此项目中新建任务")
+                .opacity(hoveredProjectId == p.id ? 1 : 0.25)
+                projectMoreMenu(p)
+                    .frame(width: 20)
+                    .opacity(hoveredProjectId == p.id ? 1 : 0.25)
             }
+            .padding(.horizontal, SidebarMetrics.rowInset)
+            .frame(height: 32 * appFontScale.multiplier)
             .contentShape(Rectangle())
-            .background(hoveredProjectId == p.id ? DSHTheme.interactiveHover : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 6))
+            .background(hoveredProjectId == p.id ? DSHTheme.sidebarHover : Color.clear, in: RoundedRectangle(cornerRadius: 7))
             .onHover { hovering in
                 hoveredProjectId = hovering ? p.id : (hoveredProjectId == p.id ? nil : hoveredProjectId)
-            }
-            .onTapGesture {
-                // Clicking the project header switches the active
-                // project. The chevron button toggles collapse/expand.
-                store.setActiveProject(p.id)
             }
             .contextMenu {
                 Button {
@@ -569,8 +535,8 @@ struct SidebarView: View {
                 }
                 .foregroundStyle(.red)
             }
-            .help(p.isRemote ? "远程项目 · 点击切换" : "点击切换项目")
-            .accessibilityLabel("项目 \(p.displayName), \(group.threads.count) 个会话")        } else {
+            .help(p.displayPath)
+            } else {
             HStack(spacing: 4) {
                 Image(systemName: "tray")
                 Text(group.customTitle ?? L10n.legacyGroupTitle)
@@ -598,7 +564,7 @@ struct SidebarView: View {
             Image(systemName: "sparkles")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-                .frame(width: Layout.projectIconWidth, alignment: .leading)
+                .frame(width: SidebarMetrics.icon, alignment: .leading)
             Text("自进化")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
                 .foregroundStyle(.primary)
@@ -656,15 +622,6 @@ struct SidebarView: View {
             .accessibilityLabel("该项目有任务正在执行")
     }
 
-    private var activeBadge: some View {
-        Text("当前")
-            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-            .foregroundStyle(DSHTheme.brand)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(DSHTheme.brand.opacity(0.12), in: Capsule())
-    }
-
     private func projectMoreMenu(_ p: Project) -> some View {
         Menu {
             Button {
@@ -707,19 +664,9 @@ struct SidebarView: View {
                 .foregroundStyle(.secondary)
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .help("项目操作")
         .accessibilityLabel("项目操作")
-    }
-
-    private func projectCollapseButton(_ id: String) -> some View {
-        Button {
-            toggleGroup(id)
-        } label: {
-            Image(systemName: collapsedGroups.contains(id) ? "chevron.right" : "chevron.down")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-        }
-        .buttonStyle(.borderless)
-        .accessibilityLabel(collapsedGroups.contains(id) ? "展开项目" : "收起项目")
     }
 
     /// Pinned threads first, then most-recent.
@@ -732,50 +679,9 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func threadRow(_ t: TapgoCore.Thread, indented: Bool = true) -> some View {
-        HStack(alignment: .center, spacing: 6) {
-            Text(t.title)
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .lineLimit(1)
-                .truncationMode(.tail)
-            if t.isPinned {
-                Image(systemName: "pin.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(DSHTheme.brand)
-            }
-            Spacer(minLength: 6)
-            Text(relativeDate(for: t.updatedAt))
-                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.tertiary)
-            if shouldShowStatus(for: t) {
-                statusDot(t)
-            }
-        }
-        .padding(.vertical, 7)
-        .padding(.leading, indented ? Layout.threadTitleIndent : 4)
-        .padding(.trailing, 2)
-        .contentShape(Rectangle())
-        .background(store.activeThreadId == t.id ? DSHTheme.sidebarSelection :
-                    (hoveredThreadId == t.id ? DSHTheme.interactiveHover : Color.clear),
-                    in: RoundedRectangle(cornerRadius: 6))
-        .onHover { hovering in
-            hoveredThreadId = hovering ? t.id : (hoveredThreadId == t.id ? nil : hoveredThreadId)
-        }
-        .accessibilityLabel("会话 \(t.title), \(sidebarSubtitle(for: t))")
-    }
-
-    private func shouldShowStatus(for t: TapgoCore.Thread) -> Bool {
-        switch t.turns.last?.status {
-        case .running, .awaitingApproval, .failed:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func sidebarSubtitle(for t: TapgoCore.Thread) -> String {
-        let s = t.latestPreview
-        if !s.isEmpty { return s }
-        return t.turns.isEmpty ? "(新会话)" : "(无输入)"
+        SidebarTaskLabel(title: t.title, date: relativeDate(for: t.updatedAt),
+                         status: t.turns.last?.status, pinned: t.isPinned,
+                         selected: store.activeThreadId == t.id, indented: indented)
     }
 
     private func relativeDate(for date: Date) -> String {
@@ -786,84 +692,6 @@ struct SidebarView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "M/d"
         return formatter.string(from: date)
-    }
-
-    @ViewBuilder
-    private func statusDot(_ t: TapgoCore.Thread) -> some View {
-        let last = t.turns.last
-        let color = colorFor(last?.status)
-        let isRunning = last?.status == .running
-        // Codex-style animated pulse for in-flight turns: an
-        // outer ring that grows and fades while a solid dot stays
-        // at the center. Disabled turns get a static dot so we
-        // don't burn battery on a thread that's idle.
-        ZStack {
-            if isRunning {
-                Circle()
-                    .fill(color.opacity(0.35))
-                    .frame(width: 8, height: 8)
-                    .scaleEffect(pulseScale)
-                    .opacity(1 - pulseProgress)
-                Circle()
-                    .fill(color)
-                    .frame(width: 8, height: 8)
-            } else {
-                Circle()
-                    .fill(color)
-                    .frame(width: 8, height: 8)
-            }
-        }
-        .help(statusTooltip(last?.status) ?? "")
-        .accessibilityLabel(statusTooltip(last?.status) ?? "")
-        .onAppear {
-            // Drive the pulse only while at least one turn in any
-            // visible thread is still .running. The animation
-            // itself is global to the view so it stays in sync.
-            if isRunning { startPulseIfNeeded() }
-        }
-    }
-
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var pulseProgress: CGFloat = 0.0
-    @State private var pulseTask: Task<Void, Never>? = nil
-
-    private func startPulseIfNeeded() {
-        guard pulseTask == nil else { return }
-        pulseTask = Task { @MainActor in
-            while !Task.isCancelled {
-                withAnimation(.easeOut(duration: 1.2)) {
-                    pulseScale = 2.4
-                    pulseProgress = 1
-                }
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
-                if Task.isCancelled { break }
-                pulseScale = 1.0
-                pulseProgress = 0
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
-            }
-            pulseTask = nil
-        }
-    }
-
-    private func colorFor(_ s: Turn.Status?) -> Color {
-        switch s {
-        case .running: return .blue
-        case .completed: return .green
-        case .failed: return .red
-        case .awaitingApproval: return .yellow
-        case .interrupted: return .orange
-        default: return .gray.opacity(0.4)
-        }
-    }
-    private func statusTooltip(_ s: Turn.Status?) -> String? {
-        switch s {
-        case .running: return "执行中"
-        case .completed: return "已完成"
-        case .failed: return "失败"
-        case .awaitingApproval: return "等待批准"
-        case .interrupted: return "中断"
-        default: return nil
-        }
     }
 
     private func copyToPasteboard(_ s: String) {
@@ -963,77 +791,41 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var userBar: some View {
-        HStack(alignment: .center, spacing: 6) {
-            Menu {
-                Button {
-                    showConnectPhone = true
-                } label: {
-                    Label("连接手机", systemImage: "iphone.gen3.radiowaves.left.and.right")
-                }
-                Button {
-                    showEvolutionLog = true
-                } label: {
-                    Label("自进化日志", systemImage: "clock.arrow.circlepath")
-                }
-                Button {
-                    if !store.openEvolution() { showEvolutionRootMissing = true }
-                } label: {
-                    Label("自进化", systemImage: "sparkles")
-                }
-                Button {
-                    showSettings()
-                } label: {
-                    Label("设置", systemImage: "gear")
-                }
-                if authStore.currentUser != nil {
-                    Divider()
-                    Button(role: .destructive) {
-                        authStore.logout()
-                    } label: {
-                        Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                }
-            } label: {
-                // Codex keeps the account footer to one quiet row. Model and
-                // quota details remain available in the tooltip instead of
-                // permanently consuming a second line in the sidebar.
-                HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 2) {
+            Button { showAccountMenu = true } label: {
+                SidebarAccountLabel(name: authStore.currentUser?.displayName ?? NSUserName()) {
                     if let user = authStore.currentUser {
-                        UserAvatar(url: user.avatarURL, name: user.displayName, size: 22)
-                            .accessibilityLabel("当前登录用户")
-                        Text(user.displayName)
-                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                            .lineLimit(1)
+                        UserAvatar(url: user.avatarURL, name: user.displayName, size: 24)
                     } else {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(AppFont.scaled(.title3, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                            .accessibilityLabel("当前用户")
-                        Text(NSUserName())
-                            .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                            .lineLimit(1)
+                        Image(systemName: "person.crop.circle.fill").font(.system(size: 24)).foregroundStyle(DSHTheme.labelDim)
                     }
                 }
-                .contentShape(Rectangle())
-                .padding(.vertical, 4)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
+            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("账户与快捷操作\n\(modelQuotaSummary)")
             .accessibilityLabel("用户与快捷操作菜单")
-            .accessibilityValue(modelQuotaSummary)
-
+            .popover(isPresented: $showAccountMenu) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(authStore.currentUser?.displayName ?? NSUserName()).font(.headline).padding(8)
+                    Divider()
+                    accountAction("设置", icon: "gearshape") { showSettings() }
+                    accountAction("连接手机", icon: "iphone.gen3.radiowaves.left.and.right") { showConnectPhone = true }
+                    accountAction("自进化日志", icon: "clock.arrow.circlepath") { showEvolutionLog = true }
+                    accountAction("自进化", icon: "sparkles") {
+                        if !store.openEvolution() { showEvolutionRootMissing = true }
+                    }
+                    if authStore.currentUser != nil {
+                        Divider()
+                        accountAction("退出登录", icon: "rectangle.portrait.and.arrow.right", role: .destructive) { authStore.logout() }
+                    }
+                }.padding(8).frame(width: 250)
+            }
             updateBadgeButton
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(DSHTheme.fidelityTitlebar.opacity(0.45))
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(DSHTheme.border)
-                .frame(height: 1)
-        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(DSHTheme.sidebarBg)
+        .overlay(alignment: .top) { Rectangle().fill(DSHTheme.border.opacity(0.5)).frame(height: 0.5) }
         .task {
             // Keep quota truth fresh for the tooltip without reserving a
             // permanent second row in the compact footer.
@@ -1042,6 +834,13 @@ struct SidebarView: View {
                 try? await Task.sleep(nanoseconds: 300_000_000_000)
                 store.refreshRateLimits()
             }
+        }
+    }
+
+    private func accountAction(_ title: String, icon: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
+        SidebarNavigationRow(title: title, icon: icon, role: role) {
+            showAccountMenu = false
+            action()
         }
     }
 
@@ -1062,23 +861,6 @@ struct SidebarView: View {
         .accessibilityLabel(updater.updateFound ? "有可用更新" : "检查更新")
     }
 
-    private var runnerStatusColor: Color {
-        if store.hasAnyRunningTasks { return .blue }
-        switch store.runnerState {
-        case .running: return .blue
-        case .failed: return DSHTheme.error
-        case .idle, .finished: return DSHTheme.success
-        }
-    }
-    private var runnerStatusHelp: String {
-        if store.hasAnyRunningTasks { return "执行中（\(store.inProgressTasks)）" }
-        switch store.runnerState {
-        case .running: return "执行中"
-        case .failed: return "异常"
-        case .idle, .finished: return "就绪"
-        }
-    }
-
     // MARK: - Grouping
 
     private struct ThreadGroup: Identifiable {
@@ -1090,19 +872,6 @@ struct SidebarView: View {
         var customTitle: String? = nil
         var customId: String? = nil
         var id: String { customId ?? (isEvolutionGroup ? "_evolution" : (project?.id ?? "_legacy")) }
-    }
-
-    private var displayedGroups: [ThreadGroup] {
-        guard sidebarViewMode == .groups else { return grouped }
-        let evolution = grouped.filter(\.isEvolutionGroup)
-        let tasks = grouped.filter { !$0.isEvolutionGroup }.flatMap(\.threads)
-        guard !tasks.isEmpty else { return evolution }
-        return evolution + [ThreadGroup(
-            project: nil,
-            threads: sortedThreads(tasks),
-            customTitle: "任务",
-            customId: "_tasks"
-        )]
     }
 
     /// ZCode「分组」页的默认形态是无项目标题的扁平任务列表。
@@ -1117,7 +886,6 @@ struct SidebarView: View {
     }
 
     private var grouped: [ThreadGroup] {
-        let activeId = workspace.state.activeProjectId
         let trimmedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         // Threads grouped by project. Search filter narrows the set;
         // empty groups are dropped so the sidebar doesn't show dead
@@ -1125,11 +893,11 @@ struct SidebarView: View {
         var byProject: [String?: [TapgoCore.Thread]] = [:]
         // 自进化会话不参与项目分组——它们有独立的置顶分组。
         let evolutionThreads = store.liveThreads.filter {
-            $0.isEvolution && (!isSearching || threadMatchesSearch($0, query: trimmedQuery))
+            $0.isEvolution && (!showSearchField || !searchScope || $0.projectId == workspace.state.activeProjectId) && (!isSearching || threadMatchesSearch($0, query: trimmedQuery))
         }
         for t in store.liveThreads where !t.isEvolution && !t.isAuxiliary {
             // "仅当前项目" scope narrows to the active project's threads.
-            if searchScope, t.projectId != workspace.state.activeProjectId { continue }
+            if showSearchField && searchScope, t.projectId != workspace.state.activeProjectId { continue }
             // Match against title, first user input, and the project
             // display name. Codex's sidebar search is broad on
             // content; we mirror that.
@@ -1176,7 +944,7 @@ struct SidebarView: View {
         // These stay at the bottom under their project header.
         if trimmedQuery.isEmpty {
             let emptyProjects = workspace.state.projects
-                .filter { !seenProjectIds.contains($0.id) }
+                .filter { !seenProjectIds.contains($0.id) && (!showSearchField || !searchScope || $0.id == workspace.state.activeProjectId) }
                 .sorted { $0.lastUsedAt > $1.lastUsedAt }
             for p in emptyProjects {
                 groups.append(ThreadGroup(project: p, threads: []))
@@ -1190,17 +958,12 @@ struct SidebarView: View {
                 isEvolutionGroup: true
             ))
         }
-        // Active project always at the top.
+        let orderedIDs = SidebarPresentation.projectIDs(workspace.state.projects.map(\.id),
+                                                        pinned: Set(workspace.state.projects.filter { workspace.isProjectPinned($0.id) }.map(\.id)))
+        let ranks = Dictionary(uniqueKeysWithValues: orderedIDs.enumerated().map { ($0.element, $0.offset) })
         groups.sort { lhs, rhs in
             if lhs.isEvolutionGroup != rhs.isEvolutionGroup { return lhs.isEvolutionGroup }
-            if lhs.project?.id == activeId { return true }
-            if rhs.project?.id == activeId { return false }
-            let lp = lhs.project.map { workspace.isProjectPinned($0.id) } ?? false
-            let rp = rhs.project.map { workspace.isProjectPinned($0.id) } ?? false
-            if lp != rp { return lp }
-            let lk = lhs.threads.isEmpty ? "_zz" : (lhs.project?.displayName ?? "_z")
-            let rk = rhs.threads.isEmpty ? "_zz" : (rhs.project?.displayName ?? "_z")
-            return lk < rk
+            return (ranks[lhs.project?.id ?? ""] ?? Int.max) < (ranks[rhs.project?.id ?? ""] ?? Int.max)
         }
         return groups
     }
@@ -1225,10 +988,12 @@ struct SidebarView: View {
     /// Select the previous / next thread in the sidebar's visual order,
     /// so ⌘⇧↑ / ⌘⇧↓ let the user hop between conversations by keyboard.
     private func selectAdjacentThread(_ delta: Int) {
-        let ordered = displayedGroups.flatMap(\.threads)
+        let ordered = sidebarViewMode == .groups ? flattenedThreads :
+            grouped.filter { $0.project != nil && (isSearching || !collapsedGroups.contains($0.id)) }
+                .flatMap { visibleThreads(in: $0) } + flatTaskThreads
         guard !ordered.isEmpty else { return }
         let active = store.activeThreadId
-        let idx = ordered.firstIndex { $0.id == active } ?? 0
+        let idx = ordered.firstIndex { $0.id == active } ?? (delta > 0 ? -1 : 0)
         let next = (idx + delta + ordered.count) % ordered.count
         store.selectThread(ordered[next].id)
     }

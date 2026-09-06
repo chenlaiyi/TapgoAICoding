@@ -60,7 +60,7 @@ func runAppUpdateDistribution(_ t: TestRunner) {
     t.expect(controller.contains("checkForUpdatesInBackground"), "update: 启动后台检查")
     t.expect(app.contains("environmentObject(updater)"), "update: 更新器注入界面")
     t.expect(app.contains("Button(\"检查更新…\")"), "update: 应用菜单检查更新")
-    t.expect(sidebar.contains(".help(\"检查并安装更新\")"), "update: 左上角检查更新按钮")
+    t.expect(sidebar.contains("updateBadgeButton") && sidebar.contains("updater.checkForUpdates()"), "update: 账户行保留检查更新按钮")
     t.expect(sidebar.contains(".disabled(!updater.canCheckForUpdates)"), "update: 按钮跟随可检查状态")
 
     t.expectEqual(info["CFBundleShortVersionString"] as? String, updateExpectedVersion(), "update: 主 App 版本对齐最新 tag")

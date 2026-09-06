@@ -159,7 +159,7 @@ struct ContentView: View {
                         settingsPresentation = SettingsPresentation(tab: .general)
                     }
                 )
-                .frame(minWidth: 220, idealWidth: 292, maxWidth: 292)
+                .frame(minWidth: 220, idealWidth: 260, maxWidth: 360)
             }
 
             Group {

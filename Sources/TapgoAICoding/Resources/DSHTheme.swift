@@ -52,6 +52,7 @@ enum DSHTheme {
     /// ZCode theme: sidebar #272728, conversation/titlebar #171717.
     static let sidebarBg = Color.dynamic(lightHex: 0xF3F3F4, darkHex: 0x272728)
     static let titlebarBg = Color.dynamic(lightHex: 0xFAFAFB, darkHex: 0x171717)
+    static let sidebarHover = Color.dynamic(lightHex: 0xEAEAEC, darkHex: 0x303032)
     static let sidebarSelection = Color.dynamic(lightHex: 0xE5E5E7, darkHex: 0x383839)
     /// Layer-1 card. bluish-00 light, bluish-875 (#232324) dark.
     static let bgLayer1 = Color.dynamic(lightHex: 0xFFFFFF, darkHex: 0x252525)
