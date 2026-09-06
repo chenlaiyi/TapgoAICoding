@@ -52,7 +52,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(chat.contains("threadHeader(thread: thread)"), "desktop-design: 独立任务顶栏")
     t.expect(chat.contains("NotificationCenter.default.post(name: .tapgoToggleTrajectory"), "desktop-design: 轨迹栏切换可用")
     t.expect(chat.contains("activeThread == nil, let p = workspace.state.activeProject"), "desktop-design: 活跃任务输入器不重复项目入口")
-    t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 760)"), "desktop-design: 标准输入器与 Codex 消息列同宽")
+    t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 760, isWelcome: !hasConversation)"), "desktop-design: 标准输入器与 Codex 消息列同宽")
     t.expect(!chat.contains("if hasConversation {\n                Divider()"), "desktop-design: 输入器上方没有贯穿会话区的分隔线")
     t.expect(message.contains("DSHTheme.surfaceRaised"), "desktop-design: 用户消息使用低对比灰色气泡")
     t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg"), "desktop-design: 桌面导航层级色完整")

@@ -317,6 +317,14 @@ final class SessionStore: ObservableObject {
         persistActiveThread()
     }
 
+    /// Composer project changes select the destination of a NEW task, without
+    /// silently opening an old conversation in that project.
+    func selectProjectForNewTask(_ id: String?) {
+        workspace.setActiveProject(id)
+        activeThreadId = nil
+        persistActiveThread()
+    }
+
     func activeProject() -> Project? {
         workspace.state.activeProject
     }

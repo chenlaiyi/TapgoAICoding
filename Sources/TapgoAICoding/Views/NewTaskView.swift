@@ -55,8 +55,7 @@ struct NewTaskView: View {
                     remotePath: path
                 )
                 workspace.addProject(p)
-                store.newThread()
-                onCreate(p)
+                onCreate(workspace.state.projects.first(where: { $0.remoteHostId == p.remoteHostId && $0.remotePath == p.remotePath }) ?? p)
                 dismiss()
             }
             .environmentObject(workspace)
@@ -106,7 +105,6 @@ struct NewTaskView: View {
                     color: .secondary
                 ) {
                     onCreate(nil)
-                    store.newThread()
                     dismiss()
                 }
             }
@@ -144,8 +142,6 @@ struct NewTaskView: View {
     @ViewBuilder
     private func recentRow(_ p: Project) -> some View {
         Button {
-            workspace.setActiveProject(p.id)
-            store.newThread()
             onCreate(p)
             dismiss()
         } label: {
@@ -217,8 +213,7 @@ struct NewTaskView: View {
                 remotePath: nil
             )
             workspace.addProject(project)
-            store.newThread()
-            onCreate(project)
+            onCreate(workspace.state.projects.first(where: { !$0.isRemote && $0.worktreeRoot == project.worktreeRoot }) ?? project)
             dismiss()
         } catch {
             self.error = error.localizedDescription

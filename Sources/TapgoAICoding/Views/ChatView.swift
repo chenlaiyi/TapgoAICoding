@@ -173,26 +173,14 @@ struct ChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
                 }
-                Spacer()
-                Text("我们该处理什么工作？")
-                    .font(AppFont.scaled(.largeTitle, multiplier: appFontScale.multiplier).bold())
-                    .foregroundStyle(.primary)
-                    .padding(.bottom, 8)
+                CodexWelcomeView(contentWidth: wideContent ? 956 : 736)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            // Keep one structural ComposerView for the entire lifetime of
-            // ChatView. Moving between the empty and active layouts must not
-            // recreate NSTextView while the user is entering the next prompt.
-            ComposerView(contentWidth: wideContent ? 980 : 760)
-                .padding(.horizontal, hasConversation ? 0 : 16)
+            // Keep the same native text view when a new task becomes a chat.
+            ComposerView(contentWidth: wideContent ? 980 : 760, isWelcome: !hasConversation)
+                .frame(maxWidth: .infinity)
 
-            if !hasConversation {
-                Text("从左侧选择会话继续，或直接输入开始新任务。")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 8)
-                Spacer()
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DSHTheme.fidelityMainCanvas)
@@ -1257,6 +1245,11 @@ struct ComposerView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
     var contentWidth: CGFloat = 760
+    var isWelcome = false
+    @State private var preserveDraftOnProjectChange = false
+    @State private var pendingDraftProjectID: String?
+    @State private var choosingWelcomeProject = false
+    @State private var choosingPermission = false
     /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
         "builtin:\(TapgoModel.minimaxM3.rawValue)"
@@ -1383,7 +1376,8 @@ struct ComposerView: View {
             // width, same surface, same radius, separated by a small gap.
             // spacing -25 让 composer 顶部向下压住队列卡片约 25pt，
             // 形成清晰的「输入框浮在排队卡片上方」层次。
-            VStack(spacing: store.activeQueue.isEmpty ? 0 : -25) {
+            VStack(spacing: isWelcome ? -12 : (store.activeQueue.isEmpty ? 0 : -25)) {
+                if isWelcome { welcomeProjectBar }
                 queueStatusBar
 
                 // Codex Desktop keeps text and controls inside one quiet card.
@@ -1408,6 +1402,15 @@ struct ComposerView: View {
                         } label: {
                             Label("添加图片附件…", systemImage: "photo")
                         }
+                        if isWelcome {
+                            Divider()
+                            Button(editorExpanded ? "收起输入框" : "展开输入框") { editorExpanded.toggle() }
+                            if computerUseShowInComposer {
+                                Button("电脑控制设置…") {
+                                    NotificationCenter.default.post(name: .tapgoRequestOpenSettings, object: SettingsView.Tab.computer.rawValue)
+                                }
+                            }
+                        }
                         if !AgentCapabilities.skills.isEmpty {
                             Divider()
                             Menu {
@@ -1430,6 +1433,226 @@ struct ComposerView: View {
                     .help("添加附件 / 插入技能")
                     .accessibilityLabel("添加附件或技能")
 
+                    if !isWelcome {
+                        existingProjectChip
+                    }
+
+                    environmentChip
+
+                    if !isWelcome {
+                        if computerUseShowInComposer { computerControlChip }
+                        contextMeterChip
+                    }
+
+                    Spacer()
+
+                    if !isWelcome {
+                    Button {
+                        editorExpanded.toggle()
+                    } label: {
+                        Image(systemName: editorExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(editorExpanded ? "收起输入框" : "展开输入框")
+                    .accessibilityLabel(editorExpanded ? "收起输入框" : "展开输入框")
+
+                    }
+
+                    if !tapgoIsComposerUserContentEmpty(text: text, attachedImageCount: store.attachedImages.count) {
+                        Button {
+                            text = ""
+                            store.clearImages()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("清空输入和附件 (⌘⌫)")
+                        .accessibilityLabel("清空输入和附件")
+                    }
+
+                    Menu {
+                        // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
+                        // 点开即选、对新建会话生效。端点/上下文信息看圆环弹窗，
+                        // 思考深度在「运行设置」，新建会话有 ⌘N。
+                        ForEach(TapgoConfig.allModels()) { m in
+                            Button {
+                                TapgoConfig.setSelectedModel(id: m.id)
+                                selectedModelRaw = m.id
+                                store.refreshRateLimits()
+                            } label: {
+                                if m.id == selectedModelID {
+                                    Label(m.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(m.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(store.modelDisplayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            if isRunning {
+                                ProgressView().controlSize(.mini)
+                            }
+                            if !effortLabel.isEmpty {
+                                Text("· \(effortLabel)")
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Image(systemName: "chevron.down")
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        }
+                        .foregroundStyle(DSHTheme.labelDim)
+                        .padding(.horizontal, 3).padding(.vertical, 3)
+                        .help(L10n.modelChipHint + modelContextTooltip)
+                        .accessibilityLabel("模型 \(store.modelDisplayName), 来自独立配置")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+
+                    if isRunning {
+                        Button(action: { store.cancelActiveTurn() }) {
+                            Image(systemName: "stop.fill")
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                                .frame(width: 28, height: 28)
+                                .foregroundStyle(DSHTheme.brandPrimaryText)
+                                .background(DSHTheme.brandPrimary, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("中断当前任务（排队消息会被保留）")
+                        .accessibilityLabel("中断当前任务")
+                    }
+                    Button(action: send) {
+                        Image(systemName: "arrow.up")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .frame(width: 28, height: 28)
+                            .foregroundStyle(DSHTheme.composerActionText)
+                            .background(DSHTheme.composerAction, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(canSend ? 1 : 0.32)
+                    .disabled(canSend == false)
+                    .help(isRunning ? "发送（排队）(⌘↩)" : "发送 (⌘↩)")
+                    .accessibilityLabel(L10n.sendButton)
+                }
+            }
+            .padding(12)
+            .background(DSHTheme.composerSurface, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(isDropTargeted ? DSHTheme.brand : (focused ? DSHTheme.borderStrong : DSHTheme.border), lineWidth: isDropTargeted ? 2 : 0.5)
+            )
+            .frame(maxWidth: contentWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
+                acceptDroppedImages(providers)
+            }
+            .onPasteCommand(of: [.fileURL, .image]) { providers in
+                handlePaste(providers)
+            }
+            .zIndex(1)
+            }
+
+        }
+        .frame(maxWidth: contentWidth, alignment: .center)
+        .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
+            focused = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoClearComposer)) { _ in
+            text = ""
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoSendMessage)) { _ in
+            send()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoInterjectAndFlush)) { _ in
+            interjectSend()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoRetryTurn)) { _ in
+            retryLastTurn()
+        }
+        .onChange(of: text) { _, newValue in
+            draftSaver.schedule(newValue)
+            // Show the slash-command menu while the user is typing a
+            // `/command` prefix (no space yet).
+            showSlashMenu = newValue.hasPrefix("/") && !newValue.contains(" ")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoInsertStarter)) { note in
+            guard isWelcome, let prompt = note.object as? String else { return }
+            text = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? prompt : text + "\n\n" + prompt
+            focused = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoChooseStarterProject)) { note in
+            guard isWelcome else { return }
+            chooseNewTaskProject(note.object as? String)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoInsertSkill)) { note in
+            if let name = note.object as? String {
+                let ref = "@\(name)"
+                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    text = ref + " "
+                } else {
+                    text = text.trimmingCharacters(in: .whitespacesAndNewlines) + " " + ref + " "
+                }
+                focused = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            computerPermissionRefresh += 1
+        }
+        .task(id: computerPermissionRefresh) {
+            computerPermissionState = await ComputerUsePermissionProbe.read(
+                helperAppURL: TapgoConfig.computerUseHelperAppURL()
+            )
+        }
+        .onChange(of: workspace.state.activeProjectId) { _, newID in
+            // Explicit new-task destination changes retain the editable draft.
+            // Navigating the sidebar to another conversation still clears it.
+            if !(preserveDraftOnProjectChange && newID == pendingDraftProjectID) { text = "" }
+            preserveDraftOnProjectChange = false
+        }
+        .onChange(of: store.activeThreadId) { _, _ in
+            showTurnProgressDetails = false
+        }
+        .onChange(of: isRunning) { _, running in
+            if !running { showTurnProgressDetails = false }
+        }
+        .onAppear {
+            // On launch with a restored thread, put the cursor in the
+            // composer so the user can start typing immediately.
+            if store.activeThreadId != nil { focused = true }
+            setUpPasteMonitor()
+        }
+        .onDisappear {
+            draftSaver.flush(text)
+            if let m = pasteMonitor { NSEvent.removeMonitor(m); pasteMonitor = nil }
+        }
+        .sheet(item: $editingGoalItem) { item in
+            GoalEditorSheet(initial: item.text)
+        }
+        .sheet(item: $editingQueued) { item in
+            QueuedMessageEditor(item: item)
+        }
+    }
+
+    /// Resend the last turn's user input when it failed / was interrupted.
+    private func retryLastTurn() {
+        if store.isRunning { return }
+        guard let id = store.activeThreadId,
+              let t = store.liveThreads.first(where: { $0.id == id }),
+              let last = t.turns.last,
+              !last.userInput.isEmpty,
+              last.status == .failed || last.status == .interrupted else { return }
+        store.sendUserMessage(last.userInput)
+    }
+
+    /// Quick switch for the harness sandbox mode (persisted). Mirrors
+    /// Codex's sandbox selector in the composer footer.
+    @ViewBuilder
+    private var existingProjectChip: some View {
                     // 自进化会话的专属项目条：固定指向 TapgoAICoding 项目
                     // 根，不跟随 activeProject——否则用户看到「OctTapgo」
                     // 会以为还在项目会话里（v0.5.33 用户实测踩坑）。
@@ -1556,207 +1779,46 @@ struct ComposerView: View {
                         .menuIndicator(.hidden)
                     }
 
-                    environmentChip
-
-                    if computerUseShowInComposer {
-                        computerControlChip
-                    }
-
-                    contextMeterChip
-
-                    Spacer()
-
-                    Button {
-                        editorExpanded.toggle()
-                    } label: {
-                        Image(systemName: editorExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.borderless)
-                    .help(editorExpanded ? "收起输入框" : "展开输入框")
-                    .accessibilityLabel(editorExpanded ? "收起输入框" : "展开输入框")
-
-                    if !tapgoIsComposerUserContentEmpty(text: text, attachedImageCount: store.attachedImages.count) {
-                        Button {
-                            text = ""
-                            store.clearImages()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.borderless)
-                        .help("清空输入和附件 (⌘⌫)")
-                        .accessibilityLabel("清空输入和附件")
-                    }
-
-                    Menu {
-                        // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
-                        // 点开即选、对新建会话生效。端点/上下文信息看圆环弹窗，
-                        // 思考深度在「运行设置」，新建会话有 ⌘N。
-                        ForEach(TapgoConfig.allModels()) { m in
-                            Button {
-                                TapgoConfig.setSelectedModel(id: m.id)
-                                selectedModelRaw = m.id
-                                store.refreshRateLimits()
-                            } label: {
-                                if m.id == selectedModelID {
-                                    Label(m.displayName, systemImage: "checkmark")
-                                } else {
-                                    Text(m.displayName)
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(store.modelDisplayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            if isRunning {
-                                ProgressView().controlSize(.mini)
-                            }
-                            if !effortLabel.isEmpty {
-                                Text("· \(effortLabel)")
-                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                    .foregroundStyle(.secondary)
-                            }
-                            Image(systemName: "chevron.down")
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        }
-                        .foregroundStyle(DSHTheme.labelDim)
-                        .padding(.horizontal, 3).padding(.vertical, 3)
-                        .help(L10n.modelChipHint + modelContextTooltip)
-                        .accessibilityLabel("模型 \(store.modelDisplayName), 来自独立配置")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-
-                    if isRunning {
-                        Button(action: { store.cancelActiveTurn() }) {
-                            Image(systemName: "stop.fill")
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                                .frame(width: 28, height: 28)
-                                .foregroundStyle(DSHTheme.brandPrimaryText)
-                                .background(DSHTheme.brandPrimary, in: Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("中断当前任务（排队消息会被保留）")
-                        .accessibilityLabel("中断当前任务")
-                    }
-                    Button(action: send) {
-                        Image(systemName: "paperplane.fill")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .frame(width: 28, height: 28)
-                            .foregroundStyle(DSHTheme.brandPrimaryText)
-                            .background(DSHTheme.brandPrimary, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(canSend ? 1 : 0.32)
-                    .disabled(canSend == false)
-                    .help(isRunning ? "发送（排队）(⌘↩)" : "发送 (⌘↩)")
-                    .accessibilityLabel(L10n.sendButton)
-                }
-            }
-            .padding(12)
-            .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isDropTargeted ? DSHTheme.brand : (focused ? DSHTheme.borderStrong : DSHTheme.border), lineWidth: isDropTargeted ? 2 : 1)
-            )
-            .frame(maxWidth: contentWidth)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
-                acceptDroppedImages(providers)
-            }
-            .onPasteCommand(of: [.fileURL, .image]) { providers in
-                handlePaste(providers)
-            }
-            .zIndex(1)
-            }
-
-        }
-        .frame(maxWidth: contentWidth, alignment: .center)
-        .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
-            focused = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoClearComposer)) { _ in
-            text = ""
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoSendMessage)) { _ in
-            send()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoInterjectAndFlush)) { _ in
-            interjectSend()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoRetryTurn)) { _ in
-            retryLastTurn()
-        }
-        .onChange(of: text) { _, newValue in
-            draftSaver.schedule(newValue)
-            // Show the slash-command menu while the user is typing a
-            // `/command` prefix (no space yet).
-            showSlashMenu = newValue.hasPrefix("/") && !newValue.contains(" ")
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .tapgoInsertSkill)) { note in
-            if let name = note.object as? String {
-                let ref = "@\(name)"
-                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    text = ref + " "
-                } else {
-                    text = text.trimmingCharacters(in: .whitespacesAndNewlines) + " " + ref + " "
-                }
-                focused = true
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            computerPermissionRefresh += 1
-        }
-        .task(id: computerPermissionRefresh) {
-            computerPermissionState = await ComputerUsePermissionProbe.read(
-                helperAppURL: TapgoConfig.computerUseHelperAppURL()
-            )
-        }
-        .onChange(of: workspace.state.activeProjectId) { _, _ in
-            // A draft typed for one project shouldn't be sent to another.
-            text = ""
-        }
-        .onChange(of: store.activeThreadId) { _, _ in
-            showTurnProgressDetails = false
-        }
-        .onChange(of: isRunning) { _, running in
-            if !running { showTurnProgressDetails = false }
-        }
-        .onAppear {
-            // On launch with a restored thread, put the cursor in the
-            // composer so the user can start typing immediately.
-            if store.activeThreadId != nil { focused = true }
-            setUpPasteMonitor()
-        }
-        .onDisappear {
-            draftSaver.flush(text)
-            if let m = pasteMonitor { NSEvent.removeMonitor(m); pasteMonitor = nil }
-        }
-        .sheet(item: $editingGoalItem) { item in
-            GoalEditorSheet(initial: item.text)
-        }
-        .sheet(item: $editingQueued) { item in
-            QueuedMessageEditor(item: item)
-        }
     }
 
-    /// Resend the last turn's user input when it failed / was interrupted.
-    private func retryLastTurn() {
-        if store.isRunning { return }
-        guard let id = store.activeThreadId,
-              let t = store.liveThreads.first(where: { $0.id == id }),
-              let last = t.turns.last,
-              !last.userInput.isEmpty,
-              last.status == .failed || last.status == .interrupted else { return }
-        store.sendUserMessage(last.userInput)
+    private var welcomeProjectBar: some View {
+        Button { choosingWelcomeProject = true } label: {
+            HStack(spacing: 7) {
+                Image(systemName: workspace.state.activeProject?.isRemote == true ? "globe" : "folder")
+                Text(workspace.state.activeProject?.displayName ?? "选择项目")
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.down").font(.system(size: 9))
+            }
+            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+            .foregroundStyle(DSHTheme.labelDim)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 16))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $choosingWelcomeProject) {
+            WelcomeProjectPicker { id in
+                choosingWelcomeProject = false
+                chooseNewTaskProject(id)
+            }
+        }
+        .help(workspace.state.activeProject?.displayPath ?? "选择新任务的工作目录")
+        .accessibilityLabel("新任务项目：\(workspace.state.activeProject?.displayName ?? "未选择")")
+        .padding(.horizontal, 12)
     }
 
-    /// Quick switch for the harness sandbox mode (persisted). Mirrors
-    /// Codex's sandbox selector in the composer footer.
+    private func chooseNewTaskProject(_ id: String?) {
+        preserveDraftOnProjectChange = true
+        pendingDraftProjectID = id
+        store.selectProjectForNewTask(id)
+        focused = true
+    }
+
     @ViewBuilder
     /// One "运行环境" chip that bundles the sandbox mode and the approval
     /// policy (previously two separate chips), so the composer footer stays
@@ -1765,38 +1827,46 @@ struct ComposerView: View {
     /// sets both the sandbox mode and the approval policy together, keeping
     /// the composer footer to a single, understandable control.
     private var environmentChip: some View {
-        Menu {
-            ForEach(PermissionChoice.all) { c in
-                Button {
-                    sandboxRaw = c.sandbox
-                    approvalPolicyRaw = c.approval
-                } label: {
-                    HStack {
-                        Image(systemName: c.icon)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(c.title)
-                            Text(c.detail)
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if c.matches(sandboxRaw: sandboxRaw, approvalRaw: approvalPolicyRaw) {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(DSHTheme.brand)
-                        }
-                    }
-                }
-            }
-        } label: {
+        Button { choosingPermission = true } label: {
             HStack(spacing: 4) {
                 Image(systemName: currentPermission.icon).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                Text(currentPermission.title).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Text(currentPermission.id == PermissionChoice.full.id ? "完全访问" : currentPermission.title).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
             }
             .foregroundStyle(currentPermission.id == PermissionChoice.full.id ? DSHTheme.warn : DSHTheme.labelDim)
             .padding(.horizontal, 3).padding(.vertical, 3)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .popover(isPresented: $choosingPermission) {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(PermissionChoice.all) { c in
+                    Button {
+                        sandboxRaw = c.sandbox
+                        approvalPolicyRaw = c.approval
+                        choosingPermission = false
+                    } label: {
+                        HStack {
+                            Image(systemName: c.icon)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(c.title)
+                                Text(c.detail)
+                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if c.matches(sandboxRaw: sandboxRaw, approvalRaw: approvalPolicyRaw) {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(DSHTheme.brand)
+                            }
+                        }
+                        .padding(8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(8)
+            .frame(width: 320)
+        }
         .help("操作权限: \(currentPermission.title)")
         .accessibilityLabel("操作权限")
     }
@@ -2599,10 +2669,7 @@ struct ComposerView: View {
         if activeThread?.isEvolution == true {
             return "向自进化下达本轮指令…"
         }
-        if let p = workspace.state.activeProject {
-            return "给 \(p.displayName) 发条任务…"
-        }
-        return "随心输"
+        return "随心输入"
     }
 
     /// The active thread's current goal text (drives the 目标 chip highlight).

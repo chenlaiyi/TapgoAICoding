@@ -48,7 +48,15 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenNewTask)) { _ in
+            beginNewTask()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestProjectPicker)) { _ in
             showNewTask = true
+        }
+        .onChange(of: store.activeThreadId) { _, id in
+            if store.liveThreads.first(where: { $0.id == id })?.turns.isEmpty != false {
+                showTrajectory = false
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenLocalFolder)) { _ in
             handleOpenLocalFolder()
@@ -70,8 +78,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showNewTask) {
             NewTaskView { project in
-                workspace.setActiveProject(project?.id)
-                store.newThread()
+                NotificationCenter.default.post(name: .tapgoChooseStarterProject, object: project?.id)
             }
             .environmentObject(workspace)
             .environmentObject(store)
@@ -81,7 +88,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showCommandPalette) {
             CommandPaletteView(
-                onNewTask: { showNewTask = true },
+                onNewTask: { beginNewTask() },
                 onSettings: {
                     settingsPresentation = SettingsPresentation(tab: .general)
                 },
@@ -101,7 +108,7 @@ struct ContentView: View {
         let showAdaptiveEnvironment = AdaptiveEnvironmentLayout.shouldShow(
             windowWidth: Double(availableWidth),
             preferredChatWidth: wideContent ? 980 : 720,
-            hasActiveThread: store.activeThreadId != nil,
+            hasActiveThread: store.liveThreads.first(where: { $0.id == store.activeThreadId })?.turns.isEmpty == false,
             manualDetailVisible: showTrajectory
         )
         Group {
@@ -147,7 +154,7 @@ struct ContentView: View {
         HSplitView {
             if sidebarVisible {
                 SidebarView(
-                    showNewTask: { showNewTask = true },
+                    showNewTask: { beginNewTask() },
                     showSettings: {
                         settingsPresentation = SettingsPresentation(tab: .general)
                     }
@@ -278,6 +285,12 @@ struct ContentView: View {
         let tab: SettingsView.Tab
     }
 
+    private func beginNewTask() {
+        settingsPresentation = nil
+        showTrajectory = false
+        store.newThread()
+    }
+
     // MARK: - Local folder pick
 
     private func handleOpenLocalFolder() {
@@ -304,11 +317,15 @@ struct ContentView: View {
             remoteHostId: nil,
             remotePath: nil
         )
+        let startingTask = store.liveThreads.first(where: { $0.id == store.activeThreadId })?.turns.isEmpty != false
         workspace.addProject(project)
-        // Bind the new thread to this directory so it becomes the working
-        // /cwd of the task — the "设立目录" affordance.
-        workspace.setActiveProject(project.id)
-        store.newThread()
+        if startingTask {
+            let selectedID = workspace.state.projects.first(where: { !$0.isRemote && $0.worktreeRoot == url })?.id ?? project.id
+            NotificationCenter.default.post(name: .tapgoChooseStarterProject, object: selectedID)
+        } else {
+            workspace.setActiveProject(project.id)
+            store.newThread()
+        }
     }
 }
 
