@@ -282,7 +282,9 @@ struct MarkdownMessageView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .foregroundStyle(depth >= 2 ? DSHTheme.label : DSHTheme.messageText)
                     }
-                    .padding(.leading, CGFloat(depth) * 16)
+                    // 每级 24pt ≈ 父项 marker 列宽，子列表起点落在父项文字
+                    // 下方，与 Codex 桌面端的嵌套缩进一致。
+                    .padding(.leading, CGFloat(depth) * 24)
                 }
             }
             .padding(.leading, 2)
@@ -456,7 +458,6 @@ private struct CodeBlockView: View {
             }
         }
         .background(DSHTheme.codeBlockBg, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
@@ -484,8 +485,8 @@ private struct HeadingView: View {
             baseWeight: .semibold
         )
         .fixedSize(horizontal: false, vertical: true)
-        .padding(.top, level <= 2 ? 6 : 2)
-        .padding(.bottom, 1)
+        .padding(.top, level == 1 ? 14 : (level == 2 ? 10 : 6))
+        .padding(.bottom, 2)
     }
 
     private var pointSize: CGFloat {
@@ -533,38 +534,51 @@ private struct TableView: View {
 
     var body: some View {
         let bodySize = conversationBodySize * appFontScale.multiplier - 0.5
-        ScrollView(.horizontal, showsIndicators: false) {
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 0) {
-                GridRow {
-                    ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
-                        MarkdownInlineFlow(
-                            segments: MarkdownMessageView.inlineSegments(h),
-                            baseFontSize: bodySize,
-                            baseWeight: .semibold
-                        )
-                        // ZCode 参考样式：表头是暗灰小字，与数据行亮白正文拉开层次。
-                        .foregroundStyle(DSHTheme.labelDim)
-                        .padding(.vertical, 6)
-                    }
-                }
-                Divider()
-                ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
-                    GridRow {
-                        ForEach(Array(headers.enumerated()), id: \.offset) { i, _ in
-                            MarkdownInlineFlow(
-                                segments: MarkdownMessageView.inlineSegments(i < row.count ? row[i] : ""),
-                                baseFontSize: bodySize,
-                                baseWeight: .regular
-                            )
-                            .padding(.vertical, 7)
-                        }
-                    }
-                    if rowIndex < rows.count - 1 { Divider() }
+        // 不包横向 ScrollView：LazyVStack 行内嵌套滚动容器会让行高无法缓存，
+        // 滚动经过时每帧重新排版整张表（主线程被打满、App 卡死）。cell 文本
+        // 直接换行铺开，与 Codex 桌面端一致。
+        Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 0) {
+            GridRow {
+                ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
+                    MarkdownInlineFlow(
+                        segments: MarkdownMessageView.inlineSegments(h),
+                        baseFontSize: bodySize,
+                        baseWeight: .semibold
+                    )
+                    // ZCode 参考样式：表头是暗灰小字，与数据行亮白正文拉开层次。
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 6)
                 }
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 2)
+            Rectangle()
+                .fill(DSHTheme.border)
+                .frame(height: 0.5)
+                .frame(maxWidth: .infinity)
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                GridRow {
+                    ForEach(Array(headers.enumerated()), id: \.offset) { i, _ in
+                        MarkdownInlineFlow(
+                            segments: MarkdownMessageView.inlineSegments(i < row.count ? row[i] : ""),
+                            baseFontSize: bodySize,
+                            baseWeight: .regular
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 7)
+                    }
+                }
+                if rowIndex < rows.count - 1 {
+                    // 不用 Divider：无界宽度环境下它的宽度解算可能反复失效。
+                    // 定高 Rectangle 的尺寸完全确定。
+                    Rectangle()
+                        .fill(DSHTheme.border.opacity(0.6))
+                        .frame(height: 0.5)
+                        .frame(maxWidth: .infinity)
+                }
+            }
         }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contextMenu {
             Button {

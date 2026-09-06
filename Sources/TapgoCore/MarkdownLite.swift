@@ -88,6 +88,13 @@ public enum MarkdownLite {
             }
         }
 
+        // 嵌套层级的增量状态是**消息级**而非列表块级的：作者在 "1." 项下用
+        // "- " 写子要点时，嵌套 bullet 会被按 marker 切成独立列表块——若每块
+        // 都从 depth 0 重新计，子列表会渲染得与父项平齐。缩进与前一块末行比较，
+        // 层级自然延续；顶层新列表缩进回到 0，depth 也自然归零。
+        var listLastLeading: Int? = nil
+        var listCurrentDepth = 0
+
         while i < n {
             let line = lines[i]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -175,8 +182,7 @@ public enum MarkdownLite {
                 let ordered = item.ordered
                 // depth 按缩进档位（相对相邻行的增量）计，不按绝对空格数：
                 // 2/3/4 空格缩进各自形成层级，4 空格嵌套不会被算成两层。
-                var lastLeading: Int? = nil
-                var currentDepth = 0
+                // lastLeading/listCurrentDepth 跨块延续（见上方说明）。
                 while i < n {
                     let t = lines[i].trimmingCharacters(in: .whitespaces)
                     if t.hasPrefix("```") { break }
@@ -186,13 +192,13 @@ public enum MarkdownLite {
                     if t.hasPrefix("|"), parseTable(lines, at: i) != nil { break }
                     guard let it = classifyList(lines[i]), it.ordered == ordered, classifyTask(lines[i]) == nil else { break }
                     let leading = leadingWhitespaceCount(of: lines[i])
-                    if let prev = lastLeading {
-                        if leading > prev { currentDepth += 1 }
-                        else if leading < prev { currentDepth = max(0, currentDepth - 1) }
+                    if let prev = listLastLeading {
+                        if leading > prev { listCurrentDepth += 1 }
+                        else if leading < prev { listCurrentDepth = max(0, listCurrentDepth - 1) }
                     }
-                    lastLeading = leading
+                    listLastLeading = leading
                     items.append(parseInline(it.content))
-                    depths.append(currentDepth)
+                    depths.append(listCurrentDepth)
                     i += 1
                 }
                 if ordered {

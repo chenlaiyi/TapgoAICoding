@@ -442,7 +442,11 @@ struct ChatView: View {
                     lastWasNearBottom = true
                 }
                 .onPreferenceChange(ChatContentBottomKey.self) { bottom in
-                    isNearBottom = bottom <= viewportHeight + 120
+                    // @State 的 setter 不做值比较：无脑回写会让"布局 → preference
+                    // 回调 → 标脏 → 再布局"无限循环（滚动到内容中间时主线程被
+                    // 打满、整个 App 卡死）。只有跨过阈值才真正更新状态。
+                    let near = bottom <= viewportHeight + 120
+                    if near != isNearBottom { isNearBottom = near }
                 }
                 .overlay(alignment: .bottomTrailing) {
                     GeometryReader { g in

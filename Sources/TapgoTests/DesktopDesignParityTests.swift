@@ -158,9 +158,11 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              && markdown.contains("MarkdownMessageView.inlineSegments(i < row.count ? row[i] : \"\")"),
              "desktop-design: 表格单元格渲染行内 Markdown 而非暴露标记源码")
     t.expect(!markdown.contains(".background(idx % 2 == 1")
-             && markdown.contains("if rowIndex < rows.count - 1 { Divider() }")
+             && markdown.contains("if rowIndex < rows.count - 1 {")
+             && markdown.contains("Rectangle()")
+             && markdown.contains(".frame(height: 0.5)")
              && markdown.contains(".foregroundStyle(DSHTheme.labelDim)"),
-             "desktop-design: 表格改为 Codex 式平面分隔（行间 Divider + 灰色表头）")
+             "desktop-design: 表格改为 Codex 式平面分隔（定高 Rectangle 行间线 + 灰色表头，无界宽度下 Divider 会引发布局循环）")
     // v0.5.93 — user-provided Codex/Tapgo crops exposed message-renderer
     // drift that shell/layout parity alone could not catch.
     t.expect(markdown.contains("VStack(alignment: .leading, spacing: 12)")
