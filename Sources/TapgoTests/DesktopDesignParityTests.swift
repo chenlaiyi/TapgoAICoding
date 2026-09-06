@@ -158,15 +158,16 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              && markdown.contains("MarkdownMessageView.inlineSegments(i < row.count ? row[i] : \"\")"),
              "desktop-design: 表格单元格渲染行内 Markdown 而非暴露标记源码")
     t.expect(!markdown.contains(".background(idx % 2 == 1")
-             && markdown.contains(".overlay(alignment: .top) { Divider() }"),
-             "desktop-design: 表格改为 Codex 式平面分隔，不再使用连续卡片底色")
+             && markdown.contains("if rowIndex < rows.count - 1 { Divider() }")
+             && markdown.contains(".foregroundStyle(DSHTheme.labelDim)"),
+             "desktop-design: 表格改为 Codex 式平面分隔（行间 Divider + 灰色表头）")
     // v0.5.93 — user-provided Codex/Tapgo crops exposed message-renderer
     // drift that shell/layout parity alone could not catch.
     t.expect(markdown.contains("VStack(alignment: .leading, spacing: 12)")
              && markdown.contains("appendText(text, to: &out, accumulator: &acc)")
              && markdown.contains("trimmingCharacters(in: .newlines)")
-             && markdown.contains(".lineSpacing(4)"),
-             "desktop-design: Markdown 空行归一化、块间距 12pt、行距 4pt 的 Codex 节奏")
+             && markdown.contains(".lineSpacing(5)"),
+             "desktop-design: Markdown 空行归一化、块间距 12pt、行距 5pt 的 Codex 节奏")
     t.expect(markdown.contains("conversationBodySize * appFontScale.multiplier")
              && !markdown.contains("multiplier: appFontScale.multiplier) + 0.5")
              && markdown.contains("foregroundStyle(DSHTheme.messageText)"),

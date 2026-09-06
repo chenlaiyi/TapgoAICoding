@@ -78,10 +78,34 @@ struct ActivityRollupView: View {
                 if isLiveTail {
                     LivePulseDot()
                 }
-                Text(display.text)
-                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                if let filePath = display.filePath {
+                    // ZCode 参考样式的文件富行：图标 + 标签 + 类型图标 + 白色
+                    // 文件名 + 灰色路径；原始 JSON 参数不上屏。
+                    HStack(spacing: 6) {
+                        Text(fileRowLabel(display))
+                            .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                        let badge = FileTypeBadge.badge(forPath: filePath)
+                        Image(systemName: badge.symbol)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(badge.color)
+                            .accessibilityHidden(true)
+                        Text((filePath as NSString).lastPathComponent)
+                            .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.messageText)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                        Text((filePath as NSString).deletingLastPathComponent)
+                            .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.labelTertiary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                } else {
+                    Text(display.text)
+                        .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
             }
             // Codex keeps ordinary work events neutral; color is reserved for a
             // real failure instead of encoding every tool category.
@@ -90,6 +114,18 @@ struct ActivityRollupView: View {
             .animation(nil, value: activity.latest.id)
             .accessibilityLabel(display.text)
         }
+    }
+
+    /// 文件富行的动作标签：完成态用「编辑/查询/读取」，运行中用「正在编辑」。
+    private func fileRowLabel(_ display: TurnActivityDisplay) -> String {
+        let base: String
+        switch display.kind {
+        case .edit: base = "编辑"
+        case .search: base = "查询"
+        case .read: base = "读取"
+        default: base = "处理"
+        }
+        return display.isRunning ? "正在" + base : base
     }
 }
 

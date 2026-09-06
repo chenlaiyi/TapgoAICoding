@@ -152,8 +152,18 @@ struct MarkdownMessageView: View {
         var a = AttributedString()
         // Monospace is optically wider than body text. Keep it quiet so
         // paragraphs with paths remain readable rather than a grid of tiles.
-        let inlineSize = baseFontSize * 0.9
-        let inlineWeight: Font.Weight = .regular
+        let inlineSize = baseFontSize * 0.92
+        // ZCode 参考样式：行内代码画一块圆角胶囊底。Text 的 backgroundColor
+        // 是平矩形且紧贴字形，所以前后各染一个空格充当水平内边距；上下留白
+        // 随行高自动出现，断行后每行都保有底色。相比按 view 拆段的 flow
+        // 布局，这条路线不干扰 Text 的原生断词/逐字换行。
+        func pill(_ s: String) -> AttributedString {
+            var r = AttributedString(" " + s + " ")
+            r.font = .system(size: inlineSize, weight: .medium, design: .monospaced)
+            r.foregroundColor = DSHTheme.messageText
+            r.backgroundColor = DSHTheme.inlineCodeBg
+            return r
+        }
         for seg in segs {
             switch seg {
             case .text(let s):
@@ -161,13 +171,10 @@ struct MarkdownMessageView: View {
                 r.font = .system(size: baseFontSize, weight: baseWeight)
                 a += r
             case .inline(let s):
-                var r = AttributedString(s)
-                r.font = .system(size: inlineSize, weight: inlineWeight, design: .monospaced)
-                r.foregroundColor = DSHTheme.messageText
-                a += r
+                a += pill(s)
             case .bold(let s):
                 var r = AttributedString(s)
-                r.font = .system(size: baseFontSize, weight: .medium)
+                r.font = .system(size: baseFontSize, weight: .semibold)
                 a += r
             case .strikethrough(let s):
                 var r = AttributedString(s)
@@ -179,8 +186,26 @@ struct MarkdownMessageView: View {
                 r.link = URL(string: url)
                 r.font = .system(size: baseFontSize, weight: baseWeight)
                 r.foregroundColor = DSHTheme.brand
+                r.underlineStyle = .none
                 a += r
-            case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading, .fileReference:
+            case .fileReference(let path, let line):
+                // 路径引用：与行内代码同款胶囊，`:#` 行号尾巴用品牌色点出，
+                // 与 ZCode 参考样式里可定位的 `path:42` 写法一致。
+                var open = pill("")
+                open.characters = AttributedString(" ").characters
+                var pathRun = pill(path)
+                pathRun.foregroundColor = DSHTheme.messageText
+                a += open + pathRun
+                if let line {
+                    var tail = pill(":\(line)")
+                    tail.foregroundColor = DSHTheme.brand
+                    tail.font = .system(size: inlineSize, weight: .regular, design: .monospaced)
+                    a += tail
+                }
+                var close = pill("")
+                close.characters = AttributedString(" ").characters
+                a += close
+            case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading:
                 break
             }
         }
@@ -207,7 +232,7 @@ struct MarkdownMessageView: View {
         let bodySize = conversationBodySize * appFontScale.multiplier
         Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
             .foregroundStyle(DSHTheme.messageText)
-            .lineSpacing(4)
+            .lineSpacing(5)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -235,7 +260,7 @@ struct MarkdownMessageView: View {
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
                         Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
                             .foregroundStyle(DSHTheme.messageText)
-                            .lineSpacing(3)
+                            .lineSpacing(4)
                             .fixedSize(horizontal: false, vertical: true)
                             .foregroundStyle(depth >= 2 ? DSHTheme.label : DSHTheme.messageText)
                     }
@@ -277,7 +302,7 @@ private func parseCodeBlockHint(_ lang: String?) -> CodeBlockHint? {
 
 /// 按代码块的语言返回一个图标和品牌色（Codex 风格）。
 /// 不支持的语言返回 nil，调用方退回到纯文本 lang 标签。
-private func codeBlockLanguageBadge(_ lang: String?) -> (symbol: String, color: Color)? {
+func codeBlockLanguageBadge(_ lang: String?) -> (symbol: String, color: Color)? {
     guard let raw = lang?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !raw.isEmpty else {
         return nil
     }
@@ -433,23 +458,14 @@ private struct HeadingView: View {
     @Environment(\.conversationBodySize) private var conversationBodySize
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            // Codex 风格：h1 / h2 加一根 2pt 品牌色 accent bar；其它级别不带，
-            // 保持层级清楚又不抢正文节奏。
-            if level <= 2 {
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(DSHTheme.brand)
-                    .frame(width: 2, height: pointSize * 1.1)
-                    .baselineOffset(-2)
-                    .accessibilityHidden(true)
-            }
-            MarkdownInlineFlow(
-                segments: content,
-                baseFontSize: pointSize,
-                baseWeight: .medium
-            )
-            .fixedSize(horizontal: false, vertical: true)
-        }
+        // ZCode 参考样式：标题就是一整行加粗文字，不带品牌色竖条或其它装饰，
+        // 层级感全靠字号差与字重。
+        MarkdownInlineFlow(
+            segments: content,
+            baseFontSize: pointSize,
+            baseWeight: .semibold
+        )
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.top, level <= 2 ? 6 : 2)
         .padding(.bottom, 1)
     }
@@ -500,7 +516,7 @@ private struct TableView: View {
     var body: some View {
         let bodySize = conversationBodySize * appFontScale.multiplier - 0.5
         ScrollView(.horizontal, showsIndicators: false) {
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
+            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 0) {
                 GridRow {
                     ForEach(Array(headers.enumerated()), id: \.offset) { _, h in
                         MarkdownInlineFlow(
@@ -508,13 +524,13 @@ private struct TableView: View {
                             baseFontSize: bodySize,
                             baseWeight: .semibold
                         )
+                        // ZCode 参考样式：表头是暗灰小字，与数据行亮白正文拉开层次。
+                        .foregroundStyle(DSHTheme.labelDim)
+                        .padding(.vertical, 6)
                     }
                 }
-                .padding(.bottom, 2)
-                if !rows.isEmpty {
-                    Divider()
-                }
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                Divider()
+                ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
                     GridRow {
                         ForEach(Array(headers.enumerated()), id: \.offset) { i, _ in
                             MarkdownInlineFlow(
@@ -522,17 +538,16 @@ private struct TableView: View {
                                 baseFontSize: bodySize,
                                 baseWeight: .regular
                             )
+                            .padding(.vertical, 7)
                         }
                     }
-                    .padding(.vertical, 1)
+                    if rowIndex < rows.count - 1 { Divider() }
                 }
             }
             .padding(.horizontal, 2)
-            .padding(.vertical, 6)
+            .padding(.vertical, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) { Divider() }
-        .overlay(alignment: .bottom) { Divider() }
         .contextMenu {
             Button {
                 copy(tableText)

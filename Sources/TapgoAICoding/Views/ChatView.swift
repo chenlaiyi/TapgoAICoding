@@ -916,7 +916,17 @@ struct ChatView: View {
                 turnIsRunning: turn.status == .running
             )
         case .fileBatch(let files):
-            FileEditBatchView(files: files)
+            if turn.status == .running {
+                // ZCode 参考样式：运行中的文件改动是安静的「正在编辑」行，
+                // 结束后才折叠成带审核按钮的批次卡。
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(files) { file in
+                        FileChangeRowView(change: file)
+                    }
+                }
+            } else {
+                FileEditBatchView(files: files)
+            }
         }
     }
 

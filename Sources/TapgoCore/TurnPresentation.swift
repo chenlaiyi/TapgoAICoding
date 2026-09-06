@@ -56,6 +56,10 @@ public struct TurnActivityDisplay: Hashable {
     /// 多段聚合时的合并正文（仅 `.reasoning` / `.search` 类目使用），单行活动为空。
     /// 渲染层基于它计算字符数与展开后的完整内容。
     public let summaryText: String?
+    /// 从工具参数里解析出的目标文件路径（编辑/查询/读取行）。非空时渲染层把
+    /// 这一行画成「图标 + 标签 + 文件图标 + 文件名 + 路径」的富行，替代原始
+    /// JSON 参数截断——与 ZCode 参考样式一致。
+    public let filePath: String?
 
     fileprivate init(
         kind: Kind,
@@ -63,7 +67,8 @@ public struct TurnActivityDisplay: Hashable {
         systemImage: String?,
         isRunning: Bool,
         isFailure: Bool = false,
-        summaryText: String? = nil
+        summaryText: String? = nil,
+        filePath: String? = nil
     ) {
         self.kind = kind
         self.text = text
@@ -71,6 +76,7 @@ public struct TurnActivityDisplay: Hashable {
         self.isRunning = isRunning
         self.isFailure = isFailure
         self.summaryText = summaryText
+        self.filePath = filePath
     }
 
     fileprivate func appendingSuffix(_ suffix: String) -> TurnActivityDisplay {
@@ -80,7 +86,8 @@ public struct TurnActivityDisplay: Hashable {
             systemImage: systemImage,
             isRunning: isRunning,
             isFailure: isFailure,
-            summaryText: summaryText
+            summaryText: summaryText,
+            filePath: filePath
         )
     }
 }
@@ -359,12 +366,14 @@ public enum TurnPresentation {
         let failed = execution.status == .failed || execution.status == .denied
         let command = execution.command.replacingOccurrences(of: "\n", with: " ")
 
+        // ZCode 参考样式：运行中是「正在执行 <命令>」，完成后变成「终端 <命令>」
+        // 的安静回顾行；标签与命令之间只有空格，不加「·」。
         return semantic(
             key: "command",
             kind: .command,
-            activeText: "终端 · " + command,
-            completedText: failed ? "终端 · " + command + " · 执行失败" : "终端 · " + command,
-            continuationText: "终端 · " + command,
+            activeText: "正在执行 " + command,
+            completedText: failed ? "终端 " + command + " · 执行失败" : "终端 " + command,
+            continuationText: "终端 " + command,
             icon: "terminal",
             running: running,
             failed: failed
@@ -406,9 +415,9 @@ public enum TurnPresentation {
         let label: String
         let icon: String
         if ["search", "grep", "query", "find", "glob"].contains(where: name.contains) {
-            kind = .search; label = "查阅"; icon = "magnifyingglass"
+            kind = .search; label = "查询"; icon = "magnifyingglass"
         } else if ["list", "ls"].contains(where: name.contains) {
-            kind = .search; label = "查阅"; icon = "list.bullet"
+            kind = .search; label = "查询"; icon = "list.bullet"
         } else if ["read", "open", "view", "get"].contains(where: name.contains) {
             kind = .read; label = "读取"; icon = "book"
         } else if ["edit", "write", "patch", "update"].contains(where: name.contains) {
@@ -419,8 +428,16 @@ public enum TurnPresentation {
             kind = .tool; label = "使用工具 · " + call.name; icon = "wrench"
         }
 
-        let detail = argsSnippet(call.arguments)
-        let base = detail.isEmpty ? label : "\(label) · \(detail)"
+        // 目标文件行（ZCode 参考样式）：编辑/查询/读取解析出目标文件后，
+        // 单行只显示「标签 + 文件名 + 路径」，原始 JSON 参数不再上屏。
+        let filePath = extractFilePath(from: call.arguments, kind: kind)
+        let base: String
+        if filePath != nil {
+            base = running ? "正在" + label : label
+        } else {
+            let detail = argsSnippet(call.arguments)
+            base = detail.isEmpty ? label : "\(label) · \(detail)"
+        }
         return semantic(
             key: "tool:" + name,
             kind: kind,
@@ -429,8 +446,22 @@ public enum TurnPresentation {
             continuationText: base,
             icon: icon,
             running: running,
-            failed: failed
+            failed: failed,
+            filePath: filePath
         )
+    }
+
+    /// Pull the target file out of a tool-call argument object so the
+    /// activity row can render "标签 文件名 路径" instead of raw JSON.
+    static func extractFilePath(from rawArguments: String, kind: TurnActivityDisplay.Kind) -> String? {
+        guard [TurnActivityDisplay.Kind.edit, .search, .read].contains(kind),
+              let data = rawArguments.data(using: .utf8),
+              let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return nil }
+        for key in ["path", "file_path", "file", "abs_path", "notebook_path"] {
+            if let value = obj[key] as? String, !value.isEmpty { return value }
+        }
+        return nil
     }
 
     private static func semantic(
@@ -442,7 +473,8 @@ public enum TurnPresentation {
         icon: String?,
         running: Bool,
         failed: Bool,
-        summaryText: String? = nil
+        summaryText: String? = nil,
+        filePath: String? = nil
     ) -> TurnActivitySemantic {
         let display = TurnActivityDisplay(
             kind: kind,
@@ -450,7 +482,8 @@ public enum TurnPresentation {
             systemImage: failed ? "exclamationmark.triangle" : icon,
             isRunning: running,
             isFailure: failed,
-            summaryText: summaryText
+            summaryText: summaryText,
+            filePath: filePath
         )
         return TurnActivitySemantic(
             display: display
@@ -458,7 +491,7 @@ public enum TurnPresentation {
     }
 
     /// 目标 IDE groups consecutive searches into one row whose text carries the
-    /// per-category counts, e.g. "查阅 · 2 搜索, 1 列表".
+    /// per-category counts, e.g. "查询 · 2 搜索，1 文件".
     fileprivate static func searchCountsText(_ events: [TurnItem]) -> String {
         var searches = 0
         var listings = 0
@@ -473,8 +506,8 @@ public enum TurnPresentation {
         var parts: [String] = []
         if searches > 0 { parts.append("\(searches) 搜索") }
         if listings > 0 { parts.append("\(listings) 列表") }
-        if reads > 0 { parts.append("\(reads) 读取") }
-        return parts.isEmpty ? "查阅" : "查阅 · " + parts.joined(separator: ", ")
+        if reads > 0 { parts.append("\(reads) 文件") }
+        return parts.isEmpty ? "查询" : "查询 · " + parts.joined(separator: "，")
     }
 
     fileprivate static func isSearchToolCall(_ item: TurnItem) -> Bool {

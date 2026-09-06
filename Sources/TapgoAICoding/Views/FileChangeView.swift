@@ -6,6 +6,29 @@ import TapgoCore
 // A single muted transcript line: "编辑 Info.plist AppBuilder +8 -2", with
 // the diff available on click and a failure suffix when the edit failed.
 
+/// 按文件扩展名返回「类型图标 + 品牌色」，用于编辑/查询活动行上的小图标，
+/// 与代码块语言徽标共用同一套配色；未知扩展名退回中性文档图标。
+enum FileTypeBadge {
+    static func badge(forPath path: String) -> (symbol: String, color: Color) {
+        let ext = (path as NSString).pathExtension.lowercased()
+        if let mapped = codeBlockLanguageBadge(ext.isEmpty ? nil : ext) {
+            return mapped
+        }
+        switch ext {
+        case "md", "markdown":
+            return ("doc.richtext", Color(hex: 0x5198D9))
+        case "plist", "entitlements":
+            return ("gearshape.fill", Color(hex: 0x6B7280))
+        case "txt", "log":
+            return ("doc.plaintext", Color(hex: 0x9CA3AF))
+        case "xib", "storyboard":
+            return ("rectangle.grid.1x2", Color(hex: 0xE38C00))
+        default:
+            return ("doc.plaintext", Color(hex: 0x9CA3AF))
+        }
+    }
+}
+
 struct FileChangeRowView: View {
     let change: FileChange
     @EnvironmentObject private var workspace: WorkspaceStore
@@ -26,15 +49,21 @@ struct FileChangeRowView: View {
                 Text(verb)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
+                let badge = FileTypeBadge.badge(forPath: change.path)
+                Image(systemName: badge.symbol)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(badge.color)
+                    .accessibilityHidden(true)
                 Text(basename)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+                    .layoutPriority(1)
                 Text(directory)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
-                    .truncationMode(.head)
+                    .truncationMode(.tail)
                 if added > 0 {
                     Text("+\(added)")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
@@ -94,11 +123,15 @@ struct FileChangeRowView: View {
     }
     private var iconColor: Color { failed ? DSHTheme.error : DSHTheme.labelTertiary }
     private var verb: String {
+        let base: String
         switch change.kind {
-        case .create: return "新建"
-        case .update: return "编辑"
-        case .delete: return "删除"
+        case .create: base = "新建"
+        case .update: base = "编辑"
+        case .delete: base = "删除"
         }
+        // 运行中（待应用/待批准）用「正在编辑」进行时，与 ZCode 参考样式一致。
+        let inFlight = change.status == .pending || change.status == .awaitingApproval
+        return inFlight ? "正在" + base : base
     }
     private var basename: String {
         (change.path as NSString).lastPathComponent
@@ -243,12 +276,22 @@ struct FileEditBatchView: View {
                         guard !file.diff.isEmpty else { return }
                         selectedReviewPath = selectedReviewPath == file.path ? nil : file.path
                     } label: {
-                        HStack(spacing: 10) {
-                            Text(file.path)
+                        HStack(spacing: 7) {
+                            let badge = FileTypeBadge.badge(forPath: file.path)
+                            Image(systemName: badge.symbol)
+                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(badge.color)
+                                .accessibilityHidden(true)
+                            Text((file.path as NSString).lastPathComponent)
                                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(DSHTheme.labelDim)
+                                .foregroundStyle(DSHTheme.messageText)
                                 .lineLimit(1)
-                                .truncationMode(.middle)
+                                .layoutPriority(1)
+                            Text((file.path as NSString).deletingLastPathComponent)
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                .foregroundStyle(DSHTheme.labelTertiary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                             Spacer(minLength: 8)
                             lineDelta(for: file)
                         }
