@@ -208,8 +208,8 @@ func runMarkdownLiteStrikethrough(_ t: TestRunner) {
 
 @MainActor
 func runMarkdownLiteNestedLists(_ t: TestRunner) {
-    // 2-space indent per level。常见 markdown 都用 2 空格或 4 空格，
-    // listDepth 把每 2 空格算一级，2 空格作者得到 [0,1,2]，4 空格作者也得到 [0,1,2]。
+    // 2-space indent per level。depth 按相邻行的缩进增量计档：
+    // 2 空格作者得到 [0,1,2]，4 空格或 3 空格作者同样各得 [0,1,2]。
     let nested = """
     - top
       - mid
@@ -257,10 +257,10 @@ func runMarkdownLiteFileReference(_ t: TestRunner) {
     t.expectEqual(paren[1], .fileReference(path: "Withdrawal.php", line: 19),
                  "fileRef paren: path+line")
 
-    // 深路径也认
+    // 深路径也认（无前导文本，所以是 [fileReference, tail] 两段）
     let deep = MarkdownLite.parseInline("a/very/deep/path/to/file.rs:123 ok")
-    t.expectEqual(deep.count, 3, "fileRef deep: 3 segments")
-    t.expectEqual(deep[1], .fileReference(path: "a/very/deep/path/to/file.rs", line: 123),
+    t.expectEqual(deep.count, 2, "fileRef deep: 2 segments")
+    t.expectEqual(deep[0], .fileReference(path: "a/very/deep/path/to/file.rs", line: 123),
                  "fileRef deep: path+line")
 
     // 单个文件没有扩展名 → 不识别，避免误伤普通数字

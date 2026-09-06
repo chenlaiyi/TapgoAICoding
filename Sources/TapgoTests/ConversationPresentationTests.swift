@@ -51,5 +51,5 @@ func runConversationPresentationTests(_ t: TestRunner) {
     }
     t.expectEqual(MarkdownPlainText.render("[文档](https://example.com)"), "文档", "conversation: plain copy keeps link title")
     let mixed = MarkdownLite.parse("- 要点\n1. 步骤\n- [x] 已核对")
-    t.expectEqual(mixed, [.bulletList([[.text("要点")]]), .numberedList([[.text("步骤")]]), .taskList([.init(checked: true, content: [.text("已核对")])])], "conversation: mixed list types keep their own markers")
+    t.expectEqual(mixed, [.bulletList(items: [[.text("要点")]], depths: [0]), .numberedList(items: [[.text("步骤")]], depths: [0]), .taskList([.init(checked: true, content: [.text("已核对")])])], "conversation: mixed list types keep their own markers")
 }

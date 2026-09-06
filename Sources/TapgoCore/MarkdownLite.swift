@@ -173,6 +173,10 @@ public enum MarkdownLite {
                 var items: [[MarkdownSegment]] = []
                 var depths: [Int] = []
                 let ordered = item.ordered
+                // depth 按缩进档位（相对相邻行的增量）计，不按绝对空格数：
+                // 2/3/4 空格缩进各自形成层级，4 空格嵌套不会被算成两层。
+                var lastLeading: Int? = nil
+                var currentDepth = 0
                 while i < n {
                     let t = lines[i].trimmingCharacters(in: .whitespaces)
                     if t.hasPrefix("```") { break }
@@ -181,8 +185,14 @@ public enum MarkdownLite {
                     if t.hasPrefix(">") { break }
                     if t.hasPrefix("|"), parseTable(lines, at: i) != nil { break }
                     guard let it = classifyList(lines[i]), it.ordered == ordered, classifyTask(lines[i]) == nil else { break }
+                    let leading = leadingWhitespaceCount(of: lines[i])
+                    if let prev = lastLeading {
+                        if leading > prev { currentDepth += 1 }
+                        else if leading < prev { currentDepth = max(0, currentDepth - 1) }
+                    }
+                    lastLeading = leading
                     items.append(parseInline(it.content))
-                    depths.append(listDepth(of: lines[i]))
+                    depths.append(currentDepth)
                     i += 1
                 }
                 if ordered {
@@ -318,14 +328,10 @@ public enum MarkdownLite {
         return nil
     }
 
-    /// Count nested-list depth by measuring the leading whitespace before the
-    /// marker. Each 2-space indent is one depth level (matches the common
-    /// markdown convention and is forgiving for both 2- and 4-space authors).
-    /// Lines that are already trimmed at column 0 stay at depth 0.
-    static func listDepth(of line: String) -> Int {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        let leading = line.distance(from: line.startIndex, to: line.range(of: trimmed)?.lowerBound ?? line.startIndex)
-        return max(0, leading / 2)
+    /// Leading whitespace count (spaces + tabs) before the list marker; the
+    /// relative delta between consecutive items decides their depth level.
+    static func leadingWhitespaceCount(of line: String) -> Int {
+        line.prefix { $0 == " " || $0 == "\t" }.count
     }
 
     /// Split a run of text into `.text` / `.inline` / `.bold` /

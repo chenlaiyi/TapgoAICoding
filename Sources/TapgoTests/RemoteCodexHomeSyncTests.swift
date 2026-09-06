@@ -141,6 +141,7 @@ func runRemoteWrapperExecution(_ t: TestRunner) {
         t.expectEqual(missing.0, 5, "missing directory aborts before running the harness")
         t.expect(!missing.1.contains("harness-cwd="), "invalid cwd never falls back to home")
     } catch { t.expect(false, "wrapper execution: \(error.localizedDescription)") }
+}
 
 /// v0.5.109 回归：npm 版 /opt/homebrew/bin/codex 是 `#!/usr/bin/env node`
 /// 脚本。GUI 启动的 App 只有最小 PATH，`env node` 解析不到就以 127 退出，
