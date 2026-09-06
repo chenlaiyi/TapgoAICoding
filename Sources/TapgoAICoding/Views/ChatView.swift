@@ -141,10 +141,6 @@ struct ChatView: View {
     @State private var searchQuery = ""
     @State private var jumpToTurnId: String? = nil
     @State private var showEvolutionLog = false
-    /// Codex-style fold state: completed turns collapse their work log into
-    /// an "已处理 …" row. File edits remain visible as a separate summary card.
-    @State private var expandedWork: Set<String> = []
-    @State private var collapsedWork: Set<String> = []
     @State private var showShortcuts = false
     @State private var streamScrollCoalescer = StreamScrollCoalescer()
     @AppStorage("tapgo.wideContent") private var wideContent = false
@@ -508,10 +504,6 @@ struct ChatView: View {
                     }
                 }
                 // When switching threads, land at the latest message.
-                .onChange(of: showWorkProcess) { _, _ in
-                    expandedWork.removeAll()
-                    collapsedWork.removeAll()
-                }
                 .onChange(of: thread.id) { _, _ in
                     streamScrollCoalescer.cancel()
                     scrollChatToBottom(proxy)
@@ -833,19 +825,6 @@ struct ChatView: View {
         return f.string(from: date)
     }
 
-    /// Live activity label for the in-flight indicator, mirroring Codex:
-    /// "思考中" while reasoning, "执行中" while a tool/command runs, and
-    /// "生成中" once the model is streaming its reply.
-    private func streamingLabel(for turn: TapgoCore.Turn) -> String {
-        guard let last = turn.items.last else { return "思考中" }
-        switch last {
-        case .reasoning, .reasoningSummary: return "思考中"
-        case .commandExecution, .toolCall: return "执行中"
-        case .assistantMessage: return "生成中"
-        default: return "处理中"
-        }
-    }
-
     @ViewBuilder
     private func turnSection(turn: Turn, isLast: Bool = false) -> some View {
         let isRunning = turn.status == .running || turn.status == .awaitingApproval
@@ -858,44 +837,14 @@ struct ChatView: View {
             ForEach(presentation.users) { item in
                 renderBlock(.item(item), turn: turn)
             }
-            if let progress = TurnProgressSummary(turn: turn) {
-                TaskPlanCard(progress: progress, status: turn.status)
-                    .padding(.vertical, 4)
-            }
-            if !presentation.work.isEmpty {
-                workDurationChip(turn: turn)
-                if workIsExpanded(turn) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(TurnPresentation.compactBlocks(presentation.work)) { block in
-                            renderBlock(block, turn: turn)
-                        }
-                    }
-                    .padding(.leading, 14)
-                    .overlay(alignment: .leading) {
-                        Rectangle().fill(DSHTheme.border).frame(width: 1)
-                    }
+            ConversationResponseView(turn: turn, showWorkProcess: showWorkProcess) {
+                ForEach(presentation.notices) { item in
+                    renderBlock(.item(item), turn: turn)
                 }
             }
-            ForEach(presentation.notices) { item in
-                renderBlock(.item(item), turn: turn)
-            }
-            ForEach(presentation.messages) { item in
-                renderBlock(.item(item), turn: turn)
-            }
+            .padding(.top, 12)
             if !isRunning, !fileChanges.isEmpty {
                 FileEditBatchView(files: fileChanges).padding(.top, 6)
-            }
-            if isRunning && presentation.messages.isEmpty && presentation.work.isEmpty {
-                runningActivityLine(turn: turn)
-            }
-            if turn.status == .interrupted || turn.status == .failed {
-                Text(turn.status == .interrupted ? "任务已中断，可重试或展开查看工作过程。" : "任务未完成，请查看错误说明后重试。")
-                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(DSHTheme.labelDim)
-            } else if turn.status == .completed && presentation.messages.isEmpty {
-                Text("任务已结束，未返回最终回复。可展开查看工作过程。")
-                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(DSHTheme.labelDim)
             }
             if turn.status == .completed || turn.status == .failed || turn.status == .interrupted {
                 // Copy the answer, keeping diagnostics in explicit full export.
@@ -953,7 +902,7 @@ struct ChatView: View {
                     Spacer()
                 }
                 .foregroundStyle(DSHTheme.labelTertiary)
-                .padding(.top, 1)
+                .padding(.top, 8)
             }
         }
     }
@@ -975,96 +924,6 @@ struct ChatView: View {
             )
         case .fileBatch(let files):
             FileEditBatchView(files: files)
-        }
-    }
-
-    /// "已处理 8 分 53 秒 >" — Codex's quiet completed-work boundary.
-    private func workDurationChip(turn: Turn) -> some View {
-        let expanded = workIsExpanded(turn)
-        return HStack(spacing: 9) {
-            Button {
-                toggleWork(turn)
-            } label: {
-                HStack(spacing: 5) {
-                    if turn.status == .running {
-                        ProgressView().controlSize(.mini).accessibilityHidden(true)
-                    }
-                    Text(turn.status == .running ? "正在处理" : (turn.status == .awaitingApproval ? "等待确认" : "工作过程 · \(localizedWorkDuration(turn.duration))"))
-                    Image(systemName: "chevron.right")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
-                }
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(DSHTheme.labelTertiary)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(expanded ? "折叠处理过程" : "展开处理过程")
-            Rectangle()
-                .fill(DSHTheme.border)
-                .frame(height: 1)
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func workIsExpanded(_ turn: Turn) -> Bool {
-        expandedWork.contains(turn.id) || (showWorkProcess && (turn.status == .running || turn.status == .awaitingApproval) && !collapsedWork.contains(turn.id))
-    }
-
-    private func toggleWork(_ turn: Turn) {
-        if workIsExpanded(turn) {
-            expandedWork.remove(turn.id)
-            collapsedWork.insert(turn.id)
-        } else {
-            collapsedWork.remove(turn.id)
-            expandedWork.insert(turn.id)
-        }
-    }
-
-    private func localizedWorkDuration(_ duration: TimeInterval?) -> String {
-        let total = max(Int((duration ?? 0).rounded()), 0)
-        if total < 60 { return "\(total) 秒" }
-        let minutes = total / 60
-        let seconds = total % 60
-        if minutes < 60 {
-            return seconds == 0 ? "\(minutes) 分钟" : "\(minutes) 分 \(seconds) 秒"
-        }
-        let hours = minutes / 60
-        let remainder = minutes % 60
-        return remainder == 0 ? "\(hours) 小时" : "\(hours) 小时 \(remainder) 分"
-    }
-
-    /// While a reply streams without a tool item, keep one muted activity row
-    /// at the latest position. The composer already owns the global stop
-    /// control, so historical chat content never grows another stop card.
-    @ViewBuilder
-    private func runningActivityLine(turn: Turn) -> some View {
-        HStack(spacing: 7) {
-            ProgressView()
-                .controlSize(.mini)
-                .frame(width: 16, height: 16)
-            Text(runningActivityLabel(turn))
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .help(runningActivityLabel(turn))
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(DSHTheme.labelTertiary)
-    }
-
-    private func runningActivityLabel(_ turn: Turn) -> String {
-        guard let last = turn.items.last else { return "思考中…" }
-        switch last {
-        case .reasoning, .reasoningSummary: return "正在思考"
-        case .commandExecution:
-            return "正在执行"
-        case .toolCall:
-            return "正在处理"
-        case .fileChange:
-            return "正在编辑文件"
-        case .assistantMessage: return "正在生成回复"
-        default: return "正在处理"
         }
     }
 

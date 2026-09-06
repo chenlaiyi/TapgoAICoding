@@ -15,16 +15,19 @@ public struct TurnResponsePresentation {
             if case .assistantMessage(_, let text) = $0 { return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             return false
         }
-        let explicitFinals = assistants.filter { turn.assistantPhases[$0.id] == "final_answer" }
+        func phase(_ item: TurnItem) -> String {
+            turn.assistantPhases[item.id]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        }
+        let explicitFinals = assistants.filter { ["final_answer", "final"].contains(phase($0)) }
         // Legacy providers omit phase. Only the terminal response AFTER work is
         // promoted; an interrupted pre-tool commentary is never called a result.
         let legacyFinal: TurnItem? = {
             guard turn.status == .completed, explicitFinals.isEmpty,
                   let candidate = assistants.last,
-                  turn.assistantPhases[candidate.id] != "commentary",
+                  phase(candidate).isEmpty,
                   let index = items.lastIndex(where: { $0.id == candidate.id }) else { return nil }
             let laterWork = items.suffix(from: index + 1).contains {
-                switch $0 { case .toolCall, .commandExecution, .reasoning, .reasoningSummary: return true; default: return false }
+                switch $0 { case .toolCall, .commandExecution, .reasoning, .reasoningSummary, .fileChange: return true; default: return false }
             }
             return laterWork ? nil : candidate
         }()

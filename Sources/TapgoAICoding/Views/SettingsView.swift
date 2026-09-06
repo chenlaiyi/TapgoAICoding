@@ -646,7 +646,7 @@ struct SettingsView: View {
 
                     settingsControlRow(
                         title: "显示工作过程",
-                        description: "关闭后，运行中和历史回合都收起过程，只显示状态、回复和修改摘要；需要时可单独展开。"
+                        description: "关闭后隐藏运行中和历史回合的过程入口、清单与工具详情；回复、必要确认和修改结果继续显示。"
                     ) {
                         Toggle("显示工作过程", isOn: $showWorkProcess)
                             .labelsHidden()

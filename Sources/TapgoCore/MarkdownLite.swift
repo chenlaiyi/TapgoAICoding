@@ -141,7 +141,7 @@ public enum MarkdownLite {
                     if headingLevel(t) != nil { break }
                     if t.hasPrefix(">") { break }
                     if t.hasPrefix("|"), parseTable(lines, at: i) != nil { break }
-                    guard let it = classifyList(lines[i]) else { break }
+                    guard let it = classifyList(lines[i]), it.ordered == ordered, classifyTask(lines[i]) == nil else { break }
                     items.append(parseInline(it.content))
                     i += 1
                 }

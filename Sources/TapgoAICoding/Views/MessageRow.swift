@@ -141,26 +141,6 @@ struct MessageBubble: View {
         return f.string(from: date)
     }
 
-    /// Minimal markdown → plain-text strip: drop code fences, emphasis
-    /// markers, inline code backticks, links, and image/table syntax so the
-    /// copied reply reads cleanly.
-    private func stripMarkdown(_ s: String) -> String {
-        var out = s
-        out = out.replacingOccurrences(of: "```", with: "")
-        let codeBlock = try? NSRegularExpression(pattern: "(?s)```.*?```")
-        out = codeBlock?.stringByReplacingMatches(in: out, range: NSRange(out.startIndex..., in: out), withTemplate: "") ?? out
-        out = out.replacingOccurrences(of: "`", with: "")
-        if let linkRe = try? NSRegularExpression(pattern: "\\[(.*?)\\]\\((.*?)\\)") {
-            out = linkRe.stringByReplacingMatches(in: out, range: NSRange(out.startIndex..., in: out), withTemplate: "$1")
-        }
-        // Emphasis markers.
-        out = out.replacingOccurrences(of: "**", with: "")
-        out = out.replacingOccurrences(of: "__", with: "")
-        out = out.replacingOccurrences(of: "*", with: "")
-        out = out.replacingOccurrences(of: "~~~", with: "")
-        return out.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     var body: some View {
         if role == .user {
             VStack(alignment: .trailing, spacing: 4) {
@@ -177,23 +157,7 @@ struct MessageBubble: View {
                 HStack(alignment: .top) {
                     Spacer(minLength: 32)
                     if text != "(图片)" || userImagePaths.isEmpty {
-                        Text(text)
-                            .foregroundStyle(DSHTheme.label)
-                            // Codex keeps the user bubble airy but quiet: a
-                            // hairline outline instead of a heavy raised card,
-                            // with padding tuned so multi-line prompts don't
-                            // look like a chat sticker.
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 7)
-                            .background(
-                                DSHTheme.surfaceRaised,
-                                in: RoundedRectangle(cornerRadius: 12)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(DSHTheme.border, lineWidth: 0.5)
-                            )
-                            .textSelection(.enabled)
+                        ConversationUserMessageLabel(text: text)
                             .contextMenu {
                                 Button {
                                     copy(text)
@@ -209,10 +173,10 @@ struct MessageBubble: View {
                             }
                     }
                 }
-                if hoveringUser {
-                    userActionBar
-                        .transition(.opacity)
-                }
+                userActionBar
+                    .frame(height: 24)
+                    .opacity(hoveringUser ? 1 : 0)
+                    .allowsHitTesting(hoveringUser)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
             .contentShape(Rectangle())
@@ -231,7 +195,7 @@ struct MessageBubble: View {
                         Label("复制消息", systemImage: "doc.on.doc")
                     }
                     Button {
-                        copy(stripMarkdown(text))
+                        copy(MarkdownPlainText.render(text))
                     } label: {
                         Label("复制为纯文本", systemImage: "text.alignleft")
                     }
@@ -411,7 +375,7 @@ struct ReasoningDisclosure: View {
     @State private var isExpanded = false
 
     private var displayText: String {
-        text.isEmpty ? (isRunning ? "思考中…" : label) : text
+        isRunning ? "正在思考" : label
     }
 
     private var totalChars: Int {
@@ -440,11 +404,6 @@ struct ReasoningDisclosure: View {
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    if totalChars > 0 && !text.isEmpty {
-                        Text("· \(totalChars) 字符")
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(DSHTheme.labelTertiary)
-                    }
                     Spacer(minLength: 0)
                     if !text.isEmpty {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")

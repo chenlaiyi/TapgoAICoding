@@ -143,6 +143,7 @@ let allSections: [String] = [
     "Response: quiet transcript and personalization",
     "Composer: local command routing",
     "Sidebar: presentation and persistence",
+    "Conversation: quiet work and readable responses",
     "TurnProgressSummary: plan + diff statistics",
     "AdaptiveEnvironmentLayout: responsive visibility threshold",
     "ApprovalTimeoutTracker: arm / disarm basics",
@@ -520,6 +521,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "TurnPresentation: semantic activity summaries") {
             runTurnPresentationTests(runner)
+        }
+        await runIfInScope(runner, "Conversation: quiet work and readable responses") {
+            runConversationPresentationTests(runner)
         }
         await runIfInScope(runner, "Sidebar: presentation and persistence") {
             runSidebarPresentationTests(runner)

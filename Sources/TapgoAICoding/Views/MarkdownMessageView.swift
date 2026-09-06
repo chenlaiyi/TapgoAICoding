@@ -7,6 +7,7 @@ import TapgoCore
 /// proper markers. Plain text falls through unchanged.
 struct MarkdownMessageView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     let text: String
     let isStreaming: Bool
@@ -18,7 +19,7 @@ struct MarkdownMessageView: View {
 
     var body: some View {
         let blocks = Self.blocks(MarkdownLite.parse(text))
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .para(let segs):
@@ -41,33 +42,9 @@ struct MarkdownMessageView: View {
                     HeadingView(level: level, content: content)
                 }
             }
-            // 流式光标紧贴最后一段（避免光标独立成行撑高卡片）。
-            if isStreaming, let lastPara = lastParagraphRange() {
-                InlineStreamingCursor()
-                    .padding(.leading, 1)
-                    .padding(.top, -3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .id(lastPara)
-            } else if isStreaming {
-                InlineStreamingCursor()
-                    .padding(.top, -2)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// 当前助手消息的 markdown 块列表。缓存避免 `lastParagraphRange()` 重复解析。
-    private var resolvedBlocks: [Block] {
-        Self.blocks(MarkdownLite.parse(text))
-    }
-
-    /// 找到 blocks 中最后一个段落的位置（用于把光标定位到该段落末尾的同一行）。
-    /// 仅在助手消息里有 .para 块时返回非空；否则光标退回到独立一行。
-    private func lastParagraphRange() -> String? {
-        for (offset, block) in resolvedBlocks.enumerated().reversed() {
-            if case .para = block { return "cursor-after-\(offset)" }
-        }
-        return nil
+        .accessibilityElement(children: .contain)
     }
 
     private enum Block {
@@ -228,24 +205,25 @@ struct MarkdownMessageView: View {
     /// 默认 single-line 行为）。
     @ViewBuilder
     private func paragraphView(segs: [MarkdownSegment]) -> some View {
-        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
+        let bodySize = conversationBodySize * appFontScale.multiplier
         Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
             .foregroundStyle(DSHTheme.messageText)
-            .lineSpacing(2.5)
+            .lineSpacing(4)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
     private struct ListView: View {
         @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+        @Environment(\.conversationBodySize) private var conversationBodySize
         let items: [[MarkdownSegment]]
         let ordered: Bool
 
         var body: some View {
             // Codex uses a small but clearly visible marker and a compact row
             // rhythm; the previous 6pt gap amplified long tool inventories.
-            let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-            let markerSize = AppFont.pointSize(for: .footnote, multiplier: appFontScale.multiplier)
-            VStack(alignment: .leading, spacing: 3) {
+            let bodySize = conversationBodySize * appFontScale.multiplier
+            let markerSize = bodySize - 1
+            VStack(alignment: .leading, spacing: 5) {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
@@ -256,7 +234,7 @@ struct MarkdownMessageView: View {
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
                         Text(MarkdownMessageView.inlineAttributed(item, baseFontSize: bodySize))
                             .foregroundStyle(DSHTheme.messageText)
-                            .lineSpacing(1.5)
+                            .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -335,6 +313,7 @@ private struct CodeBlockView: View {
     let lang: String?
     @State private var copied = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -372,7 +351,7 @@ private struct CodeBlockView: View {
             // code keeps its real column layout (like the harness block).
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
-                    .font(AppFont.monoScaled(size: 12, multiplier: appFontScale.multiplier))
+                    .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.messageText)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -398,6 +377,7 @@ private struct HeadingView: View {
     let level: Int
     let content: [MarkdownSegment]
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     var body: some View {
         MarkdownInlineFlow(
@@ -413,33 +393,11 @@ private struct HeadingView: View {
     private var pointSize: CGFloat {
         let multiplier = appFontScale.multiplier
         switch level {
-        case 1: return AppFont.pointSize(for: .title2, multiplier: multiplier)
-        case 2: return AppFont.pointSize(for: .title3, multiplier: multiplier)
-        case 3: return AppFont.pointSize(for: .headline, multiplier: multiplier) + 0.5
-        default: return AppFont.pointSize(for: .body, multiplier: multiplier)
+        case 1: return (conversationBodySize + 5) * multiplier
+        case 2: return (conversationBodySize + 3) * multiplier
+        case 3: return (conversationBodySize + 1) * multiplier
+        default: return conversationBodySize * multiplier
         }
-    }
-}
-
-/// 行内流式光标：Codex 风格 2pt × 0.85em 文本高度，柔和呼吸，挂在最后一段
-/// 同一行；多个段落时通过 SwiftUI 的 `lastTextBaseline` 锚定保持对齐。
-private struct InlineStreamingCursor: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
-    @State private var visible = false
-
-    var body: some View {
-        Capsule()
-            .fill(DSHTheme.label)
-            .frame(width: 2, height: 12 * appFontScale.multiplier)
-            .opacity(reduceMotion || visible ? 0.85 : 0.18)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
-                    visible = true
-                }
-            }
-            .accessibilityLabel("正在生成回复")
     }
 }
 
@@ -447,21 +405,22 @@ private struct InlineStreamingCursor: View {
 /// turning ordinary quoted prose into another card.
 private struct QuoteView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     let segs: [MarkdownSegment]
 
     var body: some View {
-        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-        HStack(alignment: .top, spacing: 10) {
-            RoundedRectangle(cornerRadius: 1)
-                .fill(DSHTheme.borderStrong)
-                .frame(width: 2)
-            Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
-            .foregroundStyle(DSHTheme.messageText)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 3)
+        let bodySize = conversationBodySize * appFontScale.multiplier
+        Text(MarkdownMessageView.inlineAttributed(segs, baseFontSize: bodySize))
+            .foregroundStyle(DSHTheme.labelDim)
+            .lineSpacing(4)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 12)
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 1).fill(DSHTheme.borderStrong).frame(width: 2)
+            }
+            .padding(.vertical, 3)
     }
 }
 
@@ -469,12 +428,13 @@ private struct QuoteView: View {
 /// separator). It stays flat in the transcript and renders inline markdown.
 private struct TableView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     let headers: [String]
     let rows: [[String]]
 
     var body: some View {
-        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier) - 0.5
+        let bodySize = conversationBodySize * appFontScale.multiplier - 0.5
         ScrollView(.horizontal, showsIndicators: false) {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
                 GridRow {
@@ -537,11 +497,12 @@ private struct TableView: View {
 /// 同步字号比例；unchecked 时落到 DSHTheme.labelTertiary，整体视觉比纯色二级图标更克制。
 private struct TaskListView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     let items: [TaskItem]
 
     var body: some View {
-        let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
+        let bodySize = conversationBodySize * appFontScale.multiplier
         VStack(alignment: .leading, spacing: 7) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -571,6 +532,7 @@ private struct ImageView: View {
     let url: String
     @State private var failed = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     var body: some View {
         Group {
@@ -636,5 +598,15 @@ struct MarkdownInlineFlow: View {
             .foregroundStyle(DSHTheme.messageText)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct ConversationBodySizeKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 15
+}
+extension EnvironmentValues {
+    var conversationBodySize: CGFloat {
+        get { self[ConversationBodySizeKey.self] }
+        set { self[ConversationBodySizeKey.self] = newValue }
     }
 }

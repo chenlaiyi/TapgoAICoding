@@ -7,6 +7,7 @@ private func desktopDesignFile(_ relativePath: String) -> String {
 
 @MainActor
 func runDesktopZCodeDesign(_ t: TestRunner) {
+    let response = desktopDesignFile("Sources/TapgoAICoding/Views/ConversationResponseView.swift")
     let sidebar = desktopDesignFile("Sources/TapgoAICoding/Views/SidebarView.swift")
     let chat = desktopDesignFile("Sources/TapgoAICoding/Views/ChatView.swift")
     let message = desktopDesignFile("Sources/TapgoAICoding/Views/MessageRow.swift")
@@ -54,7 +55,7 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(chat.contains("activeThread == nil, let p = workspace.state.activeProject"), "desktop-design: 活跃任务输入器不重复项目入口")
     t.expect(chat.contains("ComposerView(contentWidth: wideContent ? 980 : 760, isWelcome: !hasConversation)"), "desktop-design: 标准输入器与 Codex 消息列同宽")
     t.expect(!chat.contains("if hasConversation {\n                Divider()"), "desktop-design: 输入器上方没有贯穿会话区的分隔线")
-    t.expect(message.contains("DSHTheme.surfaceRaised"), "desktop-design: 用户消息使用低对比灰色气泡")
+    t.expect(response.contains("DSHTheme.conversationUserBg"), "desktop-design: 用户消息使用低对比灰色气泡")
     t.expect(theme.contains("sidebarBg") && theme.contains("titlebarBg"), "desktop-design: 桌面导航层级色完整")
     t.expect(content.contains("HSplitView") && content.contains("UnevenRoundedRectangle"), "desktop-design: 灰色整窗底板承载右侧圆角覆盖层")
     t.expect(content.contains("idealWidth: 260, maxWidth: 360"), "desktop-design: 侧栏默认紧凑且允许扩宽")
@@ -135,13 +136,13 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
     t.expect(!message.contains(".fill(DSHTheme.trajectoryAssistant"),
              "desktop-design: 助手正文无色条与外层卡片")
     t.expect(message.contains("MarkdownMessageView(text, isStreaming: isStreaming)"),
-             "desktop-design: 流式状态由正文内轻量光标承担")
+             "desktop-design: 正文保留流式状态供辅助功能读取")
     t.expect(!chat.contains("Text(turnTime(turn.startedAt))") && chat.contains("TurnMarkdown.response(turn)"),
              "desktop-design: 完成态页脚只显示图标，复制动作只复制最终回复")
     t.expect(chat.contains("Image(systemName: \"arrow.turn.up.right\")")
              && !chat.contains("Label(\"以此输入开新任务\", systemImage:"),
              "desktop-design: 新任务动作使用 Codex 式图标，不常驻长标签")
-    t.expect(chat.contains("workDurationChip(turn: turn)") && !chat.contains("showWorkProcess = true"),
+    t.expect(chat.contains("ConversationResponseView(turn: turn, showWorkProcess: showWorkProcess)") && !chat.contains("showWorkProcess = true"),
              "desktop-design: 单回合过程展开不修改全局偏好")
     t.expect(chat.contains("FileEditBatchView(files: fileChanges)"),
              "desktop-design: 完成态保留独立文件变更摘要卡")
@@ -161,12 +162,12 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              "desktop-design: 表格改为 Codex 式平面分隔，不再使用连续卡片底色")
     // v0.5.93 — user-provided Codex/Tapgo crops exposed message-renderer
     // drift that shell/layout parity alone could not catch.
-    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 10)")
+    t.expect(markdown.contains("VStack(alignment: .leading, spacing: 12)")
              && markdown.contains("appendText(text, to: &out, accumulator: &acc)")
              && markdown.contains("trimmingCharacters(in: .newlines)")
-             && markdown.contains(".lineSpacing(2.5)"),
-             "desktop-design: Markdown 空行归一化、块间距 10pt、行距 2.5 的 Codex 节奏")
-    t.expect(markdown.contains("AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)")
+             && markdown.contains(".lineSpacing(4)"),
+             "desktop-design: Markdown 空行归一化、块间距 12pt、行距 4pt 的 Codex 节奏")
+    t.expect(markdown.contains("conversationBodySize * appFontScale.multiplier")
              && !markdown.contains("multiplier: appFontScale.multiplier) + 0.5")
              && markdown.contains("foregroundStyle(DSHTheme.messageText)"),
              "desktop-design: 正文使用 Codex 密度字号与高对比文字")

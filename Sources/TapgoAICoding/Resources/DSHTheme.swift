@@ -74,6 +74,7 @@ enum DSHTheme {
     static let labelTertiary = Color.dynamic(lightHex: 0x81858C, darkHex: 0x949494)
     /// Transcript-specific primary. SwiftUI's default dark-mode `.primary`
     /// resolves near #E0E0E0; Codex renders assistant prose closer to white.
+    static let conversationUserBg = Color.dynamic(lightHex: 0xF1F1F1, darkHex: 0x303031)
     static let messageText = Color.dynamic(lightHex: 0x171717, darkHex: 0xF7F7F7)
 
     // MARK: Markdown
