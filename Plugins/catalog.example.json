@@ -1,0 +1,24 @@
+{
+  "available": [
+    {
+      "pluginId": "tapgo-plugin-sparkle-publish",
+      "name": "tapgo-plugin-sparkle-publish",
+      "displayName": "Sparkle 一键发版",
+      "version": "1.0.0",
+      "description": "为本地 TapgoAICoding 仓库提供 ./scripts/publish-sparkle.sh，封装 codesign + zip + appcast 生成；适合定期发版或临时修补版本号。",
+      "repo": "https://github.com/chenlaiyi/tapgo-plugin-sparkle-publish.git",
+      "channel": "main",
+      "capabilities": ["脚本", "发版", "Shell"]
+    },
+    {
+      "pluginId": "tapgo-plugin-screen-permission",
+      "name": "tapgo-plugin-screen-permission",
+      "displayName": "屏幕录制权限自检",
+      "version": "1.0.0",
+      "description": "检查 macOS 屏幕录制与辅助功能两项 TCC 权限当前授权状态，给出修复指引与一键直达 系统设置。",
+      "repo": "https://github.com/chenlaiyi/tapgo-plugin-screen-permission.git",
+      "channel": "main",
+      "capabilities": ["诊断", "TCC", "系统设置"]
+    }
+  ]
+}
