@@ -108,6 +108,14 @@ public enum AppFont {
         return .system(size: base * multiplier)
     }
 
+    /// Variant of `scaled` that also applies a custom weight. Use when
+    /// a label needs to stay aligned with the global font scale but
+    /// semibold / medium contrast matters for the row.
+    public static func systemScaled(_ style: Font.TextStyle, weight: Font.Weight, multiplier: CGFloat) -> Font {
+        let base = baseSizes[style] ?? 13
+        return .system(size: base * multiplier, weight: weight)
+    }
+
     /// 单点像素尺寸 helper（无字体绘制，纯数值），供 markdown 解析等需要
     /// 按文本样式 + multiplier 计算具体 point size 的场景使用。
     public static func pointSize(for style: Font.TextStyle, multiplier: CGFloat) -> CGFloat {

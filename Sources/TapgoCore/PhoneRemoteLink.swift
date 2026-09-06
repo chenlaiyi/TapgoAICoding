@@ -888,10 +888,10 @@ public enum PhoneRemote {
             return "<blockquote>\(inner)</blockquote>"
         case .horizontalRule:
             return "<hr>"
-        case .bulletList(let items):
+        case .bulletList(let items, _):
             let lis = items.map { "<li>\(inlineHTML($0))</li>" }.joined()
             return "<ul>\(lis)</ul>"
-        case .numberedList(let items):
+        case .numberedList(let items, _):
             let lis = items.map { "<li>\(inlineHTML($0))</li>" }.joined()
             return "<ol>\(lis)</ol>"
         case .taskList(let items):
@@ -921,6 +921,9 @@ public enum PhoneRemote {
             return "<p>\(linkHTML(title: alt.isEmpty ? "图片" : alt, url: url))</p>"
         case .inline(let s):
             return paragraphHTML("`\(s)`")
+        case .fileReference(let path, let line):
+            let suffix = line.map { ":\($0)" } ?? ""
+            return paragraphHTML("`\(path)\(suffix)`")
         }
     }
 
@@ -945,6 +948,9 @@ public enum PhoneRemote {
                 return "<del>\(escapeText(s))</del>"
             case .link(let title, let url):
                 return linkHTML(title: title, url: url)
+            case .fileReference(let path, let line):
+                let suffix = line.map { ":\($0)" } ?? ""
+                return "<code class=\"fileRef\">\(escapeText(path))\(escapeText(suffix))</code>"
             case .image(let alt, _):
                 return escapeText(alt)
             case .heading(let level, let content):
@@ -953,7 +959,7 @@ public enum PhoneRemote {
                 return content.map { inlineHTML([$0]) }.joined()
             case .horizontalRule:
                 return ""
-            case .bulletList(let items), .numberedList(let items):
+            case .bulletList(let items, _), .numberedList(let items, _):
                 return items.map { inlineHTML($0) }.joined(separator: " ")
             case .taskList(let items):
                 return items.map { inlineHTML($0.content) }.joined(separator: " ")

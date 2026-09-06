@@ -96,11 +96,18 @@ public enum RemoteCodexHomeSync {
     /// Read and validate the actual binary selected by `findHarness()`.
     /// Returns the normalized x.y.z string, or nil if the process/version is
     /// invalid or below the supported protocol floor.
-    public static func supportedHarnessVersion(at path: String) -> String? {
+    /// `baseEnvironment` 仅供测试注入模拟的 GUI 最小环境。
+    public static func supportedHarnessVersion(
+        at path: String,
+        baseEnvironment: [String: String]? = nil
+    ) -> String? {
         guard !path.isEmpty else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = ["--version"]
+        // npm 版 codex 是 `#!/usr/bin/env node` 脚本，GUI 环境的 PATH 解析
+        // 不到 node；不注入 PATH 这里恒以 127 退出（v0.5.109 修）。
+        process.environment = HarnessChildEnvironment.make(base: baseEnvironment)
         let output = Pipe()
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice

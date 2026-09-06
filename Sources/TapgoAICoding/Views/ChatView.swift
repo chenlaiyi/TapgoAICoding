@@ -900,7 +900,7 @@ struct ChatView: View {
                 // Codex keeps completion actions as a quiet icon row. Time,
                 // usage and duration remain discoverable in the copy tooltip.
                 HStack(spacing: 10) {
-                    CopyIconButton(text: TurnMarkdown.render(turn), help: turnMetadataHelp(turn))
+                    CopyIconButton(text: TurnMarkdown.renderCached(turn), help: turnMetadataHelp(turn))
                         .controlSize(.mini)
                     if isLast, turn.status == .completed {
                         Button {

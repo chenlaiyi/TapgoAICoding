@@ -166,10 +166,16 @@ public struct Thread: Identifiable, Hashable, Codable {
     /// reached a terminal state known to be safe. Call this before appending
     /// the next `.running` turn; afterwards `turns.last` is the new turn and
     /// can no longer describe the prior run.
+    ///
+    /// `.interrupted`（App 退出、daemon 被杀、用户停止、自进化开启下一轮）
+    /// 同样是安全终态：harness rollout 完好且没有在途 turn。把它排除会让
+    /// 下一轮永远裸开新线程、丢掉全部 harness 历史（v0.5.108 实测自进化
+    /// 会话 96 轮里绝大多数是 interrupted，上下文从 ~200k 掉到 ~15k）。
     public var resumableHarnessThreadId: String? {
         guard let harnessThreadId,
               let lastStatus = turns.last?.status,
               lastStatus == .completed || lastStatus == .failed
+                  || lastStatus == .interrupted
         else { return nil }
         return harnessThreadId
     }

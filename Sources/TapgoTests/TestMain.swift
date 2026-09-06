@@ -62,6 +62,7 @@ let allSections: [String] = [
     "RemoteCodexHomeSync: trusted projects are remote-only",
     "RemoteCodexHomeSync: harness wrapper script",
     "RemoteCodexHomeSync: literal key is never present anywhere in the public surface",
+    "RemoteCodexHomeSync: version check survives GUI minimal PATH",
     "RemoteSSH: push config + catalog (no auth)",
     "protocol-1: ssh connection + remote codex",
     "protocol-2: ssh round-trip",
@@ -761,6 +762,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "RemoteCodexHomeSync: literal key is never present anywhere in the public surface") {
             runRemoteCodexHomeSyncNoLiteralKey(runner)
+        }
+        await runIfInScope(runner, "RemoteCodexHomeSync: version check survives GUI minimal PATH") {
+            runRemoteCodexHomeSyncVersionCheckMinimalPath(runner)
         }
         await runIfInScope(runner, "RemoteSSH: push config + catalog (no auth)") {
             await runRemoteSSHPushConfigNoAuth(runner)

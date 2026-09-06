@@ -110,7 +110,7 @@ public final class LocalHarnessTransport: HarnessTransport {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: harnessPath)
         proc.arguments = ["app-server", "--listen", "stdio://"]
-        var env = ProcessInfo.processInfo.environment
+        var env = HarnessChildEnvironment.make()
         env["CODEX_HOME"] = codexHome.path
         env["OPENAI_API_KEY"] = apiKey
         env["TERM"] = "xterm-256color"

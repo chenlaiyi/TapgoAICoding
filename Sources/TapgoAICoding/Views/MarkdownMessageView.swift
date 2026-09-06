@@ -17,16 +17,16 @@ struct MarkdownMessageView: View {
     }
 
     var body: some View {
-        let blocks = Self.blocks(MarkdownLite.parse(text))
-        VStack(alignment: .leading, spacing: 6) {
+        let blocks = Self.blocks(MarkdownLite.parseCached(text))
+        VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .para(let segs):
                     paragraphView(segs: segs)
                 case .code(let code, let lang):
                     CodeBlockView(code: code, lang: lang)
-                case .list(let items, let ordered):
-                    ListView(items: items, ordered: ordered)
+                case .list(let items, let ordered, let depths):
+                    ListView(items: items, ordered: ordered, depths: depths)
                 case .quote(let segs):
                     QuoteView(segs: segs)
                 case .rule:
@@ -58,7 +58,7 @@ struct MarkdownMessageView: View {
 
     /// 当前助手消息的 markdown 块列表。缓存避免 `lastParagraphRange()` 重复解析。
     private var resolvedBlocks: [Block] {
-        Self.blocks(MarkdownLite.parse(text))
+        Self.blocks(MarkdownLite.parseCached(text))
     }
 
     /// 找到 blocks 中最后一个段落的位置（用于把光标定位到该段落末尾的同一行）。
@@ -75,7 +75,7 @@ struct MarkdownMessageView: View {
         /// 以保证 inline / bold / 行内代码的字号、字重、行内代码底色等跟随用户字号偏好。
         case para([MarkdownSegment])
         case code(code: String, lang: String?)
-        case list(items: [[MarkdownSegment]], ordered: Bool)
+        case list(items: [[MarkdownSegment]], ordered: Bool, depths: [Int])
         case quote([MarkdownSegment])
         case rule
         case table(headers: [String], rows: [[String]])
@@ -92,12 +92,12 @@ struct MarkdownMessageView: View {
             case .codeFence(let code, let lang):
                 appendPara(&out, &acc)
                 out.append(.code(code: code, lang: lang))
-            case .bulletList(let items):
+            case .bulletList(let items, let depths):
                 appendPara(&out, &acc)
-                out.append(.list(items: items, ordered: false))
-            case .numberedList(let items):
+                out.append(.list(items: items, ordered: false, depths: depths))
+            case .numberedList(let items, let depths):
                 appendPara(&out, &acc)
-                out.append(.list(items: items, ordered: true))
+                out.append(.list(items: items, ordered: true, depths: depths))
             case .blockquote(let segs):
                 appendPara(&out, &acc)
                 out.append(.quote(segs))
@@ -118,7 +118,7 @@ struct MarkdownMessageView: View {
                 out.append(.heading(level: level, content: content))
             case .text(let text):
                 appendText(text, to: &out, accumulator: &acc)
-            case .inline, .bold, .link, .strikethrough:
+            case .inline, .bold, .link, .strikethrough, .fileReference:
                 acc.append(seg)
             }
         }
@@ -170,7 +170,7 @@ struct MarkdownMessageView: View {
     fileprivate static func inlineAttributed(
         _ segs: [MarkdownSegment],
         baseFontSize: CGFloat = AppFont.pointSize(for: .body, multiplier: 1),
-        baseWeight: Font.Weight = .light
+        baseWeight: Font.Weight = .regular
     ) -> AttributedString {
         var a = AttributedString()
         // 行内代码与正文同大，仅靠 monospace + 浅底色区分；
@@ -204,7 +204,7 @@ struct MarkdownMessageView: View {
                 r.font = .system(size: baseFontSize, weight: baseWeight)
                 r.foregroundColor = DSHTheme.brand
                 a += r
-            case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading:
+            case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading, .fileReference:
                 break
             }
         }
@@ -214,9 +214,9 @@ struct MarkdownMessageView: View {
     /// Table cells also accept inline markdown. The previous plain-string
     /// renderer exposed literal `**bold**` and backticks in the transcript.
     fileprivate static func inlineSegments(_ text: String) -> [MarkdownSegment] {
-        MarkdownLite.parse(text).filter { segment in
+        MarkdownLite.parseCached(text).filter { segment in
             switch segment {
-            case .text, .inline, .bold, .link, .strikethrough: return true
+            case .text, .inline, .bold, .link, .strikethrough, .fileReference: return true
             default: return false
             }
         }
@@ -229,7 +229,7 @@ struct MarkdownMessageView: View {
     @ViewBuilder
     private func paragraphView(segs: [MarkdownSegment]) -> some View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-        MarkdownInlineFlow(segments: segs, baseFontSize: bodySize, baseWeight: .light)
+        MarkdownInlineFlow(segments: segs, baseFontSize: bodySize, baseWeight: .regular)
             .lineSpacing(2.5)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -238,6 +238,7 @@ struct MarkdownMessageView: View {
         @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
         let items: [[MarkdownSegment]]
         let ordered: Bool
+        var depths: [Int] = []
 
         var body: some View {
             // Codex uses a small but clearly visible marker and a compact row
@@ -246,17 +247,20 @@ struct MarkdownMessageView: View {
             let markerSize = AppFont.pointSize(for: .footnote, multiplier: appFontScale.multiplier)
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
+                    // 嵌套列表深度：每级缩进 16pt；depth ≥3 时正文降到 labelTertiary
+                    // 档位，让眼睛立刻能分辨"主层级"和"更深层级"。
+                    let depth = (idx < depths.count) ? depths[idx] : 0
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(ordered ? "\(idx + 1)." : "•")
-                            // Bullet 比正文更淡一档（labelTertiary）+ 字重 .regular，
-                            // 让眼睛把 bullet 当成"装饰"而不是"内容"。
                             .font(.system(size: markerSize, weight: .regular, design: .monospaced))
                             .foregroundStyle(DSHTheme.labelTertiary)
                             .frame(minWidth: ordered ? 18 : 14, alignment: .trailing)
-                        MarkdownInlineFlow(segments: item, baseFontSize: bodySize, baseWeight: .light)
+                        MarkdownInlineFlow(segments: item, baseFontSize: bodySize, baseWeight: .regular, depth: depth)
                             .lineSpacing(1.5)
                             .fixedSize(horizontal: false, vertical: true)
+                            .foregroundStyle(depth >= 2 ? DSHTheme.label : DSHTheme.messageText)
                     }
+                    .padding(.leading, CGFloat(depth) * 16)
                 }
             }
             .padding(.leading, 2)
@@ -264,6 +268,33 @@ struct MarkdownMessageView: View {
     }
 }
 
+
+/// 解析 ```lang [filename[:line]]``` 形式的代码块顶栏 hint：第一个 token 当
+/// 语言，后面作为文件名（可选带行号）。Codex 截图里 `Withdrawal.php (line 19)`
+/// 就是这种"语言 + 文件名 + 行号"的组合，比单纯 `php` 标识更能定位代码。
+struct CodeBlockHint: Equatable {
+    let language: String
+    let filename: String?
+    let lineRange: String?
+}
+
+private func parseCodeBlockHint(_ lang: String?) -> CodeBlockHint? {
+    guard let raw = lang?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+        return nil
+    }
+    let tokens = raw.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+    guard let first = tokens.first else { return nil }
+    let language = String(first)
+    var filename: String?
+    var lineRange: String?
+    if tokens.count > 1 {
+        let rest = tokens[1].trimmingCharacters(in: .whitespaces)
+        let parts = rest.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
+        filename = String(parts[0])
+        if parts.count > 1 { lineRange = String(parts[1]) }
+    }
+    return CodeBlockHint(language: language, filename: filename, lineRange: lineRange)
+}
 
 /// 按代码块的语言返回一个图标和品牌色（Codex 风格）。
 /// 不支持的语言返回 nil，调用方退回到纯文本 lang 标签。
@@ -337,7 +368,30 @@ private struct CodeBlockView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                if let lang, !lang.isEmpty {
+                if let hint = parseCodeBlockHint(lang) {
+                    if let badge = codeBlockLanguageBadge(hint.language) {
+                        Image(systemName: badge.symbol)
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(badge.color)
+                            .accessibilityHidden(true)
+                    }
+                    Text(hint.language)
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    if let name = hint.filename {
+                        Text(name)
+                            .font(AppFont.systemScaled(.caption2, weight: .medium, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.messageText.opacity(0.82))
+                            .textSelection(.enabled)
+                    }
+                    if let line = hint.lineRange {
+                        Text("(line \(line))")
+                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(DSHTheme.labelTertiary)
+                            .textSelection(.enabled)
+                    }
+                } else if let lang, !lang.isEmpty {
                     if let badge = codeBlockLanguageBadge(lang) {
                         Image(systemName: badge.symbol)
                             .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
@@ -398,13 +452,24 @@ private struct HeadingView: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
-        MarkdownInlineFlow(
-            segments: content,
-            baseFontSize: pointSize,
-            baseWeight: .medium
-        )
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.top, level <= 2 ? 5 : 2)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            // Codex 风格：h1 / h2 加一根 2pt 品牌色 accent bar；其它级别不带，
+            // 保持层级清楚又不抢正文节奏。
+            if level <= 2 {
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(DSHTheme.brand)
+                    .frame(width: 2, height: pointSize * 1.1)
+                    .baselineOffset(-2)
+                    .accessibilityHidden(true)
+            }
+            MarkdownInlineFlow(
+                segments: content,
+                baseFontSize: pointSize,
+                baseWeight: .medium
+            )
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, level <= 2 ? 6 : 2)
         .padding(.bottom, 1)
     }
 
@@ -454,7 +519,7 @@ private struct QuoteView: View {
             RoundedRectangle(cornerRadius: 1)
                 .fill(DSHTheme.borderStrong)
                 .frame(width: 2)
-            MarkdownInlineFlow(segments: segs, baseFontSize: bodySize, baseWeight: .light)
+            MarkdownInlineFlow(segments: segs, baseFontSize: bodySize, baseWeight: .regular)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
         }
@@ -493,7 +558,7 @@ private struct TableView: View {
                             MarkdownInlineFlow(
                                 segments: MarkdownMessageView.inlineSegments(i < row.count ? row[i] : ""),
                                 baseFontSize: bodySize,
-                                baseWeight: .light
+                                baseWeight: .regular
                             )
                         }
                     }
@@ -547,7 +612,7 @@ private struct TaskListView: View {
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(item.checked ? DSHTheme.success : DSHTheme.labelTertiary)
                         .frame(width: bodySize + 2, alignment: .leading)
-                    MarkdownInlineFlow(segments: item.content, baseFontSize: bodySize, baseWeight: .light)
+                    MarkdownInlineFlow(segments: item.content, baseFontSize: bodySize, baseWeight: .regular)
                         .fixedSize(horizontal: false, vertical: true)
                         // 已勾选项视觉上略暗；SwiftUI Text 自身支持 strikethrough，这里靠
                         // segment 走 inlineAttributed 的 strikethrough 段，未来若 segment 模型
@@ -652,12 +717,14 @@ struct MarkdownInlineFlow: View {
             Text(s)
                 .font(.system(size: baseFontSize, weight: .medium, design: .monospaced))
                 .foregroundStyle(DSHTheme.messageText)
-                .padding(.horizontal, 3.5)
-                .padding(.vertical, 0.5)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .foregroundStyle(DSHTheme.messageText.opacity(0.9))
                 .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(DSHTheme.inlineCodeBg)
                 )
+                .baselineOffset(-0.5)
         case .bold(let s):
             Text(s)
                 .font(.system(size: baseFontSize, weight: .medium))
@@ -672,6 +739,28 @@ struct MarkdownInlineFlow: View {
                 .font(.system(size: baseFontSize, weight: baseWeight))
                 .foregroundStyle(DSHTheme.brand)
                 .underline()
+        case .fileReference(let path, let line):
+            // Inline code-style pill, but show the file name in `monospaced` +
+            // a trailing `:#` tail. Smaller opacity than body text so it reads
+            // as a reference, not as primary content.
+            HStack(spacing: 4) {
+                Text(path)
+                    .font(.system(size: baseFontSize, weight: .medium, design: .monospaced))
+                    .foregroundStyle(DSHTheme.messageText.opacity(0.92))
+                if let line {
+                    Text(":\(line)")
+                        .font(.system(size: baseFontSize, weight: .regular, design: .monospaced))
+                        .foregroundStyle(DSHTheme.brand)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(DSHTheme.inlineCodeBg)
+            )
+            .baselineOffset(-0.5)
+            .textSelection(.enabled)
         case .codeFence, .bulletList, .numberedList, .blockquote, .horizontalRule, .table, .taskList, .image, .heading:
             EmptyView()
         }

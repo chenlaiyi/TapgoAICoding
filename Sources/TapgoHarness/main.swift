@@ -52,6 +52,13 @@ func spawnCodex() throws -> (Process, Pipe, Pipe, Pipe) {
     proc.executableURL = URL(fileURLWithPath: codexPath)
     proc.arguments = ["app-server", "--listen", "stdio://"]
     var env = ProcessInfo.processInfo.environment
+    // npm 版 codex 是 `#!/usr/bin/env node` 脚本；App 传来的 PATH 若缺
+    // Homebrew bin，这里补一份，保证 GUI/launchd 场景也能解析 node
+    // （v0.5.109 修）。
+    let pathPrefix = ["/opt/homebrew/bin", "/usr/local/bin",
+                      "\(NSHomeDirectory())/.local/bin"]
+    let existing = env["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+    env["PATH"] = (pathPrefix + [existing]).joined(separator: ":")
     env["CODEX_HOME"] = codexHomePath
     env["OPENAI_API_KEY"] = apiKey
     env["TERM"] = "xterm-256color"
