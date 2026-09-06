@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.115", date: "2026-09-06", commit: "见源码提交", tag: "v0.5.115",
+                    summary: "接入 Tapgo 官方插件市场，消息渲染与子进程环境持续打磨。",
+                    changes: ["插件管理器新增「Tapgo 官方」分类，一键安装/卸载官方插件到 ~/.tapgo/plugins/。", "目录来自 plugins.itapgo.com/catalog.json，网络不可用时静默降级。", "消息中的文件引用渲染为独立样式，嵌套列表按缩进层级正确展示。", "大消息解析加缓存；修复 Finder 启动时 Codex 版本探测失败。"],
+                    why: "Tapgo 官方插件需要自己的分类与可装入口；同时把消息阅读体验与 GUI 启动环境的遗留问题一并收掉。",
+                    next: "服务端发布 catalog.json 后官方 Tab 自动出现首批插件；下一步补启用/停用切换。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.114", date: "2026-09-06", commit: "见源码提交", tag: "v0.5.114",
                     summary: "修复远程项目执行环境，减轻回复阅读负担。",
                     changes: ["SSH 启动自动查找远端执行器，连接测试与执行使用同一端口和密钥。", "远端确认工作目录；主机配置缺失时停止，禁止退回本机。", "隔离客户端记忆与远程项目上下文，显示明确的 SSH 目标和目录。", "减少文件清单与重复确认，行内代码取消重底色；加入真实双向 SSH 协议回归。"],
