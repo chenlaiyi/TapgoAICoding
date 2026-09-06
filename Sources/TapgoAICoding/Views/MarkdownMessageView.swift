@@ -491,10 +491,12 @@ private struct HeadingView: View {
 
     private var pointSize: CGFloat {
         let multiplier = appFontScale.multiplier
+        // Codex 桌面端：h1 显著大于正文，h2 次之，h3 只比正文大半档——
+        // 三级拉开层级，而不是挤在一起。
         switch level {
-        case 1: return (conversationBodySize + 5) * multiplier
-        case 2: return (conversationBodySize + 3) * multiplier
-        case 3: return (conversationBodySize + 1) * multiplier
+        case 1: return (conversationBodySize + 6) * multiplier
+        case 2: return (conversationBodySize + 4) * multiplier
+        case 3: return (conversationBodySize + 2) * multiplier
         default: return conversationBodySize * multiplier
         }
     }

@@ -192,8 +192,9 @@ func runMarkdownLiteHeadings(_ t: TestRunner) {
     t.expectEqual(h[1], .heading(level: 2, content: [.text("Sub")]), "heading: h2")
     t.expectEqual(h[2], .heading(level: 3, content: [.bold("Bold")]), "heading: h3 inline bold")
 
-    // "#notheading" (no space) → text passthrough.
-    t.expectEqual(MarkdownLite.parse("#notheading"), [.text("#notheading")], "heading: no-space passthrough")
+    // CommonMark：`#` 后空格可选。模型输出 `###标题`（无空格）非常常见，
+    // 必须识别为标题，否则字面量 `###` 会直接上屏。
+    t.expectEqual(MarkdownLite.parse("#notheading"), [.heading(level: 1, content: [.text("notheading")])], "heading: no-space still a heading (CommonMark)")
 }
 
 @MainActor

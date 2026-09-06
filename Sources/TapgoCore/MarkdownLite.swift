@@ -236,8 +236,10 @@ public enum MarkdownLite {
     }
 
     /// ATX heading level (`#` … `######`), or nil if the line isn't a
-    /// heading. The `#` run must be followed by a space (or be the whole
-    /// line) so `#notheading` stays text.
+    /// heading. CommonMark 里 `#` 后的空格是可选的（`###标题` 也是三级标题，
+    /// 模型输出里这种写法非常常见）；`#` 后跟字母/数字时仍按 heading 处理，
+    /// 只有紧跟标点（如 `#1 冠军` 中 `#1` 属正文用法）时才不算——这里从宽：
+    /// `#数字` 极少作为正文开头出现在助手消息里。
     static func headingLevel(_ trimmed: String) -> Int? {
         var i = 0
         for c in trimmed {
@@ -246,8 +248,10 @@ public enum MarkdownLite {
         guard i >= 1, i <= 6 else { return nil }
         let after = trimmed.index(trimmed.startIndex, offsetBy: i)
         if after == trimmed.endIndex { return i }
-        if trimmed[after] == " " { return i }
-        return nil
+        let next = trimmed[after]
+        if next == " " || next == "\t" { return i }
+        // `#` 后直接跟文字：按 heading 处理（CommonMark 可选空格）。
+        return i
     }
 
     /// Parse a markdown pipe table starting at `i`. Returns the header
