@@ -49,6 +49,7 @@ struct ActivityRollupView: View {
     let activity: TurnActivityRollup
     let turnIsRunning: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     var body: some View {
         let display = TurnPresentation.activityDisplay(
@@ -67,13 +68,18 @@ struct ActivityRollupView: View {
             )
         } else {
             let isLiveTail = turnIsRunning && activity.isTail && display.isRunning
-            HStack(spacing: 7) {
+            // ZCode 参考样式：活动行与正文几乎同字号（不再用 footnote 小字），
+            // 亮度靠颜色分层而不是整行压透明度——文件名亮白、路径暗灰、
+            // 标签中灰，思考/终端行更淡一档。
+            let rowSize = conversationBodySize * appFontScale.multiplier
+            HStack(spacing: 8) {
                 // Codex 用具体类别图标（terminal / magnifyingglass / pencil …）配合一颗小脉动
                 // 圆点表示「仍在进行中」，比裸 ProgressView 更安静，也保留了动作语义。
                 if let icon = display.systemImage {
                     Image(systemName: icon)
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        .frame(width: 16)
+                        .font(.system(size: rowSize - 2))
+                        .foregroundStyle(isLiveTail ? DSHTheme.labelDim : DSHTheme.labelTertiary)
+                        .frame(width: 18)
                 }
                 if isLiveTail {
                     LivePulseDot()
@@ -81,36 +87,38 @@ struct ActivityRollupView: View {
                 if let filePath = display.filePath {
                     // ZCode 参考样式的文件富行：图标 + 标签 + 类型图标 + 白色
                     // 文件名 + 灰色路径；原始 JSON 参数不上屏。
-                    HStack(spacing: 6) {
+                    HStack(spacing: 7) {
                         Text(fileRowLabel(display))
-                            .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                            .font(.system(size: rowSize - 1))
                         let badge = FileTypeBadge.badge(forPath: filePath)
                         Image(systemName: badge.symbol)
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .font(.system(size: rowSize - 3))
                             .foregroundStyle(badge.color)
                             .accessibilityHidden(true)
                         Text((filePath as NSString).lastPathComponent)
-                            .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                            .font(.system(size: rowSize - 1))
                             .foregroundStyle(DSHTheme.messageText)
                             .lineLimit(1)
                             .layoutPriority(1)
                         Text((filePath as NSString).deletingLastPathComponent)
-                            .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                            .font(.system(size: rowSize - 1))
                             .foregroundStyle(DSHTheme.labelTertiary)
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
                 } else {
                     Text(display.text)
-                        .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                        .font(.system(size: rowSize - 1))
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
             }
+            .padding(.vertical, 2)
             // Codex keeps ordinary work events neutral; color is reserved for a
-            // real failure instead of encoding every tool category.
+            // real failure instead of encoding every tool category. 亮度不再用
+            // 整行 opacity 压制（会把亮白文件名一起压灰），运行中的行只略微提亮。
             .foregroundStyle(display.isFailure ? DSHTheme.error : DSHTheme.labelDim)
-            .opacity(isLiveTail ? 0.92 : 0.66)
+            .opacity(isLiveTail ? 1 : 0.85)
             .animation(nil, value: activity.latest.id)
             .accessibilityLabel(display.text)
         }
@@ -409,6 +417,7 @@ private struct ImagePreviewSheet: View {
 /// `ReasoningDisclosure`，正文是换行拼接的总和，避免出现多行灰色 log。
 struct ReasoningDisclosure: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    @Environment(\.conversationBodySize) private var conversationBodySize
 
     let text: String
     var label: String = L10n.reasoning
@@ -429,6 +438,9 @@ struct ReasoningDisclosure: View {
     }
 
     var body: some View {
+        // ZCode 参考样式：思考行与其它活动行同字号（不再用 caption 小字），
+        // 亮度保持最淡一档（labelTertiary），让"思考"天然弱于文件/终端行。
+        let rowSize = conversationBodySize * appFontScale.multiplier - 1
         VStack(alignment: .leading, spacing: 4) {
             Button {
                 guard !text.isEmpty else { return }
@@ -436,24 +448,24 @@ struct ReasoningDisclosure: View {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 7) {
+                HStack(spacing: 8) {
                     if isRunning {
                         ProgressView()
                             .controlSize(.mini)
-                            .frame(width: 16, height: 16)
+                            .frame(width: 18, height: 18)
                     } else {
                         Image(systemName: icon)
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                            .frame(width: 16)
+                            .font(.system(size: rowSize - 2))
+                            .frame(width: 18)
                     }
                     Text(displayText)
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .font(.system(size: rowSize))
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer(minLength: 0)
                     if !text.isEmpty {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                            .font(.system(size: rowSize - 3))
                             .foregroundStyle(DSHTheme.labelTertiary)
                             .frame(width: 14)
                     }
@@ -468,12 +480,12 @@ struct ReasoningDisclosure: View {
 
             if isExpanded && !text.isEmpty {
                 Text(text)
-                    .font(AppFont.scaled(.footnote, multiplier: appFontScale.multiplier))
+                    .font(.system(size: rowSize))
                     .foregroundStyle(DSHTheme.labelDim)
-                    .lineSpacing(3)
+                    .lineSpacing(4)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 23) // 与图标列对齐
+                    .padding(.leading, 26) // 与图标列对齐
                     .padding(.vertical, 2)
             }
         }
