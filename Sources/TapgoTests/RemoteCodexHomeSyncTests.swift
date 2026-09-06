@@ -141,4 +141,32 @@ func runRemoteWrapperExecution(_ t: TestRunner) {
         t.expectEqual(missing.0, 5, "missing directory aborts before running the harness")
         t.expect(!missing.1.contains("harness-cwd="), "invalid cwd never falls back to home")
     } catch { t.expect(false, "wrapper execution: \(error.localizedDescription)") }
+/// v0.5.109 回归：npm 版 /opt/homebrew/bin/codex 是 `#!/usr/bin/env node`
+/// 脚本。GUI 启动的 App 只有最小 PATH，`env node` 解析不到就以 127 退出，
+/// 设置页恒报“Codex CLI 版本过旧或无法识别”。这里用注入的最小 PATH 模拟
+/// GUI 环境，断言 HarnessChildEnvironment 注入后版本探测依然成功。
+@MainActor
+func runRemoteCodexHomeSyncVersionCheckMinimalPath(_ t: TestRunner) {
+    let harnessPath = RemoteCodexHomeSync.findHarness()
+    guard !harnessPath.isEmpty else {
+        t.expect(false, "findHarness locates a codex binary on this machine")
+        return
+    }
+
+    let guiEnv = [
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+        "HOME": NSHomeDirectory(),
+    ]
+    let injected = HarnessChildEnvironment.make(base: guiEnv)
+    t.expect(injected["PATH"]?.hasPrefix("/opt/homebrew/bin:") == true,
+             "injected env puts /opt/homebrew/bin at the front of PATH")
+    t.expect(injected["PATH"]?.contains("\(NSHomeDirectory())/.local/bin") == true,
+             "injected env keeps ~/.local/bin on PATH")
+
+    let version = RemoteCodexHomeSync.supportedHarnessVersion(
+        at: harnessPath,
+        baseEnvironment: guiEnv
+    )
+    t.expect(version != nil,
+             "version check succeeds even with a GUI-minimal base PATH (npm codex resolves node via injected PATH); got \(version ?? "nil") at \(harnessPath)")
 }

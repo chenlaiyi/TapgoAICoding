@@ -64,12 +64,17 @@ public enum HarnessDaemonLauncher {
     private static func spawnDaemon(binaryPath: String, codexHome: URL, apiKey: String, socketPath: String) -> Bool {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: binaryPath)
+        // findHarness() 而非写死路径：HARNESS_BIN 覆盖与候选顺序保持一致。
+        let codexPath = RemoteCodexHomeSync.findHarness()
+        guard !codexPath.isEmpty else { return false }
         proc.arguments = [
             socketPath,
-            "/opt/homebrew/bin/codex",
+            codexPath,
             codexHome.path,
         ]
-        var env = ProcessInfo.processInfo.environment
+        // GUI 最小 PATH 会让 npm 版 codex 的 `env node` 解析失败，daemon
+        // 内部 spawn app-server 同样依赖这份环境（v0.5.109 修）。
+        var env = HarnessChildEnvironment.make()
         env["OPENAI_API_KEY"] = apiKey
         env["TERM"] = "xterm-256color"
         if env["LANG"] == nil { env["LANG"] = "C.UTF-8" }
