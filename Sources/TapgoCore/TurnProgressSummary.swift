@@ -41,6 +41,34 @@ public struct TurnProgressSummary: Hashable, Sendable {
         steps.filter { $0.status == .completed }.count
     }
 
+    /// Completion is sourced from the plan, never inferred from a finished turn.
+    public func statusText(for status: Turn.Status) -> String {
+        if completedSteps == steps.count { return "已完成" }
+        switch status {
+        case .running: return "进行中"
+        case .awaitingApproval: return "待批准"
+        case .pending: return "待开始"
+        case .failed: return "未完成"
+        case .interrupted: return "已暂停"
+        case .completed: return "已结束 · 仍有未完成项"
+        }
+    }
+
+    public func stepStatusText(_ step: Step, turnStatus: Turn.Status) -> String {
+        switch step.status {
+        case .completed: return "已完成"
+        case .pending: return "待处理"
+        case .inProgress:
+            switch turnStatus {
+            case .running: return "进行中"
+            case .awaitingApproval: return "待批准"
+            case .pending: return "待开始"
+            case .interrupted: return "已暂停"
+            case .completed, .failed: return "未完成"
+            }
+        }
+    }
+
     public init?(turn: Turn) {
         self.init(id: turn.id, items: turn.items)
     }

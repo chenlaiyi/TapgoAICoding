@@ -542,20 +542,23 @@ private struct TaskListView: View {
 
     var body: some View {
         let bodySize = AppFont.pointSize(for: .body, multiplier: appFontScale.multiplier)
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 7) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: item.checked ? "checkmark.square.fill" : "square")
-                        .font(.system(size: bodySize, weight: .semibold))
+                        .font(.system(size: bodySize, weight: .regular))
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(item.checked ? DSHTheme.success : DSHTheme.labelTertiary)
+                        .foregroundStyle(item.checked ? DSHTheme.labelDim : DSHTheme.labelTertiary)
                         .frame(width: bodySize + 2, alignment: .leading)
                     MarkdownInlineFlow(segments: item.content, baseFontSize: bodySize, baseWeight: .regular)
                         .fixedSize(horizontal: false, vertical: true)
+                        .opacity(item.checked ? 0.66 : 1)
                         // 已勾选项视觉上略暗；SwiftUI Text 自身支持 strikethrough，这里靠
                         // segment 走 inlineAttributed 的 strikethrough 段，未来若 segment 模型
                         // 暴露 done 字段，再加整行删除线。
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityValue(item.checked ? "已完成" : "待处理")
             }
         }
     }

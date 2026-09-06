@@ -51,6 +51,16 @@ func runTurnProgressSummaryTests(_ t: TestRunner) {
     t.expectEqual(summary.additions, 3, "green additions match diff lines")
     t.expectEqual(summary.deletions, 2, "red deletions match diff lines")
 
+    t.expectEqual(summary.statusText(for: .completed), "已结束 · 仍有未完成项", "finished turn does not falsely complete its plan")
+    t.expectEqual(summary.statusText(for: .interrupted), "已暂停", "interrupted plan remains reviewable as paused")
+    t.expectEqual(summary.statusText(for: .awaitingApproval), "待批准", "approval wait is not rendered as active work")
+    t.expectEqual(summary.stepStatusText(summary.steps[1], turnStatus: .failed), "未完成", "failed turn cannot keep showing a running step")
+    t.expectEqual(summary.stepStatusText(summary.steps[0], turnStatus: .failed), "已完成", "earlier completed steps survive later failure")
+    let donePlan = ToolCall(id: "plan-done", name: "执行计划", arguments: "", result: "✓ 完成实现\n✓ 完成检查", status: .succeeded)
+    if let done = TurnProgressSummary(id: "done", items: [.toolCall(donePlan)]) {
+        t.expectEqual(done.statusText(for: .completed), "已完成", "all steps explicitly done yields completed plan")
+    } else { t.expect(false, "completed plan remains available") }
+
     let blocks = TurnPresentation.compactBlocks(turn.items)
     t.expectEqual(blocks.count, 0, "plan and aggregate diff snapshots stay out of transcript rows")
 

@@ -13,6 +13,7 @@ struct ApprovalRow: View {
     @EnvironmentObject var store: SessionStore
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     let request: ApprovalRequest
+    @State private var showDetails = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -29,17 +30,27 @@ struct ApprovalRow: View {
                 .foregroundStyle(.secondary)
             switch request.payload {
             case .command(let ce):
-                Text(L10n.commandDisplay(ce.command))
-                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                    .padding(6)
-                    .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 4))
+                ScrollView([.horizontal, .vertical]) {
+                    Text(L10n.commandDisplay(ce.command))
+                        .font(AppFont.monoScaled(size: 12, multiplier: appFontScale.multiplier))
+                        .textSelection(.enabled)
+                        .padding(10)
+                }
+                .frame(height: min(160, CGFloat(ce.command.split(separator: "\n", omittingEmptySubsequences: false).count) * 18 * appFontScale.multiplier + 20))
+                .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 8))
             case .fileChange(let fc):
                 Text(L10n.fileChangeDisplay(fc.kind.rawValue, fc.path))
-                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
+                    .font(AppFont.monoScaled(size: 12, multiplier: appFontScale.multiplier))
+                    .textSelection(.enabled)
             case .toolCall(let tc):
-                Text("\(tc.name)(\(tc.arguments))")
-                    .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                    .lineLimit(2)
+                DisclosureGroup("操作详情：\(tc.name)", isExpanded: $showDetails) {
+                    ScrollView {
+                        Text(tc.arguments)
+                            .font(AppFont.monoScaled(size: 12, multiplier: appFontScale.multiplier))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }.frame(maxHeight: 180)
+                }
             }
             if isPending {
                 HStack(spacing: 8) {
@@ -49,7 +60,7 @@ struct ApprovalRow: View {
                         Label(L10n.approve, systemImage: "checkmark")
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.green)
+                    .tint(DSHTheme.brandPrimary)
 
                     Button {
                         store.respondToApproval(request, approve: false)
@@ -57,7 +68,6 @@ struct ApprovalRow: View {
                         Label(L10n.deny, systemImage: "xmark")
                     }
                     .buttonStyle(.bordered)
-                    .tint(.red)
                 }
                 .padding(.top, 2)
             }
@@ -66,7 +76,6 @@ struct ApprovalRow: View {
         .padding(.vertical, 8)
         .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
         .overlay(RoundedRectangle(cornerRadius: DSHTheme.radiusCard).stroke(DSHTheme.border, lineWidth: 1))
-            .shadow(color: DSHTheme.cardShadow, radius: 3, x: 0, y: 1)
     }
 
     private var isPending: Bool {
@@ -99,7 +108,7 @@ struct ApprovalRow: View {
         case .denied:            return (L10n.approvalDenied, .red)
         case .approvedForSession: return (L10n.approvalApprovedForSession, .green)
         case .cancelled:         return (L10n.approvalCancelled, .secondary)
-        case nil:                return (L10n.approvalAutoApproved, .green)
+        case nil:                return ("已结束 · 未记录决定", .secondary)
         }
     }
 

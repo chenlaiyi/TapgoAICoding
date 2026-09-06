@@ -483,9 +483,10 @@ final class SessionStore: ObservableObject {
     /// controls and live elapsed-time ticker. We replace the whole
     /// `liveThreads` array so the `@Published` change reliably refreshes.
     func setActiveThreadGoal(_ goal: String?) {
+        let trimmed = goal?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if activeThreadId == nil && trimmed?.isEmpty == false { newThread() }
         guard let id = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
-        let trimmed = goal?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasGoal = trimmed?.isEmpty == false
         var updated = liveThreads[idx]
         updated.goal = hasGoal ? trimmed : nil
@@ -502,7 +503,9 @@ final class SessionStore: ObservableObject {
     func startGoal() {
         guard let id = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == id }),
-              let goal = liveThreads[idx].goal, !goal.isEmpty else { return }
+              let goal = liveThreads[idx].goal, !goal.isEmpty,
+              liveThreads[idx].goalStatus != "running", setupError == nil,
+              !runRegistry.isRunning(id) else { return }
         var updated = liveThreads[idx]
         updated.goalStatus = "running"
         updated.goalResumedAt = Date()

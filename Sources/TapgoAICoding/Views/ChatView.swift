@@ -858,6 +858,10 @@ struct ChatView: View {
             ForEach(presentation.users) { item in
                 renderBlock(.item(item), turn: turn)
             }
+            if let progress = TurnProgressSummary(turn: turn) {
+                TaskPlanCard(progress: progress, status: turn.status)
+                    .padding(.vertical, 4)
+            }
             if !presentation.work.isEmpty {
                 workDurationChip(turn: turn)
                 if workIsExpanded(turn) {
@@ -1106,18 +1110,19 @@ private struct GoalEditorSheet: View {
                 .frame(minHeight: 80, maxHeight: 140)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
                 .padding(6)
-            Text("保存后会暂停计时；需要时点 ▶ 开始重新执行。")
+            Text("保存目标后，点击“开始”执行。")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
             HStack {
                 Spacer()
-                Button("取消") { dismiss() }
+                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("保存") {
                     let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !t.isEmpty { store.setActiveThreadGoal(t) }
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding(20)
@@ -1948,77 +1953,31 @@ struct ComposerView: View {
     /// composer while a planned turn is running.
     @ViewBuilder
     private var turnProgressBadge: some View {
-        if let progress = activeTurnProgress {
-            Button {
-                showTurnProgressDetails.toggle()
-            } label: {
+        if let progress = activeTurnProgress, let turn = activeThread?.turns.last {
+            Button { showTurnProgressDetails.toggle() } label: {
                 HStack(spacing: 7) {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(DSHTheme.brand)
-                    Text("第 \(progress.currentStepNumber) / \(progress.steps.count) 步")
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text("\(progress.changedFiles) 个文件已更改")
-                    Text("+\(progress.additions)")
-                        .foregroundStyle(DSHTheme.success)
-                    Text("-\(progress.deletions)")
-                        .foregroundStyle(DSHTheme.error)
+                    Image(systemName: "checklist")
+                    Text("\(progress.completedSteps)/\(progress.steps.count) 已完成")
+                    if let step = progress.steps.first(where: { $0.status == .inProgress }) {
+                        Text(step.text).lineLimit(1).truncationMode(.tail)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.up").font(.system(size: 9))
                 }
-                .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(DSHTheme.surfaceRaised, in: Capsule())
-                .overlay(Capsule().stroke(DSHTheme.borderStrong, lineWidth: 1))
-                .contentShape(Capsule())
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(DSHTheme.labelDim)
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help("查看步骤执行进度")
-            .accessibilityLabel(
-                "第 \(progress.currentStepNumber) / \(progress.steps.count) 步，"
-                + "\(progress.changedFiles) 个文件已更改，增加 \(progress.additions) 行，删除 \(progress.deletions) 行"
-            )
+            .accessibilityLabel("查看执行清单，已完成 \(progress.completedSteps) 项，共 \(progress.steps.count) 项")
             .popover(isPresented: $showTurnProgressDetails, arrowEdge: .bottom) {
-                turnProgressChecklist(progress)
+                ScrollView { TaskPlanSteps(progress: progress, status: turn.status).padding(16) }
+                    .frame(width: 400, height: min(360, CGFloat(progress.steps.count) * 58 + 32))
             }
             .frame(maxWidth: contentWidth)
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity)
         }
-    }
-
-    private func turnProgressChecklist(_ progress: TurnProgressSummary) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach(progress.steps) { step in
-                HStack(alignment: .top, spacing: 10) {
-                    Group {
-                        switch step.status {
-                        case .completed:
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(DSHTheme.success)
-                        case .inProgress:
-                            ProgressView()
-                                .controlSize(.small)
-                                .tint(DSHTheme.brand)
-                        case .pending:
-                            Image(systemName: "circle")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(width: 20, height: 20)
-
-                    Text(step.text)
-                        .font(AppFont.scaled(.callout, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(step.status == .completed ? .secondary : .primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                }
-                .accessibilityElement(children: .combine)
-            }
-        }
-        .padding(18)
-        .frame(width: 440)
-        .background(DSHTheme.surface)
     }
 
     /// Composer 底部的文本指标条：rounds · steps / LLM 时长 / 缓存命中 /
@@ -2135,97 +2094,19 @@ struct ComposerView: View {
     /// single quiet surface: rows update in place, keep one-line previews, and
     /// leave the primary actions aligned at the trailing edge.
     /// 队列卡片自适应高度：顶部小标题 22pt + VStack spacing 6 + 行 41pt/行 + 6pt 底部 padding，封顶 240pt 后内部滚动。
-    private var queueAdaptiveHeight: CGFloat {
-        let header: CGFloat = 22
-        let perRow: CGFloat = 41 // 32 row content + 8 vertical padding + 1 divider
-        let count = CGFloat(store.activeQueue.count)
-        let natural = header + 6 + count * perRow + 6 // header + spacing + rows + bottom
-        return min(natural, 240)
-    }
-
     @ViewBuilder
     private var queueStatusBar: some View {
         if !store.activeQueue.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "tray.full.fill")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(DSHTheme.brand.opacity(0.85))
-                    Text("排队中 · \(store.activeQueue.count) 条")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.secondary)
-                        .tracking(0.4)
-                    Spacer(minLength: 0)
-                    Text("拖动排序 · 右键编辑")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 6)
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
-                            queueRow(q, index: index)
-                            if index < store.activeQueue.count - 1 {
-                                Rectangle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.clear, DSHTheme.border.opacity(0.55), .clear],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .frame(height: 1)
-                                    .padding(.horizontal, 16)
-                            }
-                        }
+            TaskQueueCard(count: store.activeQueue.count, error: store.activeQueueActionError) {
+                VStack(spacing: 0) {
+                    ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
+                        queueRow(q, index: index)
+                        if index < store.activeQueue.count - 1 { Divider().padding(.horizontal, 12) }
                     }
                 }
-                .scrollIndicators(.hidden)
-                .frame(height: queueAdaptiveHeight)
-
-                if let error = store.activeQueueActionError {
-                    Label(error, systemImage: "exclamationmark.circle")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(DSHTheme.warn)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 6)
-                }
             }
-            // 队列卡片宽度 = 输入卡片宽度 (contentWidth) × 0.90,
-            // 整体居中。SwiftUI HStack 默认会把卡片按行宽 proposal 撑开,
-            // 这里用 0.90 倍 frame 收窄, 保持「队列卡片比输入框略窄」的层次。
-            .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.regularMaterial)
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(DSHTheme.bgLayer1.opacity(0.55))
-                }
-            )
-            .overlay(
-                // 底部 0.5px hairline 分隔：让卡片看上去是独立 panel，
-                // 不会向下方输入框"塞背景"。品牌色 18% 让上沿更亮。
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(DSHTheme.border.opacity(0.7), lineWidth: 1)
-            )
-            .overlay(alignment: .top) {
-                // 顶部内嵌 1px 高光，替代向下投影的 shadow，
-                // 避免阴影糊到下方输入框造成"塞到背后"的错觉。
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.white.opacity(0.10), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(height: 14)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .blendMode(.plusLighter)
-            }
-            .frame(maxWidth: contentWidth * 0.90, alignment: .center)
-            .accessibilityIdentifier("queued-message-card")
+            .frame(maxWidth: contentWidth - 24)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -2252,7 +2133,7 @@ struct ComposerView: View {
 
             Text(q.text.isEmpty ? "(图片附件)" : q.text)
                 .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                .lineLimit(1)
+                .lineLimit(2)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
 
@@ -2305,7 +2186,7 @@ struct ComposerView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .frame(minHeight: 32)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
         .overlay(alignment: .top) {
             if isDropTop {
@@ -2329,7 +2210,7 @@ struct ComposerView: View {
             Button {
                 store.clearQueue()
             } label: {
-                Label("关闭排队", systemImage: "text.line.first.and.arrowtriangle.forward")
+                Label("清空排队消息", systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             .disabled(adjusting)
             .help("清空当前对话的整个排队")
@@ -2347,7 +2228,7 @@ struct ComposerView: View {
                 dropTarget = nil
                 return false
             }
-            let frameHeight: CGFloat = 44
+            let frameHeight: CGFloat = 52
             let half = location.y < frameHeight / 2 ? DropHalf.top : .bottom
             let targetIndex = half == .top ? index : index + 1
             store.moveQueued(draggedId, to: targetIndex)
@@ -2406,20 +2287,7 @@ struct ComposerView: View {
     /// Send the composed message. While a turn is running the message is
     /// queued instead of dropped.
     private func send() {
-        // Slash commands are intercepted before hitting the harness.
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let goal = slashGoal(trimmed) {
-            store.setActiveThreadGoal(goal)
-            text = ""
-            focused = true
-            return
-        }
-        if trimmed == "/new" {
-            store.newThread()
-            text = ""
-            showSlashMenu = false
-            return
-        }
+        if handleLocalCommand() { return }
         let t = text
         guard !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || !store.attachedImages.isEmpty else { return }
@@ -2437,6 +2305,7 @@ struct ComposerView: View {
     /// "插话发送全部" (Cmd/Ctrl+Enter): append the current draft to the queue
     /// (or send it immediately if idle), then drain the whole queue.
     private func interjectSend() {
+        if handleLocalCommand() { return }
         let hasContent = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !store.attachedImages.isEmpty
         guard hasContent || !store.activeQueue.isEmpty else {
@@ -2453,14 +2322,22 @@ struct ComposerView: View {
         focused = true
     }
 
-    /// Extract the goal text from a `/goal <text>` command, or nil.
-    private func slashGoal(_ trimmed: String) -> String? {
-        guard trimmed.hasPrefix("/goal") else { return nil }
-        let rest = trimmed.dropFirst(5).trimmingCharacters(in: .whitespacesAndNewlines)
-        return rest.isEmpty ? nil : String(rest)
+    /// Shared before every submission path, including the global shortcut.
+    private func handleLocalCommand() -> Bool {
+        guard let command = ComposerLocalCommand.parse(text) else { return false }
+        switch command {
+        case .goal(let goal):
+            if goal.isEmpty { editingGoalItem = GoalEditItem(text: "") }
+            else { store.setActiveThreadGoal(goal) }
+        case .newTask:
+            store.newThread()
+        }
+        text = ""
+        showSlashMenu = false
+        focused = true
+        return true
     }
 
-    /// The "/" command popover shown while typing a slash command.
     private var slashMenu: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("命令")
@@ -2685,75 +2562,18 @@ struct ComposerView: View {
     @ViewBuilder
     private var goalCard: some View {
         if let thread = activeThread, let goal = thread.goal, !goal.isEmpty {
-            let goalRunning = thread.goalStatus == "running"
-            HStack(alignment: .center, spacing: 10) {
-                Image(systemName: "scope")
-                    .foregroundStyle(DSHTheme.brand)
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(goalRunning ? .green : DSHTheme.brand.opacity(0.6))
-                        .frame(width: 7, height: 7)
-                    Text(goalRunning ? "进行中" : "已暂停")
-                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                }
-                .foregroundStyle(.secondary)
-                Text(goal)
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer()
-                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    Text(goalElapsedText(store.goalElapsedSeconds(thread)))
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.tertiary)
-                }
-                if goalRunning {
-                    Button {
-                        store.pauseGoal()
-                    } label: {
-                        Image(systemName: "pause.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("暂停目标")
-                    .accessibilityLabel("暂停目标")
-                } else {
-                    Button {
-                        store.startGoal()
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .foregroundStyle(.green)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("开始执行目标（会把目标作为消息发出）")
-                    .accessibilityLabel("开始执行目标")
-                }
-                Button {
-                    editingGoalItem = GoalEditItem(text: goal)
-                } label: {
-                    Image(systemName: "pencil")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.borderless)
-                .help("编辑目标")
-                .accessibilityLabel("编辑目标")
-                Button {
-                    store.setActiveThreadGoal(nil)
-                } label: {
-                    Image(systemName: "trash")
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.borderless)
-                .help("清除目标")
-                .accessibilityLabel("清除目标")
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                TaskGoalCard(goal: goal, status: thread.goalStatus,
+                             elapsed: goalElapsedText(store.goalElapsedSeconds(thread)),
+                             hasStarted: thread.goalWorkedSeconds > 0 || thread.goalResumedAt != nil,
+                             canStart: !store.isRunning && store.setupError == nil,
+                             onPause: { store.pauseGoal() }, onStart: { store.startGoal() },
+                             onEdit: { editingGoalItem = GoalEditItem(text: goal) },
+                             onRemove: { store.setActiveThreadGoal(nil) })
+                    .id(thread.id)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(DSHTheme.brand.opacity(0.25), lineWidth: 1))
-            .frame(maxWidth: contentWidth - 48)
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: contentWidth - 24)
+            .frame(maxWidth: .infinity)
         }
     }
 
