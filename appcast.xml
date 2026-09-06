@@ -3,71 +3,23 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
-            <title>0.5.113</title>
-            <pubDate>Sun, 06 Sep 2026 14:24:27 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.113</link>
-            <sparkle:version>0.5.113</sparkle:version>
-            <sparkle:shortVersionString>0.5.113</sparkle:shortVersionString>
+            <title>0.5.114</title>
+            <pubDate>Sun, 06 Sep 2026 21:20:44 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.114</link>
+            <sparkle:version>0.5.114</sparkle:version>
+            <sparkle:shortVersionString>0.5.114</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## v0.5.113 — 2026-09-06
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.114
 
-- 对齐会话过程与总结的层级、字号、段落、列表、引用与代码排版。
-- 关闭显示工作过程后，隐藏运行中和历史回合的过程入口、执行清单与工具详情；保留回复、必要确认、错误和修改结果。
-- 过程使用简洁动作摘要，原始命令、参数与日志只在主动展开详情后显示；完成时自动收起。
-- 用户消息操作预留空间，悬停不再引起布局跳动；复制纯文本保留代码内容。
-- 兼容 final 消息类型的流式最终回复，不把未标注类型的过程文字猜成总结。
-- 修复混合列表类型串行渲染；缺少耗时时不再显示虚构的 0 秒。
+- 修复 SSH 能连接但找不到远端执行器的问题，统一端口与密钥配置。
+- 远端确认工作目录；配置缺失时明确报错，不切换到本机执行。
+- 远程项目不再混入客户端的项目记忆，顶部展示主机与目录。
+- 回复更简洁，减少文件清单、重复确认与行内代码的视觉干扰。
 
-2980 项回归检查通过；正式组件验收覆盖深浅色、大字体、窄列、流式回复与过程开关。
-实际历史会话已验证开启、展开详情、关闭后的隐藏效果。
-Developer ID 签名有效；尚未完成 Apple 公证。
+验证覆盖双向真实 SSH 执行器握手、远端命令、目录解析与界面深浅色回归。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.113/Tapgo-AICoding-0.5.113.zip" length="11687377" type="application/octet-stream" sparkle:edSignature="3V+Opa4HIuEZUnpP1FMVV8moDMt32PArkAoFjt1gRZbA8xnhBoznguWs2G9CMjErLlwncwkuQgKOvKdv48Q9DQ=="/>
-        </item>
-        <item>
-            <title>0.5.112</title>
-            <pubDate>Sun, 06 Sep 2026 13:56:05 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.112</link>
-            <sparkle:version>0.5.112</sparkle:version>
-            <sparkle:shortVersionString>0.5.112</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## v0.5.112 — 2026-09-06
-
-- 侧栏统一导航、项目与任务的对齐线、行高和留白；支持 220–360pt 拖拽宽度。
-- 项目悬停操作预留固定位置，长标题截断，日期和状态保持右侧对齐。
-- 项目折叠状态跨重启保存；选择任务不再改变项目排序。
-- 搜索自动展示折叠项目中的命中项；键盘只在当前可见任务中切换。
-- 显示方式收进轻量菜单，修复添加项目入口；底部账户与设置改为完整尺寸弹出菜单。
-
-2937 项回归检查通过；组件验收覆盖深浅色、大字体、窄侧栏与长标题。
-Developer ID 签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.112/Tapgo-AICoding-0.5.112.zip" length="11674196" type="application/octet-stream" sparkle:edSignature="z5dbBsizIF2PQdT6VMyMRn/vybvaxogjqDtgvxVmAfgNqT4qqJQPWHDv6hEH+RpE+b343XxT6p/+NskMaoprAA=="/>
-        </item>
-        <item>
-            <title>0.5.111</title>
-            <pubDate>Sun, 06 Sep 2026 13:16:43 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.111</link>
-            <sparkle:version>0.5.111</sparkle:version>
-            <sparkle:shortVersionString>0.5.111</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.111
-
-- 对齐 Codex 风格的清单、目标、排队消息与批准请求交互。
-- 执行清单可展开查看，任务结束后仍保留；完成状态以实际清单为准。
-- 清楚区分进行中、待批准、已暂停和未完成，去掉清单入口里的文件技术统计。
-- 目标支持展开全文、内部滚动、暂停继续；避免重复启动或在运行时误改目标。
-- 修复新任务页目标未保存，以及快捷键绕过本地目标命令的问题。
-- 排队消息可整体折叠，保留编辑、调整方向、删除和排序功能。
-- 统一勾选列表和批准卡片的视觉层次；批准决定缺失时不再误报已批准。
-
-2928 项回归检查通过；原生组件验收覆盖深浅色、大字体、窄窗口与长内容。
-Developer ID 签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.111/Tapgo-AICoding-0.5.111.zip" length="11654025" type="application/octet-stream" sparkle:edSignature="q8uMmIUdgw6p6xyqFmOU7kD63C+pKfUHPVCETnByCW6Z9nV1QPSL7rlkpwi87WeZCYzSJ1K+UwXhaRBjPsgpDQ=="/>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.114/Tapgo-AICoding-0.5.114.zip" length="11704678" type="application/octet-stream" sparkle:edSignature="ysxW6CGNGpYB22aLy7BMxLQeqz7PFfEIdSRe/xegw1KUSHP7DBaGLkuZ0vyPEVsbYA8Gsssk2p3zwPV8HmJ6DQ=="/>
         </item>
     </channel>
 </rss>
