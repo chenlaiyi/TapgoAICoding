@@ -250,7 +250,14 @@ struct EvolutionLogView: View {
 
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
-        return [
+        return [                EvolutionEntry(
+                    version: "v0.5.142", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.142",
+                    summary: "Composer + 菜单插件组接入 Codex 插件目录（实时 GitHub / Cloudflare / Figma / Gmail）。",
+                    changes: ["codexPlugins State + loadCodexPlugins() 异步拉 PluginManagerService.loadCatalog() 筛 codex+installed+enabled。", "composerAddMenu 插件组优先显示 Codex 实时插件；为空/失败时回落本地静态 5 项。", "AddMenuAction.insertCodexPlugin(name:detail:) + tapgoInsertSkill 通知复用。", "codexPluginIcon(for:) 静态映射 GitHub/Cloudflare/Figma/Gmail/Slack/Notion/MCP → SF Symbol。", "handleComposerAppear 里 Task { await loadCodexPlugins() } 后台加载。"],
+                    why: "v0.5.141 EVOLUTION Next-1：截图里 Codex 桌面端 + 菜单显示真实 Codex 插件（GitHub / Cloudflare / Figma / Gmail），本地 5 项只是 placeholder。",
+                    next: "Plan mode 与 harness 协议深度集成；或 Codex 插件点击直接执行（不再只插入文本）。"
+                ),
+
                 EvolutionEntry(
                     version: "v0.5.141", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.141",
                     summary: "Plan mode 深度集成（常驻 + Banner 关闭） + Composer + 菜单对齐 Codex + type-checker 超时修复。",

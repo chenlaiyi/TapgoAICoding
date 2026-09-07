@@ -1174,6 +1174,7 @@ struct ComposerView: View {
         case togglePlanMode
         case openRecordSkillSettings
         case insertSkill(String)
+        case insertCodexPlugin(name: String, detail: String)
     }
     private static let addMenuItems: [AddMenuItem] = [
         .init(id: "files", title: "文件和文件夹", icon: "paperclip",
@@ -1205,6 +1206,25 @@ struct ComposerView: View {
               detail: "按需加载的专项能力", action: .insertSkill("技能")),
     ]
 
+    /// Codex 插件目录里 installed+enabled 的条目（v0.5.142 切到实时）。
+    /// 加载失败或为空时 `composerAddMenu` 回落显示 `addMenuPlugins`。
+    @State private var codexPlugins: [PluginCatalogItem] = []
+    private static let codexPluginLoadFailed = false
+
+    /// Codex 插件名 → SF Symbol 图标的静态映射（`PluginCatalogItem`
+    /// 没有 icon 字段，用人维护一份常用映射，未知走 `puzzlepiece.extension`）。
+    private static func codexPluginIcon(for item: PluginCatalogItem) -> String {
+        let key = item.name.lowercased()
+        if key.contains("github") { return "chevron.left.forwardslash.chevron.right" }
+        if key.contains("cloudflare") { return "cloud.fill" }
+        if key.contains("figma") { return "paintbrush.fill" }
+        if key.contains("gmail") || key.contains("mail") { return "envelope.fill" }
+        if key.contains("slack") { return "bubble.left.fill" }
+        if key.contains("notion") { return "doc.text.fill" }
+        if item.capabilities.contains(where: { $0.lowercased().contains("mcp") }) { return "cube" }
+        return "puzzlepiece.extension"
+    }
+
     /// Codex desktop parity: composer "+" 按钮弹出的下拉菜单。结构
     /// 模拟截图：标题"添加"、分组（文件 / 附件 / 目标 / 计划 / 录制 /
     /// 插件），每项带"标题 + 副标题"双行。
@@ -1221,11 +1241,24 @@ struct ComposerView: View {
                     composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
                 }
             }
-            if !Self.addMenuPlugins.isEmpty {
-                Divider()
-                Text("插件")
-                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
+            Divider()
+            Text("插件")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+            if !codexPlugins.isEmpty {
+                ForEach(codexPlugins, id: \.id) { item in
+                    Button {
+                        runAddMenuAction(.insertCodexPlugin(
+                            name: item.displayName,
+                            detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary))
+                    } label: {
+                        composerAddMenuRow(
+                            icon: Self.codexPluginIcon(for: item),
+                            title: item.displayName,
+                            detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary)
+                    }
+                }
+            } else {
                 ForEach(Self.addMenuPlugins) { item in
                     Button {
                         runAddMenuAction(item.action)
@@ -1284,6 +1317,20 @@ struct ComposerView: View {
             )
         case .insertSkill(let name):
             NotificationCenter.default.post(name: .tapgoInsertSkill, object: name)
+        case .insertCodexPlugin(let name, _):
+            NotificationCenter.default.post(name: .tapgoInsertSkill, object: name)
+        }
+    }
+
+    /// 异步加载 Codex 插件目录，筛选 installed + enabled。失败静默，
+    /// `codexPlugins` 保持空数组让菜单回落显示本地静态项。
+    private func loadCodexPlugins() async {
+        let service = PluginManagerService()
+        do {
+            let all = try await service.loadCatalog()
+            codexPlugins = all.filter { $0.marketplace == .codex && $0.installed && $0.enabled }
+        } catch {
+            codexPlugins = []
         }
     }
 
@@ -1704,6 +1751,8 @@ struct ComposerView: View {
         // composer so the user can start typing immediately.
         if store.activeThreadId != nil { focused = true }
         setUpPasteMonitor()
+        // 后台拉 Codex 插件目录。失败静默（菜单回落本地静态项）。
+        Task { await loadCodexPlugins() }
     }
 
     /// 拆出 onDisappear 让 Swift type-checker 不超时（v0.5.141 修）：

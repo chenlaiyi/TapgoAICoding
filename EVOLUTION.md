@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.142 — feat(ui): Composer "+" 菜单插件组接入 Codex 插件目录（实时）
+**Date**: 2026-09-08
+**Tag**: v0.5.142
+**Test status**: 本机 3117 passed / 12 failed
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - 新增 `codexPlugins: [PluginCatalogItem]` 与 `loadCodexPlugins()`：调 `PluginManagerService.loadCatalog()` 筛 `codex + installed + enabled`。
+  - `composerAddMenu` 插件组优先显示 `codexPlugins`；为空/失败时回落本地静态 `addMenuPlugins`（5 项），菜单永不为空。
+  - 新增 `AddMenuAction.insertCodexPlugin(name:detail:)`，点击 → `NotificationCenter.post(name: .tapgoInsertSkill, object: name)`。
+  - 加 `codexPluginIcon(for:)` 静态映射：GitHub/Cloudflare/Figma/Gmail/Slack/Notion/MCP → SF Symbol；未知 → `puzzlepiece.extension`。
+  - `handleComposerAppear` 里 `Task { await loadCodexPlugins() }` 后台加载。
+**Why**: v0.5.141 EVOLUTION Next-1：截图里 Codex 桌面端 + 菜单显示真实 Codex 插件（GitHub / Cloudflare / Figma / Gmail），本地 5 项只是 placeholder。
+**Next**: Plan mode 与 harness 协议深度集成；或 Codex 插件点击直接执行（不再只是插入文本）。
+
+
 ## v0.5.141 — feat(ui): Plan mode 深度集成（常驻 + Banner 关闭） + Composer + 菜单对齐 Codex + type-checker 超时修复
 **Date**: 2026-09-08
 **Tag**: v0.5.141
