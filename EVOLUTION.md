@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.124 — feat(ui): 命令面板 access-level badge（Codex 桌面端"完全访问"指示器）
+**Date**: 2026-09-08
+**Tag**: v0.5.124
+**Test status**: jkmacmini 待跑；本机 3110 passed / 12 failed
+**Changed**:
+- `CommandPaletteView` mini composer 左侧加 access-level badge：`Image("clock.arrow.circlepath") + Text(currentAccessLevel)`，颜色按 `SandboxMode` 区分（`dangerFullAccess` 橙色 / 其他 secondary）。
+- `currentAccessLevel: String` 计算属性从 `TapgoConfig.sandboxKey` 读 `SandboxMode` 并调 `displayName`；`accessLevelColor: Color` 同源。
+**Why**: 用户给截图（Codex 桌面端命令抽屉底部有"完全访问"状态）后 v0.5.122-123 只补 dock 主体，状态指示器仍是空白。
+**Next**: Plan mode（需 harness 协议支持）或上下文相关命令（按当前 thread / project 动态增减 palette actions）。
+
 ## v0.5.123 — feat(ui): 命令面板 Esc + ⌘K 关闭
 **Date**: 2026-09-08
 **Tag**: v0.5.123

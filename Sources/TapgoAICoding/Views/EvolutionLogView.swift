@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.124", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.124",
+                    summary: "命令面板底部 access-level badge（完全访问 / 工作区）。",
+                    changes: ["mini composer 左侧加 clock.arrow.circlepath + SandboxMode.displayName。", "currentAccessLevel + accessLevelColor 从 TapgoConfig.sandboxKey 实时读。"],
+                    why: "v0.5.122-123 只补 dock 主体，状态指示器仍是空白。",
+                    next: "Plan mode 或上下文相关命令。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.123", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.123",
                     summary: "命令面板 Esc + ⌘K 关闭，搜索框自动 focus。",
                     changes: ["隐藏式 Button + .keyboardShortcut(.escape) 触发 onDismiss。", "隐藏式 Button + .keyboardShortcut(\"k\", modifiers: [.command]) 关闭已打开 dock。", "搜索框自动 focus 沿用 v0.5.122 之前的 makeFirstResponder。"],
