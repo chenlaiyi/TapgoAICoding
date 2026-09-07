@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.139</title>
+            <pubDate>Tue, 08 Sep 2026 06:39:51 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.139</link>
+            <sparkle:version>0.5.139</sparkle:version>
+            <sparkle:shortVersionString>0.5.139</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.139
+
+## 命令面板 11 个 action 全局 hotkey 真接通
+
+- 在 `ComposerView` body 末尾加 5 个关键 `onReceive` 处理器（直接，不通过 computed property 避免 ViewBuilder 推断栈过深）：
+  - `tapgoMcpStatus` → 调 `store.mcpStatusSummary()` + 弹 dock
+  - `tapgoSideChat` → 调 `store.spawnSideChat()`
+  - `tapgoArchiveEmpty` → 调 `store.archiveActiveThread()`
+  - `tapgoPinEmpty` → 调 `store.togglePinned(activeId)`
+  - `tapgoTogglePlanMode` → 调 `planningMode.toggle()`
+- 另外 6 个（`tapgoReviewThreadEmpty` / `tapgoCreateBranchEmpty` / `tapgoCompactEmpty` / `tapgoFeedback` / `tapgoStatusEmpty` / `tapgoOpenReleaseNotes` / `tapgoShowShortcutsGlobal`）通过复用 `tapgoShowShortcutsGlobal` 通知 + 现有 `tapgoOpenCommandPalette` 让 ContentView dock 打开展示。
+- 全局 `NSEvent.addLocalMonitorForEvents` (v0.5.137) → `composerGlobalHotkeyHandlers` → ComposerView 实际 handler 形成完整链路。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.139/Tapgo-AICoding-0.5.139.zip" length="12120894" type="application/octet-stream" sparkle:edSignature="4PAu0oMoK+FGP13LU4ppZqukFRg1C133C4VXcKIYd0+K3taZRzTOPFCOMfYVwVq6BcxbeSJ1VqKAPvECl+XbBQ=="/>
+        </item>
+        <item>
             <title>0.5.138</title>
             <pubDate>Tue, 08 Sep 2026 06:24:25 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.138</link>
@@ -43,25 +68,6 @@
 测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.137/Tapgo-AICoding-0.5.137.zip" length="12102659" type="application/octet-stream" sparkle:edSignature="68zm5ITZ4WLFdYzN2PLLeMoGEI/f5kPlAYvayvvZOYBLmvugkMelCZqzzybegwfY1ieOpGfuYJjKwtD2srdkBg=="/>
-        </item>
-        <item>
-            <title>0.5.136</title>
-            <pubDate>Tue, 08 Sep 2026 06:15:49 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.136</link>
-            <sparkle:version>0.5.136</sparkle:version>
-            <sparkle:shortVersionString>0.5.136</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.136
-
-## Plan mode 视觉强化 — composer 顶部蓝色 banner
-
-- `ComposerView` 顶部加 `PlanModeBanner`（蓝色 brandPrimary 背景 + 灯泡图标 + "Plan mode 已开启" + "下一条消息会让 Codex 先出方案不执行工具" 副文本），与 Codex 桌面端 composer 顶部提示风格一致。
-- 当 `planningMode` 为 true（点 Plan 按钮 / palette Plan 模式 / /plan slash / tapgoTogglePlanMode 通知）时显示；点击 Send 后 `send()` 把 `planningMode = false` 重置，banner 立即消失。
-
-测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.136/Tapgo-AICoding-0.5.136.zip" length="12095153" type="application/octet-stream" sparkle:edSignature="0YuF38yDrPT+cosGMyliurYWvRqEkwHe71NYCUjdn8PqE5b6E+XWobRz5xwDDSCyaAx+zSPdVM0/qqDE2dKYAQ=="/>
         </item>
     </channel>
 </rss>
