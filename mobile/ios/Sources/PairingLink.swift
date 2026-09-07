@@ -122,10 +122,14 @@ final class PairingLink: ObservableObject {
 
     private func handleBrowseResults(_ results: Set<NWBrowser.Result>) {
         // 选第一个匹配 (或第一个匹配 expectedDeviceId) 的 endpoint。
+        // "demo-mac" 是 TAPGO_FORCE_PAIRED 注入的伪 deviceId, 不参与 include 检查
+        // (TAPGO_FORCE_PAIRED 模式下 Mac 端 listener 的 instance name 是 hostname,
+        // 不会包含 "demo-mac" 字面量).
         var chosen: NWEndpoint? = nil
         for r in results {
             if case .service(let name, _, _, _) = r.endpoint {
-                if let expected = expectedDeviceId, !name.contains(expected) { continue }
+                if let expected = expectedDeviceId, expected != "demo-mac",
+                   !name.contains(expected) { continue }
                 chosen = r.endpoint
                 break
             }
