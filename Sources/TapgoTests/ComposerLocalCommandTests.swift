@@ -36,4 +36,12 @@ func runComposerLocalCommandTests(_ t: TestRunner) {
     t.expectNil(ComposerLocalCommand.parse("/compaction"), "compact-prefixed names are not intercepted")
     t.expectNil(ComposerLocalCommand.parse("/compactify"), "compact-with-suffix is not intercepted")
     t.expectNil(ComposerLocalCommand.parse("请解释 /compact"), "inline /compact mention is regular text")
+    // /review — bare token defaults to working scope; named scopes
+    // (staged/main/<ref>) are local; suffix falls back to model.
+    t.expectEqual(ComposerLocalCommand.parse("/review"), .review(""), "bare /review defaults to empty scope")
+    t.expectEqual(ComposerLocalCommand.parse("/review staged"), .review("staged"), "/review with named scope is local")
+    t.expectEqual(ComposerLocalCommand.parse("  /review  main  "), .review("main"), "/review trims surrounding whitespace")
+    t.expectNil(ComposerLocalCommand.parse("/reviewA"), "review-prefixed names are not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("/reviewer"), "review-with-suffix is not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("请解释 /review"), "inline /review mention is regular text")
 }

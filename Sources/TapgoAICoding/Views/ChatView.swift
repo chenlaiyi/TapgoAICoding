@@ -2252,6 +2252,8 @@ struct ComposerView: View {
         case .compact:
             let outcome = store.compactActiveThread()
             compactOutcomeAlert = CompactOutcomeAlert(outcome: outcome)
+        case .review(let scope):
+            store.startReviewThread(scope: scope)
         }
         text = ""
         showSlashMenu = false
@@ -2299,7 +2301,11 @@ struct ComposerView: View {
                 showSlashMenu = false
                 focused = true
             }
-            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话；输入 /compact 折叠当前会话历史。")
+            slashRow("/review [scope]", "打开 diff 审查会话（scope: working/staged/main/<ref>）") {
+                text = "/review "
+                focused = true
+            }
+            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话；输入 /compact 折叠当前会话历史；输入 /review [scope] 打开 diff 审查会话。")
                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 10)

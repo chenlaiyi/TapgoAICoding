@@ -517,6 +517,65 @@ final class SessionStore: ObservableObject {
     /// to inspect the cwd before writing, and to surface what it could not
     /// infer from the codebase (e.g. deployment targets, signing identity,
     /// code review rules) so the user can fill those in.
+    /// `/review [scope]` slash command: open a fresh thread preloaded with
+    /// a "review diff against <scope>" prompt. Recognised scopes:
+    /// * empty / "working" → `git diff HEAD` (unstaged + uncommitted)
+    /// * "staged"           → `git diff --staged`
+    /// * "main"             → `git diff origin/main` (or `main` as fallback)
+    /// * anything else      → treated as a git ref → `git diff <scope>`
+    /// The thread title encodes the scope so it stays distinguishable from
+    /// ordinary conversations.
+    func startReviewThread(scope: String) {
+        let project = activeProject()
+        let cwd = project?.remotePath ?? project?.harnessCwd
+        let projectName = project?.displayName ?? L10n.newThread
+        let trimmed = scope.trimmingCharacters(in: .whitespacesAndNewlines)
+        let (displayScope, gitArgs, hint) = Self.resolveReviewScope(trimmed)
+        let title = "/review · \(displayScope) · \(projectName)"
+        newThread(title: title)
+        sendUserMessage(Self.makeReviewPrompt(scope: displayScope, gitArgs: gitArgs, hint: hint))
+    }
+
+    /// Pure helper so unit tests can pin scope → git-args mapping.
+    static func resolveReviewScope(_ raw: String) -> (display: String, args: String, hint: String) {
+        let scope = raw.lowercased()
+        switch scope {
+        case "", "working":
+            return ("working", "diff HEAD", "工作树相对 HEAD 的全部未提交改动（含未暂存）")
+        case "staged":
+            return ("staged", "diff --staged", "已 git add 但未 commit 的改动")
+        case "main":
+            return ("main", "diff origin/main...HEAD", "当前分支与 origin/main 的差异（含已 commit 但未推送）")
+        default:
+            return (raw.trimmingCharacters(in: .whitespacesAndNewlines), "diff \(raw)", "相对 \(raw) 的差异")
+        }
+    }
+
+    /// Compose the review prompt. The harness runs the git command inside
+    /// the project cwd; we spell out the exact args so Codex does not have
+    /// to guess.
+    static func makeReviewPrompt(scope: String, gitArgs: String, hint: String) -> String {
+        """
+        你在一个新会话里帮用户审阅当前项目的改动。
+
+        范围：\(scope)（\(hint)）。
+
+        请按下面顺序操作：
+
+        1. 运行 `git \(gitArgs) --stat` 看修改面。
+        2. 运行 `git \(gitArgs)` 看完整 patch。
+        3. 如有 SPEC.md / AGENTS.md / 项目级约定，先 cat 一下，确认审查不违背既有约定。
+        4. 逐项给出审查报告：
+           - 风险（性能、并发、兼容性、安全、回归、测试覆盖）；
+           - 命名 / API 设计是否与项目已有风格一致；
+           - 测试是否覆盖新行为（如未覆盖请直接指出哪些 case 该加）；
+           - 是否需要 EVOLUTION / 文档 / release notes 同步更新。
+        5. 最后给一份"建议改动"清单（按优先级排序），不需要解释，直接列。
+
+        输出完成后我会人工审阅，再决定是接受、修改还是回退。
+        """
+    }
+
     func startInitProjectThread() {
         let project = activeProject()
         let cwd = project?.remotePath ?? project?.harnessCwd

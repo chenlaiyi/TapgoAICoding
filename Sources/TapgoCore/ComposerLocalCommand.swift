@@ -24,6 +24,11 @@ public enum ComposerLocalCommand: Equatable {
     /// keeping the user's anchor message intact. Implementation lives
     /// in `SessionStore.compactActiveThread`.
     case compact
+    /// `/review [scope]` — open a draft thread that asks Codex to audit
+    /// the working tree (default scope = `working`; `staged`, `main`, or
+    /// any git ref accepted). Implementation lives in
+    /// `SessionStore.startReviewThread(scope:)`.
+    case review(String)
 
     public static func parse(_ input: String) -> Self? {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -31,6 +36,10 @@ public enum ComposerLocalCommand: Equatable {
         if text == "/clear" { return .clear }
         if text == "/init" { return .initProject }
         if text == "/compact" { return .compact }
+        if text == "/review" { return .review("") }
+        if let rest = text.strippingLocalCommandPrefix("review") {
+            return .review(rest)
+        }
         if let rest = text.strippingLocalCommandPrefix("model") {
             return .model(rest)
         }
