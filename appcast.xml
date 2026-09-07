@@ -3,6 +3,29 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.120</title>
+            <pubDate>Tue, 08 Sep 2026 00:02:33 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.120</link>
+            <sparkle:version>0.5.120</sparkle:version>
+            <sparkle:shortVersionString>0.5.120</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.120
+
+## Composer slash 命令补齐
+
+- **`/review [scope]`** — 在当前项目下创建引导 thread 预填"审阅 diff"提示。scope 可省略或以下值：
+  - `working`（默认 / 留空）→ `git diff HEAD` 工作树相对 HEAD 的未提交改动
+  - `staged` → `git diff --staged` 已 add 但未 commit
+  - `main` → `git diff origin/main...HEAD` 当前分支与 main 的差异
+  - 任意 git ref → `git diff <ref>`
+- prompt 引导 Codex 先 `--stat` 看全貌，再看完整 patch，再 cat SPEC/AGENTS 等约定，最后给风险 + 设计 + 测试 + 文档同步四项审查报告 + 优先级排序的"建议改动"清单。
+
+测试覆盖 ComposerLocalCommand 6 个新 case（bare 视为 working scope，scope 名称 trimming，prefix/suffix 边界）；本机 fafamacmini 3110 passed / 12 failed（12 项失败均为 SSH 远程集成 + auth.json 环境性，与改动无关）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.120/Tapgo-AICoding-0.5.120.zip" length="11944304" type="application/octet-stream" sparkle:edSignature="fa/hEynFEBZFN7oEeDu3yowmjiOvSX2RUGIXd4ERItfhNZifUrS4io7YOaXuhhtBKZdjmc2fCgXpAUq1Zo2zCw=="/>
+        </item>
+        <item>
             <title>0.5.119</title>
             <pubDate>Mon, 07 Sep 2026 23:53:58 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.119</link>
@@ -51,30 +74,6 @@
 测试覆盖 ComposerLocalCommand 解析（新增 11 个 case）+ SessionStore.selectModel 模糊匹配；SSH 远程集成与 auth.json 环境性失败仍稳定与 v0.5.117 一致。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.118/Tapgo-AICoding-0.5.118.zip" length="11926994" type="application/octet-stream" sparkle:edSignature="qeOpEYAmJWOTtMiMVcyjfyrywp71NeVEe/eyxPPzJ6vzb+MASwjy5l49olJe3d8+mZWbWswQM20MvaKnxhadAw=="/>
-        </item>
-        <item>
-            <title>0.5.117</title>
-            <pubDate>Mon, 07 Sep 2026 23:03:25 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.117</link>
-            <sparkle:version>0.5.117</sparkle:version>
-            <sparkle:shortVersionString>0.5.117</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.117
-
-## 稳定性
-
-- 根治回合结尾永远卡在"正在处理"的真因：codex app-server 长回合结束时只发 `thread/status: idle`、不发 `turn/completed`，原解析器忽略前者导致 UI 终结态只认后者；现在把 `thread/status: idle` 映射为 `turnCompleted`（幂等），并在 `SessionStore` 加终结态保护，已 completed/failed/interrupted 的回合不再被覆盖。
-
-## 文件变更卡
-
-- **Git 兜底文件变更卡**：当 codex 用 `mkdir` / `cat` 之类命令写文件、协议里没有 per-file `fileChange` / `turn/diff` 事件时，`WorktreeChangeTracker.collect` 升级为 per-file 明细；turn 完成时按 baseline 差集生成真正的 `FileChange`（文件名+路径+±行数+可展开 diff），`TurnPresentation` 折叠成批次卡。已有协议级 diff 的回合不重复生成。
-- **HTML 内部浏览器预览**：`FileChangeRowView` 对 `html` / `htm` 新增"在内部浏览器预览"（右键菜单），用 WKWebView `loadFileURL` 弹窗并允许同目录相对资源；关闭按钮支持 Esc。
-- **修复兜底变更卡的崩溃**：原 `untrackedDiff` 对已跟踪文件的修改也套用 `--- /dev/null +++ path` 的合成 diff，hunk 头声称 0 旧行但行内容与删除/修改矛盾，导致 `DiffView` split 模式对齐时 `ViewDimensions` 下标越界、窗口重布局时 EXC_BREAKPOINT。现在 `untrackedDiff` 区分来源——untracked 纯新增才合成全 + diff，tracked 修改直接走 `git diff HEAD -- path`；`FileChange.kind` 按来源标 create/update。
-
-测试覆盖 Harness thread/status idle 终结态、WorktreeChangeTracker per-file diff / HTML 预览、Sparkle 私钥校验、Markdown 列表深度——本机 fafamacmini 3078 passed / 14 failed（其中 9 项 SSH 远程集成与 auth.json 环境性失败，2 项 AppUpdateDistributionTests 在 tag v0.5.117 后自动通过）；jkmacmini 3080 passed / 0 failed 与 v0.5.116 一致无回归。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.117/Tapgo-AICoding-0.5.117.zip" length="11914833" type="application/octet-stream" sparkle:edSignature="VySVkKHUNzOzkg9iDdPDqvro4rUEKtXlGIGr28crViVa2yr85zZ0KUAGMVP3DcNZc2xC4xOvl0UFqQcZfhYqCg=="/>
         </item>
     </channel>
 </rss>
