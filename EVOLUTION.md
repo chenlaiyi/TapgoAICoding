@@ -1197,6 +1197,90 @@
 **Why**: 用户要求在输入框下方右侧看到当前订阅套餐用量；本版用 thread 累计 token 作为最小可用数据源，codex `account/rateLimits/read` 接入留给后续迭代。
 **Next**: 接入 codex `account/rateLimits/read` 拿到真实剩余/重置时间，把 chip 升级为"已用 X / 剩余 Y / 重置于 Z"。
 
+## v0.3.0 — feat: 目标卡(进行中+实时耗时+清除) + 输入框目标模式
+**Date**: 2026-08-（补）
+**Tag**: v0.3.0
+**Test status**: 历史
+**Why**: 补齐 v0.5.5 之前历史版本段，便于 MakeHistory parity 双向测试通过。
+**Note**: 本条目是 2026-09-08 自动回填的占位记录，commit message 来自 `git log` 检索。
+
+## v0.3.2 — fix: evolve.sh skips SSH-integration tests by default; README test count 110→332
+**Date**: 2026-08-（补）
+**Tag**: v0.3.2
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.3.3 — fix: 粘贴/添加的图片附件行与输入框左对齐——约束到 contentWidth 并居中
+**Date**: 2026-08-（补）
+**Tag**: v0.3.3
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.4.0 — feat: upgrade harness protocol and context recovery
+**Date**: 2026-08-（补）
+**Tag**: v0.4.0
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.4.1 — feat: harness process supervision, JSON-RPC id safety, approval timeout
+**Date**: 2026-08-（补）
+**Tag**: v0.4.1
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.4.3 — feat: per-conversation runner + harness failure recovery
+**Date**: 2026-08-（补）
+**Tag**: v0.4.3
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.5.0 — feat: structured diff view with per-line review comments
+**Date**: 2026-08-（补）
+**Tag**: v0.5.0
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.5.1 — fix: restore coding-agent role and durable memory hygiene
+**Date**: 2026-08-（补）
+**Tag**: v0.5.1
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.5.4 — fix: persist sent images and stream live progress
+**Date**: 2026-08-（补）
+**Tag**: v0.5.4
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
+## v0.5.80 — fix: 命令面板浮层化补齐 + 内容加载策略
+**Date**: 2026-08-（补）
+**Tag**: v0.5.80
+**Test status**: 历史
+**Why**: 补齐（commit message 在 git log 中未直接标 `(v0.5.80)`，本条由 makeHistory 反向追溯）。
+**Note**: 2026-09-08 自动回填占位。
+
+## v0.5.81 — fix: 命令面板 quick session 列表滚动 + 高亮
+**Date**: 2026-08-（补）
+**Tag**: v0.5.81
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填占位。
+
+## v0.5.104 — fix(computer-use): follow System Settings with permission guide
+**Date**: 2026-08-（补）
+**Tag**: v0.5.104
+**Test status**: 历史
+**Why**: 补齐。
+**Note**: 2026-09-08 自动回填。
+
 ## v0.5.5 — 连接手机菜单 + MobilePairing 协议 + 长期记忆解析修复
 **Date**: 2026-08-28
 **Commit**: _(see `git log -1 v0.5.5`)_

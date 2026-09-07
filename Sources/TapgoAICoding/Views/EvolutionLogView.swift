@@ -252,6 +252,167 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.52", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.52",
+                    summary: "模型设置深度打磨（makeHistory 历史回填 v0.5.128）。",
+                    changes: ["feat: v0.5.52 — 模型设置深度打磨（commit 3bafef9）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.58", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.58",
+                    summary: "目标 IDE 桌面工作区复刻（已撤回；makeHistory 历史回填 v0.5.128）。",
+                    changes: ["feat: 复刻 ZCode 桌面工作区并发布 v0.5.58（commit 8ea6ab1，060814f 暂停自动更新）"],
+                    why: "EVOLUTION.md 标记已撤回；makeHistory 仍记录此历史 commit。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.59", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.59",
+                    summary: "目标 IDE 桌面整体框架重新校正（makeHistory 历史回填 v0.5.128）。",
+                    changes: ["feat: correct ZCode desktop overlay framework for v0.5.59（commit aeacee2）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.60", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.60",
+                    summary: "移除输入器上方误加分隔线（makeHistory 历史回填 v0.5.128）。",
+                    changes: ["移除输入器上方误加分隔线（commit message 未带 v0.5.60 标）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.61", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.61",
+                    summary: "目标 IDE 式多标签右侧工作台与环境抽屉（makeHistory 历史回填 v0.5.128）。",
+                    changes: ["目标 IDE 式多标签右侧工作台与环境抽屉（commit message 未带 v0.5.61 标）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.105", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.105",
+                    summary: "feat(scheduler): 定时任务执行历史 + 立即运行 + weekly 编辑器。",
+                    changes: ["feat(scheduler): v0.5.105 — 定时任务执行历史 + 立即运行 + weekly 编辑器（commit c8e7572）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.108", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.108",
+                    summary: "feat(chat): 提升消息输出层次感（v0.5.108）。",
+                    changes: ["feat(chat): 提升消息输出层次感（v0.5.108）（commit 75eec68）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.84", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.84",
+                    summary: "fix(remote+daemon): Web Remote 拆出 app.css/app.js/app-icon.png + Harness daemon 多客户端 + DispatchSource 重写。",
+                    changes: ["fix(remote+daemon): v0.5.84 — Web Remote 拆出 app.css/app.js/app-icon.png + Harness daemon 多客户端 + DispatchSource 重写（commit 4669f16）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.85", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.85",
+                    summary: "fix(design): DSHTheme 6 个 ZCode 主窗口 fidelity region token 化 + DesktopDesignParity 锁定。",
+                    changes: ["fix(design): v0.5.85 — DSHTheme 6 个 ZCode 主窗口 fidelity region token 化 + DesktopDesignParity 锁定（commit 5991962）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.86", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.86",
+                    summary: "fix(design): fidelity patch 2/2 (3 处 .background 切到 fidelityTitlebar token)。",
+                    changes: ["fix(design): v0.5.86 — fidelity patch 2/2（commit 2c77ae0）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.87", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.87",
+                    summary: "fix(design+release): fidelity patch 3/3 + 自动 GitHub Release 发布 + AgentOutputPolicy 文案层 + project.yml 版本注入。",
+                    changes: ["fix(design+release): v0.5.87 — fidelity patch 3/3（commit 976d3e6）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.88", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.88",
+                    summary: "fix(design): fidelity patch 4/4 (sidebar_mid 单点差) + 用户消息 zcode 风格左缘蓝色 accent。",
+                    changes: ["fix(design): v0.5.88 — fidelity patch 4/4（commit 1d1eddb）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.89", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.89",
+                    summary: "fix(ui+shortcut): trajectoryAssistant 接入助手正文 + ⌘\ 切换侧边栏 + 命令面板扩展。",
+                    changes: ["fix(ui+shortcut): v0.5.89 — trajectoryAssistant 接入助手正文 + ⌘\\ 切换侧边栏 + 命令面板扩展（commit e92425b）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.90", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.90",
+                    summary: "fix(chat): align streaming output with ZCode。",
+                    changes: ["fix(chat): align streaming output with ZCode（commit e57ab9e）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.91", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.91",
+                    summary: "fix(chat): align message flow with Codex desktop。",
+                    changes: ["fix(chat): align message flow with Codex desktop（commit 0c23c25）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.92", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.92",
+                    summary: "feat(ui): align message experience with Codex Desktop。",
+                    changes: ["feat(ui): align message experience with Codex Desktop（commit da07e4b）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.93", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.93",
+                    summary: "feat(ui): match Codex message rendering density。",
+                    changes: ["feat(ui): match Codex message rendering density（commit 69c34b5）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.94", date: "2026-08-（补）", commit: "f249014", tag: "v0.5.94",
+                    summary: "feat(ui): compact Codex-style sidebar account footer。",
+                    changes: ["feat(ui): compact Codex-style sidebar account footer（commit f249014）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.95", date: "2026-08-（补）", commit: "7158502", tag: "v0.5.95",
+                    summary: "fix(remote): embed phone web resources in signed app。",
+                    changes: ["fix(remote): embed phone web resources in signed app（commit 7158502）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.96", date: "2026-08-（补）", commit: "660457c", tag: "v0.5.96",
+                    summary: "feat(remote): align mobile web remote with ZCode。",
+                    changes: ["feat(remote): align mobile web remote with ZCode（commit 660457c）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.97", date: "2026-08-（补）", commit: "9d06383", tag: "v0.5.97",
+                    summary: "fix(remote): restore legacy tasks in mobile workspace。",
+                    changes: ["fix(remote): restore legacy tasks in mobile workspace（commit 9d06383）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.98", date: "2026-08-（补）", commit: "e7a8095", tag: "v0.5.98",
+                    summary: "feat(remote): add model and permission controls。",
+                    changes: ["feat(remote): add model and permission controls（commit e7a8095）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
+                    version: "v0.5.99", date: "2026-08-（补）", commit: "cd1b202", tag: "v0.5.99",
+                    summary: "fix(remote): render readable mobile tables。",
+                    changes: ["fix(remote): render readable mobile tables（commit cd1b202）"],
+                    why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
+                    next: "无"
+                ),
+                EvolutionEntry(
                     version: "v0.5.127", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.127",
                     summary: "test: MakeHistory parity suite — 防 v0.5.125 中文双引号 bug 重现 + Info.plist/project.yml sync 测试。",
                     changes: ["MakeHistoryParityTests.swift 抽 version 模式 + 验证引号偶数 + 最近 10 版本对齐。", "TestMain.swift 注册 MakeHistory parity section。"],
