@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.128", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.128",
+                    summary: "test: MakeHistory parity 双向严格 + 历史 19 段回填（v0.3.0/2/3、v0.4.0/1/3、v0.5.0/1/4、v0.5.52、v0.5.58-61、v0.5.80/81、v0.5.84-99、v0.5.105、v0.5.108）。",
+                    changes: ["MakeHistoryParityTests 加双向严格 expect。", "makeHistory 数组补 19 个 EvolutionEntry（commit SHA 来自 git log 反查）。", "EVOLUTION.md 头部 v0.5.5 之前补 12 个段。"],
+                    why: "v0.5.127 单向测试发现 19 个历史漏段；补齐后双向严格。",
+                    next: "命令面板按状态分组 或 AGENTS.md 章节结构化。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.52", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.52",
                     summary: "模型设置深度打磨（makeHistory 历史回填 v0.5.128）。",
                     changes: ["feat: v0.5.52 — 模型设置深度打磨（commit 3bafef9）"],
