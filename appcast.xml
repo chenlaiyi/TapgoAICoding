@@ -3,6 +3,43 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.116</title>
+            <pubDate>Mon, 07 Sep 2026 08:27:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.116</link>
+            <sparkle:version>0.5.116</sparkle:version>
+            <sparkle:shortVersionString>0.5.116</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.116
+
+## 插件市场
+
+- 「Tapgo 官方」插件完整支持：安装（git clone）、卸载、**启用/停用开关**（持久化到 `~/.tapgo/plugins.toml`，停用状态跨重启保留）。
+- 新增官方插件模板与 catalog 协议校验：`tapgo-plugin-sparkle-publish`（一键发版）、`tapgo-plugin-screen-permission`（TCC 自检），以及 `plugins.itapgo.com/catalog.json` 的发布示例，从模板到上架无需改代码。
+
+## 稳定性
+
+- 根治两处会让整个 App 卡死数秒到数十秒的问题：发送消息后的流式重渲染风暴（增量改为 120ms 批量上屏，过程实时可见）；滚动经过表格时 LazyVStack 无法缓存行高导致的连续重排版（表格改为换行铺开）。
+- 持久化写盘移到后台队列；会话基线采集不再阻塞发送路径。
+
+## 输出样式（对齐 Codex 桌面端）
+
+- 行内代码改为淡底胶囊，代码密集的消息不再被实色灰块切碎。
+- 有序列表跨块连续编号（1.2.3.4，不再全是 1.）；嵌套子列表缩进到父项文字下方。
+- 表格：灰色表头 + 行间细线 + 单元格换行铺开；代码块去外框；标题字号分级拉开。
+- `###` 后无空格的标题按 CommonMark 正确识别，字面量 `###` 不再上屏。
+- 过程行（编辑/终端/思考）与正文同字号，文件名亮白、路径暗灰的亮度分层。
+
+## 交互修复
+
+- 用户消息悬停操作条：从任意方向进入都可点击，复制成功显示绿色对勾。
+- 长距离滚动（回到顶部/最新）不再沿途全量布局。
+
+验证覆盖 PluginCatalog 解析与 pluginId 安全、plugins.toml 读写往返、Markdown 解析回归、真实 SSH 执行器回归与滚动压力采样（CPU 0%）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.116/Tapgo-AICoding-0.5.116.zip" length="11902451" type="application/octet-stream" sparkle:edSignature="ix6FGXKknHPBwlgUL51pz+EjfIRDL7dSkoxrrNG9MR1p1cm5PyyBAdw8j7Mj19aKy5qyPfSXifsQVkbnXux4Aw=="/>
+        </item>
+        <item>
             <title>0.5.115</title>
             <pubDate>Sun, 06 Sep 2026 23:18:39 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.115</link>
