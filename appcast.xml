@@ -3,6 +3,26 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.125</title>
+            <pubDate>Tue, 08 Sep 2026 00:44:02 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.125</link>
+            <sparkle:version>0.5.125</sparkle:version>
+            <sparkle:shortVersionString>0.5.125</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.125
+
+## Plan mode（Codex 桌面端核心 UX）
+
+- **Composer 工具栏 Plan toggle**：在 `environmentChip` 之后加 `Plan` 按钮。点击切换状态（`@AppStorage("tapgo.planningMode")` 持久化）。开启时按钮变蓝底白字，关闭时灰字。
+- **发送时自动加 `[计划模式]` 指令前缀**：开启状态下，下一条消息会被自动包成 `[计划模式] 请先给方案（Markdown：步骤 / 风险 / 验证），不要执行任何工具调用。\n\n<原消息>` 发送；发送后 toggle 自动归位（单次模式）。
+- **命令面板 "Plan 模式" 入口**：palette 在"状态"后加 `Plan 模式` action（`lightbulb` 图标），点击 → 设置 `tapgo.planningMode = true` + alert 提示"已开启。下一条消息会让 Codex 先出方案不执行工具。"
+
+测试：3110 passed / 12 failed（与 v0.5.124 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.125/Tapgo-AICoding-0.5.125.zip" length="11991440" type="application/octet-stream" sparkle:edSignature="8czf/1LKYos2z335DeUDYAjR+ONcUNWoOGdz8PwxHSSE0pyr4RnNsBWb8YjQKMW0Gqe6rYo4wZtgqEvHp7hmAQ=="/>
+        </item>
+        <item>
             <title>0.5.124</title>
             <pubDate>Tue, 08 Sep 2026 00:35:59 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.124</link>
@@ -43,27 +63,6 @@
 测试：3110 passed / 12 failed（与 v0.5.122 一致，12 项均为 SSH 环境性）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.123/Tapgo-AICoding-0.5.123.zip" length="11980129" type="application/octet-stream" sparkle:edSignature="+yngzYuu9WMs0VGwvnwoL6EZ4X74F6sU9l1lpGnqQ1HuAXQz4Fp6nDLgUKgMGT1LIhJ87hSX4qrBng9RfOkHAA=="/>
-        </item>
-        <item>
-            <title>0.5.122</title>
-            <pubDate>Tue, 08 Sep 2026 00:26:09 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.122</link>
-            <sparkle:version>0.5.122</sparkle:version>
-            <sparkle:shortVersionString>0.5.122</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.122
-
-## 命令面板底部 mini composer（视觉对齐 Codex 桌面端）
-
-- 命令面板底部加固定 dock 工具条：`+` 按钮（聚焦主 composer）+ `TextField`（输入即时消息，回车 / 发送按钮提交）+ 当前模型名（实时从 `TapgoConfig.selectedModelKey` 读）+ 发送按钮（accent 圆 circle，`arrow.up`，空内容时禁用）。
-- mini composer 内容经 `tapgo.composer.pendingText` UserDefaults shuttle 传回主 composer：发送时 post `tapgoFocusComposer` 通知 + 关 palette；主 composer 看到 pending text 时填充。
-- 视觉与 Codex 桌面端一致——`Divider().opacity(0.5)` 切分 + 底部行半透明 surface。
-- 关闭回调重构：`CommandPaletteView` 改用 `onDismiss: () -> Void` 闭包而非 `\.dismiss` 环境（overlay 模式无 dismiss 环境）；同时把误删的 `ShortcutsView.dismiss` 加回。
-
-测试：本机 fafamacmini 3110 passed / 12 failed（与 v0.5.121 一致，全部 SSH 环境性）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.122/Tapgo-AICoding-0.5.122.zip" length="11978340" type="application/octet-stream" sparkle:edSignature="rTZs7lMIoXqP1czTRhHf/esWCqsnRRWwQf9KpTLkk9Q4PlXUTeBNzGfIUkyl1WNNjZuiZeEpUy/QLVyutR4pBQ=="/>
         </item>
     </channel>
 </rss>
