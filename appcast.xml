@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.122</title>
+            <pubDate>Tue, 08 Sep 2026 00:26:09 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.122</link>
+            <sparkle:version>0.5.122</sparkle:version>
+            <sparkle:shortVersionString>0.5.122</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.122
+
+## 命令面板底部 mini composer（视觉对齐 Codex 桌面端）
+
+- 命令面板底部加固定 dock 工具条：`+` 按钮（聚焦主 composer）+ `TextField`（输入即时消息，回车 / 发送按钮提交）+ 当前模型名（实时从 `TapgoConfig.selectedModelKey` 读）+ 发送按钮（accent 圆 circle，`arrow.up`，空内容时禁用）。
+- mini composer 内容经 `tapgo.composer.pendingText` UserDefaults shuttle 传回主 composer：发送时 post `tapgoFocusComposer` 通知 + 关 palette；主 composer 看到 pending text 时填充。
+- 视觉与 Codex 桌面端一致——`Divider().opacity(0.5)` 切分 + 底部行半透明 surface。
+- 关闭回调重构：`CommandPaletteView` 改用 `onDismiss: () -> Void` 闭包而非 `\.dismiss` 环境（overlay 模式无 dismiss 环境）；同时把误删的 `ShortcutsView.dismiss` 加回。
+
+测试：本机 fafamacmini 3110 passed / 12 failed（与 v0.5.121 一致，全部 SSH 环境性）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.122/Tapgo-AICoding-0.5.122.zip" length="11978340" type="application/octet-stream" sparkle:edSignature="rTZs7lMIoXqP1czTRhHf/esWCqsnRRWwQf9KpTLkk9Q4PlXUTeBNzGfIUkyl1WNNjZuiZeEpUy/QLVyutR4pBQ=="/>
+        </item>
+        <item>
             <title>0.5.121</title>
             <pubDate>Tue, 08 Sep 2026 00:17:56 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.121</link>
@@ -68,37 +89,6 @@
 测试覆盖 ComposerLocalCommand 6 个新 case（bare 视为 working scope，scope 名称 trimming，prefix/suffix 边界）；本机 fafamacmini 3110 passed / 12 failed（12 项失败均为 SSH 远程集成 + auth.json 环境性，与改动无关）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.120/Tapgo-AICoding-0.5.120.zip" length="11944304" type="application/octet-stream" sparkle:edSignature="fa/hEynFEBZFN7oEeDu3yowmjiOvSX2RUGIXd4ERItfhNZifUrS4io7YOaXuhhtBKZdjmc2fCgXpAUq1Zo2zCw=="/>
-        </item>
-        <item>
-            <title>0.5.119</title>
-            <pubDate>Mon, 07 Sep 2026 23:53:58 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.119</link>
-            <sparkle:version>0.5.119</sparkle:version>
-            <sparkle:shortVersionString>0.5.119</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.119
-
-## 命令面板升级为中心浮层（视觉对齐 Codex 桌面端）
-
-- ⌘K 唤起的命令面板从 macOS sheet 改为覆盖式中心浮层：560×460、`.regularMaterial` 背景模糊 + 阴影 + 圆角边框；点背景关闭；spring 弹性动画（响应 0.28s / 阻尼 0.85）；选中行缩放进场（scale 0.96 → 1）。
-- 不再沿用 sheet 的边缘滑入与系统灰底，整体观感接近 Codex 桌面端的命令面板。
-
-## Composer slash 命令补齐
-
-- **`/clear`** — 清空当前会话的全部回合 + 取消 in-flight turn；thread 元数据（id/title/projectId/cwd/goal/固定）保留；下次发消息创建全新 harness 上下文（已随 v0.5.118 发布）。
-- **`/model <query>`** — 模糊匹配 provider/model（displayName/modelID/providerName）；命中唯一即切换；0/多/未配置三态 alert 提示（已随 v0.5.118 发布）。
-- **`/init`** — 在当前项目下创建引导 thread（标题 `/init · <项目> · AGENTS.md`），预填"扫描项目结构起草 AGENTS.md"提示；用户审阅后将内容写入项目根。
-- **`/compact`** — 折叠当前会话历史：每回合的 assistant items 替换为单条 "(已 compact)" 提示；user messages、turn metadata（id/status/startedAt/completedAt/usage）和 thread 元数据保留；harness thread handle 重置使下次发消息从干净上下文开始。回合正在跑时返回 `busy`。
-
-## 命令面板与 slash 菜单同步
-
-- `/clear`、`/model`、`/init`、`/compact` 在 composer 内 `/` 唤起的 slash 菜单都有对应行；`/model` 占位补全到 `/model `，其他直接执行。
-- 提示文本同步覆盖：`输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话；输入 /compact 折叠当前会话历史。`
-
-测试覆盖 ComposerLocalCommand 30 个 case（v0.5.118 18 + /init 6 + /compact 6）+ SessionStore.compactActiveThread 单元；本机 fafamacmini 3104 passed / 12 failed（12 项失败均为 SSH 远程集成 + auth.json 环境性）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.119/Tapgo-AICoding-0.5.119.zip" length="11942716" type="application/octet-stream" sparkle:edSignature="yFVQ1dZhyf/muSC0rGItLlVT1PCJGRv1f06x9GZbu8Ik18mK8+ytHFZdpPF5baGRcGRItcUYKa7XJQQF11nJCQ=="/>
         </item>
     </channel>
 </rss>
