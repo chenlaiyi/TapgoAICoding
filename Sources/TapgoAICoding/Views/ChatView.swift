@@ -1156,55 +1156,81 @@ struct ComposerView: View {
     var isWelcome = false
     @State private var preserveDraftOnProjectChange = false
 
+    /// 静态菜单项定义（标题 + SF Symbol 图标 + 副标题描述）— 让 + 菜单
+    /// 在视觉上与 Codex 桌面端对齐：每个命令带一行描述，插件分组使用
+    /// 本地描述。等 Codex 插件目录接入后把 plugins 换成动态加载的
+    /// `PluginCatalogItem` 列表。
+    private struct AddMenuItem: Identifiable {
+        let id: String
+        let title: String
+        let icon: String
+        let detail: String
+        let action: AddMenuAction
+    }
+    private enum AddMenuAction {
+        case attachFiles
+        case attachTapgoProject
+        case setGoal
+        case togglePlanMode
+        case openRecordSkillSettings
+        case insertSkill(String)
+    }
+    private static let addMenuItems: [AddMenuItem] = [
+        .init(id: "files", title: "文件和文件夹", icon: "paperclip",
+              detail: "附加本地文件、文件夹或图片到会话",
+              action: .attachFiles),
+        .init(id: "tapgo", title: "附加 Tapgo AICoding", icon: "plus.app",
+              detail: "把当前项目文件夹挂载到会话上下文",
+              action: .attachTapgoProject),
+        .init(id: "goal", title: "目标", icon: "target",
+              detail: "设置要持续追求的目标",
+              action: .setGoal),
+        .init(id: "plan", title: "计划模式", icon: "lightbulb",
+              detail: "启用计划模式：下一条消息只给方案不执行工具",
+              action: .togglePlanMode),
+        .init(id: "record", title: "录制技能", icon: "record.circle",
+              detail: "录制可重放的操作序列并保存为技能",
+              action: .openRecordSkillSettings),
+    ]
+    private static let addMenuPlugins: [AddMenuItem] = [
+        .init(id: "skill:terminal", title: "终端执行", icon: "terminal",
+              detail: "在主机上运行命令并读取输出", action: .insertSkill("终端执行")),
+        .init(id: "skill:file", title: "文件读写", icon: "doc",
+              detail: "读取与修改项目文件", action: .insertSkill("文件读写")),
+        .init(id: "skill:web", title: "网络搜索", icon: "globe",
+              detail: "从互联网检索最新信息", action: .insertSkill("网络搜索")),
+        .init(id: "skill:mcp", title: "MCP 工具", icon: "cube",
+              detail: "连接模型上下文协议服务器", action: .insertSkill("MCP 工具")),
+        .init(id: "skill:book", title: "技能", icon: "book",
+              detail: "按需加载的专项能力", action: .insertSkill("技能")),
+    ]
+
     /// Codex desktop parity: composer "+" 按钮弹出的下拉菜单。结构
     /// 模拟截图：标题"添加"、分组（文件 / 附件 / 目标 / 计划 / 录制 /
-    /// 插件），底部"添加文件等内容"输入框。
+    /// 插件），每项带"标题 + 副标题"双行。
     @ViewBuilder
     private var composerAddMenu: some View {
         Menu {
             Text("添加")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-            Button {
-                pickImages()
-            } label: {
-                Label("文件和文件夹", systemImage: "folder")
+            ForEach(Self.addMenuItems) { item in
+                Button {
+                    runAddMenuAction(item.action)
+                } label: {
+                    composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
+                }
             }
-            Button {
-                NotificationCenter.default.post(name: .tapgoAttachTapgo, object: nil)
-            } label: {
-                Label("附加 Tapgo AICoding", systemImage: "plus.app")
-            }
-            Divider()
-            Button {
-                editingGoalItem = GoalEditItem(text: store.liveThreads
-                    .first(where: { $0.id == store.activeThreadId })?.goal ?? "")
-            } label: {
-                Label("目标", systemImage: "target")
-            }
-            Button {
-                planningMode.toggle()
-            } label: {
-                Label("计划模式", systemImage: "lightbulb")
-            }
-            Button {
-                NotificationCenter.default.post(
-                    name: .tapgoRequestOpenSettings,
-                    object: SettingsView.Tab.computer.rawValue
-                )
-            } label: {
-                Label("录制技能", systemImage: "video.bubble")
-            }
-            if !AgentCapabilities.skills.isEmpty {
+            if !Self.addMenuPlugins.isEmpty {
                 Divider()
                 Text("插件")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
-                ForEach(AgentCapabilities.skills) { item in
+                ForEach(Self.addMenuPlugins) { item in
                     Button {
-                        NotificationCenter.default.post(name: .tapgoInsertSkill, object: item.name)
+                        runAddMenuAction(item.action)
                     } label: {
-                        Label(item.name, systemImage: item.icon)
+                        composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
                     }
                 }
             }
@@ -1217,6 +1243,50 @@ struct ComposerView: View {
         .accessibilityLabel("添加（文件/附件/插件/目标/计划）")
     }
 
+    /// Codex desktop parity: + 菜单里每个命令的"图标 + 标题 + 描述"双行
+    /// 行内布局。`Label` 默认只一行，这里换成 HStack+VStack 让菜单项在
+    /// 视觉上和截图一致（描述字体小、secondary 颜色）。
+    @ViewBuilder
+    private func composerAddMenuRow(icon: String, title: String, detail: String) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: icon)
+                .frame(width: 16, alignment: .center)
+                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.primary)
+                Text(detail)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func runAddMenuAction(_ action: AddMenuAction) {
+        switch action {
+        case .attachFiles:
+            pickImages()
+        case .attachTapgoProject:
+            NotificationCenter.default.post(name: .tapgoAttachTapgo, object: nil)
+        case .setGoal:
+            editingGoalItem = GoalEditItem(text: store.liveThreads
+                .first(where: { $0.id == store.activeThreadId })?.goal ?? "")
+        case .togglePlanMode:
+            planningMode.toggle()
+        case .openRecordSkillSettings:
+            NotificationCenter.default.post(
+                name: .tapgoRequestOpenSettings,
+                object: SettingsView.Tab.computer.rawValue
+            )
+        case .insertSkill(let name):
+            NotificationCenter.default.post(name: .tapgoInsertSkill, object: name)
+        }
+    }
+
     @State private var pendingDraftProjectID: String?
     @State private var choosingWelcomeProject = false
     @State private var choosingPermission = false
@@ -1224,6 +1294,8 @@ struct ComposerView: View {
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
         "builtin:\(TapgoModel.minimaxM3.rawValue)"
     @AppStorage("tapgo.planningMode") private var planningMode = false
+    /// 常驻 Plan mode：开启后发消息不清除（默认关闭 → single-shot 行为）
+    @AppStorage("tapgo.planModePersistent") private var planModePersistent: Bool = false
     /// 归一化后的选中 ID（旧裸 slug → builtin: 前缀），用于菜单勾选判断。
     private var selectedModelID: String { ModelRegistry.normalizedID(selectedModelRaw) }
     /// How much of the "任务" status card's bottom is tucked behind the
@@ -1266,7 +1338,13 @@ struct ComposerView: View {
     var body: some View {
         VStack(spacing: 8) {
             if planningMode {
-                PlanModeBanner()
+                PlanModeBanner(
+                    onDismiss: {
+                        if !planModePersistent { planningMode = false }
+                        NotificationCenter.default.post(name: .tapgoPlanModeBannerDidDismiss, object: nil)
+                    },
+                    isPersistent: planModePersistent
+                )
             }
             if !store.attachedImages.isEmpty {
                 if showAttachments {
@@ -1610,16 +1688,8 @@ struct ComposerView: View {
         .onChange(of: isRunning) { _, running in
             if !running { showTurnProgressDetails = false }
         }
-        .onAppear {
-            // On launch with a restored thread, put the cursor in the
-            // composer so the user can start typing immediately.
-            if store.activeThreadId != nil { focused = true }
-            setUpPasteMonitor()
-        }
-        .onDisappear {
-            draftSaver.flush(text)
-            if let m = pasteMonitor { NSEvent.removeMonitor(m); pasteMonitor = nil }
-        }
+        .onAppear(perform: handleComposerAppear)
+        .onDisappear(perform: handleComposerDisappear)
         .sheet(item: $editingGoalItem) { item in
             GoalEditorSheet(initial: item.text)
         }
@@ -1628,7 +1698,22 @@ struct ComposerView: View {
         }
     }
 
-    /// Resend the last turn's user input when it failed / was interrupted.
+    /// 拆出 onAppear 让 Swift type-checker 不超时（v0.5.141 修）。
+    private func handleComposerAppear() {
+        // On launch with a restored thread, put the cursor in the
+        // composer so the user can start typing immediately.
+        if store.activeThreadId != nil { focused = true }
+        setUpPasteMonitor()
+    }
+
+    /// 拆出 onDisappear 让 Swift type-checker 不超时（v0.5.141 修）：
+    /// 多语句闭包 + body 后端大量 onReceive 触发了 O(n²) 推断。
+    private func handleComposerDisappear() {
+        draftSaver.flush(text)
+        if let m = pasteMonitor { NSEvent.removeMonitor(m); pasteMonitor = nil }
+    }
+
+        /// Resend the last turn's user input when it failed / was interrupted.
     private func retryLastTurn() {
         if store.isRunning { return }
         guard let id = store.activeThreadId,
@@ -2287,7 +2372,9 @@ struct ComposerView: View {
             payload = t
         }
         store.sendUserMessage(payload)
-        planningMode = false  // single-shot: turn off after the plan is sent
+        if !planModePersistent {
+            planningMode = false  // single-shot: turn off after the plan is sent
+        }
         // The user just spoke — land at the latest message. We bypass the
         // "isNearBottom" gate (which is async from preferences) so the new
         // user bubble always sits right above the composer, matching Codex.
@@ -2883,12 +2970,16 @@ private struct StableComposerTextView: NSViewRepresentable {
 /// 显示类似提示。
 struct PlanModeBanner: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    /// 点 X 关闭 banner（single-shot 模式时同时关 planMode；persistent 模式时仅 dismiss banner）
+    var onDismiss: () -> Void
+    /// 是否常驻 Plan mode（关闭 banner 不重置 planMode）
+    var isPersistent: Bool
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "lightbulb.fill")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.white)
-            Text("Plan mode 已开启")
+            Text(isPersistent ? "Plan mode（常驻）" : "Plan mode 已开启")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.white)
                 .bold()
@@ -2896,6 +2987,15 @@ struct PlanModeBanner: View {
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.white.opacity(0.85))
             Spacer()
+            Button {
+                onDismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("关闭 Plan mode 提示")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

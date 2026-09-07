@@ -1,4 +1,21 @@
 # Evolution Log
+## v0.5.141 — feat(ui): Plan mode 深度集成（常驻 + Banner 关闭） + Composer + 菜单对齐 Codex + type-checker 超时修复
+**Date**: 2026-09-08
+**Tag**: v0.5.141
+**Test status**: 本机 3117 passed / 12 failed
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - Composer "+" 菜单对齐 Codex 桌面端：每项加"图标 + 标题 + 副标题描述"双行布局；图标精修（`paperclip` / `record.circle` 等）；抽出 `AddMenuItem` / `AddMenuAction` / `composerAddMenuRow` / `runAddMenuAction` 把菜单项配置和渲染分离。
+  - 插件分组切到本地静态 `addMenuPlugins`（5 项），保留 `AgentCapabilities.skills` 的描述/图标，预留 Codex 插件目录接入点。
+  - Plan mode 常驻模式：`@AppStorage("tapgo.planModePersistent")`；开启后发送消息不重置 `planningMode`。
+  - `PlanModeBanner` 加 `isPersistent` / `onDismiss` 参数 + X 关闭按钮 + "Plan mode（常驻）" 文案。
+  - 拆出 `handleComposerAppear` / `handleComposerDisappear` 修复 Swift type-checker 在 body 多语句闭包 + 大量 onReceive 上的 O(n²) 超时（之前 release build 卡 30+ 分钟，本次秒过）。
+- `Sources/TapgoAICoding/App.swift`:
+  - 加 `Notification.Name.tapgoPlanModeBannerDidDismiss` 配合 PlanModeBanner 的 X 按钮。
+**Why**: 用户要求 composer 输入框左侧"+"菜单对齐 Codex 桌面端（带描述）；同时把上一轮 v0.5.141 WIP（Plan mode 持久化）收尾。
+**Next**: Codex 插件目录接入 composer + 菜单（GitHub / Cloudflare / Figma / Gmail）；Plan mode 与 harness 协议深度集成（让 Codex app-server 知道"plan only"语义并禁用工具）。
+
+
 ## v0.5.140 — fix(ui): NSEvent 全局 hotkey 与 dock keyboardShortcut 冲突解决
 **Date**: 2026-09-08
 **Tag**: v0.5.140

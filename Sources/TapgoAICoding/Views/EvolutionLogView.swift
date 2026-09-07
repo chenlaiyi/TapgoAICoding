@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.141", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.141",
+                    summary: "Plan mode 深度集成（常驻 + Banner 关闭） + Composer + 菜单对齐 Codex + type-checker 超时修复。",
+                    changes: ["Composer + 菜单对齐 Codex 桌面端：每项加图标+标题+描述双行；图标精修 paperclip / record.circle。", "AddMenuItem / AddMenuAction / composerAddMenuRow / runAddMenuAction 抽出。", "插件分组切本地静态 addMenuPlugins（5 项），预留 Codex 插件目录接入。", "Plan mode 常驻模式 +AppStorage(planModePersistent)，开启后发送不清。", "PlanModeBanner 加 isPersistent / onDismiss + X 按钮 + 常驻文案。", "handleComposerAppear / handleComposerDisappear 拆出修 Swift type-checker O(n²) 超时。", "App.swift 加 tapgoPlanModeBannerDidDismiss 通知。"],
+                    why: "用户要求 composer 输入框左侧 + 菜单对齐 Codex 桌面端；同时把上一轮 v0.5.141 WIP（Plan mode 持久化）收尾；修之前 release build 卡 30+ 分钟的 type-checker 问题。",
+                    next: "Codex 插件目录接入 composer + 菜单；Plan mode 接 harness 协议深度集成。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.140", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.140",
                     summary: "NSEvent 全局 hotkey 与 dock keyboardShortcut 冲突解决。",
                     changes: ["App.swift 加 PaletteState enum。", "NSEvent 回调 dock 开着不消费事件。", "NotificationCenter observer 跟踪 dock 开关。", "ContentView 切换 showCommandPalette 时 post 通知。"],

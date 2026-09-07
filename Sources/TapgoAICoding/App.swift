@@ -318,5 +318,7 @@ extension Notification.Name {
     static let tapgoOpenReleaseNotes = Notification.Name("tapgo.openReleaseNotes")
     static let tapgoShowShortcutsGlobal = Notification.Name("tapgo.showShortcutsGlobal")
     static let tapgoPaletteDidOpen = Notification.Name("tapgo.paletteDidOpen")
+    /// Plan mode banner 关闭通知（v0.5.141 PlanModeBanner X 按钮触发）
+    static let tapgoPlanModeBannerDidDismiss = Notification.Name("tapgo.planModeBannerDidDismiss")
     static let tapgoPaletteDidClose = Notification.Name("tapgo.paletteDidClose")
 }
