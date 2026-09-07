@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.131", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.131",
+                    summary: "命令面板 section header 文字（环境 / 当前对话 / 全局）。",
+                    changes: ["PaletteAction 加 sectionName + sectionDivider(_:preceding:)。", "Entry 加 sectionName 字段。", "actions 数组中 3 个 divider 传 "环境"/"当前对话"/"全局"。", "ForEach 渲染 section header 文字 (caption2 + secondary + 大写)。"],
+                    why: "v0.5.130 只加 Divider；Codex 桌面端用 caption 文字 + Divider 一起标识 section 名。",
+                    next: "全局命令面板加 settings/release notes/帮助入口 或 Plan mode 接 harness 协议。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.130", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.130",
                     summary: "命令面板按状态分组（Divider 视觉对齐 Codex 桌面端）。",
                     changes: ["PaletteAction 加 isSectionDivider 字段 + sectionDivider 辅助构造器。", "Entry 加 isDivider 字段。", "actions 数组插入 3 个 Divider 分组。", "ForEach 渲染 if e.isDivider { Divider() }。"],

@@ -421,6 +421,7 @@ private struct CommandPaletteView: View {
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
     @State private var query = ""
     @State private var hoveredId: String? = nil
+    @State private var lastSectionName: String? = nil
     @State private var selectedIndex = 0
     @State private var paletteInfoAlert: PaletteInfoAlert?
     @State private var pendingBranchPrompt: Bool = false
@@ -469,6 +470,14 @@ private struct CommandPaletteView: View {
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
+                            }
+                            if let section = e.sectionName, section != lastSectionName {
+                                Text(section.uppercased())
+                                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 8)
+                                    .padding(.top, 8)
                             }
                             if e.isDivider {
                                 Divider().padding(.vertical, 4)
@@ -652,6 +661,7 @@ private struct CommandPaletteView: View {
         let destructive: Bool
         let run: () -> Void
         let isDivider: Bool
+        let sectionName: String?
     }
 
     private var entries: [Entry] {
@@ -665,13 +675,13 @@ private struct CommandPaletteView: View {
                                  store.newThread()
                                  store.sendUserMessage(q)
                                  onDismiss()
-                             }, isDivider: false))
+                             }, isDivider: false, sectionName: nil))
         }
         for a in filteredActions {
             out.append(Entry(id: "a-\(a.id)", title: a.title, icon: a.icon,
                              key: a.keyLabel, isThread: false, project: nil,
                              context: nil, statusColor: nil,
-                             destructive: a.destructive, run: a.run, isDivider: false))
+                             destructive: a.destructive, run: a.run, isDivider: false, sectionName: a.sectionName))
         }
         for t in matchingThreads {
             let proj = t.projectId.flatMap { workspace.project(byId: $0) }?.displayName
@@ -692,7 +702,7 @@ private struct CommandPaletteView: View {
             out.append(Entry(id: "t-\(target)", title: title, icon: "bubble.left",
                              key: nil, isThread: true, project: proj,
                              context: ctx, statusColor: statusColor, destructive: false,
-                             run: { store.selectThread(target) }, isDivider: false))
+                             run: { store.selectThread(target) }, isDivider: false, sectionName: nil))
         }
         return out
     }
@@ -728,6 +738,8 @@ private struct CommandPaletteView: View {
         var destructive: Bool = false
         /// `true` 时渲染为水平 Divider（Codex 桌面端命令列表的视觉分组）。
         var isSectionDivider: Bool = false
+        /// 当此 entry 是某 section 第一个时设置；render 时在其上方插入 section header。
+        var sectionName: String? = nil
         init(_ id: String, _ title: String, _ icon: String, _ key: String? = nil, destructive: Bool = false, _ run: @escaping () -> Void = {}) {
             self.id = id
             self.title = title
@@ -737,9 +749,10 @@ private struct CommandPaletteView: View {
             self.run = run
         }
         /// 辅助：构造一个 section divider（id 唯一以避免 Entry.id 冲突）。
-        static func sectionDivider(_ id: String) -> PaletteAction {
+        static func sectionDivider(_ id: String, preceding section: String? = nil) -> PaletteAction {
             var a = PaletteAction(id, "", "")
             a.isSectionDivider = true
+            a.sectionName = section
             return a
         }
     }

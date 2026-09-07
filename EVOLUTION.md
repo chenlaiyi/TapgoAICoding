@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.131 — feat(ui): 命令面板 section header 文字（环境 / 当前对话 / 全局）
+**Date**: 2026-09-08
+**Tag**: v0.5.131
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `PaletteAction` 加 `sectionName: String?` 字段；`sectionDivider(_:preceding:)` 接受 section 名。
+- `Entry` 加 `sectionName: String?` 字段。
+- actions 数组中 3 个 divider 元素分别传 "环境" / "当前对话" / "全局"。
+- `ForEach(entries)` 渲染：`if let section = e.sectionName, section != lastSectionName` 时插 Text(section.uppercased()) + caption2 + secondary + padding。
+**Why**: v0.5.130 只加 Divider 视觉分组；Codex 桌面端实际用 caption 文字 + Divider 一起标识 section 名称。
+**Next**: 全局命令面板加 settings/release notes/帮助入口；或 Plan mode 与 harness 协议层深度集成。
+
 ## v0.5.130 — feat(ui): 命令面板按状态分组（Divider 视觉对齐 Codex 桌面端）
 **Date**: 2026-09-08
 **Tag**: v0.5.130
