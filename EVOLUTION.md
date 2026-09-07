@@ -1,4 +1,18 @@
 # Evolution Log
+## v0.5.121 — feat(ui): 命令面板改为底部抽屉 + 11 个动作对齐 Codex 桌面端
+**Date**: 2026-09-08
+**Tag**: v0.5.121
+**Test status**: jkmacmini 待跑；本机 fafamacmini 3110 passed / 12 failed（DesktopDesignParityTests `⌘\` 切换侧边栏 + palette 双入口 回归通过；12 项失败均为 SSH 远程集成 + auth.json 环境性）
+**Changed**:
+- `ContentView` 命令面板从 macOS 居中浮层改为底部 docked 抽屉：`VStack { Spacer; Palette }`、`.frame(maxWidth: 720, maxHeight: 460, alignment: .top).frame(maxWidth: .infinity)`、`.regularMaterial` + `UnevenRoundedRectangle` 顶部圆角；进场动画改 `.move(edge: .bottom).combined(with: .opacity)`。
+- `CommandPaletteView.actions` 重写为 Codex 桌面端 11 个动作顺序：MCP / 代码审查 / 侧边 / 创建聊天分支 / 压缩 / 反馈 / 归档 / 新聊天 / 状态 / 目标 / 置顶聊天 / 切换侧边栏 / 运行设置。
+- `SessionStore` 新增 6 个方法：`archiveActiveThread()`、`spawnSideChat()`、`createBranchForActiveThread(_:)` + `BranchCreationOutcome` enum、`snapshotActiveThreadForFeedback() -> URL?`（写 `~/.tapgo/feedback/<ISO>-<title>.md`）、`statusSnapshotForActiveThread() -> String`、`mcpStatusSummary() -> String`。
+- `App.swift` 新增 `tapgoOpenGoalEditor` 通知；`ChatView` 监听并设置 `editingGoalItem = GoalEditItem(text: "")`；`ContentView` 的 palette "目标" 行 post 此通知。
+- `PaletteInfoAlert` 结构体（title + message + UUID id）；`CommandPaletteView` 自含 `@State paletteInfoAlert / pendingBranchPrompt / branchNameDraft` + 关联 `.alert` 与 `.sheet`（避免在嵌套 view 内访问父 view 的 @State）。
+- 命令面板每行右侧状态：压缩显示已用 %、会话显示 thread 状态圆点 + 上下文 % + 项目名。
+**Why**: 用户给截图（Codex 桌面端命令列表抽屉式）后差距大：当前面板是 macOS sheet 居中浮层，命令集也缺 7 个（侧边/创建聊天分支/反馈/归档/MCP 状态/置顶/目标）。
+**Next**: 下一阶段补底部 mini composer（截图底部有 + 按钮 + 输入框 + 模型名 + 状态 + 发送），以及 Plan mode（需 harness 协议支持）。
+
 ## v0.5.120 — feat(chat): /review [scope] slash command — open diff-review thread
 **Date**: 2026-09-08
 **Tag**: v0.5.120

@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.121", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.121",
+                    summary: "命令面板改为底部抽屉 + 11 个动作对齐 Codex 桌面端。",
+                    changes: ["ContentView 命令面板从居中浮层改为底部 docked 抽屉：VStack + UnevenRoundedRectangle 顶部圆角。", "actions 重写为 Codex 顺序：MCP/代码审查/侧边/创建聊天分支/压缩/反馈/归档/新聊天/状态/目标/置顶 + 切换侧边栏 + 运行设置。", "SessionStore 加 archiveActiveThread / spawnSideChat / createBranchForActiveThread / snapshotActiveThreadForFeedback / statusSnapshotForActiveThread / mcpStatusSummary 6 个方法。", "App 加 tapgoOpenGoalEditor 通知；ChatView 监听；ContentView palette 目标行 post。", "CommandPaletteView 自含 state + .alert + .sheet 避免嵌套 view @State 跨域。"],
+                    why: "用户截图差距大：sheet 样式割裂；命令集缺 7 个。",
+                    next: "底部 mini composer + Plan mode。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.120", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.120",
                     summary: "/review [scope] slash command — open diff-review thread (working/staged/main/<ref>).",
                     changes: ["ComposerLocalCommand 加 .review(String) case；bare 视为 working scope，scope 名称 trimming。", "SessionStore.startReviewThread 创建引导 thread；title 编码 scope 让会话列表可区分。", "resolveReviewScope 把字符串映射到 git args（working/staged/main/<ref> 四类），hint 字段说明范围。", "makeReviewPrompt 写结构化 prompt：--stat + 完整 patch + 项目约定 + 风险/设计/测试/文档 四类审查。", "ChatView handleLocalCommand + slashMenu 接入；/review 占位补全到 /review "],
