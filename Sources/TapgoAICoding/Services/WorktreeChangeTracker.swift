@@ -9,10 +9,18 @@ struct WorktreeChangeBaseline: Sendable {
     let ignoredPaths: Set<String>
 }
 
+struct WorktreeFileStat: Equatable, Sendable {
+    let path: String
+    let additions: Int
+    let deletions: Int
+}
+
 struct WorktreeChangeStats: Equatable, Sendable {
     let files: Int
     let additions: Int
     let deletions: Int
+    /// 本 turn 触及的文件明细（相对仓库根）。git 兜底生成 FileChange 卡用。
+    let perFile: [WorktreeFileStat]
 
     var rendered: String {
         "files=\(files)\nadditions=\(additions)\ndeletions=\(deletions)"
@@ -40,7 +48,7 @@ enum WorktreeChangeTracker {
                 cwd: root
               ) else { return nil }
 
-        var paths: Set<String> = []
+        var perFile: [WorktreeFileStat] = []
         var additions = 0
         var deletions = 0
         let numstat = String(decoding: numstatData, as: UTF8.self)
@@ -49,27 +57,46 @@ enum WorktreeChangeTracker {
             guard columns.count == 3 else { continue }
             let path = String(columns[2])
             guard !baseline.ignoredPaths.contains(path) else { continue }
-            paths.insert(path)
-            additions += Int(columns[0]) ?? 0
-            deletions += Int(columns[1]) ?? 0
+            let added = Int(columns[0]) ?? 0
+            let removed = Int(columns[1]) ?? 0
+            perFile.append(WorktreeFileStat(path: path, additions: added, deletions: removed))
+            additions += added
+            deletions += removed
         }
 
         for path in nulSeparatedPaths(untrackedData)
             where !baseline.ignoredPaths.contains(path) {
-            paths.insert(path)
             let url = root.appendingPathComponent(path)
             guard let data = try? Data(contentsOf: url), !data.isEmpty else { continue }
             let newlineCount = data.reduce(into: 0) { count, byte in
                 if byte == 0x0A { count += 1 }
             }
-            additions += newlineCount + (data.last == 0x0A ? 0 : 1)
+            let added = newlineCount + (data.last == 0x0A ? 0 : 1)
+            perFile.append(WorktreeFileStat(path: path, additions: added, deletions: 0))
+            additions += added
         }
 
+        guard !perFile.isEmpty else { return nil }
         return WorktreeChangeStats(
-            files: paths.count,
+            files: perFile.count,
             additions: additions,
-            deletions: deletions
+            deletions: deletions,
+            perFile: perFile.sorted { $0.path < $1.path }
         )
+    }
+
+    /// 为每个本 turn 新增的文件生成一份极简 unified diff（全部 + 行），
+    /// 供 FileChange 卡点开审核。二进制/超大文件返回空 diff（卡片仍显示统计）。
+    static func untrackedDiff(root: URL, path: String, additions: Int) -> String {
+        guard additions <= 2000, additions > 0 else { return "" }
+        let url = root.appendingPathComponent(path)
+        guard let data = try? Data(contentsOf: url),
+              let content = String(data: data, encoding: .utf8) else { return "" }
+        let body = content
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { "+" + $0 }
+            .joined(separator: "\n")
+        return "--- /dev/null\n+++ \(path)\n@@ -0,0 +1,\(additions) @@\n" + body
     }
 
     private static func changedPaths(cwd: URL) -> Set<String> {

@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 import TapgoCore
 
 // MARK: - Codex-style quiet file-change row
@@ -33,11 +34,16 @@ struct FileChangeRowView: View {
     let change: FileChange
     @EnvironmentObject private var workspace: WorkspaceStore
     @State private var showDiff = false
+    @State private var showHTMLPreview = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     private var added: Int { Self.addedLines(in: change.diff) }
     private var removed: Int { Self.removedLines(in: change.diff) }
     private var failed: Bool { change.status == .failed || change.status == .denied }
+    /// html/htm 文件提供内部浏览器预览。
+    private var isPreviewableHTML: Bool {
+        ["html", "htm"].contains((change.path as NSString).pathExtension.lowercased())
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -98,11 +104,19 @@ struct FileChangeRowView: View {
                 Button { revealInFinder() } label: {
                     Label("在访达中显示", systemImage: "folder")
                 }
+                if isPreviewableHTML, FileManager.default.fileExists(atPath: FileEditBatchView.resolve(change.path, in: workspace).path) {
+                    Button { showHTMLPreview = true } label: {
+                        Label("在内部浏览器预览", systemImage: "globe")
+                    }
+                }
                 if !change.diff.isEmpty {
                     Button { copy(change.diff) } label: {
                         Label("复制差异", systemImage: "doc.on.doc")
                     }
                 }
+            }
+            .sheet(isPresented: $showHTMLPreview) {
+                LocalHTMLPreviewView(fileURL: FileEditBatchView.resolve(change.path, in: workspace))
             }
 
             if showDiff, !change.diff.isEmpty {
@@ -602,4 +616,68 @@ struct DiffText: View {
         if line.hasPrefix("-") { return Color.red.opacity(0.10) }
         return Color.clear
     }
+}
+
+/// 本地 HTML 文件的内部浏览器预览：WKWebView 直接 loadFileURL，
+/// 支持同目录相对资源（css/js/图片）。Esc 或关闭按钮退出。
+struct LocalHTMLPreviewView: View {
+    let fileURL: URL
+    @Environment(\.dismiss) private var dismiss
+    @State private var controller: PreviewWebController?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "globe")
+                    .foregroundStyle(.secondary)
+                Text(fileURL.lastPathComponent)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+                .help("关闭预览")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            Divider()
+            if let controller {
+                PreviewWebView(controller: controller)
+                    .ignoresSafeArea(edges: .bottom)
+            } else {
+                Color.clear.onAppear {
+                    controller = PreviewWebController(fileURL: fileURL)
+                }
+            }
+        }
+        .frame(minWidth: 720, minHeight: 560)
+    }
+}
+
+@MainActor
+final class PreviewWebController: NSObject, ObservableObject, WKNavigationDelegate {
+    let webView = WKWebView(frame: .zero)
+
+    init(fileURL: URL) {
+        super.init()
+        webView.navigationDelegate = self
+        webView.loadFileURL(
+            fileURL,
+            allowingReadAccessTo: fileURL.deletingLastPathComponent()
+        )
+    }
+}
+
+private struct PreviewWebView: NSViewRepresentable {
+    let controller: PreviewWebController
+
+    func makeNSView(context: Context) -> WKWebView { controller.webView }
+    func updateNSView(_ nsView: WKWebView, context: Context) {}
 }

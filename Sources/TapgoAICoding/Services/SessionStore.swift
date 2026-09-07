@@ -1576,23 +1576,36 @@ final class SessionStore: ObservableObject {
             let stats = await Task.detached(priority: .utility) {
                 WorktreeChangeTracker.collect(since: baseline)
             }.value
-            guard !Task.isCancelled, let self, let stats,
+            guard !Task.isCancelled, let self, let stats, !stats.perFile.isEmpty,
                   let threadIdx = self.liveThreads.firstIndex(where: { $0.id == threadId }),
                   let turnIdx = self.liveThreads[threadIdx].turns.firstIndex(where: { $0.id == turnId })
             else { return }
             var turn = self.liveThreads[threadIdx].turns[turnIdx]
-            let id = "worktree-stats-\(turnId)"
-            let snapshot = ToolCall(
-                id: id,
-                name: "本轮变更统计",
-                arguments: "",
-                result: stats.rendered,
-                status: .running
-            )
-            if let index = turn.items.firstIndex(where: { $0.id == id }) {
-                turn.items[index] = .toolCall(snapshot)
-            } else {
-                turn.items.append(.toolCall(snapshot))
+
+            // git 兜底变更卡：codex 用命令（mkdir/cat 写文件）产出文件时协议里
+            // 没有 per-file fileChange / turn/diff 事件，用户看不到"编辑了哪些
+            // 文件、增删多少行"。这里按 baseline 差集自算 per-file 明细，生成
+            // 真正的 FileChange 项——TurnPresentation 会把连续 fileChange 折叠
+            // 成批次卡（文件名+路径+±行数+可展开 diff）。已展示过 diff 的 turn
+            // 不重复生成。
+            let alreadyHasDiff = turn.items.contains {
+                if case .fileChange = $0 { return true }
+                return false
+            }
+            guard !alreadyHasDiff else { return }
+
+            let root = baseline.repositoryRoot
+            let fileChanges = stats.perFile.map { stat in
+                FileChange(
+                    id: "worktree-\(turnId)-\(stat.path)",
+                    kind: .update,
+                    path: stat.path,
+                    diff: WorktreeChangeTracker.untrackedDiff(root: root, path: stat.path, additions: stat.additions),
+                    status: .applied
+                )
+            }
+            for change in fileChanges where !turn.items.contains(where: { $0.id == change.id }) {
+                turn.items.append(.fileChange(change))
             }
             self.liveThreads[threadIdx].turns[turnIdx] = turn
             self.liveThreads[threadIdx].updatedAt = Date()
