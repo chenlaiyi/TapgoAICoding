@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.138 — feat(ui): 更新日志 sheet 加日期筛选
+**Date**: 2026-09-08
+**Tag**: v0.5.138
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `ReleaseNotesSheet` 顶部 segmented `Picker`（4 档）：全部 / 最近 7 天 / 30 天 / 90 天。
+- 拆 `recentEntries()` 为 `parsedEntries()` 返回 `(version, title, date)`，从 `**Date**: yyyy-MM-dd` 行解析。
+- 新 `filteredEntries(range:)` 按 `DateRange.days` 截断筛选。
+- 筛选为空时显示"无符合时间范围的更新日志"。
+**Why**: Codex 桌面端 release notes 顶部分时间筛选；Tapgo 之前只展示全部。
+**Next**: Plan mode 与 harness 协议深度集成；或 NSEvent 全局 hotkey 与 view keyboardShortcut 冲突处理。
+
 ## v0.5.137 — feat(app): 全局 hotkey 注册（命令面板 11 个 action 快捷键）
 **Date**: 2026-09-08
 **Tag**: v0.5.137

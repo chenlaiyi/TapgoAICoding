@@ -979,6 +979,24 @@ private struct ArrowTextField: NSViewRepresentable {
 struct ReleaseNotesSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    /// 日期筛选范围：nil = 全部；否则 N 天内
+    @State private var dateRange: DateRange = .all
+
+    enum DateRange: String, CaseIterable, Identifiable {
+        case all = "全部"
+        case days7 = "最近 7 天"
+        case days30 = "最近 30 天"
+        case days90 = "最近 90 天"
+        var id: String { rawValue }
+        var days: Int? {
+            switch self {
+            case .all: return nil
+            case .days7: return 7
+            case .days30: return 30
+            case .days90: return 90
+            }
+        }
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -1000,7 +1018,7 @@ struct ReleaseNotesSheet: View {
                             .foregroundStyle(.secondary)
                     }
                     Divider()
-                    ForEach(Self.recentEntries(), id: \.version) { entry in
+                    ForEach(Self.filteredEntries(range: dateRange), id: \.version) { entry in
                         if let url = URL(string: Self.releaseURL(for: entry.version)) {
                             Link(destination: url) {
                                 Text("v\(entry.version) — \(entry.title)")
@@ -1014,11 +1032,22 @@ struct ReleaseNotesSheet: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
+                    if Self.filteredEntries(range: dateRange).isEmpty {
+                        Text("无符合时间范围的更新日志")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
             }
             HStack {
+                Picker("时间范围", selection: $dateRange) {
+                    ForEach(DateRange.allCases) { range in
+                        Text(range.rawValue).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
                 Spacer()
                 if let commitsURL = URL(string: "https://github.com/chenlaiyi/TapgoAICoding/commits/main") {
                     Link(destination: commitsURL) {
@@ -1039,8 +1068,9 @@ struct ReleaseNotesSheet: View {
         .frame(width: 640, height: 560)
     }
 
-    /// 读取项目根 EVOLUTION.md，提取头部 12 个 `## v...` 段。返回 (version, title) 元组列表。
-    private static func recentEntries() -> [(version: String, title: String)] {
+    /// 读取项目根 EVOLUTION.md，提取头部 12 个 `## v...` 段 + 下一行日期。
+    /// 返回 (version, title, date) 元组列表。
+    private static func parsedEntries() -> [(version: String, title: String, date: Date?)] {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()  // ContentView.swift
             .deletingLastPathComponent()  // Views
@@ -1051,19 +1081,45 @@ struct ReleaseNotesSheet: View {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else {
             return []
         }
-        return text.components(separatedBy: "\n")
-            .filter { $0.hasPrefix("## v") }
-            .prefix(12)
-            .compactMap { line -> (version: String, title: String)? in
-                // 格式：## vX.Y.Z — 标题（破折号前后可能有空格）
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        df.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        let lines = text.components(separatedBy: "\n")
+        var entries: [(String, String, Date?)] = []
+        var i = 0
+        while i < lines.count {
+            let line = lines[i]
+            if line.hasPrefix("## v") {
                 let trimmed = String(line.dropFirst(3))  // drop "## "
                 let parts = trimmed.components(separatedBy: "—")
-                guard parts.count >= 2 else { return nil }
+                guard parts.count >= 2 else { i += 1; continue }
                 let version = parts[0].trimmingCharacters(in: .whitespaces)
-                let title = parts.dropFirst().joined(separator: "—")
-                    .trimmingCharacters(in: .whitespaces)
-                return (version, title)
+                let title = parts.dropFirst().joined(separator: "—").trimmingCharacters(in: .whitespaces)
+                var date: Date? = nil
+                if i + 1 < lines.count, lines[i + 1].contains("**Date**:") {
+                    let comps = lines[i + 1].components(separatedBy: "**Date**:")
+                    if comps.count >= 2 {
+                        let s = comps[1].trimmingCharacters(in: .whitespaces)
+                        date = df.date(from: String(s.prefix(10)))
+                    }
+                }
+                entries.append((version, title, date))
+                if entries.count >= 12 { break }
             }
+            i += 1
+        }
+        return entries
+    }
+
+    /// 按时间范围筛选（all = 全部；days7/30/90 = 最近 N 天内）
+    private static func filteredEntries(range: DateRange) -> [(version: String, title: String, date: Date?)] {
+        let all = parsedEntries()
+        guard let days = range.days else { return all }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        return all.filter { entry in
+            guard let d = entry.date else { return false }
+            return d >= cutoff
+        }
     }
 
     /// GitHub release tag URL（点击跳到对应 release 页面）。
