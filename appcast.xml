@@ -3,6 +3,25 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.136</title>
+            <pubDate>Tue, 08 Sep 2026 06:15:49 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.136</link>
+            <sparkle:version>0.5.136</sparkle:version>
+            <sparkle:shortVersionString>0.5.136</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.136
+
+## Plan mode 视觉强化 — composer 顶部蓝色 banner
+
+- `ComposerView` 顶部加 `PlanModeBanner`（蓝色 brandPrimary 背景 + 灯泡图标 + "Plan mode 已开启" + "下一条消息会让 Codex 先出方案不执行工具" 副文本），与 Codex 桌面端 composer 顶部提示风格一致。
+- 当 `planningMode` 为 true（点 Plan 按钮 / palette Plan 模式 / /plan slash / tapgoTogglePlanMode 通知）时显示；点击 Send 后 `send()` 把 `planningMode = false` 重置，banner 立即消失。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.136/Tapgo-AICoding-0.5.136.zip" length="12095153" type="application/octet-stream" sparkle:edSignature="0YuF38yDrPT+cosGMyliurYWvRqEkwHe71NYCUjdn8PqE5b6E+XWobRz5xwDDSCyaAx+zSPdVM0/qqDE2dKYAQ=="/>
+        </item>
+        <item>
             <title>0.5.135</title>
             <pubDate>Tue, 08 Sep 2026 06:11:14 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.135</link>
@@ -42,42 +61,6 @@
 测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.134/Tapgo-AICoding-0.5.134.zip" length="12086695" type="application/octet-stream" sparkle:edSignature="o7e5v61n51+YG/f1OZNVo/2LaIm8DwjBstwHVKMeDa0drnqRol9o1cx7HSdfGVgcTR46m8B+8DoKyCU14IaVCA=="/>
-        </item>
-        <item>
-            <title>0.5.133</title>
-            <pubDate>Tue, 08 Sep 2026 06:02:54 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.133</link>
-            <sparkle:version>0.5.133</sparkle:version>
-            <sparkle:shortVersionString>0.5.133</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.133
-
-## 命令面板 11 个 action 快捷键完整化
-
-| Action | 快捷键 |
-|---|---|
-| MCP | ⌃⌥M |
-| 代码审查 | ⌃⌘R |
-| 侧边 | ⌃⌥S |
-| 创建聊天分支 | ⌃⌘B |
-| 压缩 | ⌃⌘K |
-| 反馈 | ⌥⌘F |
-| 归档 | ⌥⌘⌫ |
-| 状态 | ⌃⌘I |
-| Plan 模式 | ⌃⌘P |
-| 置顶聊天 | ⌥⌘P |
-| 新聊天 | ⌘N（已有） |
-| 更新日志 | ⇧⌘R（已有） |
-| 快捷键 | ⇧?（已有） |
-| 切换侧边栏 | ⌘\（已有） |
-| 运行设置 | ⌘,（已有） |
-
-均避开 macOS 系统保留快捷键（⌘Q、⌘W、⌘M、⌘T 等）。
-
-测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.133/Tapgo-AICoding-0.5.133.zip" length="12082646" type="application/octet-stream" sparkle:edSignature="xtldlOONzhyGFu7V/DCe1vOhkXyv/lgsVccf/ae4UG8Y3nSiOLs4K8/q3d20VvkhwvRffxvYys2/J9E8t4XQAA=="/>
         </item>
     </channel>
 </rss>
