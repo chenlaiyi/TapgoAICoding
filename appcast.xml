@@ -3,6 +3,37 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.119</title>
+            <pubDate>Mon, 07 Sep 2026 23:53:58 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.119</link>
+            <sparkle:version>0.5.119</sparkle:version>
+            <sparkle:shortVersionString>0.5.119</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.119
+
+## 命令面板升级为中心浮层（视觉对齐 Codex 桌面端）
+
+- ⌘K 唤起的命令面板从 macOS sheet 改为覆盖式中心浮层：560×460、`.regularMaterial` 背景模糊 + 阴影 + 圆角边框；点背景关闭；spring 弹性动画（响应 0.28s / 阻尼 0.85）；选中行缩放进场（scale 0.96 → 1）。
+- 不再沿用 sheet 的边缘滑入与系统灰底，整体观感接近 Codex 桌面端的命令面板。
+
+## Composer slash 命令补齐
+
+- **`/clear`** — 清空当前会话的全部回合 + 取消 in-flight turn；thread 元数据（id/title/projectId/cwd/goal/固定）保留；下次发消息创建全新 harness 上下文（已随 v0.5.118 发布）。
+- **`/model <query>`** — 模糊匹配 provider/model（displayName/modelID/providerName）；命中唯一即切换；0/多/未配置三态 alert 提示（已随 v0.5.118 发布）。
+- **`/init`** — 在当前项目下创建引导 thread（标题 `/init · <项目> · AGENTS.md`），预填"扫描项目结构起草 AGENTS.md"提示；用户审阅后将内容写入项目根。
+- **`/compact`** — 折叠当前会话历史：每回合的 assistant items 替换为单条 "(已 compact)" 提示；user messages、turn metadata（id/status/startedAt/completedAt/usage）和 thread 元数据保留；harness thread handle 重置使下次发消息从干净上下文开始。回合正在跑时返回 `busy`。
+
+## 命令面板与 slash 菜单同步
+
+- `/clear`、`/model`、`/init`、`/compact` 在 composer 内 `/` 唤起的 slash 菜单都有对应行；`/model` 占位补全到 `/model `，其他直接执行。
+- 提示文本同步覆盖：`输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话；输入 /compact 折叠当前会话历史。`
+
+测试覆盖 ComposerLocalCommand 30 个 case（v0.5.118 18 + /init 6 + /compact 6）+ SessionStore.compactActiveThread 单元；本机 fafamacmini 3104 passed / 12 failed（12 项失败均为 SSH 远程集成 + auth.json 环境性）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.119/Tapgo-AICoding-0.5.119.zip" length="11942716" type="application/octet-stream" sparkle:edSignature="yFVQ1dZhyf/muSC0rGItLlVT1PCJGRv1f06x9GZbu8Ik18mK8+ytHFZdpPF5baGRcGRItcUYKa7XJQQF11nJCQ=="/>
+        </item>
+        <item>
             <title>0.5.118</title>
             <pubDate>Mon, 07 Sep 2026 23:36:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.118</link>
@@ -44,43 +75,6 @@
 测试覆盖 Harness thread/status idle 终结态、WorktreeChangeTracker per-file diff / HTML 预览、Sparkle 私钥校验、Markdown 列表深度——本机 fafamacmini 3078 passed / 14 failed（其中 9 项 SSH 远程集成与 auth.json 环境性失败，2 项 AppUpdateDistributionTests 在 tag v0.5.117 后自动通过）；jkmacmini 3080 passed / 0 failed 与 v0.5.116 一致无回归。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.117/Tapgo-AICoding-0.5.117.zip" length="11914833" type="application/octet-stream" sparkle:edSignature="VySVkKHUNzOzkg9iDdPDqvro4rUEKtXlGIGr28crViVa2yr85zZ0KUAGMVP3DcNZc2xC4xOvl0UFqQcZfhYqCg=="/>
-        </item>
-        <item>
-            <title>0.5.116</title>
-            <pubDate>Mon, 07 Sep 2026 08:27:37 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.116</link>
-            <sparkle:version>0.5.116</sparkle:version>
-            <sparkle:shortVersionString>0.5.116</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.116
-
-## 插件市场
-
-- 「Tapgo 官方」插件完整支持：安装（git clone）、卸载、**启用/停用开关**（持久化到 `~/.tapgo/plugins.toml`，停用状态跨重启保留）。
-- 新增官方插件模板与 catalog 协议校验：`tapgo-plugin-sparkle-publish`（一键发版）、`tapgo-plugin-screen-permission`（TCC 自检），以及 `plugins.itapgo.com/catalog.json` 的发布示例，从模板到上架无需改代码。
-
-## 稳定性
-
-- 根治两处会让整个 App 卡死数秒到数十秒的问题：发送消息后的流式重渲染风暴（增量改为 120ms 批量上屏，过程实时可见）；滚动经过表格时 LazyVStack 无法缓存行高导致的连续重排版（表格改为换行铺开）。
-- 持久化写盘移到后台队列；会话基线采集不再阻塞发送路径。
-
-## 输出样式（对齐 Codex 桌面端）
-
-- 行内代码改为淡底胶囊，代码密集的消息不再被实色灰块切碎。
-- 有序列表跨块连续编号（1.2.3.4，不再全是 1.）；嵌套子列表缩进到父项文字下方。
-- 表格：灰色表头 + 行间细线 + 单元格换行铺开；代码块去外框；标题字号分级拉开。
-- `###` 后无空格的标题按 CommonMark 正确识别，字面量 `###` 不再上屏。
-- 过程行（编辑/终端/思考）与正文同字号，文件名亮白、路径暗灰的亮度分层。
-
-## 交互修复
-
-- 用户消息悬停操作条：从任意方向进入都可点击，复制成功显示绿色对勾。
-- 长距离滚动（回到顶部/最新）不再沿途全量布局。
-
-验证覆盖 PluginCatalog 解析与 pluginId 安全、plugins.toml 读写往返、Markdown 解析回归、真实 SSH 执行器回归与滚动压力采样（CPU 0%）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.116/Tapgo-AICoding-0.5.116.zip" length="11902451" type="application/octet-stream" sparkle:edSignature="ix6FGXKknHPBwlgUL51pz+EjfIRDL7dSkoxrrNG9MR1p1cm5PyyBAdw8j7Mj19aKy5qyPfSXifsQVkbnXux4Aw=="/>
         </item>
     </channel>
 </rss>
