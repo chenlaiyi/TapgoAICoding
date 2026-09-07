@@ -1018,6 +1018,23 @@ struct ReleaseNotesSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
             }
+            HStack {
+                Spacer()
+                if let commitsURL = URL(string: "https://github.com/chenlaiyi/TapgoAICoding/commits/main") {
+                    Link(destination: commitsURL) {
+                        Label("在 GitHub 上查看完整历史", systemImage: "arrow.up.right.square")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    }
+                }
+                if let relURL = URL(string: Self.releaseURL(for: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")) {
+                    Link(destination: relURL) {
+                        Label("查看完整 release notes", systemImage: "tag")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
         }
         .frame(width: 640, height: 560)
     }

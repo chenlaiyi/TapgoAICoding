@@ -1,4 +1,13 @@
 # Evolution Log
+## v0.5.135 — feat(ui): 更新日志 sheet 底部加 commit 历史链接
+**Date**: 2026-09-08
+**Tag**: v0.5.135
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `ReleaseNotesSheet` 底部新增 `Link(destination:)` footer：GitHub commits 列表 + 当前版本 release tag。
+**Why**: 用户从更新日志可一键跳到完整 commit 列表或 release 页面，无需手动搜。
+**Next**: Plan mode 与 harness 协议深度集成；或命令面板 + slash command 加全局 hotkey 触发。
+
 ## v0.5.134 — feat(ui): 更新日志 sheet 加 GitHub release 链接
 **Date**: 2026-09-08
 **Tag**: v0.5.134

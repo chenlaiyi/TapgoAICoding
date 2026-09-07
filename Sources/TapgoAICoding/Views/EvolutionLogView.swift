@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.135", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.135",
+                    summary: "更新日志 sheet 底部加 commit 历史 + release tag 链接。",
+                    changes: ["ReleaseNotesSheet footer Link → GitHub commits/main。", "Link → 当前 release tag URL。"],
+                    why: "用户从更新日志可一键跳完整 commit/release 列表。",
+                    next: "Plan mode 接 harness 协议 或全局 hotkey 触发。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.134", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.134",
                     summary: "更新日志 sheet 加 GitHub release 链接。",
                     changes: ["ReleaseNotesSheet 每条变 Link(destination:) 跳 release tag URL。", "recentEntries() 改返回 (version, title) 元组。", "releaseURL(for:) 辅助函数。"],
