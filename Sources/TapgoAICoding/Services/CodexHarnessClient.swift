@@ -213,6 +213,11 @@ final class CodexHarnessClient {
         images: [URL],
         baseInstructions: String? = nil,
         resumeBaseInstructions: String? = nil,
+        /// v0.5.143: when true, force turn-level approvalPolicy=`on-request`
+        /// + sandbox=`read-only` so the harness pauses on every tool call
+        /// (the user accepts the plan, then explicitly resumes execute).
+        /// Falls back to thread-level policy once plan mode is off.
+        planMode: Bool = false,
         onEvent: @escaping @MainActor (ExecEvent) -> Void
     ) async -> RunState {
         if case .running = state {
@@ -317,6 +322,14 @@ final class CodexHarnessClient {
             ]
             if let effort = TapgoConfig.reasoningEffort {
                 turnParams["effort"] = .string(effort)
+            }
+            // v0.5.143: plan mode forces turn-level policy overrides so the
+            // harness stops at every tool call. The thread-level policy is
+            // untouched — once plan mode is off, subsequent turns fall back
+            // to the user's persisted approvalPolicy / sandbox.
+            if planMode {
+                turnParams["approvalPolicy"] = .string("on-request")
+                turnParams["sandbox"] = .string("read-only")
             }
             // v0.4.1: sweep expired approval timers at the start of every
             // turn so we never carry over a deadline from the previous

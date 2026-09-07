@@ -2420,7 +2420,7 @@ struct ComposerView: View {
         } else {
             payload = t
         }
-        store.sendUserMessage(payload)
+        store.sendUserMessage(payload, planMode: planningMode)
         if !planModePersistent {
             planningMode = false  // single-shot: turn off after the plan is sent
         }

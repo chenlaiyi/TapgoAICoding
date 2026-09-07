@@ -1,4 +1,20 @@
 # Evolution Log
+## v0.5.143 — feat(protocol): Plan mode 与 harness 协议深度集成（turn-level approvalPolicy + sandbox 覆盖）
+**Date**: 2026-09-08
+**Tag**: v0.5.143
+**Test status**: 本机 3117 passed / 12 failed
+**Changed**:
+- `Sources/TapgoAICoding/Services/CodexHarnessClient.swift`:
+  - `run(...)` 加 `planMode: Bool = false` 参数；plan mode 时 turn/start 在 params 里附加 `approvalPolicy: "on-request"` + `sandbox: "read-only"`，让 harness 在每个工具调用前停下来等用户批准（thread 级策略不动，下次 send 关 plan mode 自动恢复）。
+- `Sources/TapgoAICoding/Services/SessionStore.swift`:
+  - `QueuedMessage` 加 `var planMode: Bool = false`，drain 排队消息保留原 plan mode。
+  - `sendUserMessage(_:planMode:)` / `sendNow(_:images:threadId:planMode:)` 透传到 `newRunner.run(planMode:)`。
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `send()` 调用 `store.sendUserMessage(payload, planMode: planningMode)`，文本前缀 + 协议层双重生效。
+**Why**: v0.5.136 视觉强化 → v0.5.141 常驻模式 → v0.5.143 协议层集成（EVOLUTION 累积 Next-2）。文本前缀依赖模型听话，跨 Codex app-server 版本不一致；协议层强制 read-only + 每次工具调用前询问，行为一致。
+**Next**: Codex 插件点击直接执行（不再只插入文本）；或 dock 全局 hotkey ⌘K / ⌘⇧P 真触发 dock open/close 验证。
+
+
 ## v0.5.142 — feat(ui): Composer "+" 菜单插件组接入 Codex 插件目录（实时）
 **Date**: 2026-09-08
 **Tag**: v0.5.142

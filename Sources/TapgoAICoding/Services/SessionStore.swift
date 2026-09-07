@@ -13,21 +13,25 @@ struct QueuedMessage: Identifiable, Equatable, Codable {
     let text: String
     let images: [URL]
     let enqueuedAt: Date
+    /// v0.5.143: 排队消息也保留 plan mode 标志，drain 时按原 plan mode 发送。
+    var planMode: Bool = false
 
-    init(threadId: String, text: String, images: [URL] = []) {
+    init(threadId: String, text: String, images: [URL] = [], planMode: Bool = false) {
         self.id = "q-" + UUID().uuidString
         self.threadId = threadId
         self.text = text
         self.images = images
         self.enqueuedAt = Date()
+        self.planMode = planMode
     }
 
-    init(id: String, threadId: String, text: String, images: [URL], enqueuedAt: Date) {
+    init(id: String, threadId: String, text: String, images: [URL], enqueuedAt: Date, planMode: Bool = false) {
         self.id = id
         self.threadId = threadId
         self.text = text
         self.images = images
         self.enqueuedAt = enqueuedAt
+        self.planMode = planMode
     }
 }
 
@@ -897,7 +901,7 @@ final class SessionStore: ObservableObject {
 
     // MARK: - Send user message
 
-    func sendUserMessage(_ text: String) {
+    func sendUserMessage(_ text: String, planMode: Bool = false) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImages = !attachedImages.isEmpty
         guard !trimmed.isEmpty || hasImages else { return }
@@ -913,11 +917,12 @@ final class SessionStore: ObservableObject {
             queue.append(QueuedMessage(
                 threadId: targetThreadId,
                 text: trimmed,
-                images: imagesToUse
+                images: imagesToUse,
+                planMode: planMode
             ))
             return
         }
-        sendNow(text: trimmed, images: imagesToUse, threadId: targetThreadId)
+        sendNow(text: trimmed, images: imagesToUse, threadId: targetThreadId, planMode: planMode)
     }
 
     /// Text-only send path for a workbench-owned auxiliary conversation.
@@ -942,7 +947,8 @@ final class SessionStore: ObservableObject {
     /// Start a new turn for `text` immediately (used by the composer when
     /// idle, and by the queue drain). `images` is the snapshot captured by the
     /// caller — never the live `attachedImages` store.
-    private func sendNow(text rawText: String, images: [URL], threadId requestedThreadId: String? = nil) {
+    /// v0.5.143: `planMode` 透传到 harness.run，turn 级别强制 approvalPolicy + sandbox。
+    private func sendNow(text rawText: String, images: [URL], threadId requestedThreadId: String? = nil, planMode: Bool = false) {
         let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImages = !images.isEmpty
         if requestedThreadId == nil, activeThreadId == nil { newThread() }
@@ -1083,7 +1089,8 @@ final class SessionStore: ObservableObject {
                 cwd: cwd,
                 images: images,
                 baseInstructions: base,
-                resumeBaseInstructions: persistentBase
+                resumeBaseInstructions: persistentBase,
+                planMode: planMode
             ) { [weak self] event in
                 self?.handle(event: event, threadId: threadId, turnId: turnId)
             }
@@ -1503,7 +1510,7 @@ final class SessionStore: ObservableObject {
         while let idx = queue.firstIndex(where: { $0.threadId == threadId }) {
             let next = queue.remove(at: idx)
             guard liveThreads.contains(where: { $0.id == threadId }) else { continue }
-            sendNow(text: next.text, images: next.images, threadId: next.threadId)
+            sendNow(text: next.text, images: next.images, threadId: next.threadId, planMode: next.planMode)
             return
         }
     }
