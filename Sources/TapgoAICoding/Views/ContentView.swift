@@ -86,16 +86,36 @@ struct ContentView: View {
         .sheet(isPresented: $showShortcuts) {
             ShortcutsView()
         }
-        .sheet(isPresented: $showCommandPalette) {
-            CommandPaletteView(
-                onNewTask: { beginNewTask() },
-                onSettings: {
-                    settingsPresentation = SettingsPresentation(tab: .general)
-                },
-                onToggleTrajectory: { showTrajectory.toggle() }
-            )
-            .environmentObject(workspace)
-            .environmentObject(store)
+        .overlay {
+            if showCommandPalette {
+                ZStack {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.15)) { showCommandPalette = false }
+                        }
+                        .transition(.opacity)
+                    CommandPaletteView(
+                        onNewTask: { beginNewTask() },
+                        onSettings: {
+                            settingsPresentation = SettingsPresentation(tab: .general)
+                        },
+                        onToggleTrajectory: { showTrajectory.toggle() }
+                    )
+                    .environmentObject(workspace)
+                    .environmentObject(store)
+                    .frame(width: 560, height: 460)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(DSHTheme.border.opacity(0.4), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.3), radius: 24, y: 10)
+                    .transition(.scale(scale: 0.96).combined(with: .opacity))
+                }
+                .animation(.spring(response: 0.28, dampingFraction: 0.85), value: showCommandPalette)
+            }
         }
     }
 
@@ -477,7 +497,7 @@ private struct CommandPaletteView: View {
             }
         }
         .padding(16)
-        .frame(width: 440, height: 420)
+        // Size is provided by the caller (centered overlay sets 560x460).
         .onAppear { selectedIndex = 0 }
         .onChange(of: query) { _, _ in selectedIndex = 0 }
     }
