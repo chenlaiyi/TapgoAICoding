@@ -601,6 +601,24 @@ private struct CommandPaletteView: View {
             .padding(.vertical, 8)
             .background(DSHTheme.surface.opacity(0.4))
         }
+        // Esc closes the dock (Codex desktop parity). A hidden button with
+        // `.keyboardShortcut(.escape)` is the simplest cross-platform way
+        // to bind Escape; the button never appears because the dock
+        // already owns the focus ring.
+        Button("") { onDismiss() }
+            .keyboardShortcut(.escape)
+            .buttonStyle(.borderless)
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .accessibilityHidden(true)
+        // ⌘K toggles the dock closed when it is already open
+        // (mirrors the global menu shortcut behaviour).
+        Button("") { onDismiss() }
+            .keyboardShortcut("k", modifiers: [.command])
+            .buttonStyle(.borderless)
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .accessibilityHidden(true)
         .onAppear { selectedIndex = 0 }
         .onChange(of: query) { _, _ in selectedIndex = 0 }
     }
