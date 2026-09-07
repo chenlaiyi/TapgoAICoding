@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.144</title>
+            <pubDate>Tue, 08 Sep 2026 07:55:34 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.144</link>
+            <sparkle:version>0.5.144</sparkle:version>
+            <sparkle:shortVersionString>0.5.144</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.144
+
+## 修复：Plan mode 强调色误用 brandPrimary（dark mode 下变白条 / 白色按钮）
+
+用户报告：点 Plan 按钮后顶部出现白条，按钮本身也变白色块。根因：`DSHTheme.brandPrimary` 名字误导——它不是品牌蓝，而是「主前景色」（light: `0x0F1115` 近黑 / dark: `0xF9FAFB` 近白）。PlanModeBanner / Plan toggle / Stop 按钮 / ApprovalRow 批准按钮 之前都把它当强调背景色，在 dark mode 下变成白底。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner.background`: `DSHTheme.brandPrimary` → `DSHTheme.brand`（真品牌蓝，light `0x4176E6` / dark `0x5686FE`）。
+  - Plan toggle button background: 同上。
+  - Stop 按钮圆形背景: 同上。
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 批准按钮 `.tint()`: 同上。
+- `Sources/TapgoAICoding/Views/ContentView.swift`:
+  - 顺手修 `onReceive(tapgoOpenCommandPalette)` 的 toggle bug：之前 `showCommandPalette = true` 没 toggle，⌘K 不管 dock 开闭都会"打开"，违背 Codex 桌面端 toggle 语义；改成 `toggle()` 并同步发 `paletteDidOpen` / `paletteDidClose` 让 App.swift 的 `PaletteState` 跟踪正确状态。
+
+测试：3116 passed / 13 failed（比 baseline 3117/12 多 1 个 SSH 网络性 fail，与改动无关）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.144/Tapgo-AICoding-0.5.144.zip" length="12143494" type="application/octet-stream" sparkle:edSignature="0dqIffFdsfo3cT+ky9cUy/xETTvC31oZfsjUtCNeoQPDdQVFXQ1Om2JxCyVmb2kfVG1SJOTQCFDDI/Fc1IV+CA=="/>
+        </item>
+        <item>
             <title>0.5.143</title>
             <pubDate>Tue, 08 Sep 2026 07:45:31 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.143</link>
@@ -51,32 +78,6 @@
 测试：3117 passed / 12 failed（基线一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.142/Tapgo-AICoding-0.5.142.zip" length="12141448" type="application/octet-stream" sparkle:edSignature="cW/wl0u9ZfHDj/IHkuqW4JUBGMAiPyGqRWR3M2+CZ8adqRHpuqH8O7VqO5lL3AzmP9L7MSTctNGivMet0KWnCQ=="/>
-        </item>
-        <item>
-            <title>0.5.141</title>
-            <pubDate>Tue, 08 Sep 2026 07:30:32 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.141</link>
-            <sparkle:version>0.5.141</sparkle:version>
-            <sparkle:shortVersionString>0.5.141</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.141
-
-## Plan mode 深度集成（常驻模式 + Banner 关闭按钮）+ Composer + 菜单对齐 Codex 桌面端 + type-checker 超时修复
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`
-  - **Composer "+" 菜单对齐 Codex 桌面端**：每个命令现在带"图标 + 标题 + 副标题描述"双行布局（截图对照：目标 / 计划模式 / 录制技能 等均补全描述；"附加 Tapgo AICoding"图标改为 `plus.app`；"录制技能"图标改为 `record.circle`，更贴近录音/录制语义）。
-  - 抽出 `AddMenuItem` / `AddMenuAction` / `composerAddMenuRow` / `runAddMenuAction`，把菜单项配置和渲染分离。
-  - 插件分组（5 项）从 `AgentCapabilities.skills` 切到本地静态 `addMenuPlugins`，便于未来直接换成 `PluginCatalogItem` 实时 Codex 插件目录。
-  - **Plan mode 常驻模式**：`@AppStorage("tapgo.planModePersistent")`；开启后发送消息不再重置 `planningMode`，适合多轮规划。
-  - `PlanModeBanner` 加 `isPersistent` / `onDismiss` 参数；右上角加 X 按钮；常驻模式时显示"Plan mode（常驻）"。
-  - 拆出 `handleComposerAppear` / `handleComposerDisappear`，修 Swift type-checker 在 body 多语句闭包 + 大量 onReceive 上的 O(n²) 超时（之前 release build 卡 30+ 分钟，本次秒过）。
-- `Sources/TapgoAICoding/App.swift`
-  - 加 `Notification.Name.tapgoPlanModeBannerDidDismiss`，配合 `PlanModeBanner` 的 X 按钮。
-
-测试：3117 passed / 12 failed（基线不变，12 项为 SSH 环境性问题）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.141/Tapgo-AICoding-0.5.141.zip" length="12134384" type="application/octet-stream" sparkle:edSignature="LL8k/i7FhTqhe2cdtQnCAmMo0QByuZAU6A8sbYs+yduJYfEyUTjfGcfEIDAskryFVgzPRUe8n1jtHpLTi/OeBg=="/>
         </item>
     </channel>
 </rss>
