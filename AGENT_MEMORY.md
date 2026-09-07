@@ -35,3 +35,9 @@
 - 入口：`AGENTS.md`（开发约定） → `AGENT_MEMORY.md`（本文件，长期记忆快照） → `EVOLUTION.md`（版本演进日志）。
 - 后续 Codex 会话可读取本文件作为稳定背景，避免每次重述项目事实。
 - 临时任务、当前版本、未完成进度、思考过程、凭据不进本文件；这些只在会话内或 EVOLUTION 里维护。
+
+## 用户全局偏好（2026-09-07 更新）
+
+- **今后所有任务都由 Codex 自己完成，不再委派给 MiniMax Code（含 `MiniMax Code.app` 桌面应用、`codex exec` CLI、其它 sub-agent 等）。**
+- 这条规则覆盖 `<INSTRUCTIONS>` 中"MiniMax Code 优先协作"段落；用户已明确要求 Codex 独立完成所有实质性工作。
+- Codex 不再因"AGENTS.md 最高优先级规则"主动委派；除非用户单次任务里临时追加委派指令，否则一切任务由 Codex 直接执行。
