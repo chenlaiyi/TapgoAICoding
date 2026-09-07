@@ -3,6 +3,32 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.141</title>
+            <pubDate>Tue, 08 Sep 2026 07:30:32 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.141</link>
+            <sparkle:version>0.5.141</sparkle:version>
+            <sparkle:shortVersionString>0.5.141</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.141
+
+## Plan mode 深度集成（常驻模式 + Banner 关闭按钮）+ Composer + 菜单对齐 Codex 桌面端 + type-checker 超时修复
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`
+  - **Composer "+" 菜单对齐 Codex 桌面端**：每个命令现在带"图标 + 标题 + 副标题描述"双行布局（截图对照：目标 / 计划模式 / 录制技能 等均补全描述；"附加 Tapgo AICoding"图标改为 `plus.app`；"录制技能"图标改为 `record.circle`，更贴近录音/录制语义）。
+  - 抽出 `AddMenuItem` / `AddMenuAction` / `composerAddMenuRow` / `runAddMenuAction`，把菜单项配置和渲染分离。
+  - 插件分组（5 项）从 `AgentCapabilities.skills` 切到本地静态 `addMenuPlugins`，便于未来直接换成 `PluginCatalogItem` 实时 Codex 插件目录。
+  - **Plan mode 常驻模式**：`@AppStorage("tapgo.planModePersistent")`；开启后发送消息不再重置 `planningMode`，适合多轮规划。
+  - `PlanModeBanner` 加 `isPersistent` / `onDismiss` 参数；右上角加 X 按钮；常驻模式时显示"Plan mode（常驻）"。
+  - 拆出 `handleComposerAppear` / `handleComposerDisappear`，修 Swift type-checker 在 body 多语句闭包 + 大量 onReceive 上的 O(n²) 超时（之前 release build 卡 30+ 分钟，本次秒过）。
+- `Sources/TapgoAICoding/App.swift`
+  - 加 `Notification.Name.tapgoPlanModeBannerDidDismiss`，配合 `PlanModeBanner` 的 X 按钮。
+
+测试：3117 passed / 12 failed（基线不变，12 项为 SSH 环境性问题）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.141/Tapgo-AICoding-0.5.141.zip" length="12134384" type="application/octet-stream" sparkle:edSignature="LL8k/i7FhTqhe2cdtQnCAmMo0QByuZAU6A8sbYs+yduJYfEyUTjfGcfEIDAskryFVgzPRUe8n1jtHpLTi/OeBg=="/>
+        </item>
+        <item>
             <title>0.5.140</title>
             <pubDate>Tue, 08 Sep 2026 06:45:18 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.140</link>
@@ -48,27 +74,6 @@
 测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.139/Tapgo-AICoding-0.5.139.zip" length="12120894" type="application/octet-stream" sparkle:edSignature="4PAu0oMoK+FGP13LU4ppZqukFRg1C133C4VXcKIYd0+K3taZRzTOPFCOMfYVwVq6BcxbeSJ1VqKAPvECl+XbBQ=="/>
-        </item>
-        <item>
-            <title>0.5.138</title>
-            <pubDate>Tue, 08 Sep 2026 06:24:25 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.138</link>
-            <sparkle:version>0.5.138</sparkle:version>
-            <sparkle:shortVersionString>0.5.138</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.138
-
-## 更新日志 sheet 加日期筛选
-
-- `ReleaseNotesSheet` 顶部加 segmented `Picker`（4 档）：**全部 / 最近 7 天 / 最近 30 天 / 最近 90 天**。
-- 拆 `recentEntries()` 为 `parsedEntries()` 返回 `(version, title, date)`，从 `**Date**: yyyy-MM-dd` 行解析日期。
-- 新 `filteredEntries(range:)` 按 `DateRange.days` 截断筛选。
-- 筛选后为空时显示"无符合时间范围的更新日志"。
-
-测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.138/Tapgo-AICoding-0.5.138.zip" length="12110702" type="application/octet-stream" sparkle:edSignature="+qcuXq7xOyZHn3hl5m+6LES8fj9yyEOe5tU2HLiATyGy1/T531zu1kyuEQNzmOvg78wLGLnNsxqHRMsqJBvtDg=="/>
         </item>
     </channel>
 </rss>
