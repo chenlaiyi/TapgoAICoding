@@ -1,12 +1,5 @@
 import Foundation
 
-// MARK: - iOS 工程自包含副本
-// 本文件是 Sources/TapgoCore/MobileRemoteLink.swift 的同源拷贝，供独立 iOS 工程
-// (mobile/ios/) 在不通过 SwiftPM 引用 TapgoCore 模块的情况下也能用同一份协议。
-// 一致性由 mobile/ios/Scripts/check-sync.sh 通过 diff 强制保证：
-// 任何一端改动必须同步另一端，否则 build 脚本会拒绝并打印差异。
-// MARK: - iOS 工程自包含副本
-
 public enum MobileRemoteLink {
 
     public static let protocolVersion = 1

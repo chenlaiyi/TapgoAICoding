@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.129 — feat(ui): composer "+" 按钮对齐 Codex 桌面端下拉菜单（含 /plan + MakeHistory 双向严格回填）
+**Date**: 2026-09-08
+**Tag**: v0.5.129
+**Test status**: jkmacmini 待跑；本机 3123 passed / 12 failed
+**Changed**:
+- `ComposerView.composerAddMenu` 新 computed property：Codex 桌面端风格下拉菜单（标题"添加" + 5 组：文件和文件夹 / 附加 Tapgo AICoding / 目标 / 计划模式 / 录制技能 / 插件 sub-section）。
+- `App.swift` 加 3 个 `Notification.Name`：`tapgoAddFiles` / `tapgoAttachTapgo` / `tapgoTogglePlanMode`。
+- `ComposerView` 加对应 `onReceive` 处理器：`tapgoAddFiles` → `pickImages()`；`tapgoTogglePlanMode` → `planningMode.toggle()`。
+- `ComposerView.body` 内的旧 `Menu { ... }` 替换为 `composerAddMenu` 引用；Label 全部 5/6 项已对齐。
+**Why**: 用户给截图（Codex 桌面端命令面板下拉样式），当前 Tapgo composer "+" 按钮只有"图片附件 + 插入技能"两项；需要分组（文件/附件/目标/计划/录制/插件）+ 标题 + 子分组。
+**Next**: Plan mode 接入 harness 协议层（让 Codex app-server 知道"plan only"语义并禁用工具）；或 ChatView 全局命令面板里加 "settings" / "release notes" 等入口。
+
 ## v0.5.128 — test: MakeHistory parity 双向严格 + 历史段回填
 **Date**: 2026-09-08
 **Tag**: v0.5.128

@@ -35,6 +35,13 @@ final class PhoneRemoteController: ObservableObject {
     @Published private(set) var linkString: String = ""
     /// 近 8s 内手机有轮询 (H5 每 2s 一次)。
     @Published private(set) var phoneConnected: Bool = false
+    /// 6 位配对码 (用于 v1 原生 iOS App `tapgo-pair://` 扫码/手动输入)。
+    /// 60 秒 TTL, 每 TTL 触发轮换。Mac 端 ConnectPhoneView 渲染此码 + tapgo-pair QR。
+    @Published private(set) var pairingCode: MobilePairing.PairCode? = nil
+    /// `tapgo-pair://<macDeviceId>?code=...&host=...&port=...&v=1#hostname` (iOS 扫码后触发 .onOpenURL)。
+    @Published private(set) var pairingURLString: String = ""
+    /// Mac 端稳定设备 ID (UserDefaults 持久化), 用于 pairingURL 的 host 字段。
+    let macDeviceId: String
     @Published private(set) var lanAddress: String?
     /// Tailscale 地址 (100.64/10); nil 表示本机不在 tailnet。
     @Published private(set) var tailnetAddress: String?
@@ -89,7 +96,9 @@ final class PhoneRemoteController: ObservableObject {
     /// 项目列表 / 活动项目来源 (v0.5.20 手机端项目切换)。
     private let workspace: WorkspaceStore
     private var listener: NWListener?
+    private var pairingListener: PairingLinkListener?
     private var token: String
+    private var pairingTimer: Timer?
     private var rev = 0
     private var lastPollAt: Date?
     private var presenceTimer: Timer?
@@ -100,6 +109,9 @@ final class PhoneRemoteController: ObservableObject {
 
     static let tokenKey = "tapgo.remote.token"
     static let controlEnabledKey = "tapgo.remote.controlEnabled"
+    static let macDeviceIdKey = "tapgo.remote.macDeviceId"
+    /// 配对码轮换周期. 与 MobilePairing.defaultTTL 对齐.
+    static let pairingTTL: TimeInterval = MobilePairing.defaultTTL
     /// H5 轮询间隔 2s, 允许丢一轮。
     static let presenceTimeout: TimeInterval = 8
 
@@ -148,6 +160,11 @@ final class PhoneRemoteController: ObservableObject {
         if saved != initial { defaults.set(initial, forKey: Self.tokenKey) }
         token = initial
         controlEnabled = (defaults.object(forKey: Self.controlEnabledKey) as? Bool) ?? true
+        let savedDeviceId = defaults.string(forKey: Self.macDeviceIdKey) ?? ""
+        let generatedId = UUID().uuidString
+        let chosenDeviceId = savedDeviceId.isEmpty ? generatedId : savedDeviceId
+        if savedDeviceId.isEmpty { defaults.set(chosenDeviceId, forKey: Self.macDeviceIdKey) }
+        macDeviceId = chosenDeviceId
         let addresses = Self.detectAddresses()
         lanAddress = addresses.lan
         tailnetAddress = addresses.tailnet
@@ -175,11 +192,17 @@ final class PhoneRemoteController: ObservableObject {
         status = .starting
         relayTunnel?.start()
         startListener(on: UInt16(PhoneRemote.defaultPort), fallbackToAutoPort: true)
+        startPairingLinkListener()
+        startPairingTimer()
     }
 
     func stop() {
         listener?.cancel()
         listener = nil
+        pairingListener?.stop()
+        pairingListener = nil
+        pairingTimer?.invalidate()
+        pairingTimer = nil
         pendingBuffers.removeAll()
         presenceTimer?.invalidate()
         presenceTimer = nil
@@ -565,6 +588,52 @@ final class PhoneRemoteController: ObservableObject {
     }
 
     // MARK: Link & identity
+
+    // MARK: 原生 iOS 配对 (v1 协议: 6 位码 + tapgo-pair:// + Bonjour _tapgo-pair._tcp)
+
+    /// 立即生成新的 6 位配对码 + tapgo-pair:// URL; 同步触发 UI 刷新。
+    /// 每 60 秒由 pairingTimer 自动调用一次。
+    func refreshPairingCode(now: Date = Date()) {
+        let host = lanAddress ?? "127.0.0.1"
+        let code = MobilePairing.generateCode(port: port, now: now)
+        pairingCode = code
+        if let url = MobilePairing.pairingURL(
+            macDeviceId: macDeviceId,
+            hostname: Self.hostNameCandidates().first ?? "Mac",
+            host: host,
+            code: code
+        ) {
+            pairingURLString = url.absoluteString
+        } else {
+            pairingURLString = ""
+        }
+    }
+
+    /// 启动 60 秒配对码轮换定时器。
+    private func startPairingTimer() {
+        pairingTimer?.invalidate()
+        pairingTimer = Timer.scheduledTimer(withTimeInterval: Self.pairingTTL, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshPairingCode() }
+        }
+    }
+
+    /// 启动 Bonjour _tapgo-pair._tcp 监听器, 让 iOS 端 PairingLink (NWBrowser) 能发现并长链接。
+    private func startPairingLinkListener() {
+        guard pairingListener == nil else { return }
+        let listener = PairingLinkListener(
+            serviceType: MobileRemoteLink.bonjourServiceType,
+            port: UInt16(port),
+            onId: { [weak self] id in
+                Task { @MainActor in self?.handlePairingId(id) }
+            }
+        )
+        pairingListener = listener
+        listener.start(on: queue)
+    }
+
+    private func handlePairingId(_ id: String) {
+        // 占位: 后续可扩展, 给 iOS 端推 sessionUpdate / message push.
+    }
 
     private func rebuildLink() {
         guard status == .running else {

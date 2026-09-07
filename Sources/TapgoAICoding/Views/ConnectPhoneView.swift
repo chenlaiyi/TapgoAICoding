@@ -14,11 +14,16 @@ struct ConnectPhoneView: View {
     @EnvironmentObject private var remote: PhoneRemoteController
     @Environment(\.dismiss) private var dismiss
     @State private var qrImage: NSImage? = nil
+    /// 原生 iOS App `tapgo-pair://` QR (与 H5 QR 区分; 6 位配对码走 iOS 原生 App).
+    @State private var pairingQRImage: NSImage? = nil
+    @State private var pairingRemaining: Int = 0
+    @State private var pairingTimer: Timer? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
             scanCard
+            pairingCard
             controlCard
             hintFooter
             doneFooter
@@ -29,6 +34,8 @@ struct ConnectPhoneView: View {
         .onAppear {
             remote.startIfNeeded()
             qrImage = remote.makeQRImage()
+            refreshPairingCard()
+            startPairingCountdown()
         }
         .onChange(of: remote.linkString) { _ in
             qrImage = remote.makeQRImage()
@@ -36,6 +43,13 @@ struct ConnectPhoneView: View {
         .onChange(of: remote.activeMode) { _ in
             qrImage = remote.makeQRImage()
         }
+        .onChange(of: remote.pairingCode) { _ in
+            refreshPairingCard()
+        }
+        .onChange(of: remote.pairingURLString) { _ in
+            refreshPairingCard()
+        }
+        .onDisappear { pairingTimer?.invalidate(); pairingTimer = nil }
     }
 
     private func tunnelDotColor(_ state: PhoneRelayTunnel.State) -> Color {
@@ -53,6 +67,102 @@ struct ConnectPhoneView: View {
         case .connecting: return "连接中…"
         case .connected: return "已连接"
         case .failed(let message): return "异常 · \(message)"
+        }
+    }
+
+    // MARK: - 原生 iOS 配对码 (v1 协议: tapgo-pair://)
+
+    private var pairingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "iphone.gen3.radiowaves.left.and.right")
+                    .foregroundStyle(.tint)
+                Text("原生 iOS 配对码").font(.headline)
+                Spacer()
+                if remote.pairingCode != nil {
+                    Label("\(pairingRemaining) 秒后刷新", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text("给预装原生 App 「点点够终端」的 iPhone 扫码 / 手动输入下方 6 位码。")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: 16) {
+                if let qr = pairingQRImage {
+                    Image(nsImage: qr)
+                        .resizable()
+                        .interpolation(.none)
+                        .frame(width: 120, height: 120)
+                        .background(Color.white)
+                        .cornerRadius(8)
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.secondary.opacity(0.1))
+                        .frame(width: 120, height: 120)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    if let code = remote.pairingCode {
+                        Text(code.value)
+                            .font(.system(size: 36, weight: .bold, design: .monospaced))
+                            .tracking(4)
+                            .textSelection(.enabled)
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(code.value, forType: .string)
+                        } label: {
+                            Label("复制配对码", systemImage: "doc.on.doc")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.borderless)
+                    } else {
+                        Text("—")
+                            .font(.system(size: 36, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Hostname: \(remote.lanAddress ?? Host.current().localizedName ?? "Mac")")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.accentColor.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.accentColor.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func refreshPairingCard() {
+        guard let urlString = remote.pairingURLString.nonEmpty,
+              let url = URL(string: urlString) else {
+            pairingQRImage = nil
+            return
+        }
+        pairingQRImage = PairingQRRenderer.render(url: url, size: 240)
+    }
+
+    private func startPairingCountdown() {
+        pairingTimer?.invalidate()
+        updateRemaining()
+        pairingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak remote] _ in
+            Task { @MainActor in
+                updateRemaining()
+                _ = remote
+            }
+        }
+    }
+
+    private func updateRemaining() {
+        if let code = remote.pairingCode {
+            pairingRemaining = max(0, code.remainingSeconds())
+        } else {
+            pairingRemaining = 0
         }
     }
 
@@ -401,4 +511,24 @@ extension PhoneRemoteController {
             return "请点击『启动服务』重试。"
         }
     }
+}
+
+/// 渲染 tapgo-pair:// URL 为 NSImage (使用 CoreImage CIQRCodeGenerator).
+fileprivate enum PairingQRRenderer {
+    static func render(url: URL, size: CGFloat) -> NSImage? {
+        guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(url.absoluteString.data(using: .utf8), forKey: "inputMessage")
+        filter.setValue("H", forKey: "inputCorrectionLevel")
+        guard let output = filter.outputImage else { return nil }
+        let scale = size / output.extent.width
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let rep = NSCIImageRep(ciImage: scaled)
+        let nsImage = NSImage(size: NSSize(width: size, height: size))
+        nsImage.addRepresentation(rep)
+        return nsImage
+    }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }

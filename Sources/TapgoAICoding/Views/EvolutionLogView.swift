@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.129", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.129",
+                    summary: "composer \"+\" 按钮对齐 Codex 桌面端下拉菜单（含 /plan + MakeHistory 双向严格）。",
+                    changes: ["ComposerView.composerAddMenu 新增：5 组下拉（文件/附件/目标/计划/录制/插件）。", "App.swift 加 3 个 Notification.Name。", "ComposerView onReceive 处理器接入（pickImages / planningMode.toggle）。", "ComposerView body 内 + 按钮引用替换为 composerAddMenu。"],
+                    why: "用户给截图（Codex 桌面端命令面板下拉样式）后差距大。",
+                    next: "Plan mode 接入 harness 协议层 或 全局命令面板加 settings/release notes 入口。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.128", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.128",
                     summary: "test: MakeHistory parity 双向严格 + 历史 19 段回填（v0.3.0/2/3、v0.4.0/1/3、v0.5.0/1/4、v0.5.52、v0.5.58-61、v0.5.80/81、v0.5.84-99、v0.5.105、v0.5.108）。",
                     changes: ["MakeHistoryParityTests 加双向严格 expect。", "makeHistory 数组补 19 个 EvolutionEntry（commit SHA 来自 git log 反查）。", "EVOLUTION.md 头部 v0.5.5 之前补 12 个段。"],

@@ -206,6 +206,8 @@ struct ChatView: View {
     @FocusState private var searchFieldFocused: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
+
+
     var body: some View {
         VStack(spacing: 0) {
             if let thread = activeThread, hasConversation {
@@ -1151,6 +1153,68 @@ struct ComposerView: View {
     var contentWidth: CGFloat = 760
     var isWelcome = false
     @State private var preserveDraftOnProjectChange = false
+
+    /// Codex desktop parity: composer "+" 按钮弹出的下拉菜单。结构
+    /// 模拟截图：标题"添加"、分组（文件 / 附件 / 目标 / 计划 / 录制 /
+    /// 插件），底部"添加文件等内容"输入框。
+    @ViewBuilder
+    private var composerAddMenu: some View {
+        Menu {
+            Text("添加")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.secondary)
+            Button {
+                pickImages()
+            } label: {
+                Label("文件和文件夹", systemImage: "folder")
+            }
+            Button {
+                NotificationCenter.default.post(name: .tapgoAttachTapgo, object: nil)
+            } label: {
+                Label("附加 Tapgo AICoding", systemImage: "plus.app")
+            }
+            Divider()
+            Button {
+                editingGoalItem = GoalEditItem(text: store.liveThreads
+                    .first(where: { $0.id == store.activeThreadId })?.goal ?? "")
+            } label: {
+                Label("目标", systemImage: "target")
+            }
+            Button {
+                planningMode.toggle()
+            } label: {
+                Label("计划模式", systemImage: "lightbulb")
+            }
+            Button {
+                NotificationCenter.default.post(
+                    name: .tapgoRequestOpenSettings,
+                    object: SettingsView.Tab.computer.rawValue
+                )
+            } label: {
+                Label("录制技能", systemImage: "video.bubble")
+            }
+            if !AgentCapabilities.skills.isEmpty {
+                Divider()
+                Text("插件")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                ForEach(AgentCapabilities.skills) { item in
+                    Button {
+                        NotificationCenter.default.post(name: .tapgoInsertSkill, object: item.name)
+                    } label: {
+                        Label(item.name, systemImage: item.icon)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "plus")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help("添加")
+        .accessibilityLabel("添加（文件/附件/插件/目标/计划）")
+    }
+
     @State private var pendingDraftProjectID: String?
     @State private var choosingWelcomeProject = false
     @State private var choosingPermission = false
@@ -1312,43 +1376,11 @@ struct ComposerView: View {
                 }
 
                 HStack(spacing: 8) {
-                    // The "+" holds both image attachment and skill references.
-                    Menu {
-                        Button {
-                            pickImages()
-                        } label: {
-                            Label("添加图片附件…", systemImage: "photo")
-                        }
-                        if isWelcome {
-                            Divider()
-                            Button(editorExpanded ? "收起输入框" : "展开输入框") { editorExpanded.toggle() }
-                            if computerUseShowInComposer {
-                                Button("电脑控制设置…") {
-                                    NotificationCenter.default.post(name: .tapgoRequestOpenSettings, object: SettingsView.Tab.computer.rawValue)
-                                }
-                            }
-                        }
-                        if !AgentCapabilities.skills.isEmpty {
-                            Divider()
-                            Menu {
-                                ForEach(AgentCapabilities.skills) { item in
-                                    Button {
-                                        NotificationCenter.default.post(name: .tapgoInsertSkill, object: item.name)
-                                    } label: {
-                                        Label(item.name, systemImage: item.icon)
-                                    }
-                                }
-                            } label: {
-                                Label("插入技能", systemImage: "wrench.adjustable")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .help("添加附件 / 插入技能")
-                    .accessibilityLabel("添加附件或技能")
+                    // Codex desktop parity: the "+" button opens a dropdown
+                    // titled "添加" with grouped actions (files, Tapgo,
+                    // 目标 / 计划 / 录制 / 插件). Each action maps to either
+                    // a local command or a Tapgo capability.
+                    composerAddMenu
 
                     if !isWelcome {
                         existingProjectChip
