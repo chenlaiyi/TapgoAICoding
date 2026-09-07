@@ -1,42 +1,65 @@
 #!/usr/bin/env bash
-# 强制保持 mobile/ios/Sources/MobilePairing.swift 与 Sources/TapgoCore/MobilePairing.swift
-# 的协议层字节级一致 (忽略 iOS 副本末尾的 "iOS 工程自包含副本" 注释块)。
-# 在任何一边改动 MobilePairing 时, 必须同步另一边, 否则此脚本非零退出。
-set -euo pipefail
+# 强制保持 mobile/ios/Sources/ 协议层副本与 Sources/TapgoCore/ 字节级一致.
+#
+# 校验两个协议文件:
+#   1. MobilePairing.swift (v0.5.5+) — iOS 副本末尾有 `// MARK: - iOS 工程自包含副本`
+#      注释块, 校验时剥离.
+#   2. MobileRemoteLink.swift (v1.0.0+) — 两端字节级一致.
+#
+# 任何一端协议字段改动必须同步另一端, 否则此脚本非零退出.
+set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-CORE="$ROOT/Sources/TapgoCore/MobilePairing.swift"
-IOS="$ROOT/mobile/ios/Sources/MobilePairing.swift"
+IOS_DIR="$ROOT/mobile/ios"
+CORE_DIR="$ROOT/Sources/TapgoCore"
+MARKER="// MARK: - iOS 工程自包含副本"
 
-if [[ ! -f "$CORE" || ! -f "$IOS" ]]; then
-  echo "check-sync: 缺少 MobilePairing.swift (core=$CORE ios=$IOS)" >&2
-  exit 2
-fi
+fail=0
+check_pair() {
+  local name="$1"
+  local core="$CORE_DIR/${name}.swift"
+  local ios="$IOS_DIR/Sources/${name}.swift"
 
-# 1) 剥离 iOS 副本中 // MARK: - iOS 工程自包含副本 之后的所有内容。
-# 2) 把末尾的空行 (若有) 一并去掉, 让 stripped 与 Core 字节级一致。
-ios_stripped=$(mktemp)
-trap 'rm -f "$ios_stripped"' EXIT
-awk '
-  /^\/\/ MARK: - iOS 工程自包含副本/ { found=1; next }
-  found==1 { next }
-  { print }
-' "$IOS"   | awk 'BEGIN{trailing=0} {lines[NR]=$0; if($0!="")trailing=NR} END{for(i=1;i<=trailing;i++)print lines[i]}'   > "$ios_stripped"
+  if [[ ! -f "$core" ]]; then
+    echo "check-sync: 缺少 $core" >&2
+    fail=1; return
+  fi
+  if [[ ! -f "$ios" ]]; then
+    echo "check-sync: 缺少 $ios" >&2
+    fail=1; return
+  fi
 
-# 如果 Core 末尾没有 newline, 给 stripped 补一个, 保证字节级一致
-if [[ "$(tail -c 1 "$CORE" | wc -l | tr -d ' ')" == "0" ]]; then
-  printf '\n' >> "$ios_stripped"
-fi
+  local ios_stripped
+  ios_stripped=$(mktemp)
+  # 剥离 iOS 副本中 MARK 注释行之后的所有内容 (适配 MobilePairing 有 MARK 的情况)
+  awk -v marker="$MARKER" '
+    index($0, marker) > 0 { found=1; next }
+    found==1 { next }
+    { print }
+  ' "$ios" | awk 'BEGIN{trailing=0} {lines[NR]=$0; if($0!="")trailing=NR} END{for(i=1;i<=trailing;i++)print lines[i]}' > "$ios_stripped"
 
-core_hash=$(shasum -a 256 "$CORE" | awk '{print $1}')
-ios_hash=$(shasum -a 256 "$ios_stripped" | awk '{print $1}')
+  # Core 末尾 newline 兜底
+  if [[ "$(tail -c 1 "$core" | wc -l | tr -d ' ')" == "0" ]]; then
+    printf '\n' >> "$ios_stripped"
+  fi
 
-if [[ "$core_hash" != "$ios_hash" ]]; then
-  echo "MobilePairing.swift 同步失败：" >&2
-  diff "$CORE" "$ios_stripped" >&2 || true
-  echo "" >&2
-  echo "请让 ../../Sources/TapgoCore/MobilePairing.swift 与本文件保持一致 (忽略底部 MARK 注释)。" >&2
+  local core_hash ios_hash
+  core_hash=$(shasum -a 256 "$core" | awk '{print $1}')
+  ios_hash=$(shasum -a 256 "$ios_stripped" | awk '{print $1}')
+
+  if [[ "$core_hash" != "$ios_hash" ]]; then
+    echo "$name.swift 同步失败：" >&2
+    diff "$core" "$ios_stripped" >&2 || true
+    fail=1
+  else
+    echo "$name 同步校验通过 (sha256=${core_hash:0:12}…)"
+  fi
+  rm -f "$ios_stripped"
+}
+
+check_pair MobilePairing
+check_pair MobileRemoteLink
+
+if [[ $fail -ne 0 ]]; then
   exit 1
 fi
-
-echo "MobilePairing 同步校验通过 (sha256=${core_hash:0:12}\u2026)"
