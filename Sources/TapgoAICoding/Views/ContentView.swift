@@ -72,6 +72,7 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenCommandPalette)) { _ in
             showCommandPalette = true
+                                NotificationCenter.default.post(name: .tapgoPaletteDidOpen, object: nil)
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoToggleSidebar)) { _ in
             withAnimation(.easeInOut(duration: 0.18)) { sidebarVisible.toggle() }
@@ -104,7 +105,7 @@ struct ContentView: View {
                                 settingsPresentation = SettingsPresentation(tab: .general)
                             },
                             onToggleTrajectory: { showTrajectory.toggle() },
-                        onDismiss: { withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { showCommandPalette = false } }
+                        onDismiss: { withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { showCommandPalette = false; NotificationCenter.default.post(name: .tapgoPaletteDidClose, object: nil) } }
                         )
                         .environmentObject(workspace)
                         .environmentObject(store)

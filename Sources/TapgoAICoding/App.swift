@@ -31,6 +31,13 @@ struct TapgoAICodingApp: App {
         // 在 dock 关闭时也能触发（SwiftUI keyboardShortcut 仅在 view focus
         // 时工作；NSEvent.addLocalMonitorForEvents 是 macOS app 范围的）。
         installGlobalHotkeyMonitor()
+        // 监听命令面板开关 → 更新 PaletteState.isOpen，让 NSEvent 监听器决定是否消费
+        NotificationCenter.default.addObserver(forName: .tapgoPaletteDidOpen, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { PaletteState.isOpen = true }
+        }
+        NotificationCenter.default.addObserver(forName: .tapgoPaletteDidClose, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { PaletteState.isOpen = false }
+        }
         // Cross-device durable memory: pull any newer memory files from the
         // iCloud Drive mirror at startup so the user sees what they wrote on
         // their other Macs (JKmacmini / fafamacmini / laptop). Detached so a
@@ -247,6 +254,13 @@ extension Notification.Name {
     static let tapgoOpenEvolution = Notification.Name("tapgo.openEvolution")
 }
 
+/// 命令面板开关状态：让 NSEvent 监听器在 dock 打开时不消费事件，
+/// 让 dock 内的 keyboardShortcut 正常处理 ↩ 选。
+@MainActor
+enum PaletteState {
+    static var isOpen: Bool = false
+}
+
 // MARK: - 全局 hotkey monitor
 
 /// 命令面板 11 个 action 的快捷键在 dock 关闭时也能触发。每个条目
@@ -280,6 +294,10 @@ private func installGlobalHotkeyMonitor() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
         let key = "\(event.keyCode):\(event.modifierFlags.intersection(.deviceIndependentFlagsMask).rawValue)"
         if let name = map[key] {
+            // dock 开着时不消费事件，让 dock 内的 keyboardShortcut 正常处理 ↩ 选
+            if MainActor.assumeIsolated({ PaletteState.isOpen }) {
+                return event
+            }
             NotificationCenter.default.post(name: name, object: nil)
             return nil  // 消费事件
         }
@@ -299,4 +317,6 @@ extension Notification.Name {
     static let tapgoPinEmpty = Notification.Name("tapgo.pinEmpty")
     static let tapgoOpenReleaseNotes = Notification.Name("tapgo.openReleaseNotes")
     static let tapgoShowShortcutsGlobal = Notification.Name("tapgo.showShortcutsGlobal")
+    static let tapgoPaletteDidOpen = Notification.Name("tapgo.paletteDidOpen")
+    static let tapgoPaletteDidClose = Notification.Name("tapgo.paletteDidClose")
 }

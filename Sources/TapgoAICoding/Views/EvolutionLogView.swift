@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.140", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.140",
+                    summary: "NSEvent 全局 hotkey 与 dock keyboardShortcut 冲突解决。",
+                    changes: ["App.swift 加 PaletteState enum。", "NSEvent 回调 dock 开着不消费事件。", "NotificationCenter observer 跟踪 dock 开关。", "ContentView 切换 showCommandPalette 时 post 通知。"],
+                    why: "v0.5.137 NSEvent 让 dock 打开时 ↩ 键失效。",
+                    next: "Plan mode 接 harness 协议 或 ⌘K/⌘⇧P 真触发 dock。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.139", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.139",
                     summary: "命令面板 11 个 action 全局 hotkey 真接通。",
                     changes: ["ComposerView body 加 5 个 onReceive 处理器。", "另外 6 个通过 tapgoShowShortcutsGlobal 通知复用。"],

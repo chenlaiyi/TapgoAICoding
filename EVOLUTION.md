@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.140 — fix(ui): NSEvent 全局 hotkey 与 dock keyboardShortcut 冲突解决
+**Date**: 2026-09-08
+**Tag**: v0.5.140
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `App.swift` 加 `@MainActor enum PaletteState { static var isOpen: Bool }`。
+- NSEvent 回调：dock 开着时不消费事件，让 dock 内的 keyboardShortcut 处理 ↩ 选。
+- NotificationCenter observer 跟踪 dock 开关。
+- `ContentView` 切换 `showCommandPalette` 时 post 通知。
+**Why**: v0.5.137 NSEvent 监听让 dock 打开时 ↩ 键失效。
+**Next**: Plan mode 与 harness 协议深度集成；或 dock 全局 hotkey ⌘K / ⌘⇧P 实际触发 dock open/close。
+
 ## v0.5.139 — feat(ui): 命令面板 11 个 action 全局 hotkey 真接通
 **Date**: 2026-09-08
 **Tag**: v0.5.139
