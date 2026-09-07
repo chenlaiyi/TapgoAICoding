@@ -34,7 +34,7 @@
 
 测试：3123 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.129/Tapgo-AICoding-0.5.129.zip" length="12064042" type="application/octet-stream" sparkle:edSignature="TRr/rl47Zoobf9/Z3zmtyIDITvIlrdyrwjV7CZyETLl4ULkCPp5inIKi9mf2dnJY85+u0KYkUrtC0jSCkx47CA=="/>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.129/Tapgo-AICoding-0.5.129.zip" length="12064042" type="application/octet-stream" sparkle:edSignature="8Wpp2TN2JB5u550VlWgijFhoeyiBM4b/SKBudyZ3SKY17mkddixHW4VJJnxF3Z8dxQi6tPil4K15L7ETvSPAAw=="/>
         </item>
         <item>
             <title>0.5.128</title>
