@@ -65,20 +65,29 @@ func runMakeHistoryParityTests(_ t: TestRunner) {
     // 按发布倒序排列的）必须都在 EVOLUTION.md 中。
     // 旧 v0.5.5 之前的版本在 makeHistory 中已存在但 EVOLUTION.md 历史
     // 有零星漏段；该测试只保证新发版始终双向同步。
-    let makeHistoryTop10: [String] = Array(versions.prefix(10))
-    // 用正则一次性抽出 vX.Y.Z 段头，避免手工按字符 split。
     let headerPattern = try! NSRegularExpression(pattern: #"^## (v\d+\.\d+\.\d+)"#)
+    let makeHistorySet = Set(versions)
+    // 过滤 v1.x（iOS 子项目版本，不在主项目 makeHistory 范围）。
     let evolutionSet: Set<String> = Set(
         evolutionSource.components(separatedBy: "\n").compactMap { line in
+            // 用正则一次性抽出 vX.Y.Z 段头，避免手工按字符 split。
             let r = NSRange(line.startIndex..., in: line)
             guard let m = headerPattern.firstMatch(in: line, range: r),
                   let verRange = Range(m.range(at: 1), in: line) else { return nil }
-            return String(line[verRange])
+            let v = String(line[verRange])
+            // 主项目 makeHistory 只覆盖 v0.5.0+，iOS 子项目用 v1.x
+            if v.hasPrefix("v1.") || v.hasPrefix("v0.0.") || v.hasPrefix("v0.1.") || v.hasPrefix("v0.2.") {
+                return nil
+            }
+            return v
         }
     )
-    let missingTop10 = makeHistoryTop10.filter { !evolutionSet.contains($0) }
-    t.expect(missingTop10.isEmpty,
-              "makeHistory 最近 10 个版本都应在 EVOLUTION.md 出现，缺失：\(missingTop10.joined(separator: ", "))")
+    let missingInEvolution = versions.filter { !evolutionSet.contains($0) }
+    t.expect(missingInEvolution.isEmpty,
+              "makeHistory 每个版本都必须在 EVOLUTION.md 出现，缺失：\(missingInEvolution.prefix(10).joined(separator: ", "))")
+    let missingInMakeHistory = evolutionSet.subtracting(makeHistorySet).sorted()
+    t.expect(missingInMakeHistory.isEmpty,
+              "EVOLUTION.md 每个版本都必须在 makeHistory 出现，缺失：\(missingInMakeHistory.prefix(10).joined(separator: ", "))")
 
     // 4. Info.plist 与 project.yml 的版本号应一致。
     var plistVersion: String? = nil
