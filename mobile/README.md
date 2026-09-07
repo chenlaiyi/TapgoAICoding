@@ -27,7 +27,12 @@
 | iOS 协议层测试 | ✅ **446 断言全部通过** | `Scripts/run-tests.sh`，本机 Mac（仅 Foundation 即可）即可跑，无需 iOS SDK |
 | iOS 13–16 真机兼容性 fix | ✅ 删 `.textInputAutocapitalization(.characters)` (iOS 15+), 改用 iOS 13+ 兼容的 `.onChange(of:perform:)` 单参数 API | 见 commit: `fix: iOS 13–16 PairingView 兼容性 (v0.5.9)` |
 | iOS SwiftUI 源码完整编译 | ✅ `mobile/ios/Sources/` 在 macOS SDK 26.5 下 `swift build` 完整通过 | 临时 SwiftPM target 把 iOS Sources 包入可执行，验证 SwiftUI / Combine 签名正确；唯一跨平台假阳性 (`Color(.systemBackground)`) 用 `#if os(iOS)` 包起 |
-| iOS 真机 / 模拟器构建 | ⏸ 下一步 | 需要本机或 CI 装全 Xcode；`Scripts/build.sh` 已写好，缺 xcodegen/xcodebuild 时给出明确指引 |
+| iOS 真机 / 模拟器构建 | ✅ JKmacmini (Xcode 26.6) BUILD SUCCEEDED | arm64+x86_64 universal；iPhone 17 (iOS 18.5) 模拟器启动到 PairingView |
+| iOS 16 deployment target | ✅ v1.0.0 起 | 原 Ter-Tapgo 13.0 与 SwiftUI @main/App/StateObject/NavigationStack 冲突；project.yml 与 mobile/CONFIG.md 已对齐 |
+| iOS Keychain 持久化 | ✅ v1.0.0 | Sources/PairingKeychain.swift (PairingKeychain + ProbeKey)；PairingStore.init 默认走 Keychain, 写失败时退 UserDefaults |
+| iOS 真实扫码 | ✅ v1.0.0 | Sources/QRScannerView.swift (AVFoundation AVCaptureMetadataOutput + .qr)；PairingView 用 sheet 触发；Info.plist 加 NSCameraUsageDescription |
+| iOS tapgo-pair:// URL scheme | ✅ Info.plist 已注册 | xcrun simctl openurl 触发 iOS 18「在"点点够终端"中打开？」系统确认；PairingStore.handleIncomingURL 已被单元测试覆盖（20 用例, 含合法/非法 scheme/v=0/字符集） |
+| iOS 协议层测试 | ✅ **488 断言全部通过** | 446 MobilePairing + 20 PairingStore + 22 MobileRemoteLink；Scripts/run-tests.sh 一键 |
 | Mac 端"连接手机"菜单项 | ✅ 已加到 `SidebarView` 自进化/新对话 之间 | 见 `Sources/TapgoAICoding/Views/SidebarView.swift` |
 | Mac 端配对码 / QR / 状态机 | ✅ 已加到 `Sources/TapgoAICoding/Views/ConnectPhoneView.swift` | 6 位配对码 + QR + 60s 自动轮换 + 未配对/已配对/已连接三态 |
 | Mac 端协议模型 `MobilePairing` | ✅ 已加到 `Sources/TapgoCore/MobilePairing.swift` | 配对码生成/校验/URL 打包解析, Core 仅依赖 Foundation |
@@ -67,6 +72,12 @@ mobile/ios/
     ├─ run-tests.sh           # 一键: 同步校验 + swiftc 编译 + 跑协议层测试
     └─ build.sh               # xcodegen generate + xcodebuild (需全 Xcode)
 ```
+
+
+| iOS 长链接 (Bonjour + JSON-RPC over TCP) | ✅ v1.0.0 客户端代码到位 | Sources/PairingLink.swift (NWBrowser + 心跳) + Sources/MobileRemoteLink.swift (JSON-RPC 帧协议)；PairingStore.init 自动 start()；端到端联调需 Mac 端补 _tapgo-pair._tcp 服务 (现 Mac 端 v0.5.16 转 H5 HTTP, 原 Bonjour 服务未实现) |
+| iOS 信息流 UI (P5 骨架) | ✅ DashboardView 渲染验证 | 切项目 / 发送消息 / 最近会话三入口；UI 截图见 artifacts/ios/v1.0.0-1/11-dashboard-clean.png |
+| iOS 真机 build + install (JK14pro iPhone 14 Pro) | ✅ v1.0.0 | Scripts/build.sh 加 BUILD_TARGET=device 真机构建；Scripts/install-device.sh 一键 install+launch；App Store Connect 显示 Bundle ID=com.devtools.terminalSimple, version=1.0(1)；devicectl 无 screenshot 子命令 (Xcode 26.6)，截图需在 JKmacmini 上手工 Xcode → Devices and Simulators → Take Screenshot |
+| iOS 已配对状态自动启动长链接 | ✅ v1.0.0 | PairingStore.init 检测到 stored mac 后自动启动 PairingLink；Bonjour 搜索中 (橙色圆点) |
 
 ## 一键跑命令
 

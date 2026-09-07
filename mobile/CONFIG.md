@@ -15,7 +15,7 @@
 | App 显示名 | `点点够终端`（CFBundleDisplayName / CFBundleName） | Info.plist |
 | Bundle ID | `com.devtools.terminalSimple` | project.pbxproj |
 | Apple Developer Team | `KF2CE24685` | project.pbxproj `DEVELOPMENT_TEAM` |
-| Deployment Target | `iOS 13.0` | project.pbxproj `IPHONEOS_DEPLOYMENT_TARGET` |
+| Deployment Target | `iOS 16.0`（v1.0.0 起；原 Ter-Tapgo 13.0 与 SwiftUI @main/App/StateObject/NavigationStack 冲突, 见 v1.0.0 EVOLUTION）| project.yml `IPHONEOS_DEPLOYMENT_TARGET` |
 | Marketing Version | `1.0` | project.pbxproj `MARKETING_VERSION` |
 | Build Number 起始 | `1` | project.pbxproj `CURRENT_PROJECT_VERSION` |
 | LSRequiresIPhoneOS | `true` | Info.plist |

@@ -38,10 +38,36 @@ final class PairingStore: ObservableObject {
 
     private let storage: SecureStorage
 
-    init(storage: SecureStorage = UserDefaultsStorage()) {
-        self.storage = storage
-        if let mac = try? storage.load() {
+    /// 长链接客户端。配对完成后由 markConnected(true) 自动 start(),
+    /// 连接成功后通过 onConnectionChange 回调翻转 state.connected。
+    let link = PairingLink()
+    private var linkStarted = false
+
+    /// 默认走 Keychain（与 Apple Secure Enclave 设备绑定，更安全）。
+    /// Keychain 在某些环境（如未签名模拟器 + 严格 entitlement）写入会失败，
+    /// 失败时退到 UserDefaults，保证开发期可用。
+    init(storage: SecureStorage = PairingKeychain(),
+         fallback: SecureStorage? = UserDefaultsStorage()) {
+        // 先探测 Keychain 是否可用（写入+读回一条空数据）。
+        var chosen: SecureStorage = storage
+        if let fb = fallback {
+            let probe = PairingKeychainProbeKey(service: "com.devtools.terminalSimple.probe")
+            if probe.writeAndRead() == false {
+                chosen = fb
+            }
+        }
+        self.storage = chosen
+        if let mac = try? chosen.load() {
             self.state = .paired(mac, connected: false)
+            // init 后立刻尝试启动长链接 (Bonjour 发现 → TCP → JSON-RPC)。
+            // markConnected(true) 会被 onConnectionChange 回调反向触发,
+            // 这里主动调一次启动浏览器。
+            link.expectedDeviceId = mac.deviceId
+            link.onConnectionChange = { [weak self] live in
+                self?.markConnected(live)
+            }
+            linkStarted = true
+            link.start()
         }
     }
 
@@ -82,6 +108,23 @@ final class PairingStore: ObservableObject {
     func markConnected(_ connected: Bool) {
         if case .paired(let mac, _) = state {
             state = .paired(mac, connected: connected)
+            if connected, !linkStarted {
+                linkStarted = true
+                link.expectedDeviceId = mac.deviceId
+                link.onConnectionChange = { [weak self] live in
+                    self?.markConnected(live)
+                }
+                link.start()
+            }
+        }
+    }
+
+    /// App 后台切换 / 主动停止时调用, 释放 NWBrowser + NWConnection。
+    func stopLink() {
+        link.stop()
+        linkStarted = false
+        if case .paired(let mac, _) = state {
+            state = .paired(mac, connected: false)
         }
     }
 

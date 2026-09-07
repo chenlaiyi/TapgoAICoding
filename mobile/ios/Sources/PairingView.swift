@@ -1,31 +1,38 @@
 import SwiftUI
 
-/// 配对界面: 显示扫码 / 手动输入两个入口。
-/// v1 暂不接 AVFoundation 相机 (避免一上来就塞一堆权限请求文案),
-/// 优先做手动输入 6 位码; QR 扫描在 v0.5.6 加入。
+/// 配对界面: 扫码 + 手动输入两个入口。
+/// v1.0.0 起接 AVFoundation 真扫码 (`QRScannerView`)。
+/// 手动输入作为兜底。
 struct PairingView: View {
     @EnvironmentObject var pairing: PairingStore
     @State private var manualCode: String = ""
     @State private var error: String? = nil
+    @State private var showScanner = false
 
     var body: some View {
         VStack(spacing: 24) {
             header
             manualEntry
-            qrPlaceholder
+            scanEntry
             if let error {
                 Text(error)
                     .foregroundStyle(.red)
                     .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
             }
             Spacer()
         }
         .padding(24)
-        #if os(iOS)
         .background(Color(.systemBackground))
-#else
-        .background(Color(NSColor.windowBackgroundColor))
-#endif
+        .sheet(isPresented: $showScanner) {
+            QRScannerView { code in
+                showScanner = false
+                handleScannedCode(code)
+            } onCancel: {
+                showScanner = false
+            }
+        }
     }
 
     private var header: some View {
@@ -35,7 +42,7 @@ struct PairingView: View {
                 .foregroundStyle(.tint)
             Text("点点够终端")
                 .font(.title.bold())
-            Text("请输入 Mac 端\"连接手机\"弹窗里显示的 6 位配对码")
+            Text("扫描 Mac 端「连接手机」弹窗中的二维码\n或手动输入 6 位配对码")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -72,21 +79,30 @@ struct PairingView: View {
         }
     }
 
-    private var qrPlaceholder: some View {
-        VStack(spacing: 6) {
-            Divider().padding(.vertical, 4)
-            Text("扫码配对")
-                .font(.subheadline.bold())
-            Text("v0.5.6 起支持相机扫码 (URL Scheme: tapgo-pair://)。\n当前请使用手动输入。")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+    private var scanEntry: some View {
+        Button {
+            showScanner = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "qrcode.viewfinder")
+                    .font(.title3)
+                Text("扫码配对")
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.secondary.opacity(0.08))
-        )
+        .buttonStyle(.bordered)
+    }
+
+    private func handleScannedCode(_ raw: String) {
+        if let url = URL(string: raw), url.scheme == MobilePairing.urlScheme {
+            pairing.handleIncomingURL(url)
+        } else {
+            // 也支持把 QR 文本当作裸 6 位码。
+            pairing.acceptManualCode(raw) { result in
+                if case .failure(let msg) = result { error = msg }
+            }
+        }
     }
 }
