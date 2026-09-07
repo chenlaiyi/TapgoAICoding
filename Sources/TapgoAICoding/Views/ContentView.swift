@@ -103,7 +103,8 @@ struct ContentView: View {
                             onSettings: {
                                 settingsPresentation = SettingsPresentation(tab: .general)
                             },
-                            onToggleTrajectory: { showTrajectory.toggle() }
+                            onToggleTrajectory: { showTrajectory.toggle() },
+                        onDismiss: { withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { showCommandPalette = false } }
                         )
                         .environmentObject(workspace)
                         .environmentObject(store)
@@ -417,7 +418,6 @@ private struct PaletteInfoAlert: Identifiable {
 private struct CommandPaletteView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
-    @Environment(\.dismiss) private var dismiss
     @AppStorage(TapgoConfig.appearanceKey) private var appearance = "system"
     @State private var query = ""
     @State private var hoveredId: String? = nil
@@ -425,11 +425,15 @@ private struct CommandPaletteView: View {
     @State private var paletteInfoAlert: PaletteInfoAlert?
     @State private var pendingBranchPrompt: Bool = false
     @State private var branchNameDraft: String = ""
+    @State private var miniPrompt: String = ""
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let onNewTask: () -> Void
     let onSettings: () -> Void
     let onToggleTrajectory: () -> Void
+    /// Close the dock. The hosting ContentView flips
+    /// `showCommandPalette` to false in response.
+    let onDismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -468,7 +472,7 @@ private struct CommandPaletteView: View {
                             }
                             Button {
                                 e.run()
-                                dismiss()
+                                onDismiss()
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: e.icon)
@@ -547,6 +551,56 @@ private struct CommandPaletteView: View {
             .padding(20)
             .frame(minWidth: 360)
         }
+        // Bottom mini composer: matches Codex desktop's "footer row" so
+        // the dock always offers a quick entry point and model switch
+        // without going back to the main composer.
+        VStack(spacing: 0) {
+            Divider().opacity(0.5)
+            HStack(spacing: 10) {
+                Button {
+                    // Insert into main composer and focus it.
+                    NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil)
+                    onDismiss()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .help("新消息（聚焦到主输入框）")
+
+                TextField("提问、写消息、调用代理…", text: $miniPrompt)
+                    .textFieldStyle(.plain)
+                    .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                    .frame(maxWidth: .infinity)
+                    .onSubmit { sendMiniPrompt() }
+
+                // Quick model label (read-only snapshot of selected model).
+                Text(currentModelLabel)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                // Right-side send button (lifted by Cmd↩ equivalent to
+                // the main composer's send shortcut).
+                Button {
+                    sendMiniPrompt()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(Color.accentColor, in: Circle())
+                }
+                .buttonStyle(.borderless)
+                .disabled(miniPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .help("发送")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(DSHTheme.surface.opacity(0.4))
+        }
         .onAppear { selectedIndex = 0 }
         .onChange(of: query) { _, _ in selectedIndex = 0 }
     }
@@ -574,7 +628,7 @@ private struct CommandPaletteView: View {
                              run: {
                                  store.newThread()
                                  store.sendUserMessage(q)
-                                 dismiss()
+                                 onDismiss()
                              }))
         }
         for a in filteredActions {
@@ -626,7 +680,7 @@ private struct CommandPaletteView: View {
         guard !entries.isEmpty else { return }
         let idx = min(max(selectedIndex, 0), entries.count - 1)
         entries[idx].run()
-        dismiss()
+        onDismiss()
     }
 
     private struct PaletteAction: Identifiable {
@@ -686,6 +740,34 @@ private struct CommandPaletteView: View {
         case .busy: return "请先等当前回合结束再 compact。"
         case .compacted(let turns, let items): return "折叠了 \(turns) 个回合、\(items) 个 assistant 项。"
         }
+    }
+
+    /// Snapshot of the currently selected provider/model. Cheap to
+    /// compute; recomputed on every body re-render but only shows in the
+    /// mini composer footer.
+    private var currentModelLabel: String {
+        let raw = UserDefaults.standard.string(forKey: TapgoConfig.selectedModelKey) ?? ""
+        let trimmed = raw.replacingOccurrences(of: "builtin:", with: "")
+        return trimmed.isEmpty ? "默认" : trimmed
+    }
+
+    /// Mini composer submit: take the text, post a notification so the
+    /// main composer picks it up (the main composer is a single source
+    /// of truth for sent turns). Falls back to `tapgoFocusComposer` if
+    /// the prompt is empty.
+    private func sendMiniPrompt() {
+        let text = miniPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil)
+            onDismiss()
+            return
+        }
+        // Inject into the main composer text via UserDefaults shuttle
+        // then refocus. The main composer reads this on appear / focus.
+        UserDefaults.standard.set(text, forKey: "tapgo.composer.pendingText")
+        NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil)
+        miniPrompt = ""
+        onDismiss()
     }
 
     private func copyActiveThreadTitle() {
