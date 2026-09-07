@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.117 — fix(harness)+feat(chat): 回合兜底完成 + 文件变更卡 per-file 兜底 + HTML 预览
+**Date**: 2026-09-07
+**Tag**: v0.5.117
+**Test status**: 3080 passed / 0 failed on jkmacmini（新增 harness thread/status idle 终结态回归 + WorktreeChangeTracker per-file diff 与 HTML 预览回归）；本机 fafamacmini 3078 passed / 14 failed（9 项 SSH 远程集成 + auth.json 环境性，2 项 AppUpdateDistributionTests 版本对齐需 tag 后通过，3 项其他 SSH 远程套件）
+**Changed**:
+- `ExecEventParser` 新增 `thread/status: idle` → `turnCompleted`（completed、幂等）映射；`SessionStore.turnCompleted` 加终结态保护（已 completed/failed/interrupted 的 turn 不再被后续事件覆盖，只吸收 usage）。长回合"永远正在处理"被根治。
+- `WorktreeChangeTracker.collect` 升级为 per-file 明细：当协议没有 per-file `fileChange` / `turn/diff` 时（如 codex 用 `mkdir`/`cat` 写文件），按 baseline 差集生成真正的 `FileChange`（文件名+路径+±行数+可展开 diff），`TurnPresentation` 折叠成批次卡；已有协议级 diff 不重复生成。
+- `FileChangeRowView` 对 `html`/`htm` 新增"在内部浏览器预览"（右键菜单）：WKWebView `loadFileURL` 弹窗，允许同目录相对资源；关闭按钮支持 Esc。
+- 修复兜底变更卡的窗口重布局崩溃：原 `untrackedDiff` 对 tracked 修改套用了 `--- /dev/null +++ path` 合成 diff，hunk 头声称 0 旧行但内容矛盾，`DiffView` split 模式 `ViewDimensions` 下标越界触发 EXC_BREAKPOINT。现在按来源区分——untracked 纯新增才合成全 + diff，tracked 修改直接走 `git diff HEAD -- path`；`FileChange.kind` 按来源标 create/update。
+**Why**: 三处都用 GPT-6 实测任务暴露——`thread/status` 漏解析让长回合看似永远在处理；用命令生成的文件没有变更卡让"页面已生成"显得空话；tracked 兜底合成 diff 让窗口按快捷键重布局时崩溃。
+**Next**: 继续按真实远程任务核对 Harness 终结态与变更卡边界；下一步在 WorktreeChangeTracker 暴露 baseline 比对开关，让用户能禁用兜底 diff（如临时改动不想被判定为变更）。
+
 
 ## v0.5.116 — feat(plugin-marketplace): 起 Tapgo 官方插件模板与 catalog 协议校验
 **Date**: 2026-09-06

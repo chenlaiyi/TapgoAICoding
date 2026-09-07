@@ -65,8 +65,15 @@ if [[ ! -f "$NOTES_SOURCE" ]]; then
 fi
 cp "$NOTES_SOURCE" "$WORK/${ARCHIVE%.zip}.md"
 
+if [[ -n "${SPARKLE_KEY_FILE:-}" ]]; then
+  KEY_FILE_OPT=(--ed-key-file "$SPARKLE_KEY_FILE")
+else
+  KEY_FILE_OPT=()
+fi
+
 "$SPARKLE_BIN/generate_appcast" \
   --account com.tapgo.aicoding \
+  "${KEY_FILE_OPT[@]}" \
   --download-url-prefix "$DOWNLOAD_PREFIX" \
   --link "https://github.com/chenlaiyi/TapgoAICoding/releases/tag/$TAG" \
   --embed-release-notes \

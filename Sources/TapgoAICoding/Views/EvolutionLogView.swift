@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.117", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.117",
+                    summary: "回合兜底完成 + 文件变更卡 per-file 兜底 + HTML 预览，修兜底卡崩溃。",
+                    changes: ["ExecEventParser 把 thread/status: idle 映射为 turnCompleted；SessionStore 加回合终结态保护，已结束回合不再被覆盖。", "WorktreeChangeTracker.collect 升级为 per-file 明细，命令产出的文件也能生成 FileChange 卡片。", "FileChangeRowView 对 html/htm 新增 WKWebView 内部预览弹窗，关闭支持 Esc。", "untrackedDiff 区分来源——tracked 修改走真 git diff HEAD -- path，根治 split 模式对齐越界崩溃。", "本机 14 项失败全是环境性（SSH 远程 + auth.json + 发版前版本对齐），jkmacmini 3080 全过。"],
+                    why: "三处都由 GPT-6 实测暴露：长回合永远正在处理；命令生成的 html 看不到变更卡；按快捷键重布局触发 EXC_BREAKPOINT。",
+                    next: "继续按真实远程任务核对 Harness 终结态与变更卡边界；下一步在 WorktreeChangeTracker 暴露 baseline 比对开关。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.116", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.116",
                     summary: "插件市场补齐启停开关；根治两处滚动/流式卡死；输出样式对齐 Codex。",
                     changes: ["Tapgo 官方插件支持启用/停用开关，持久化到 ~/.tapgo/plugins.toml。", "流式增量批量上屏，回复实时渐进显示、界面全程可交互。", "根治滚动经过表格时的连续重排版卡死；持久化写盘移到后台。", "行内代码淡胶囊、编号跨块递增、嵌套缩进、表格细线、### 无空格标题识别。"],

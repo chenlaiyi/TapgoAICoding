@@ -27,7 +27,7 @@
 # the official ~/.codex/). Run scripts/init-tapgo.sh first to set up
 # that isolated Codex home.
 
-set -euo pipefail
+set -eo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
