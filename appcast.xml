@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.135</title>
+            <pubDate>Tue, 08 Sep 2026 06:11:14 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.135</link>
+            <sparkle:version>0.5.135</sparkle:version>
+            <sparkle:shortVersionString>0.5.135</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.135
+
+## 更新日志 sheet 底部加 commit 历史链接
+
+- `ReleaseNotesSheet` 底部新增两个 Link：
+  - **"在 GitHub 上查看完整历史"** → `https://github.com/chenlaiyi/TapgoAICoding/commits/main`（main 分支 commit 列表）
+  - **"查看完整 release notes"** → `https://github.com/chenlaiyi/TapgoAICoding/releases/tag/vX.Y.Z`（当前 App 版本对应 release 页面）
+- footer 放在 release notes 列表 + Divider 之后，右对齐 HStack。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.135/Tapgo-AICoding-0.5.135.zip" length="12088696" type="application/octet-stream" sparkle:edSignature="UgFeXFaSJ7ZYldCo7Ti0dGygyAz+b4LrUXWvAjtrLcs+X/4SitCnZWTCmb1VaTpgzPAAWV7JeJaNk/faeLXQCA=="/>
+        </item>
+        <item>
             <title>0.5.134</title>
             <pubDate>Tue, 08 Sep 2026 06:07:12 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.134</link>
@@ -57,28 +78,6 @@
 测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.133/Tapgo-AICoding-0.5.133.zip" length="12082646" type="application/octet-stream" sparkle:edSignature="xtldlOONzhyGFu7V/DCe1vOhkXyv/lgsVccf/ae4UG8Y3nSiOLs4K8/q3d20VvkhwvRffxvYys2/J9E8t4XQAA=="/>
-        </item>
-        <item>
-            <title>0.5.132</title>
-            <pubDate>Tue, 08 Sep 2026 05:58:16 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.132</link>
-            <sparkle:version>0.5.132</sparkle:version>
-            <sparkle:shortVersionString>0.5.132</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.132
-
-## 命令面板加 settings / 更新日志 / 快捷键入口
-
-- 命令面板 actions 数组末尾（settings 之前）加 2 个新 entry：
-  - **更新日志**（`doc.text` 图标）— 弹 `ReleaseNotesSheet` sheet（640x560），从项目根 `EVOLUTION.md` 读取头部 12 个 `## v...` 段标题 + 当前 App 版本号
-  - **快捷键**（`questionmark.circle` 图标）— 弹 `ShortcutsView` sheet
-- `CommandPaletteView` 加 `showReleaseNotesSheet` / `showShortNotes` 两个 @State；新增 `ReleaseNotesSheet` 私有 struct（独立 sheet 不依赖 ContentView 主 state）。
-- 原 ContentView 顶层 `showShortcuts` sheet 移除（已移入 CommandPaletteView 内）。
-
-测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.132/Tapgo-AICoding-0.5.132.zip" length="12081864" type="application/octet-stream" sparkle:edSignature="R82ijh0i48JedslfcUObd15WegnkSSsAZtMMFZjlCXm6C5UsCjjoTvqhCGclLCrwVLEdIGJ2fnoQTXGHAGppAw=="/>
         </item>
     </channel>
 </rss>
