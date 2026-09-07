@@ -22,4 +22,11 @@ func runComposerLocalCommandTests(_ t: TestRunner) {
     t.expectNil(ComposerLocalCommand.parse("/modelA"), "model-prefixed names are not intercepted")
     t.expectNil(ComposerLocalCommand.parse("/modeling"), "model-with-suffix is not intercepted")
     t.expectNil(ComposerLocalCommand.parse("请解释 /model"), "inline /model mention is regular text")
+    // /init — bare token opens a draft-AGENTS.md thread; suffix falls back to model.
+    t.expectEqual(ComposerLocalCommand.parse("/init"), .initProject, "bare /init opens the init thread")
+    t.expectEqual(ComposerLocalCommand.parse("  /init  "), .initProject, "/init trims surrounding whitespace")
+    t.expectNil(ComposerLocalCommand.parse("/init AGENTS"), "/init with suffix is not a local command")
+    t.expectNil(ComposerLocalCommand.parse("/initial"), "init-prefixed names are not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("/initialize"), "init-with-suffix is not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("请解释 /init"), "inline /init mention is regular text")
 }

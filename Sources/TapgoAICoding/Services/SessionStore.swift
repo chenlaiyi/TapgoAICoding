@@ -510,6 +510,42 @@ final class SessionStore: ObservableObject {
     /// affects future turns; the in-flight turn keeps using whatever
     /// model started it (matches Codex desktop semantics).
     @discardableResult
+    /// `/init` slash command: create a fresh thread in the active project
+    /// preloaded with a "draft AGENTS.md" prompt so the user can iterate
+    /// with Codex and copy the result into the project root when satisfied.
+    /// The prompt is deliberately short and self-contained — Codex is told
+    /// to inspect the cwd before writing, and to surface what it could not
+    /// infer from the codebase (e.g. deployment targets, signing identity,
+    /// code review rules) so the user can fill those in.
+    func startInitProjectThread() {
+        let project = activeProject()
+        let cwd = project?.remotePath ?? project?.harnessCwd
+        let projectName = project?.displayName ?? L10n.newThread
+        let title = "/init · \(projectName) · AGENTS.md"
+        newThread(title: title)
+        sendUserMessage(Self.initAgentsPrompt)
+    }
+
+    /// Standalone so tests can pin the exact wording without depending on a
+    /// thread call.
+    static let initAgentsPrompt: String = """
+    你正在一个新会话里帮用户起草项目根目录的 AGENTS.md（agent 开发约定入口）。
+
+    请按下面顺序操作：
+
+    1. 用 shell 工具扫描项目根：ls -la、cat README.*（如有）、cat .gitignore、cat Package.swift / pyproject.toml / go.mod / Cargo.toml（看语言与项目类型）。
+    2. 检查 Sources/ 顶层目录命名习惯、Sources/TapgoCore 等模块划分（看是否分层）、现有 AGENTS.md（避免覆盖既有约定）。
+    3. 推断并撰写一份适合本项目的 AGENTS.md 草稿。要求：
+       - 顶部 # 项目名 + 一句话描述；
+       - 开发约定段：构建命令、测试命令、代码风格、提交流程；
+       - 工作约定段：发起任务前的核对（git fetch / 未提交改动 / 与 origin 同步）、修改完成后跑测试与构建、版本号与文档同步；
+       - 不要写死凭据、API key、密钥、个人信息；遇到需要人工填的空位用 `<待补充>` 标注。
+    4. 只输出最终的 AGENTS.md 文件内容（一个 markdown 块），不要其他解释。
+    5. 如果扫描结果不足以推断某段（例如项目类型、部署目标、Apple 签名身份），保留空位并标注，不要瞎猜。
+
+    输出完毕后我会人工审阅，然后由我决定写到项目根。
+    """
+
     func selectModel(matching query: String) -> ModelSelectOutcome {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return .empty }

@@ -2219,6 +2219,8 @@ struct ComposerView: View {
         case .model(let query):
             let outcome = store.selectModel(matching: query)
             modelSelectAlert = ModelSelectAlert(outcome: outcome)
+        case .initProject:
+            store.startInitProjectThread()
         }
         text = ""
         showSlashMenu = false
@@ -2253,7 +2255,13 @@ struct ComposerView: View {
                 text = "/model "
                 focused = true
             }
-            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换。")
+            slashRow("/init", "打开 AGENTS.md 起草会话") {
+                store.startInitProjectThread()
+                text = ""
+                showSlashMenu = false
+                focused = true
+            }
+            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话。")
                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 10)

@@ -15,11 +15,16 @@ public enum ComposerLocalCommand: Equatable {
     /// case-insensitively. Ambiguous matches are reported back so the
     /// composer can show a hint; only an exact match switches.
     case model(String)
+    /// `/init` — open a fresh thread in the active project preloaded
+    /// with a "draft an AGENTS.md" prompt so the user can iterate with
+    /// Codex and then write the result to the project root.
+    case initProject
 
     public static func parse(_ input: String) -> Self? {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if text == "/new" { return .newTask }
         if text == "/clear" { return .clear }
+        if text == "/init" { return .initProject }
         if let rest = text.strippingLocalCommandPrefix("model") {
             return .model(rest)
         }
