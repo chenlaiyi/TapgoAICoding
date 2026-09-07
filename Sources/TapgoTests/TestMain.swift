@@ -194,6 +194,7 @@ let allSections: [String] = [
     "DiffParser: allLines preserves hunk + line order",
     "DiffParser: '\\ No newline' marker is preserved",
     "DiffParser.parseHunkHeader: returns numeric fields",
+    "MakeHistory parity: structural and Info.plist sync",
     "ReviewCommentStore: add then fetch by fileChangeId",
     "ReviewCommentStore: filter by lineKey",
     "ReviewCommentStore: update text by id",
@@ -543,6 +544,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Composer: local command routing") {
             runComposerLocalCommandTests(runner)
+        }
+        await runIfInScope(runner, "MakeHistory parity: structural and Info.plist sync") {
+            runMakeHistoryParityTests(runner)
         }
         await runIfInScope(runner, "TurnProgressSummary: plan + diff statistics") {
             runTurnProgressSummaryTests(runner)
