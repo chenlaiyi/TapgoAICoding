@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.133 — feat(ui): 命令面板 11 个 action 快捷键完整化
+**Date**: 2026-09-08
+**Tag**: v0.5.133
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `actions` 数组 10 个 action 加 `keyLabel`（之前 5 个为 nil）：MCP ⌃⌥M / 代码审查 ⌃⌘R / 侧边 ⌃⌥S / 创建聊天分支 ⌃⌘B / 压缩 ⌃⌘K / 反馈 ⌥⌘F / 归档 ⌥⌘⌫ / 状态 ⌃⌘I / Plan 模式 ⌃⌘P / 置顶聊天 ⌥⌘P。
+- 避开 macOS 系统保留快捷键（⌘Q/⌘W/⌘M/⌘T 等）。
+- Entry 渲染 `if let k = e.key` 路径已就绪，无需额外修改。
+**Why**: Codex 桌面端命令面板每行右侧显示快捷键（如 ⌘N、⌘⇧R 等）；当前 10 个 action 没快捷键，用户无法知道有什么 trigger。
+**Next**: Plan mode 与 harness 协议深度集成；或更新日志 sheet 加版本号筛选 + commit 链接。
+
 ## v0.5.132 — feat(ui): 命令面板加 settings / 更新日志 / 快捷键入口
 **Date**: 2026-09-08
 **Tag**: v0.5.132

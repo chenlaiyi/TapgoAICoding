@@ -775,34 +775,34 @@ private struct CommandPaletteView: View {
         }()
         let pinTitle = (activeThread?.isPinned == true) ? "取消置顶" : "置顶聊天"
         return [
-            .init("mcp", "MCP", "server.rack", nil, { paletteInfoAlert = .init(title: "MCP", message: store.mcpStatusSummary()) }),
-            .init("review", "代码审查", "magnifyingglass", nil,
+            .init("mcp", "MCP", "server.rack", "⌃⌥M", { paletteInfoAlert = .init(title: "MCP", message: store.mcpStatusSummary()) }),
+            .init("review", "代码审查", "magnifyingglass", "⌃⌘R",
                   { store.startReviewThread(scope: "") }),
-            .init("side", "侧边", "sidebar.left", nil,
+            .init("side", "侧边", "sidebar.left", "⌃⌥S",
                   { store.spawnSideChat() }),
-            .init("branch", "创建聊天分支", "arrow.triangle.branch", nil,
+            .init("branch", "创建聊天分支", "arrow.triangle.branch", "⌃⌘B",
                   { pendingBranchPrompt = true }),
-            .init("compact", "压缩", "arrow.down.right.and.arrow.up.left", nil,
+            .init("compact", "压缩", "arrow.down.right.and.arrow.up.left", "⌃⌘K",
                   { let outcome = store.compactActiveThread()
                     paletteInfoAlert = .init(title: "压缩", message: Self.compactOutcomeMessage(outcome)) }),
-            .init("feedback", "反馈", "exclamationmark.bubble", nil,
+            .init("feedback", "反馈", "exclamationmark.bubble", "⌥⌘F",
                   { if let url = store.snapshotActiveThreadForFeedback() {
                       let dir = url.deletingLastPathComponent()
                       paletteInfoAlert = .init(title: "反馈快照", message: "已写入 \(url.lastPathComponent) 到 \(dir.lastPathComponent ?? "feedback")/")
                     } else {
                       paletteInfoAlert = .init(title: "反馈快照", message: "没有活跃会话。")
                     } }),
-            .init("archive", "归档", "archivebox", nil, destructive: true,
+            .init("archive", "归档", "archivebox", "⌥⌘⌫", destructive: true,
                   { store.archiveActiveThread() }),
             .init("new", "新聊天", "square.and.pencil", "⌘N", { onNewTask() }),
-            .init("status", "状态", "info.circle", nil,
+            .init("status", "状态", "info.circle", "⌃⌘I",
                   { paletteInfoAlert = .init(title: "状态", message: store.statusSnapshotForActiveThread()) }),
-            .init("plan", "Plan 模式", "lightbulb", nil,
+            .init("plan", "Plan 模式", "lightbulb", "⌃⌘P",
                   { UserDefaults.standard.set(true, forKey: "tapgo.planningMode")
                     paletteInfoAlert = .init(title: "Plan 模式", message: "已开启。下一条消息会让 Codex 先出方案不执行工具。") }),
             .init("goal", goalTitle, "target", nil,
                   { NotificationCenter.default.post(name: .tapgoOpenGoalEditor, object: nil) }),
-            .init("pin", pinTitle, "pin", nil,
+            .init("pin", pinTitle, "pin", "⌥⌘P",
                   { if let id = store.activeThreadId { store.togglePinned(id) } }),
             PaletteAction.sectionDivider("div-global"),
             .init("toggleSidebar", "切换侧边栏", "sidebar.left", "⌘\\",
