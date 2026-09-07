@@ -165,6 +165,17 @@ public enum ExecEventParser {
             )
             return .turnCompleted(status: status, errorMessage: errorMessage, usage: usage)
 
+        case "thread/status/changed":
+            // 兜底完成信号：codex app-server 在部分回合（例如含工具调用的
+            // 长回合）结束时只发 thread/status: idle、不发 turn/completed，
+            // 只认后者的 UI 会永远停在"正在处理"。idle 即回合收尾——
+            // SessionStore 对已完成 turn 的二次 completed 是幂等的。
+            let status = params["status"]?.objectValue?["type"]?.stringValue
+                ?? params["status"]?.stringValue
+            guard status == "idle" else { return nil }
+            let usage = TokenUsage.fromJSON(params["tokenUsage"] ?? params["usage"])
+            return .turnCompleted(status: "completed", errorMessage: nil, usage: usage)
+
         case "thread/tokenUsage/updated":
             // The live tick nests the counters under `tokenUsage.total` /
             // `tokenUsage.last`, with `modelContextWindow` on the outer.

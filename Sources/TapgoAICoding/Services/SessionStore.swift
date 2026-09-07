@@ -1297,6 +1297,12 @@ final class SessionStore: ObservableObject {
         case .turnStarted:
             turn.status = .running
         case .turnCompleted(let status, let errorMessage, let usage):
+            // thread/status idle 兜底与 turn/completed 可能先后到达；已终结的
+            // turn 不再覆盖（幂等）。
+            guard turn.status == .running || turn.status == .awaitingApproval else {
+                if let usage { turn.usage = usage }
+                break
+            }
             if status == "failed" {
                 turn.status = .failed
                 turn.completedAt = Date()
