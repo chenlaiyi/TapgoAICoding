@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.130</title>
+            <pubDate>Tue, 08 Sep 2026 01:54:01 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.130</link>
+            <sparkle:version>0.5.130</sparkle:version>
+            <sparkle:shortVersionString>0.5.130</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.130
+
+## 命令面板按状态分组（视觉对齐 Codex 桌面端）
+
+- 命令面板 14 个 actions 之间插入 3 个水平 `Divider` 视觉分组：
+  - **环境**（MCP）
+  - **当前对话操作**（代码审查 / 侧边 / 创建聊天分支 / 压缩 / 反馈 / 归档 / 状态 / 目标 / Plan 模式 / 新聊天）
+  - **全局设置**（置顶聊天 / 切换侧边栏 / 运行设置）
+- `PaletteAction` 加 `isSectionDivider: Bool` 字段 + `static func sectionDivider(_:)` 辅助构造器；`Entry` 加 `isDivider: Bool` 字段；`ForEach` 渲染时 `if e.isDivider { Divider() }` 否则渲染 `Button`。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.130/Tapgo-AICoding-0.5.130.zip" length="12065613" type="application/octet-stream" sparkle:edSignature="R6vvpcrDPs7a7zJDHYcvQlWBIndIKS0bpzdE02fWiR3/EbPCYylWy4dvwCSR9Ttq5y6M2ZaqEktf2sKJP2/6CA=="/>
+        </item>
+        <item>
             <title>0.5.129</title>
             <pubDate>Tue, 08 Sep 2026 01:46:16 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.129</link>
@@ -58,28 +80,6 @@
 测试：3117 passed / 12 failed（+1 个新增双向校验，+16 个新增 makeHistory 条目；12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.128/Tapgo-AICoding-0.5.128.zip" length="11994422" type="application/octet-stream" sparkle:edSignature="4Ob8LLP6ExPVJDosJIqiu8DYE3D2a81xXoMxaUd8rkhcWBkUsToPYl4+EvTpD2NV5PiHfl9IPqYPfr2v20rRAQ=="/>
-        </item>
-        <item>
-            <title>0.5.127</title>
-            <pubDate>Tue, 08 Sep 2026 01:01:29 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.127</link>
-            <sparkle:version>0.5.127</sparkle:version>
-            <sparkle:shortVersionString>0.5.127</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.127
-
-## 测试覆盖
-
-- 新增 `MakeHistory parity: structural and Info.plist sync` 套件（`MakeHistoryParityTests.swift`），字符串级扫描 `EvolutionLogView.swift` + `EVOLUTION.md` + `Info.plist` + `AppBuilder/project.yml`：
-  - 抽 `version: "vX.Y.Z"` 模式验证 makeHistory 版本数 ≥ 20；
-  - 验证 makeHistory 数组内引号数为偶数（防 v0.5.125 中文双引号导致吞下个 entry 的 bug 重现）；
-  - 验证 makeHistory 最近 10 个版本都在 EVOLUTION.md 头部段出现（保证新发版同步双向）；
-  - 验证 `Info.plist` 与 `project.yml` 的版本号一致。
-
-测试：3116 passed / 12 failed（新增 6 个 MakeHistory 测试；12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.127/Tapgo-AICoding-0.5.127.zip" length="11992492" type="application/octet-stream" sparkle:edSignature="gGDHYPwahxHjCnhYeGj5+SmG1kQEBy0NKPme9QEcPtWehj/KKFED+mtyUNcxN2EVJrZqpoIpXGSVZ1V6VGIVBQ=="/>
         </item>
     </channel>
 </rss>
