@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.140</title>
+            <pubDate>Tue, 08 Sep 2026 06:45:18 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.140</link>
+            <sparkle:version>0.5.140</sparkle:version>
+            <sparkle:shortVersionString>0.5.140</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.140
+
+## NSEvent 全局 hotkey 与 dock keyboardShortcut 冲突解决
+
+- `App.swift` 加 `@MainActor enum PaletteState { static var isOpen: Bool = false }`。
+- `installGlobalHotkeyMonitor` 的 NSEvent 回调：若 `PaletteState.isOpen` 为 true（dock 打开），return `event`（不消费）让 dock 内的 keyboardShortcut 正常处理 ↩ 选；否则 post Notification + 消费事件。
+- `init` 加 NotificationCenter observer 监听 `tapgoPaletteDidOpen` / `tapgoPaletteDidClose` → 更新 `PaletteState.isOpen`。
+- `ContentView` `showCommandPalette = true/false` 切换处 post 通知。
+- 解决：之前 dock 打开时 NSEvent 消费了键盘事件，dock 内的 keyboardShortcut 收不到，↩ 键失效。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.140/Tapgo-AICoding-0.5.140.zip" length="12122473" type="application/octet-stream" sparkle:edSignature="cM4Fjrz0xAVzpAenCDz9RM3xm0nZeMCGwLFG/1zuXT8WUmssmtc7Dy9h2jHpTpYMi1pSOVc65r3XqZv7w+yaDA=="/>
+        </item>
+        <item>
             <title>0.5.139</title>
             <pubDate>Tue, 08 Sep 2026 06:39:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.139</link>
@@ -47,27 +69,6 @@
 测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.138/Tapgo-AICoding-0.5.138.zip" length="12110702" type="application/octet-stream" sparkle:edSignature="+qcuXq7xOyZHn3hl5m+6LES8fj9yyEOe5tU2HLiATyGy1/T531zu1kyuEQNzmOvg78wLGLnNsxqHRMsqJBvtDg=="/>
-        </item>
-        <item>
-            <title>0.5.137</title>
-            <pubDate>Tue, 08 Sep 2026 06:20:11 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.137</link>
-            <sparkle:version>0.5.137</sparkle:version>
-            <sparkle:shortVersionString>0.5.137</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.137
-
-## 全局 hotkey 注册（让命令面板 11 个 action 快捷键在 dock 关闭时也生效）
-
-- `App.swift` `init()` 末尾加 `installGlobalHotkeyMonitor()`：用 `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` 监听 macOS 范围内所有 keyDown 事件。
-- 11 个 action 快捷键（`⌃⌘M` MCP / `⌃⌘R` 代码审查 / `⌃⌥S` 侧边 / `⌃⌘B` 创建聊天分支 / `⌃⌘K` 压缩 / `⌥⌘F` 反馈 / `⌥⌘⌫` 归档 / `⌃⌘I` 状态 / `⌃⌘P` 计划模式 / `⌥⌘P` 置顶 / `⇧⌘R` 更新日志 / `⇧?` 快捷键）外加 `⌘K`/`⌘⇧P` 触发 dock。
-- 监听匹配 keyCode + modifierFlags 后 post `Notification.Name`（新增 11 个），让 ContentView/ChatView 现有 onReceive 处理器触发（多数已就绪）。
-- 注：NSEvent 监听 macOS app 范围（不需辅助功能权限），但要先于 view 自己的 keyboardShortcut 处理。Codex 桌面端默认全局快捷键生效。
-
-测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.137/Tapgo-AICoding-0.5.137.zip" length="12102659" type="application/octet-stream" sparkle:edSignature="68zm5ITZ4WLFdYzN2PLLeMoGEI/f5kPlAYvayvvZOYBLmvugkMelCZqzzybegwfY1ieOpGfuYJjKwtD2srdkBg=="/>
         </item>
     </channel>
 </rss>
