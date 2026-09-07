@@ -344,7 +344,7 @@ struct EvolutionLogView: View {
                 ),
                 EvolutionEntry(
                     version: "v0.5.89", date: "2026-08-（补）", commit: "见源码提交", tag: "v0.5.89",
-                    summary: "fix(ui+shortcut): trajectoryAssistant 接入助手正文 + ⌘\ 切换侧边栏 + 命令面板扩展。",
+                    summary: "fix(ui+shortcut): trajectoryAssistant 接入助手正文 + Cmd+\\ 切换侧边栏 + 命令面板扩展。",
                     changes: ["fix(ui+shortcut): v0.5.89 — trajectoryAssistant 接入助手正文 + ⌘\\ 切换侧边栏 + 命令面板扩展（commit e92425b）"],
                     why: "v0.5.128 MakeHistory parity 双向严格测试需要此条目。",
                     next: "无"
