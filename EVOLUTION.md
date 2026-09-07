@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.144 — fix(ui): Plan mode 强调色误用 brandPrimary（dark mode 白条） + dock ⌘K toggle bug
+**Date**: 2026-09-08
+**Tag**: v0.5.144
+**Test status**: 本机 3116 passed / 13 failed（比 baseline 多 1 个 SSH 网络性 fail，与改动无关）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner.background` / Plan toggle background / Stop 按钮圆形背景：`DSHTheme.brandPrimary` → `DSHTheme.brand`（真品牌蓝）。
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 批准按钮 `.tint()`：同上。
+- `Sources/TapgoAICoding/Views/ContentView.swift`:
+  - `onReceive(tapgoOpenCommandPalette)` 改 `showCommandPalette.toggle()` 并同步发 `paletteDidOpen` / `paletteDidClose`（之前只 set true，⌘K 不 toggle dock）。
+**Why**: 用户报告点 Plan 按钮后顶部白条、按钮变白色块。`DSHTheme.brandPrimary` 名字误导——是「主前景色」不是品牌蓝，dark mode 下近白。同时 ContentView 的 ⌘K handler 不 toggle，违背 Codex 桌面端 toggle dock 语义。
+**Next**: Codex 插件点击直接执行（当前只插入文本）；或 composer 输入框底部 chip 视觉对齐精修（差异较小，优先级低）。
+
+
 ## v0.5.143 — feat(protocol): Plan mode 与 harness 协议深度集成（turn-level approvalPolicy + sandbox 覆盖）
 **Date**: 2026-09-08
 **Tag**: v0.5.143

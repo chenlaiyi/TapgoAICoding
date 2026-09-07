@@ -60,7 +60,9 @@ struct ApprovalRow: View {
                         Label(L10n.approve, systemImage: "checkmark")
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(DSHTheme.brandPrimary)
+                    // v0.5.144 修：brandPrimary 在 dark 模式下近白色 → approve
+                    // 按钮变成白底白字。改用 brand 蓝。
+                    .tint(DSHTheme.brand)
 
                     Button {
                         store.respondToApproval(request, approve: false)

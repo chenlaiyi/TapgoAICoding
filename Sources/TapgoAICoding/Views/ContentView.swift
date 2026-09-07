@@ -71,8 +71,14 @@ struct ContentView: View {
             showTrajectory = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenCommandPalette)) { _ in
-            showCommandPalette = true
-                                NotificationCenter.default.post(name: .tapgoPaletteDidOpen, object: nil)
+            // v0.5.144: ⌘K / ⌘⇧P 现在是 toggle dock 开/关（之前只 set true，
+            // 违背 Codex 桌面端 toggle 语义）。同步发 paletteDidOpen/Close 让
+            // App.swift 的 PaletteState 跟踪最新状态。
+            showCommandPalette.toggle()
+            NotificationCenter.default.post(
+                name: showCommandPalette ? .tapgoPaletteDidOpen : .tapgoPaletteDidClose,
+                object: nil
+            )
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoToggleSidebar)) { _ in
             withAnimation(.easeInOut(duration: 0.18)) { sidebarVisible.toggle() }

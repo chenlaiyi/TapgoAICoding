@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.144", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.144",
+                    summary: "Plan mode 强调色误用 brandPrimary（dark mode 白条） + dock ⌘K toggle bug。",
+                    changes: ["PlanModeBanner / Plan toggle / Stop 按钮 背景：brandPrimary → brand 真品牌蓝。", "ApprovalRow 批准按钮 .tint() 同修。", "ContentView.onReceive(tapgoOpenCommandPalette) 改 toggle() 并同步发 paletteDidOpen/Close。"],
+                    why: "用户报告点 Plan 按钮后顶部白条、按钮变白色块。brandPrimary 是「主前景色」不是品牌蓝。同时 ⌘K handler 不 toggle。",
+                    next: "Codex 插件点击直接执行；或 composer 底部 chip 视觉对齐精修。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.143", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.143",
                     summary: "Plan mode 与 harness 协议深度集成（turn-level approvalPolicy + sandbox 覆盖）。",
                     changes: ["CodexHarnessClient.run 加 planMode；plan 时 turn/start 附加 approvalPolicy=`on-request` + sandbox=`read-only`。", "SessionStore.QueuedMessage 加 planMode 字段；drain 保留原 plan mode。", "sendUserMessage / sendNow 透传 planMode 到 newRunner.run。", "ChatView.send 调用 store.sendUserMessage(payload, planMode: planningMode)。"],

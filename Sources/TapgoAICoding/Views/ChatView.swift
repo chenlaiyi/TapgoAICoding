@@ -1529,7 +1529,9 @@ struct ComposerView: View {
                             .foregroundStyle(planningMode ? Color.white : DSHTheme.labelDim)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(planningMode ? DSHTheme.brandPrimary : Color.clear, in: Capsule())
+                            // v0.5.144 修：brandPrimary 是「主前景色」不是品牌蓝，
+                            // 在 dark 模式下几乎白色 → Plan 按钮变成白色胶囊。
+                            .background(planningMode ? DSHTheme.brand : Color.clear, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .help(planningMode ? "Plan mode：下一条消息先让 Codex 出方案" : "Plan mode：先让 Codex 出方案再执行")
@@ -1614,8 +1616,10 @@ struct ComposerView: View {
                             Image(systemName: "stop.fill")
                                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                                 .frame(width: 28, height: 28)
-                                .foregroundStyle(DSHTheme.brandPrimaryText)
-                                .background(DSHTheme.brandPrimary, in: Circle())
+                                .foregroundStyle(.white)
+                                // v0.5.144 修：brandPrimary 是「主前景色」不是品牌蓝，
+                                // dark 模式下近白 → stop 按钮变成白色圆。改用 brand 蓝。
+                                .background(DSHTheme.brand, in: Circle())
                         }
                         .buttonStyle(.plain)
                         .help("中断当前任务（排队消息会被保留）")
@@ -3048,6 +3052,8 @@ struct PlanModeBanner: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(DSHTheme.brandPrimary, in: RoundedRectangle(cornerRadius: 6))
+        // v0.5.144 修：之前用 brandPrimary（dark 模式下近白色），banner 变成白条。
+        // brandPrimary 是「主前景色」不是品牌蓝。正确的蓝色是 brand。
+        .background(DSHTheme.brand, in: RoundedRectangle(cornerRadius: 6))
     }
 }
