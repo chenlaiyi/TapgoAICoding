@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.134 — feat(ui): 更新日志 sheet 加 GitHub release 链接
+**Date**: 2026-09-08
+**Tag**: v0.5.134
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `ReleaseNotesSheet` 每条版本日志变成 `Link(destination:)`（点击跳 GitHub release tag URL）。
+- `recentEntries()` 返回类型 `[(version: String, title: String)]`，解析 `## vX.Y.Z — 标题` 拆出版本号和标题。
+- `releaseURL(for:)` 辅助函数返回 `https://github.com/chenlaiyi/TapgoAICoding/releases/tag/vX.Y.Z`。
+**Why**: Codex 桌面端 release notes 可点击每条跳 commit/release。
+**Next**: Plan mode 与 harness 协议深度集成；或命令面板 + slash command 加键盘快捷键（不是 menu shortcut 而是真正注册为全局 hotkey）。
+
 ## v0.5.133 — feat(ui): 命令面板 11 个 action 快捷键完整化
 **Date**: 2026-09-08
 **Tag**: v0.5.133

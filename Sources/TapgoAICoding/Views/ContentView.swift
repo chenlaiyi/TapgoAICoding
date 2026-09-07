@@ -1000,10 +1000,19 @@ struct ReleaseNotesSheet: View {
                             .foregroundStyle(.secondary)
                     }
                     Divider()
-                    ForEach(Self.recentEntries(), id: \.self) { entry in
-                        Text(entry)
-                            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(Self.recentEntries(), id: \.version) { entry in
+                        if let url = URL(string: Self.releaseURL(for: entry.version)) {
+                            Link(destination: url) {
+                                Text("v\(entry.version) — \(entry.title)")
+                                    .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundStyle(DSHTheme.brand)
+                            }
+                        } else {
+                            Text("v\(entry.version) — \(entry.title)")
+                                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1013,8 +1022,8 @@ struct ReleaseNotesSheet: View {
         .frame(width: 640, height: 560)
     }
 
-    /// 读取项目根 EVOLUTION.md，提取头部 12 个 `## v...` 段标题。失败时返回空数组。
-    private static func recentEntries() -> [String] {
+    /// 读取项目根 EVOLUTION.md，提取头部 12 个 `## v...` 段。返回 (version, title) 元组列表。
+    private static func recentEntries() -> [(version: String, title: String)] {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()  // ContentView.swift
             .deletingLastPathComponent()  // Views
@@ -1028,6 +1037,20 @@ struct ReleaseNotesSheet: View {
         return text.components(separatedBy: "\n")
             .filter { $0.hasPrefix("## v") }
             .prefix(12)
-            .map { String($0.dropFirst(3)) }  // drop "## "
+            .compactMap { line -> (version: String, title: String)? in
+                // 格式：## vX.Y.Z — 标题（破折号前后可能有空格）
+                let trimmed = String(line.dropFirst(3))  // drop "## "
+                let parts = trimmed.components(separatedBy: "—")
+                guard parts.count >= 2 else { return nil }
+                let version = parts[0].trimmingCharacters(in: .whitespaces)
+                let title = parts.dropFirst().joined(separator: "—")
+                    .trimmingCharacters(in: .whitespaces)
+                return (version, title)
+            }
+    }
+
+    /// GitHub release tag URL（点击跳到对应 release 页面）。
+    private static func releaseURL(for version: String) -> String {
+        "https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v\(version)"
     }
 }

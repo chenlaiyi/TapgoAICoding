@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.134", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.134",
+                    summary: "更新日志 sheet 加 GitHub release 链接。",
+                    changes: ["ReleaseNotesSheet 每条变 Link(destination:) 跳 release tag URL。", "recentEntries() 改返回 (version, title) 元组。", "releaseURL(for:) 辅助函数。"],
+                    why: "Codex 桌面端 release notes 可点击每条。",
+                    next: "Plan mode 接 harness 协议 或 全局 hotkey。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.133", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.133",
                     summary: "命令面板 11 个 action 快捷键完整化。",
                     changes: ["10 个 action 加 keyLabel：MCP ⌃⌥M / 审查 ⌃⌘R / 侧边 ⌃⌥S / 分支 ⌃⌘B / 压缩 ⌃⌘K / 反馈 ⌥⌘F / 归档 ⌥⌘⌫ / 状态 ⌃⌘I / Plan ⌃⌘P / 置顶 ⌥⌘P。", "避开 macOS 系统保留键。"],
