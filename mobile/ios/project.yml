@@ -11,7 +11,7 @@ name: TapgoTerminal
 options:
   bundleIdPrefix: com.devtools
   deploymentTarget:
-    iOS: "13.0"
+    iOS: "16.0"
   developmentLanguage: zh-Hans
   createIntermediateGroups: true
 settings:
@@ -21,13 +21,13 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: "KF2CE24685"
     CODE_SIGN_STYLE: "Automatic"
-    IPHONEOS_DEPLOYMENT_TARGET: "13.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     TARGETED_DEVICE_FAMILY: "1,2"
 targets:
   TapgoTerminal:
     type: application
     platform: iOS
-    deploymentTarget: "13.0"
+    deploymentTarget: "16.0"
     sources:
       - path: Sources
       - path: Assets.xcassets
@@ -42,12 +42,3 @@ targets:
         SUPPORTS_MACCATALYST: "NO"
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
-    info:
-      path: "Info.plist"
-      properties:
-        CFBundleDisplayName: "点点够终端"
-        CFBundleShortVersionString: "$(MARKETING_VERSION)"
-        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        UILaunchScreen: {}
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: true
