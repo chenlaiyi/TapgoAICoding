@@ -29,4 +29,11 @@ func runComposerLocalCommandTests(_ t: TestRunner) {
     t.expectNil(ComposerLocalCommand.parse("/initial"), "init-prefixed names are not intercepted")
     t.expectNil(ComposerLocalCommand.parse("/initialize"), "init-with-suffix is not intercepted")
     t.expectNil(ComposerLocalCommand.parse("请解释 /init"), "inline /init mention is regular text")
+    // /compact — bare token only; any suffix falls back to model.
+    t.expectEqual(ComposerLocalCommand.parse("/compact"), .compact, "compact command stays local")
+    t.expectEqual(ComposerLocalCommand.parse("  /compact  "), .compact, "compact trims surrounding whitespace")
+    t.expectNil(ComposerLocalCommand.parse("/compact now"), "/compact with suffix is not a local command")
+    t.expectNil(ComposerLocalCommand.parse("/compaction"), "compact-prefixed names are not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("/compactify"), "compact-with-suffix is not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("请解释 /compact"), "inline /compact mention is regular text")
 }

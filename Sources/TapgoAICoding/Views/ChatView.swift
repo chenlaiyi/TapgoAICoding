@@ -128,6 +128,28 @@ private final class ComposerDraftSaver {
     }
 }
 
+private struct CompactOutcomeAlert: Identifiable {
+    let outcome: SessionStore.CompactOutcome
+    var id: String { String(describing: outcome) }
+    var title: String {
+        switch outcome {
+        case .empty: return "没有可 compact 的会话"
+        case .busy: return "回合还在进行"
+        case .compacted: return "已折叠会话"
+        }
+    }
+    var message: String {
+        switch outcome {
+        case .empty:
+            return "当前没有活跃会话。"
+        case .busy:
+            return "请先等当前回合结束再 compact。"
+        case .compacted(let turns, let items):
+            return "折叠了 \(turns) 个回合、\(items) 个 assistant 项。thread 元数据保留；下次发消息会从干净的 harness 上下文开始。"
+        }
+    }
+}
+
 private struct ModelSelectAlert: Identifiable {
     let outcome: SessionStore.ModelSelectOutcome
     var id: String { String(describing: outcome) }
@@ -1149,6 +1171,7 @@ struct ComposerView: View {
     @State private var showAttachments = true
     @State private var showSlashMenu = false
     @State private var modelSelectAlert: ModelSelectAlert?
+    @State private var compactOutcomeAlert: CompactOutcomeAlert?
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
     /// NSEvent monitor that intercepts ⌘V to attach clipboard images/files.
@@ -1277,6 +1300,11 @@ struct ComposerView: View {
                     slashMenu
                 }
                 .alert(item: $modelSelectAlert) { item in
+                    Alert(title: Text(item.title),
+                          message: Text(item.message),
+                          dismissButton: .default(Text("好")))
+                }
+                .alert(item: $compactOutcomeAlert) { item in
                     Alert(title: Text(item.title),
                           message: Text(item.message),
                           dismissButton: .default(Text("好")))
@@ -2221,6 +2249,9 @@ struct ComposerView: View {
             modelSelectAlert = ModelSelectAlert(outcome: outcome)
         case .initProject:
             store.startInitProjectThread()
+        case .compact:
+            let outcome = store.compactActiveThread()
+            compactOutcomeAlert = CompactOutcomeAlert(outcome: outcome)
         }
         text = ""
         showSlashMenu = false
@@ -2261,7 +2292,14 @@ struct ComposerView: View {
                 showSlashMenu = false
                 focused = true
             }
-            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话。")
+            slashRow("/compact", "折叠当前会话历史（下次发消息从干净上下文）") {
+                let outcome = store.compactActiveThread()
+                compactOutcomeAlert = CompactOutcomeAlert(outcome: outcome)
+                text = ""
+                showSlashMenu = false
+                focused = true
+            }
+            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换；输入 /init 打开起草 AGENTS.md 的会话；输入 /compact 折叠当前会话历史。")
                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 10)

@@ -19,12 +19,18 @@ public enum ComposerLocalCommand: Equatable {
     /// with a "draft an AGENTS.md" prompt so the user can iterate with
     /// Codex and then write the result to the project root.
     case initProject
+    /// `/compact` — fold older turns in the active thread into a short
+    /// summary so the harness-side context window regains room while
+    /// keeping the user's anchor message intact. Implementation lives
+    /// in `SessionStore.compactActiveThread`.
+    case compact
 
     public static func parse(_ input: String) -> Self? {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if text == "/new" { return .newTask }
         if text == "/clear" { return .clear }
         if text == "/init" { return .initProject }
+        if text == "/compact" { return .compact }
         if let rest = text.strippingLocalCommandPrefix("model") {
             return .model(rest)
         }

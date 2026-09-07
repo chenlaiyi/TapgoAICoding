@@ -583,6 +583,61 @@ final class SessionStore: ObservableObject {
     /// handle are reset. Any in-flight turn is cancelled first so harness
     /// events arriving after the clear land on a thread that no longer
     /// carries the dropped turns.
+    /// `/compact` slash command: fold the active thread's assistant-side
+    /// items into a single summary placeholder so the chat list no longer
+    /// rehydrates huge assistant messages, tool calls, or file diffs.
+    /// User messages, turn metadata (id, status, startedAt, completedAt,
+    /// usage) and thread metadata (title, projectId, cwd, goal, pinned)
+    /// survive verbatim. The harness thread handle is also reset so the
+    /// next user message opens a fresh Codex conversation — matching
+    /// Codex desktop's `/compact` semantics, where the on-disk record
+    /// stays compact but the agent starts over with a clean context.
+    func compactActiveThread() -> CompactOutcome {
+        guard let id = activeThreadId,
+              let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return .empty }
+        guard !runRegistry.isRunning(id) else { return .busy }
+        var updated = liveThreads[idx]
+        var compactedTurns = 0
+        var collapsedItems = 0
+        updated.turns = updated.turns.map { turn in
+            var newTurn = turn
+            // Keep the user-typed message; collapse everything else into
+            // a single note so the chat shows the user said something and
+            // Codex answered, without rehydrating thousands of items.
+            let userItems = turn.items.filter {
+                if case .userMessage = $0 { return true } else { return false }
+            }
+            collapsedItems += turn.items.count - userItems.count
+            if collapsedItems > 0 || !turn.items.isEmpty {
+                compactedTurns += 1
+                var collapsed = userItems
+                if turn.items.isEmpty {
+                    // Keep an empty turn intact (no need to add a marker).
+                    newTurn.items = userItems
+                } else {
+                    collapsed.append(.assistantMessage(
+                        id: "compact-\(turn.id)",
+                        text: "(已 compact：原对话已折叠，下次发消息会从干净上下文重新开始)"
+                    ))
+                    newTurn.items = collapsed
+                }
+            }
+            return newTurn
+        }
+        updated.harnessThreadId = nil
+        updated.updatedAt = Date()
+        replaceThread(updated)
+        NotificationCenter.default.post(name: .tapgoClearComposer, object: nil)
+        return .compacted(turns: compactedTurns, items: collapsedItems)
+    }
+
+    /// Result of `/compact` so the composer can surface what happened.
+    enum CompactOutcome: Equatable {
+        case empty
+        case busy
+        case compacted(turns: Int, items: Int)
+    }
+
     func clearActiveThread() {
         guard let id = activeThreadId,
               let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
