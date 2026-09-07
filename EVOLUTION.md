@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.128 — test: MakeHistory parity 双向严格 + 历史段回填
+**Date**: 2026-09-08
+**Tag**: v0.5.128
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `Sources/TapgoTests/MakeHistoryParityTests.swift` 升级为双向严格：makeHistory ↔ EVOLUTION.md 每个 v0.5+ 段必须互见（iOS 子项目 v1.x 与 v0.0-v0.2 旧段过滤）。
+- `Sources/TapgoAICoding/Views/EvolutionLogView.swift` makeHistory 补 19 个历史段：v0.3.0/2/3、v0.4.0/1/3、v0.5.0/1/4、v0.5.52、v0.5.58-61、v0.5.80/81、v0.5.84-99、v0.5.105、v0.5.108（commit SHA 从 git log 反查）。
+- `EVOLUTION.md` 头部 v0.5.5 之前补 12 个段：v0.3.0/2/3、v0.4.0/1/3、v0.5.0/1/4、v0.5.80/81/104。
+**Why**: v0.5.127 测试只检查 makeHistory → EVOLUTION 单向；发现历史漏段 19 个。补齐后双向严格测试可持续。
+**Next**: 命令面板按状态分组；或把 AGENTS.md / MakeHistory 之外章节结构化（Roadmap / Known issues）。
+
 ## v0.5.127 — test: MakeHistory parity suite（防 v0.5.125 中文双引号 bug 重现）
 **Date**: 2026-09-08
 **Tag**: v0.5.127
