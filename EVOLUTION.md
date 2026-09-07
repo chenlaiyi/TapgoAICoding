@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.125 — feat(chat): Plan mode（Codex 桌面端"先出方案"模式）
+**Date**: 2026-09-08
+**Tag**: v0.5.125
+**Test status**: jkmacmini 待跑；本机 3110 passed / 12 failed
+**Changed**:
+- `ChatView` 加 `@AppStorage("tapgo.planningMode") private var planningMode`；composer 工具栏（在 `environmentChip` 后）加 `Plan` toggle 按钮。
+- `ChatView.send()`：若 `planningMode == true`，把用户消息包成 `[计划模式] 请先给方案…不要执行任何工具调用。\n\n<原消息>` 发送；发送后 `planningMode = false`（单次模式）。
+- `CommandPaletteView.actions` 加 "Plan 模式" 入口（`lightbulb` 图标）：点击设置 `UserDefaults` 标记 + 弹 alert 提示。
+**Why**: Codex 桌面端"Plan"模式让用户审查方案再执行；Tapgo AICoding 此前只有直接执行，没有"先思考"路径。
+**Next**: 让 palette 的"目标"和"置顶"显示当前 thread 的实时状态（已设目标显示"编辑目标"、已置顶显示"取消置顶"）；或考虑 MakeHistory 之外的 EVOLUTION 章节结构化。
+
 ## v0.5.124 — feat(ui): 命令面板 access-level badge（Codex 桌面端"完全访问"指示器）
 **Date**: 2026-09-08
 **Tag**: v0.5.124

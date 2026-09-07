@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.125", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.125",
+                    summary: "Plan mode（Codex 桌面端"先出方案"模式）— composer toggle + palette 入口。",
+                    changes: ["ChatView 加 planningMode AppStorage + composer 工具栏 Plan 按钮。", "send() 若 planningMode 自动前置 [计划模式] 指令；发送后归位。", "CommandPaletteView.actions 加 Plan 模式 action。"],
+                    why: "Codex 桌面端"Plan"模式让用户审查方案再执行；Tapgo 此前没有"先思考"路径。",
+                    next: "palette 显示 thread 实时状态 或 EVOLUTION 章节结构化。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.124", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.124",
                     summary: "命令面板底部 access-level badge（完全访问 / 工作区）。",
                     changes: ["mini composer 左侧加 clock.arrow.circlepath + SandboxMode.displayName。", "currentAccessLevel + accessLevelColor 从 TapgoConfig.sandboxKey 实时读。"],
