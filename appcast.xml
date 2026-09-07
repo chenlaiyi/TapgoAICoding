@@ -3,6 +3,25 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.118</title>
+            <pubDate>Mon, 07 Sep 2026 23:36:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.118</link>
+            <sparkle:version>0.5.118</sparkle:version>
+            <sparkle:shortVersionString>0.5.118</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.118
+
+## Composer slash 命令（对齐 Codex 桌面端）
+
+- **`/clear`** — 清空当前会话的全部回合记录，同时取消正在跑的回合；线程元数据（id / title / projectId / cwd / goal / 固定状态）保留，下次发消息会创建全新的 harness 上下文。
+- **`/model <查询>`** — 模糊匹配 provider / model 并切换下一个新会话的模型。查询可填显示名片段（如 `MiniMax M3`）、apiModel（如 `MiniMax-M3`）或精确 ID（如 `builtin:minimax::MiniMax-M3`）。命中 0 / 多 / 已注册但缺 key 三种情况都会弹 alert 提示如何消歧。已在跑的回合沿用旧模型（与 Codex 桌面端语义一致）。
+
+测试覆盖 ComposerLocalCommand 解析（新增 11 个 case）+ SessionStore.selectModel 模糊匹配；SSH 远程集成与 auth.json 环境性失败仍稳定与 v0.5.117 一致。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.118/Tapgo-AICoding-0.5.118.zip" length="11926994" type="application/octet-stream" sparkle:edSignature="qeOpEYAmJWOTtMiMVcyjfyrywp71NeVEe/eyxPPzJ6vzb+MASwjy5l49olJe3d8+mZWbWswQM20MvaKnxhadAw=="/>
+        </item>
+        <item>
             <title>0.5.117</title>
             <pubDate>Mon, 07 Sep 2026 23:03:25 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.117</link>
@@ -62,26 +81,6 @@
 验证覆盖 PluginCatalog 解析与 pluginId 安全、plugins.toml 读写往返、Markdown 解析回归、真实 SSH 执行器回归与滚动压力采样（CPU 0%）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.116/Tapgo-AICoding-0.5.116.zip" length="11902451" type="application/octet-stream" sparkle:edSignature="ix6FGXKknHPBwlgUL51pz+EjfIRDL7dSkoxrrNG9MR1p1cm5PyyBAdw8j7Mj19aKy5qyPfSXifsQVkbnXux4Aw=="/>
-        </item>
-        <item>
-            <title>0.5.115</title>
-            <pubDate>Sun, 06 Sep 2026 23:18:39 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.115</link>
-            <sparkle:version>0.5.115</sparkle:version>
-            <sparkle:shortVersionString>0.5.115</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.115
-
-- 接入 Tapgo 官方插件市场（plugins.itapgo.com）：插件管理器新增「Tapgo 官方」分类，展示官方插件清单与能力说明。
-- 官方插件可一键安装与卸载：通过 `git clone` 安装到 `~/.tapgo/plugins/<id>/`，已安装项排在列表最前。
-- 目录数据来自 plugins.itapgo.com/catalog.json，网络不可用时静默降级，不影响其它市场的使用。
-- 消息渲染优化：文件引用（`path/to/file.ext:42`）渲染为可辨识的引用样式；列表按缩进层级正确嵌套；大消息解析加入缓存，滚动更流畅。
-- 修复 Finder/Dock 启动时 Codex CLI 版本探测失败的问题（GUI 最小 PATH 下自动补齐 Homebrew 路径）。
-
-验证覆盖 PluginCatalog 解析与 pluginId 安全、Markdown 文件引用/嵌套列表解析、GUI 最小 PATH 版本探测回归与真实 SSH 执行器回归。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.115/Tapgo-AICoding-0.5.115.zip" length="11857133" type="application/octet-stream" sparkle:edSignature="eQyVENGq2hUINFKDQxk6S8V4I/74Ii/8yEbDkQFpFu3+SU2kKsKHqJqmhQRipIjFlWa3anmLWtBU+Q1uOrWCCA=="/>
         </item>
     </channel>
 </rss>
