@@ -1475,6 +1475,9 @@ struct ComposerView: View {
         }
         .frame(maxWidth: contentWidth, alignment: .center)
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
+        .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenGoalEditor)) { _ in
+            editingGoalItem = GoalEditItem(text: "")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoFocusComposer)) { _ in
             focused = true
         }

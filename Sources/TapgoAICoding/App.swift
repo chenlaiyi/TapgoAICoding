@@ -222,6 +222,7 @@ extension Notification.Name {
     static let tapgoSendMessage = Notification.Name("tapgo.sendMessage")
     static let tapgoInterjectAndFlush = Notification.Name("tapgo.interjectAndFlush")
     static let tapgoJumpToTurn = Notification.Name("tapgo.jumpToTurn")
+    static let tapgoOpenGoalEditor = Notification.Name("tapgo.openGoalEditor")
     static let tapgoOpenCommandPalette = Notification.Name("tapgo.openCommandPalette")
     static let tapgoToggleSidebar = Notification.Name("tapgo.toggleSidebar")
     static let tapgoRequestOpenNewTask = Notification.Name("tapgo.openNewTask")

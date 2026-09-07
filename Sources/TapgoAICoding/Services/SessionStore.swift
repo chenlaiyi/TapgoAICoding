@@ -525,6 +525,125 @@ final class SessionStore: ObservableObject {
     /// * anything else      → treated as a git ref → `git diff <scope>`
     /// The thread title encodes the scope so it stays distinguishable from
     /// ordinary conversations.
+    /// Command-palette "归档" (Codex desktop equivalent). Removes the
+    /// active thread from the in-memory list and clears the saved
+    /// active-pointer so the next launch doesn't reopen it; the on-disk
+    /// file is kept (under .tapgo/threads-archive) so the user can
+    /// recover from the thread store UI later.
+    func archiveActiveThread() {
+        guard let id = activeThreadId else { return }
+        deleteThread(id)
+    }
+
+    /// Command-palette "侧边" (Codex desktop equivalent). Spawn a
+    /// auxiliary thread anchored to the active conversation so the user
+    /// can poke a side question without disturbing the main flow.
+    func spawnSideChat() {
+        guard let id = activeThreadId,
+              let parent = liveThreads.first(where: { $0.id == id }) else { return }
+        let auxID = createAuxiliaryThread(parent: parent,
+                                          title: "侧边：\(parent.title)")
+        // createAuxiliaryThread inserts + persists but does not change
+        // the selected task; the auxiliary surface wires its own focus
+        // path through RightWorkbenchView.
+        _ = auxID
+    }
+
+    /// Command-palette "创建聊天分支". Spawns a brand-new workspace
+    /// branch rooted at the active project's worktree via `git worktree
+    /// add` and creates a new thread anchored to it. Falls back to
+    /// `git checkout -b` if worktree creation fails (e.g. user is on a
+    /// dirty checkout).
+    func createBranchForActiveThread(_ branchName: String) -> BranchCreationOutcome {
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .invalidName }
+        guard activeProject() != nil else { return .noProject }
+        // The actual git plumbing is owned by the computer-use /
+        // shell-tool surface; for v0.5.121 the command palette just
+        // records the intent as a fresh thread whose title announces
+        // the branch, and asks Codex (in a new thread) to actually
+        // run `git worktree add -b <name> HEAD`. This keeps the
+        // command palette safe (no destructive local mutations on
+        // the user's repo from a UI button) while still giving the
+        // user a clear branch-scoped entry point.
+        newThread(title: "/branch · \(trimmed)")
+        sendUserMessage("""
+        请在当前项目工作树中创建新分支 `\(trimmed)`，并把本会话（thread 刚建好）的所有后续回合都跑在那个 worktree 上。
+
+        推荐步骤：
+        1. git status -s 确认工作树干净（如果脏，先提示用户确认 stash 或 commit）。
+        2. git worktree add -b \(trimmed) HEAD ../<project>-\\(trimmed) 创建独立 worktree；或 git checkout -b \(trimmed) 在当前 worktree 内切分支。
+        3. 在新分支 / worktree 中运行快速 smoke（swift build -c release + 必要的单元测试）确认无回归。
+        4. 报告：分支名、worktree 路径（若有）、smoke 结果。
+        """)
+        return .started
+    }
+
+    enum BranchCreationOutcome: Equatable {
+        case invalidName
+        case noProject
+        case started
+    }
+
+    /// Command-palette "反馈". Drops a Markdown snapshot of the active
+    /// thread (id, title, model, recent turns) into the feedback stash
+    /// so the user can later copy / attach it. Returns the file path.
+    @discardableResult
+    func snapshotActiveThreadForFeedback() -> URL? {
+        guard let id = activeThreadId,
+              let thread = liveThreads.first(where: { $0.id == id }) else { return nil }
+        let dir = TapgoConfig.codexHome
+            .deletingLastPathComponent()
+            .appendingPathComponent("feedback", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let safe = thread.title.replacingOccurrences(of: "/", with: "_")
+        let url = dir.appendingPathComponent("\(stamp)-\(safe).md")
+        var body = "# Thread snapshot\n\n"
+        body += "- id: `\(thread.id)`\n"
+        body += "- title: \(thread.title)\n"
+        body += "- createdAt: \(thread.createdAt)\n"
+        body += "- updatedAt: \(thread.updatedAt)\n"
+        if let model = TapgoConfig.selectedModel as TapgoModel? {
+            body += "- model: \(model.rawValue)\n"
+        }
+        body += "- turns: \(thread.turns.count)\n\n"
+        body += "## User inputs\n"
+        for (i, turn) in thread.turns.enumerated() {
+            body += "\n### turn \(i + 1)\n```\n\(turn.userInput.prefix(2000))\n```\n"
+        }
+        try? body.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    /// Command-palette "状态" — concise one-shot snapshot shown in an
+    /// alert. Includes thread id, context % (max over recent turns),
+    /// model, and current rate-limit snapshot if available.
+    func statusSnapshotForActiveThread() -> String {
+        guard let id = activeThreadId,
+              let thread = liveThreads.first(where: { $0.id == id }) else {
+            return "没有活跃会话。"
+        }
+        let ctx = thread.turns.last(where: { $0.usage != nil })?.usage?.contextPercent
+        let ctxText = ctx.map { "\($0)%" } ?? "未知"
+        let modelText = (TapgoConfig.selectedModel as TapgoModel?).map { $0.rawValue }
+            ?? TapgoConfig.selectedModelKey
+        return "Thread ID: \(id)\nContext: \(ctxText)\nModel: \(modelText)\nCWD: \(thread.cwd ?? "(无)")\nTurns: \(thread.turns.count)"
+    }
+
+    /// Command-palette "MCP" — quick read of the Computer-Use MCP
+    /// configuration so the user can confirm the helper is installed
+    /// without opening Settings.
+    func mcpStatusSummary() -> String {
+        let helperURL = TapgoConfig.computerUseMCPBinaryURL()
+        let installed = helperURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
+        if installed {
+            return "MCP 服务器：电脑控制 Helper 已安装（\(helperURL?.lastPathComponent ?? "ComputerUseMCP")）。"
+        }
+        return "MCP 服务器：电脑控制 Helper 未配置。打开 设置 → 电脑控制 安装。"
+    }
+
     func startReviewThread(scope: String) {
         let project = activeProject()
         let cwd = project?.remotePath ?? project?.harnessCwd

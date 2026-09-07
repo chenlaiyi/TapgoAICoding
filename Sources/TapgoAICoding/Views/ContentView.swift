@@ -96,23 +96,27 @@ struct ContentView: View {
                             withAnimation(.easeOut(duration: 0.15)) { showCommandPalette = false }
                         }
                         .transition(.opacity)
-                    CommandPaletteView(
-                        onNewTask: { beginNewTask() },
-                        onSettings: {
-                            settingsPresentation = SettingsPresentation(tab: .general)
-                        },
-                        onToggleTrajectory: { showTrajectory.toggle() }
-                    )
-                    .environmentObject(workspace)
-                    .environmentObject(store)
-                    .frame(width: 560, height: 460)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(DSHTheme.border.opacity(0.4), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.3), radius: 24, y: 10)
-                    .transition(.scale(scale: 0.96).combined(with: .opacity))
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        CommandPaletteView(
+                            onNewTask: { beginNewTask() },
+                            onSettings: {
+                                settingsPresentation = SettingsPresentation(tab: .general)
+                            },
+                            onToggleTrajectory: { showTrajectory.toggle() }
+                        )
+                        .environmentObject(workspace)
+                        .environmentObject(store)
+                        .frame(maxWidth: 720, maxHeight: 460, alignment: .top)
+                        .frame(maxWidth: .infinity)
+                        .background(.regularMaterial, in: UnevenRoundedRectangle(cornerRadii: .init(topLeading: 14, bottomLeading: 0, bottomTrailing: 0, topTrailing: 14)))
+                        .overlay(
+                            UnevenRoundedRectangle(cornerRadii: .init(topLeading: 14, bottomLeading: 0, bottomTrailing: 0, topTrailing: 14))
+                                .stroke(DSHTheme.border.opacity(0.4), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 24, y: 6)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
                 .animation(.spring(response: 0.28, dampingFraction: 0.85), value: showCommandPalette)
             }
@@ -404,6 +408,12 @@ struct ShortcutsView: View {
 /// Spotlight-style command palette (⌘⇧P): a search field over the app's
 /// actions plus a quick thread jumper. Selecting an item runs it and
 /// dismisses the palette.
+private struct PaletteInfoAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
 private struct CommandPaletteView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
@@ -412,6 +422,9 @@ private struct CommandPaletteView: View {
     @State private var query = ""
     @State private var hoveredId: String? = nil
     @State private var selectedIndex = 0
+    @State private var paletteInfoAlert: PaletteInfoAlert?
+    @State private var pendingBranchPrompt: Bool = false
+    @State private var branchNameDraft: String = ""
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     let onNewTask: () -> Void
@@ -498,6 +511,42 @@ private struct CommandPaletteView: View {
         }
         .padding(16)
         // Size is provided by the caller (centered overlay sets 560x460).
+        .alert(item: $paletteInfoAlert) { item in
+            Alert(title: Text(item.title),
+                  message: Text(item.message),
+                  dismissButton: .default(Text("好")))
+        }
+        .sheet(isPresented: $pendingBranchPrompt) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("新分支名").font(.headline)
+                TextField("branch-name", text: $branchNameDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(minWidth: 280)
+                HStack {
+                    Spacer()
+                    Button("取消") {
+                        pendingBranchPrompt = false
+                        branchNameDraft = ""
+                    }.keyboardShortcut(.cancelAction)
+                    Button("创建") {
+                        let name = branchNameDraft
+                        pendingBranchPrompt = false
+                        branchNameDraft = ""
+                        switch store.createBranchForActiveThread(name) {
+                        case .invalidName:
+                            paletteInfoAlert = .init(title: "分支名无效", message: "请输入非空分支名。")
+                        case .noProject:
+                            paletteInfoAlert = .init(title: "无项目", message: "先在侧边栏选择项目再创建分支。")
+                        case .started:
+                            break
+                        }
+                    }.keyboardShortcut(.defaultAction)
+                    .disabled(branchNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .padding(20)
+            .frame(minWidth: 360)
+        }
         .onAppear { selectedIndex = 0 }
         .onChange(of: query) { _, _ in selectedIndex = 0 }
     }
@@ -599,29 +648,44 @@ private struct CommandPaletteView: View {
 
     private var actions: [PaletteAction] {
         [
-            .init("new", "新建任务", "plus.message", "⌘N", { onNewTask() }),
-            .init("focusSearch", "聚焦会话搜索", "magnifyingglass", "⌘K",
-                  { NotificationCenter.default.post(name: .tapgoFocusSearch, object: nil) }),
-            .init("focusComposer", "聚焦输入框", "text.cursor", "⌘⇧L",
-                  { NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil) }),
-            .init("toggleTrajectory", "切换轨迹栏", "sidebar.right", "⌘⇧T", { onToggleTrajectory() }),
-            .init("copy", "复制会话为 Markdown", "doc.on.doc", "⌘⇧E",
-                  { NotificationCenter.default.post(name: .tapgoCopyConversation, object: nil) }),
-            .init("copyTitle", "复制会话标题", "textformat", "",
-                  { copyActiveThreadTitle() }),
-            .init("settings", "打开运行设置", "gear", "⌘,", { onSettings() }),
-            .init("folder", "打开本地文件夹", "folder", "⌘O",
-                  { NotificationCenter.default.post(name: .tapgoRequestOpenLocalFolder, object: nil) }),
-            .init("openProjectDir", "打开项目目录", "folder.badge.gearshape", "⌘⇧O",
-                  { NotificationCenter.default.post(name: .tapgoOpenActiveProject, object: nil) }),
-            .init("appearance", "切换外观", "sun.max", "⌘⇧D", { toggleAppearance() }),
-            .init("openInTerminal", "在终端中打开项目", "terminal", "",
-                  { openActiveProjectTerminal() }),
+            .init("mcp", "MCP", "server.rack", nil, { paletteInfoAlert = .init(title: "MCP", message: store.mcpStatusSummary()) }),
+            .init("review", "代码审查", "magnifyingglass", nil,
+                  { store.startReviewThread(scope: "") }),
+            .init("side", "侧边", "sidebar.left", nil,
+                  { store.spawnSideChat() }),
+            .init("branch", "创建聊天分支", "arrow.triangle.branch", nil,
+                  { pendingBranchPrompt = true }),
+            .init("compact", "压缩", "arrow.down.right.and.arrow.up.left", nil,
+                  { let outcome = store.compactActiveThread()
+                    paletteInfoAlert = .init(title: "压缩", message: Self.compactOutcomeMessage(outcome)) }),
+            .init("feedback", "反馈", "exclamationmark.bubble", nil,
+                  { if let url = store.snapshotActiveThreadForFeedback() {
+                      let dir = url.deletingLastPathComponent()
+                      paletteInfoAlert = .init(title: "反馈快照", message: "已写入 \(url.lastPathComponent) 到 \(dir.lastPathComponent ?? "feedback")/")
+                    } else {
+                      paletteInfoAlert = .init(title: "反馈快照", message: "没有活跃会话。")
+                    } }),
+            .init("archive", "归档", "archivebox", nil, destructive: true,
+                  { store.archiveActiveThread() }),
+            .init("new", "新聊天", "square.and.pencil", "⌘N", { onNewTask() }),
+            .init("status", "状态", "info.circle", nil,
+                  { paletteInfoAlert = .init(title: "状态", message: store.statusSnapshotForActiveThread()) }),
+            .init("goal", "目标", "target", nil,
+                  { NotificationCenter.default.post(name: .tapgoOpenGoalEditor, object: nil) }),
+            .init("pin", "置顶聊天", "pin", nil,
+                  { if let id = store.activeThreadId { store.togglePinned(id) } }),
             .init("toggleSidebar", "切换侧边栏", "sidebar.left", "⌘\\",
                   { NotificationCenter.default.post(name: .tapgoToggleSidebar, object: nil) }),
-            .init("openEvolution", "进入自进化会话", "arrow.triangle.2.circlepath", "⌘⌥E",
-                  { NotificationCenter.default.post(name: .tapgoOpenEvolution, object: nil) }),
+            .init("settings", "运行设置", "gear", "⌘,", { onSettings() }),
         ]
+    }
+
+    private static func compactOutcomeMessage(_ outcome: SessionStore.CompactOutcome) -> String {
+        switch outcome {
+        case .empty: return "没有可 compact 的会话。"
+        case .busy: return "请先等当前回合结束再 compact。"
+        case .compacted(let turns, let items): return "折叠了 \(turns) 个回合、\(items) 个 assistant 项。"
+        }
     }
 
     private func copyActiveThreadTitle() {
