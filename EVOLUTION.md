@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.120 — feat(chat): /review [scope] slash command — open diff-review thread
+**Date**: 2026-09-08
+**Tag**: v0.5.120
+**Test status**: jkmacmini 待跑；本机 fafamacmini 3110 passed / 12 failed（新增 ComposerLocalCommand 6 个 /review case；12 项失败均为 SSH 远程集成 + auth.json 环境性）
+**Changed**:
+- `ComposerLocalCommand` 加 `.review(String)` case + 解析；`/review` bare token 默认 working scope，scope 名称 trimming。
+- `SessionStore.startReviewThread(scope:)` 创建引导 thread，title 编码 scope 让会话列表可区分；`resolveReviewScope(_:)` 把字符串映射到 git args（`""`→`diff HEAD`、`staged`→`diff --staged`、`main`→`diff origin/main...HEAD`、其他→`diff <scope>`），hint 字段说明范围。
+- `SessionStore.makeReviewPrompt(scope:gitArgs:hint:)` 写结构化 prompt：先 `--stat` 看全貌、再看完整 patch、再 cat 项目约定、最后给"风险 + 设计 + 测试 + 文档"四类审查 + 优先级排序的"建议改动"。
+- `ChatView.handleLocalCommand` 加 `case .review(let scope)`；`slashMenu` 加 `/review [scope]` 行（占位补全到 `/review `）。
+**Why**: Codex 桌面端 `/review` 让用户在提交前快速跑一次结构化 diff 审计；本地 thread 比外部 PR review 工具更轻量、不阻塞提交流。
+**Next**: 下一阶段实现 Plan mode（先让 Codex 出方案再执行，需 harness 协议支持），或把 `makeHistory` 之外的 EVOLUTION 章节（如 release cadence、已知问题）结构化。
+
 ## v0.5.119 — feat(chat)+feat(ui): 命令面板浮层化 + slash 命令补齐 (/init /compact)
 **Date**: 2026-09-07
 **Tag**: v0.5.119

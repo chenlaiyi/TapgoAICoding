@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.120", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.120",
+                    summary: "/review [scope] slash command — open diff-review thread (working/staged/main/<ref>).",
+                    changes: ["ComposerLocalCommand 加 .review(String) case；bare 视为 working scope，scope 名称 trimming。", "SessionStore.startReviewThread 创建引导 thread；title 编码 scope 让会话列表可区分。", "resolveReviewScope 把字符串映射到 git args（working/staged/main/<ref> 四类），hint 字段说明范围。", "makeReviewPrompt 写结构化 prompt：--stat + 完整 patch + 项目约定 + 风险/设计/测试/文档 四类审查。", "ChatView handleLocalCommand + slashMenu 接入；/review 占位补全到 /review "],
+                    why: "Codex 桌面端 /review 让用户在提交前快速跑一次结构化 diff 审计。",
+                    next: "Plan mode（harness 协议支持）或 EVOLUTION 章节结构化。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.119", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.119",
                     summary: "命令面板升级为中心浮层 + slash 补齐 /init /compact。",
                     changes: ["ContentView 命令面板 .sheet → .overlay；半透明背景 + regularMaterial 模糊 + spring 弹性进场。", "ComposerLocalCommand 加 .initProject / .compact cases 与测试。", "SessionStore.startInitProjectThread 创建引导 thread 预填 AGENTS.md 起草 prompt。", "SessionStore.compactActiveThread 折叠 assistant items；harnessThreadId 重置；回合在跑返回 busy。", "ChatView 加 case 与 slashMenu /init /compact 行；CompactOutcomeAlert 翻译 outcome。"],
