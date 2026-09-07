@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.123", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.123",
+                    summary: "命令面板 Esc + ⌘K 关闭，搜索框自动 focus。",
+                    changes: ["隐藏式 Button + .keyboardShortcut(.escape) 触发 onDismiss。", "隐藏式 Button + .keyboardShortcut(\"k\", modifiers: [.command]) 关闭已打开 dock。", "搜索框自动 focus 沿用 v0.5.122 之前的 makeFirstResponder。"],
+                    why: "Esc + ⌘K toggle 是 Codex 桌面端命令面板的标键盘交互。",
+                    next: "底部 access level badge 或 Plan mode。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.122", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.122",
                     summary: "命令面板底部 mini composer (+ 输入框 模型名 发送)，与 Codex 桌面端 dock 完全一致。",
                     changes: ["CommandPaletteView body 末尾加 Divider + HStack { +, TextField, model label, send button }。", "miniPrompt state + sendMiniPrompt 通过 tapgo.composer.pendingText UserDefaults shuttle 传给主 composer。", "currentModelLabel 实时从 TapgoConfig.selectedModelKey 读，去掉 builtin: 前缀。", "改用 onDismiss 回调替代 \\.dismiss（overlay 模式无 sheet dismiss 环境）。", "修复 ShortcutsView.dismiss 回归。"],

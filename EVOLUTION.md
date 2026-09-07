@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.123 — feat(ui): 命令面板 Esc + ⌘K 关闭
+**Date**: 2026-09-08
+**Tag**: v0.5.123
+**Test status**: jkmacmini 待跑；本机 3110 passed / 12 failed（与 v0.5.122 一致）
+**Changed**:
+- `CommandPaletteView` body 末尾加两个隐藏式 Button（`.frame(0,0).opacity(0)`）：一个 `.keyboardShortcut(.escape)`、一个 `.keyboardShortcut("k", modifiers: [.command])`；两者都触发 `onDismiss()`。
+- 搜索框自动 focus 沿用 v0.5.122 之前的 `NSTextField.makeFirstResponder`（打开即输入）。
+**Why**: Esc + ⌘K toggle 是 Codex 桌面端命令面板的标键盘交互习惯；补齐后让用户能完全键盘操作 dock。
+**Next**: 底部状态指示器 badge（"完全访问" 等 access level 显示）或 Plan mode（需 harness 协议支持）。
+
 ## v0.5.122 — feat(ui): 命令面板底部 mini composer（Codex 桌面端 dock 工具条）
 **Date**: 2026-09-08
 **Tag**: v0.5.122
