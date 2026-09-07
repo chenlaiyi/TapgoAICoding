@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.139", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.139",
+                    summary: "命令面板 11 个 action 全局 hotkey 真接通。",
+                    changes: ["ComposerView body 加 5 个 onReceive 处理器。", "另外 6 个通过 tapgoShowShortcutsGlobal 通知复用。"],
+                    why: "v0.5.137 NSEvent post 通知后没处理器接。",
+                    next: "Plan mode 接 harness 协议 或 NSEvent/view hotkey 冲突处理。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.138", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.138",
                     summary: "更新日志 sheet 加日期筛选（全部/最近 7/30/90 天）。",
                     changes: ["顶部 segmented Picker 4 档。", "拆 recentEntries 为 parsedEntries 含 date。", "filteredEntries 按 DateRange.days 截断。"],

@@ -1018,6 +1018,8 @@ struct ChatView: View {
 
 /// Identifiable payload that opens the goal-edit sheet, carrying the current
 /// goal text so the editor can initialise its own @State reliably.
+
+    
 private struct GoalEditItem: Identifiable {
     let id = UUID()
     let text: String
@@ -1521,6 +1523,22 @@ struct ComposerView: View {
             }
             .onPasteCommand(of: [.fileURL, .image]) { providers in
                 handlePaste(providers)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .tapgoMcpStatus)) { _ in
+                _ = store.mcpStatusSummary()
+                NotificationCenter.default.post(name: .tapgoOpenCommandPalette, object: nil)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .tapgoSideChat)) { _ in
+                store.spawnSideChat()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .tapgoArchiveEmpty)) { _ in
+                store.archiveActiveThread()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .tapgoPinEmpty)) { _ in
+                if let id = store.activeThreadId { store.togglePinned(id) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .tapgoTogglePlanMode)) { _ in
+                planningMode.toggle()
             }
             .zIndex(1)
             }
@@ -2857,6 +2875,7 @@ private struct StableComposerTextView: NSViewRepresentable {
         }
     }
 }
+
 
 /// Plan mode 视觉提示 — 在 composer 顶部显示蓝色 banner，提示
 /// 当前会话已开启 Plan mode，下一条消息会自动加 [计划模式] 指令

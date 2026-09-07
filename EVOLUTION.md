@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.139 — feat(ui): 命令面板 11 个 action 全局 hotkey 真接通
+**Date**: 2026-09-08
+**Tag**: v0.5.139
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `ComposerView` body 末尾加 5 个 `onReceive`：`tapgoMcpStatus` / `tapgoSideChat` / `tapgoArchiveEmpty` / `tapgoPinEmpty` / `tapgoTogglePlanMode`。
+- 另外 6 个通过 `tapgoShowShortcutsGlobal` + `tapgoOpenCommandPalette` 转发。
+- 全局 NSEvent 监听 → composer handlers → 实际 store/State 变更 完整链路。
+**Why**: v0.5.137 加了 NSEvent 监听但 ContentView/ChatView 没监听 11 个新 NotificationName，快捷键 post 通知后没反应。
+**Next**: Plan mode 与 harness 协议深度集成；或 NSEvent 全局 hotkey 与 view keyboardShortcut 冲突处理。
+
 ## v0.5.138 — feat(ui): 更新日志 sheet 加日期筛选
 **Date**: 2026-09-08
 **Tag**: v0.5.138
