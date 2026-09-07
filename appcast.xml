@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.127</title>
+            <pubDate>Tue, 08 Sep 2026 01:01:29 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.127</link>
+            <sparkle:version>0.5.127</sparkle:version>
+            <sparkle:shortVersionString>0.5.127</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.127
+
+## 测试覆盖
+
+- 新增 `MakeHistory parity: structural and Info.plist sync` 套件（`MakeHistoryParityTests.swift`），字符串级扫描 `EvolutionLogView.swift` + `EVOLUTION.md` + `Info.plist` + `AppBuilder/project.yml`：
+  - 抽 `version: "vX.Y.Z"` 模式验证 makeHistory 版本数 ≥ 20；
+  - 验证 makeHistory 数组内引号数为偶数（防 v0.5.125 中文双引号导致吞下个 entry 的 bug 重现）；
+  - 验证 makeHistory 最近 10 个版本都在 EVOLUTION.md 头部段出现（保证新发版同步双向）；
+  - 验证 `Info.plist` 与 `project.yml` 的版本号一致。
+
+测试：3116 passed / 12 failed（新增 6 个 MakeHistory 测试；12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.127/Tapgo-AICoding-0.5.127.zip" length="11992492" type="application/octet-stream" sparkle:edSignature="gGDHYPwahxHjCnhYeGj5+SmG1kQEBy0NKPme9QEcPtWehj/KKFED+mtyUNcxN2EVJrZqpoIpXGSVZ1V6VGIVBQ=="/>
+        </item>
+        <item>
             <title>0.5.126</title>
             <pubDate>Tue, 08 Sep 2026 00:49:15 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.126</link>
@@ -41,28 +63,6 @@
 测试：3110 passed / 12 failed（与 v0.5.124 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.125/Tapgo-AICoding-0.5.125.zip" length="11991440" type="application/octet-stream" sparkle:edSignature="8czf/1LKYos2z335DeUDYAjR+ONcUNWoOGdz8PwxHSSE0pyr4RnNsBWb8YjQKMW0Gqe6rYo4wZtgqEvHp7hmAQ=="/>
-        </item>
-        <item>
-            <title>0.5.124</title>
-            <pubDate>Tue, 08 Sep 2026 00:35:59 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.124</link>
-            <sparkle:version>0.5.124</sparkle:version>
-            <sparkle:shortVersionString>0.5.124</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.124
-
-## 命令面板底部 access-level badge
-
-- mini composer 左侧加 access-level badge（`clock.arrow.circlepath` 图标 + "完全访问" / "工作区" 等文字），对应 Codex 桌面端底部的"完全访问"指示器。
-- 实时从 `TapgoConfig.sandboxKey` 读 `SandboxMode`：
-  - `dangerFullAccess`（完全访问）显示橙色
-  - `workspaceWrite` / `readOnly` 显示 secondary
-- 鼠标悬停显示完整沙箱模式名 + 提示"设置 → 电脑控制 调整"。
-
-测试：3110 passed / 12 failed（与 v0.5.123 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.124/Tapgo-AICoding-0.5.124.zip" length="11982969" type="application/octet-stream" sparkle:edSignature="zjjbHooMH3sKkZxPE3UFCwiXqfjqm03DTxYFVW4Bhs0nnT5MJnDk3NVJMF43zD+lIez9tnBBIVANexTkTE9+AQ=="/>
         </item>
     </channel>
 </rss>
