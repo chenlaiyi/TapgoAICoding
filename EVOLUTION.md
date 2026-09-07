@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.122 — feat(ui): 命令面板底部 mini composer（Codex 桌面端 dock 工具条）
+**Date**: 2026-09-08
+**Tag**: v0.5.122
+**Test status**: jkmacmini 待跑；本机 fafamacmini 3110 passed / 12 failed（与 v0.5.121 一致；12 项失败均为 SSH 远程集成 + auth.json 环境性）
+**Changed**:
+- `CommandPaletteView` body 末尾加 `VStack { Divider; HStack { +, TextField, model label, send button } }`，与 Codex 桌面端底部 dock 一致。
+- 新 `@State miniPrompt: String` 持有 mini composer 文本；`sendMiniPrompt()` 把文本写 `tapgo.composer.pendingText`（UserDefaults shuttle）+ post `tapgoFocusComposer` + 清空 miniPrompt + 关 palette。
+- `currentModelLabel: String` 计算属性从 `UserDefaults` 读 `TapgoConfig.selectedModelKey`（去掉 `builtin:` 前缀）。
+- 关闭回调重构：`CommandPaletteView` 用 `let onDismiss: () -> Void` 替代 `\.dismiss`（overlay 模式无 sheet dismiss 环境）；`ContentView` 调用处 `onDismiss: { withAnimation(...) { showCommandPalette = false } }`。背景 tap 保留 `showCommandPalette = false`（ContentView 自身 state）。
+- 修复 sed 误删 `ShortcutsView.dismiss` 的回归——加回 `@Environment(\.dismiss) private var dismiss`。
+**Why**: 用户给截图（Codex 桌面端命令抽屉底部有 + / 输入框 / 模型 / 发送）后 v0.5.121 只覆盖列表部分，底部 dock 仍是空白。补齐后命令抽屉与 Codex 桌面端视觉完全一致。
+**Next**: Plan mode（需 harness 协议支持）、命令面板键盘焦点优化、可能补 `⌥⌘K` 等附加快捷键。
+
 ## v0.5.121 — feat(ui): 命令面板改为底部抽屉 + 11 个动作对齐 Codex 桌面端
 **Date**: 2026-09-08
 **Tag**: v0.5.121

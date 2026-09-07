@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.122", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.122",
+                    summary: "命令面板底部 mini composer (+ 输入框 模型名 发送)，与 Codex 桌面端 dock 完全一致。",
+                    changes: ["CommandPaletteView body 末尾加 Divider + HStack { +, TextField, model label, send button }。", "miniPrompt state + sendMiniPrompt 通过 tapgo.composer.pendingText UserDefaults shuttle 传给主 composer。", "currentModelLabel 实时从 TapgoConfig.selectedModelKey 读，去掉 builtin: 前缀。", "改用 onDismiss 回调替代 \\.dismiss（overlay 模式无 sheet dismiss 环境）。", "修复 ShortcutsView.dismiss 回归。"],
+                    why: "v0.5.121 只补列表部分，底部 dock 空白。",
+                    next: "Plan mode + 键盘焦点 + 附加快捷键。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.121", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.121",
                     summary: "命令面板改为底部抽屉 + 11 个动作对齐 Codex 桌面端。",
                     changes: ["ContentView 命令面板从居中浮层改为底部 docked 抽屉：VStack + UnevenRoundedRectangle 顶部圆角。", "actions 重写为 Codex 顺序：MCP/代码审查/侧边/创建聊天分支/压缩/反馈/归档/新聊天/状态/目标/置顶 + 切换侧边栏 + 运行设置。", "SessionStore 加 archiveActiveThread / spawnSideChat / createBranchForActiveThread / snapshotActiveThreadForFeedback / statusSnapshotForActiveThread / mcpStatusSummary 6 个方法。", "App 加 tapgoOpenGoalEditor 通知；ChatView 监听；ContentView palette 目标行 post。", "CommandPaletteView 自含 state + .alert + .sheet 避免嵌套 view @State 跨域。"],
