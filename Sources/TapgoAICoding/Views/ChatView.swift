@@ -128,6 +128,34 @@ private final class ComposerDraftSaver {
     }
 }
 
+private struct ModelSelectAlert: Identifiable {
+    let outcome: SessionStore.ModelSelectOutcome
+    var id: String { String(describing: outcome) }
+    var title: String {
+        switch outcome {
+        case .empty: return "请输入模型名"
+        case .notFound: return "未找到匹配的模型"
+        case .ambiguous: return "匹配到多个模型"
+        case .selected: return "已切换模型"
+        case .notConfigured: return "模型未配置"
+        }
+    }
+    var message: String {
+        switch outcome {
+        case .empty:
+            return "用法：/model <provider::model 或 显示名片段>"
+        case .notFound(let q):
+            return "未找到包含 \"" + q + "\" 的模型。请到 设置 → 模型 确认注册表。"
+        case .ambiguous(let hits):
+            return ("命中多个模型，请用更精确的 provider::model 切换：\n" + hits.joined(separator: "、"))
+        case .selected(let provider, let model):
+            return "下一个新会话将使用 \(provider) · \(model)。当前在跑的回合沿用旧模型。"
+        case .notConfigured(let provider, let model):
+            return "\(provider) · \(model) 已注册但尚未配置 API Key。请到 设置 → 模型 → \(provider) 填入。"
+        }
+    }
+}
+
 struct ChatView: View {
     @EnvironmentObject var store: SessionStore
     @EnvironmentObject var workspace: WorkspaceStore
@@ -1120,6 +1148,7 @@ struct ComposerView: View {
     @State private var editorExpanded = false
     @State private var showAttachments = true
     @State private var showSlashMenu = false
+    @State private var modelSelectAlert: ModelSelectAlert?
     /// When true the composer is in "goal mode": the placeholder asks for a
     /// goal and submit sets/updates the thread's goal instead of a message.
     /// NSEvent monitor that intercepts ⌘V to attach clipboard images/files.
@@ -1246,6 +1275,11 @@ struct ComposerView: View {
                 )
                 .popover(isPresented: $showSlashMenu, arrowEdge: .bottom) {
                     slashMenu
+                }
+                .alert(item: $modelSelectAlert) { item in
+                    Alert(title: Text(item.title),
+                          message: Text(item.message),
+                          dismissButton: .default(Text("好")))
                 }
 
                 HStack(spacing: 8) {
@@ -2182,6 +2216,9 @@ struct ComposerView: View {
             store.newThread()
         case .clear:
             store.clearActiveThread()
+        case .model(let query):
+            let outcome = store.selectModel(matching: query)
+            modelSelectAlert = ModelSelectAlert(outcome: outcome)
         }
         text = ""
         showSlashMenu = false
@@ -2212,7 +2249,11 @@ struct ComposerView: View {
                 showSlashMenu = false
                 focused = true
             }
-            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话。")
+            slashRow("/model", "切换模型（如 /model MiniMax M3）") {
+                text = "/model "
+                focused = true
+            }
+            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话；输入 /model 后加模型名/显示名/provider::model 切换。")
                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 10)

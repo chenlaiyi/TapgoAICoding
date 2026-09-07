@@ -13,4 +13,13 @@ func runComposerLocalCommandTests(_ t: TestRunner) {
     t.expectNil(ComposerLocalCommand.parse("/clear conversation"), "clear with suffix is not a local command")
     t.expectNil(ComposerLocalCommand.parse("/clearance"), "clear-prefixed names are not intercepted")
     t.expectNil(ComposerLocalCommand.parse("/clearAll"), "clear-with-suffix is not intercepted")
+    // /model — bare token has no query and is rejected so users don't accidentally
+    // open the model picker; only `/model <query>` is a local command.
+    t.expectNil(ComposerLocalCommand.parse("/model"), "bare /model stays ordinary text")
+    t.expectEqual(ComposerLocalCommand.parse("/model MiniMax M3"), .model("MiniMax M3"), "model with display-name query is local")
+    t.expectEqual(ComposerLocalCommand.parse("  /model   glm-flash  "), .model("glm-flash"), "model trims surrounding whitespace")
+    t.expectEqual(ComposerLocalCommand.parse("/model builtin:minimax::MiniMax-M3"), .model("builtin:minimax::MiniMax-M3"), "model accepts exact provider::model id")
+    t.expectNil(ComposerLocalCommand.parse("/modelA"), "model-prefixed names are not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("/modeling"), "model-with-suffix is not intercepted")
+    t.expectNil(ComposerLocalCommand.parse("请解释 /model"), "inline /model mention is regular text")
 }

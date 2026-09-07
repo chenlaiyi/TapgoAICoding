@@ -10,14 +10,42 @@ public enum ComposerLocalCommand: Equatable {
     /// only the conversation history and the harness thread handle are
     /// reset.
     case clear
+    /// `/model <query>` — switch the active provider/model. The query
+    /// matches `displayName`, `apiModel`, `modelID`, or `providerName`
+    /// case-insensitively. Ambiguous matches are reported back so the
+    /// composer can show a hint; only an exact match switches.
+    case model(String)
 
     public static func parse(_ input: String) -> Self? {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if text == "/new" { return .newTask }
         if text == "/clear" { return .clear }
+        if let rest = text.strippingLocalCommandPrefix("model") {
+            return .model(rest)
+        }
         guard text.hasPrefix("/goal") else { return nil }
         let rest = text.dropFirst(5)
         guard rest.isEmpty || rest.first?.isWhitespace == true else { return nil }
         return .goal(rest.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+}
+
+private extension String {
+    /// Returns the trimmed payload after `/<cmd>` when the input is exactly
+    /// `/<cmd>` or `/<cmd> <rest>` (one or more whitespace separators).
+    /// Returns nil when the input is `/<cmd>…` with no separator or when
+    /// the prefix doesn't match — this keeps `/modelA` / `/modeling`
+    /// /`请解释 /model` falling through to the model as ordinary text.
+    func strippingLocalCommandPrefix(_ cmd: String) -> String? {
+        let token = "/" + cmd
+        guard self == token else {
+            guard self.hasPrefix(token) else { return nil }
+            let next = self.index(self.startIndex, offsetBy: token.count)
+            guard next < self.endIndex,
+                  self[next].isWhitespace else { return nil }
+            let trimmed = self[next...].trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        return nil // bare "/<cmd>" with no payload falls through to the model
     }
 }

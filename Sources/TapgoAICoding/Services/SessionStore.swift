@@ -501,6 +501,45 @@ final class SessionStore: ObservableObject {
         replaceThread(updated)
     }
 
+    /// `/model <query>` command: pick the active provider/model via
+    /// `TapgoConfig.selectProviderModel`. The query is matched
+    /// case-insensitively against the registered model list
+    /// (`displayName`, `apiModel`, `modelID`, `providerName`). Returns a
+    /// hint the composer can show so the user knows whether the switch
+    /// succeeded or how to disambiguate. A successful switch only
+    /// affects future turns; the in-flight turn keeps using whatever
+    /// model started it (matches Codex desktop semantics).
+    @discardableResult
+    func selectModel(matching query: String) -> ModelSelectOutcome {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return .empty }
+        let options = TapgoConfig.selectableModelOptions()
+        let needle = q.lowercased()
+        let matches = options.filter {
+            $0.modelName.lowercased().contains(needle)
+                || $0.modelID.lowercased().contains(needle)
+                || $0.providerName.lowercased().contains(needle)
+        }
+        if matches.isEmpty { return .notFound(query) }
+        if matches.count > 1 { return .ambiguous(matches.map { (opt) in "\(opt.providerName) · \(opt.modelName)" }) }
+        let hit = matches[0]
+        if TapgoConfig.selectProviderModel(providerID: hit.providerID, modelID: hit.modelID) {
+            return .selected(provider: hit.providerName, model: hit.modelName)
+        }
+        return .notConfigured(provider: hit.providerName, model: hit.modelName)
+    }
+
+    /// Result of a `/model <query>` selection so the composer can surface
+    /// success, ambiguity, missing matches, or a model that exists but has
+    /// no API key configured.
+    enum ModelSelectOutcome: Equatable {
+        case empty
+        case notFound(String)
+        case ambiguous([String])
+        case selected(provider: String, model: String)
+        case notConfigured(provider: String, model: String)
+    }
+
     /// `/clear` command: wipe the active thread's `turns` in place so the
     /// next message starts from a clean local + harness context. Thread
     /// metadata (id, title, projectId, cwd, goal, pinned, goal state)
