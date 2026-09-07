@@ -3,6 +3,42 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.133</title>
+            <pubDate>Tue, 08 Sep 2026 06:02:54 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.133</link>
+            <sparkle:version>0.5.133</sparkle:version>
+            <sparkle:shortVersionString>0.5.133</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.133
+
+## 命令面板 11 个 action 快捷键完整化
+
+| Action | 快捷键 |
+|---|---|
+| MCP | ⌃⌥M |
+| 代码审查 | ⌃⌘R |
+| 侧边 | ⌃⌥S |
+| 创建聊天分支 | ⌃⌘B |
+| 压缩 | ⌃⌘K |
+| 反馈 | ⌥⌘F |
+| 归档 | ⌥⌘⌫ |
+| 状态 | ⌃⌘I |
+| Plan 模式 | ⌃⌘P |
+| 置顶聊天 | ⌥⌘P |
+| 新聊天 | ⌘N（已有） |
+| 更新日志 | ⇧⌘R（已有） |
+| 快捷键 | ⇧?（已有） |
+| 切换侧边栏 | ⌘\（已有） |
+| 运行设置 | ⌘,（已有） |
+
+均避开 macOS 系统保留快捷键（⌘Q、⌘W、⌘M、⌘T 等）。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.133/Tapgo-AICoding-0.5.133.zip" length="12082646" type="application/octet-stream" sparkle:edSignature="xtldlOONzhyGFu7V/DCe1vOhkXyv/lgsVccf/ae4UG8Y3nSiOLs4K8/q3d20VvkhwvRffxvYys2/J9E8t4XQAA=="/>
+        </item>
+        <item>
             <title>0.5.132</title>
             <pubDate>Tue, 08 Sep 2026 05:58:16 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.132</link>
@@ -46,28 +82,6 @@
 测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.131/Tapgo-AICoding-0.5.131.zip" length="12070727" type="application/octet-stream" sparkle:edSignature="wxfv7Wr8tdebPwgMBtwzQRynlGM4kjosDMosDwJMmtOAusqKR1GNnpjCjPReolsi4YX/xuxKbNVqHT2lZJvjCQ=="/>
-        </item>
-        <item>
-            <title>0.5.130</title>
-            <pubDate>Tue, 08 Sep 2026 01:54:01 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.130</link>
-            <sparkle:version>0.5.130</sparkle:version>
-            <sparkle:shortVersionString>0.5.130</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.130
-
-## 命令面板按状态分组（视觉对齐 Codex 桌面端）
-
-- 命令面板 14 个 actions 之间插入 3 个水平 `Divider` 视觉分组：
-  - **环境**（MCP）
-  - **当前对话操作**（代码审查 / 侧边 / 创建聊天分支 / 压缩 / 反馈 / 归档 / 状态 / 目标 / Plan 模式 / 新聊天）
-  - **全局设置**（置顶聊天 / 切换侧边栏 / 运行设置）
-- `PaletteAction` 加 `isSectionDivider: Bool` 字段 + `static func sectionDivider(_:)` 辅助构造器；`Entry` 加 `isDivider: Bool` 字段；`ForEach` 渲染时 `if e.isDivider { Divider() }` 否则渲染 `Button`。
-
-测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.130/Tapgo-AICoding-0.5.130.zip" length="12065613" type="application/octet-stream" sparkle:edSignature="R6vvpcrDPs7a7zJDHYcvQlWBIndIKS0bpzdE02fWiR3/EbPCYylWy4dvwCSR9Ttq5y6M2ZaqEktf2sKJP2/6CA=="/>
         </item>
     </channel>
 </rss>
