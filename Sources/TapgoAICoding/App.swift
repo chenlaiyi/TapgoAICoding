@@ -27,6 +27,10 @@ struct TapgoAICodingApp: App {
         _remote = StateObject(wrappedValue: PhoneRemoteController(store: sessionStore, workspace: workspace))
         _authStore = StateObject(wrappedValue: AdminAuthStore())
         _scheduledBridge = StateObject(wrappedValue: ScheduledTaskBridge())
+        // Global hotkey monitor: 让命令面板的 11 个 action 快捷键
+        // 在 dock 关闭时也能触发（SwiftUI keyboardShortcut 仅在 view focus
+        // 时工作；NSEvent.addLocalMonitorForEvents 是 macOS app 范围的）。
+        installGlobalHotkeyMonitor()
         // Cross-device durable memory: pull any newer memory files from the
         // iCloud Drive mirror at startup so the user sees what they wrote on
         // their other Macs (JKmacmini / fafamacmini / laptop). Detached so a
@@ -241,4 +245,58 @@ extension Notification.Name {
     static let tapgoSelectNextThread = Notification.Name("tapgo.selectNextThread")
     static let tapgoOpenActiveProject = Notification.Name("tapgo.openActiveProject")
     static let tapgoOpenEvolution = Notification.Name("tapgo.openEvolution")
+}
+
+// MARK: - 全局 hotkey monitor
+
+/// 命令面板 11 个 action 的快捷键在 dock 关闭时也能触发。每个条目
+/// 优先被自己 view 内的 keyboardShortcut 拦截（如果 dock 开着），否则
+/// 走本 monitor post 对应 NotificationName 触发。
+private func installGlobalHotkeyMonitor() {
+    // 键码 + modifierFlags → NotificationName 映射。modifierFlags 包含 cmd
+    // (1<<8)、shift (1<<9)、option (1<<11)、control (1<<12)。
+    // 格式：[(keyCode, flags, Notification.Name)]
+    let bindings: [(keyCode: UInt16, flags: NSEvent.ModifierFlags, name: Notification.Name)] = [
+        // 环境
+        (46, [.command, .control], .tapgoMcpStatus),  // ⌃⌘M MCP（先占位，下面加）
+        (15, [.command, .control], .tapgoReviewThreadEmpty),  // ⌃⌘R 代码审查
+        (1, [.command, .control, .option], .tapgoSideChat),  // ⌃⌥S 侧边
+        (11, [.command, .control], .tapgoCreateBranchEmpty),  // ⌃⌘B 创建聊天分支
+        (40, [.command, .control], .tapgoCompactEmpty),  // ⌃⌘K 压缩
+        (3, [.command, .option], .tapgoFeedback),  // ⌥⌘F 反馈
+        (51, [.command, .option], .tapgoArchiveEmpty),  // ⌥⌘⌫ 归档
+        (34, [.command, .control], .tapgoStatusEmpty),  // ⌃⌘I 状态
+        (35, [.command, .control], .tapgoTogglePlanMode),  // ⌃⌘P 计划模式
+        (35, [.command, .option], .tapgoPinEmpty),  // ⌥⌘P 置顶
+        (15, [.command, .shift], .tapgoOpenReleaseNotes),  // ⇧⌘R 更新日志
+        (44, [.shift], .tapgoShowShortcutsGlobal),  // ⇧? 快捷键（问号需要 shift+/）
+        // 触发 dock 自身
+        (40, [.command], .tapgoOpenCommandPalette),  // ⌘K 关闭 dock
+        (5, [.command, .shift], .tapgoOpenCommandPalette),  // ⌘⇧P 打开 dock
+    ]
+    let map: [String: Notification.Name] = Dictionary(uniqueKeysWithValues:
+        bindings.map { (key: "\($0.keyCode):\($0.flags.rawValue)", value: $0.name) }
+    )
+    NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+        let key = "\(event.keyCode):\(event.modifierFlags.intersection(.deviceIndependentFlagsMask).rawValue)"
+        if let name = map[key] {
+            NotificationCenter.default.post(name: name, object: nil)
+            return nil  // 消费事件
+        }
+        return event
+    }
+}
+
+extension Notification.Name {
+    static let tapgoMcpStatus = Notification.Name("tapgo.mcpStatus")
+    static let tapgoReviewThreadEmpty = Notification.Name("tapgo.reviewThreadEmpty")
+    static let tapgoSideChat = Notification.Name("tapgo.sideChat")
+    static let tapgoCreateBranchEmpty = Notification.Name("tapgo.createBranchEmpty")
+    static let tapgoCompactEmpty = Notification.Name("tapgo.compactEmpty")
+    static let tapgoFeedback = Notification.Name("tapgo.feedback")
+    static let tapgoArchiveEmpty = Notification.Name("tapgo.archiveEmpty")
+    static let tapgoStatusEmpty = Notification.Name("tapgo.statusEmpty")
+    static let tapgoPinEmpty = Notification.Name("tapgo.pinEmpty")
+    static let tapgoOpenReleaseNotes = Notification.Name("tapgo.openReleaseNotes")
+    static let tapgoShowShortcutsGlobal = Notification.Name("tapgo.showShortcutsGlobal")
 }

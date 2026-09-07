@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.137", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.137",
+                    summary: "全局 hotkey 注册（命令面板 11 个 action 快捷键）。",
+                    changes: ["App init 末尾加 installGlobalHotkeyMonitor()。", "NSEvent.addLocalMonitorForEvents 监听 11+ 个 keyCode/modifierFlags 组合。", "匹配后 post 新增 11 个 Notification.Name。"],
+                    why: "SwiftUI keyboardShortcut 仅 view focus 生效；dock 关闭时所有快捷键失效。",
+                    next: "dock 打开时 keydown 走 menu trigger / 日期筛选。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.136", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.136",
                     summary: "Plan mode 视觉强化（composer 顶部蓝色 banner）。",
                     changes: ["ComposerView body 顶部加 if planningMode { PlanModeBanner() }。", "PlanModeBanner struct：brandPrimary + 灯泡 + 主文 + 副文。", "Plan toggle 后立即显示；send() 后自动消失。"],

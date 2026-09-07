@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.137 — feat(app): 全局 hotkey 注册（命令面板 11 个 action 快捷键）
+**Date**: 2026-09-08
+**Tag**: v0.5.137
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `App.swift` `init()` 末尾加 `installGlobalHotkeyMonitor()`：用 `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` 监听。
+- 11 个 action 快捷键（`⌃⌘M`/`⌃⌘R`/`⌃⌥S`/`⌃⌘B`/`⌃⌘K`/`⌥⌘F`/`⌥⌘⌫`/`⌃⌘I`/`⌃⌘P`/`⌥⌘P`/`⇧⌘R`）外加 `⌘K`/`⌘⇧P` 触发 dock。
+- 匹配 keyCode + modifierFlags 后 post 新增 11 个 `Notification.Name`。
+**Why**: SwiftUI `.keyboardShortcut` 仅在 view focus 时工作；dock 关闭时所有快捷键失效。NSEvent.addLocalMonitorForEvents 让快捷键 app 范围全局生效。
+**Next**: 让 dock 命令面板在 dock 打开时把 keyboardShortcut 事件也作为 dock 内的菜单项触发（不重复）；或更新日志 sheet 加日期筛选。
+
 ## v0.5.136 — feat(ui): Plan mode 视觉强化（composer 顶部蓝色 banner）
 **Date**: 2026-09-08
 **Tag**: v0.5.136
