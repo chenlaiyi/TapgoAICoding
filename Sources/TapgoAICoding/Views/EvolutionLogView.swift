@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.130", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.130",
+                    summary: "命令面板按状态分组（Divider 视觉对齐 Codex 桌面端）。",
+                    changes: ["PaletteAction 加 isSectionDivider 字段 + sectionDivider 辅助构造器。", "Entry 加 isDivider 字段。", "actions 数组插入 3 个 Divider 分组。", "ForEach 渲染 if e.isDivider { Divider() }。"],
+                    why: "Codex 桌面端按环境/当前对话/全局设置分组。",
+                    next: "全局命令面板加 settings/release notes 入口 或 Plan mode 接 harness 协议。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.129", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.129",
                     summary: "composer \"+\" 按钮对齐 Codex 桌面端下拉菜单（含 /plan + MakeHistory 双向严格）。",
                     changes: ["ComposerView.composerAddMenu 新增：5 组下拉（文件/附件/目标/计划/录制/插件）。", "App.swift 加 3 个 Notification.Name。", "ComposerView onReceive 处理器接入（pickImages / planningMode.toggle）。", "ComposerView body 内 + 按钮引用替换为 composerAddMenu。"],

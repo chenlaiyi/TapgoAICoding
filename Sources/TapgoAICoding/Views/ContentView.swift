@@ -470,6 +470,9 @@ private struct CommandPaletteView: View {
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                             }
+                            if e.isDivider {
+                                Divider().padding(.vertical, 4)
+                            } else {
                             Button {
                                 e.run()
                                 onDismiss()
@@ -502,6 +505,7 @@ private struct CommandPaletteView: View {
                             .id("row-\(idx)")
                             .onHover { hovering in
                                 hoveredId = hovering ? e.id : (hoveredId == e.id ? nil : hoveredId)
+                            }
                             }
                         }
                     }
@@ -647,6 +651,7 @@ private struct CommandPaletteView: View {
         let statusColor: Color?
         let destructive: Bool
         let run: () -> Void
+        let isDivider: Bool
     }
 
     private var entries: [Entry] {
@@ -660,13 +665,13 @@ private struct CommandPaletteView: View {
                                  store.newThread()
                                  store.sendUserMessage(q)
                                  onDismiss()
-                             }))
+                             }, isDivider: false))
         }
         for a in filteredActions {
             out.append(Entry(id: "a-\(a.id)", title: a.title, icon: a.icon,
                              key: a.keyLabel, isThread: false, project: nil,
                              context: nil, statusColor: nil,
-                             destructive: a.destructive, run: a.run))
+                             destructive: a.destructive, run: a.run, isDivider: false))
         }
         for t in matchingThreads {
             let proj = t.projectId.flatMap { workspace.project(byId: $0) }?.displayName
@@ -687,7 +692,7 @@ private struct CommandPaletteView: View {
             out.append(Entry(id: "t-\(target)", title: title, icon: "bubble.left",
                              key: nil, isThread: true, project: proj,
                              context: ctx, statusColor: statusColor, destructive: false,
-                             run: { store.selectThread(target) }))
+                             run: { store.selectThread(target) }, isDivider: false))
         }
         return out
     }
@@ -721,13 +726,21 @@ private struct CommandPaletteView: View {
         let keyLabel: String?
         let run: () -> Void
         var destructive: Bool = false
-        init(_ id: String, _ title: String, _ icon: String, _ key: String? = nil, destructive: Bool = false, _ run: @escaping () -> Void) {
+        /// `true` 时渲染为水平 Divider（Codex 桌面端命令列表的视觉分组）。
+        var isSectionDivider: Bool = false
+        init(_ id: String, _ title: String, _ icon: String, _ key: String? = nil, destructive: Bool = false, _ run: @escaping () -> Void = {}) {
             self.id = id
             self.title = title
             self.icon = icon
             self.keyLabel = key
             self.destructive = destructive
             self.run = run
+        }
+        /// 辅助：构造一个 section divider（id 唯一以避免 Entry.id 冲突）。
+        static func sectionDivider(_ id: String) -> PaletteAction {
+            var a = PaletteAction(id, "", "")
+            a.isSectionDivider = true
+            return a
         }
     }
 
@@ -772,6 +785,7 @@ private struct CommandPaletteView: View {
                   { NotificationCenter.default.post(name: .tapgoOpenGoalEditor, object: nil) }),
             .init("pin", pinTitle, "pin", nil,
                   { if let id = store.activeThreadId { store.togglePinned(id) } }),
+            PaletteAction.sectionDivider("div-global"),
             .init("toggleSidebar", "切换侧边栏", "sidebar.left", "⌘\\",
                   { NotificationCenter.default.post(name: .tapgoToggleSidebar, object: nil) }),
             .init("settings", "运行设置", "gear", "⌘,", { onSettings() }),

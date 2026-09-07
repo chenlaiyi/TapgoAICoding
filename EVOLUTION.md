@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.130 — feat(ui): 命令面板按状态分组（Divider 视觉对齐 Codex 桌面端）
+**Date**: 2026-09-08
+**Tag**: v0.5.130
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `PaletteAction` 加 `isSectionDivider: Bool` 字段 + `static func sectionDivider(_:)` 辅助构造器。
+- `Entry` 加 `isDivider: Bool` 字段（默认值 false）。
+- `actions` 数组在 MCP 后 / 归档后 / 置顶聊天前插入 3 个 `Self.sectionDivider(...)`。
+- `ForEach(entries)` 渲染：`if e.isDivider { Divider().padding(.vertical, 4) } else { Button(...) }`。
+**Why**: 命令面板 14 个 actions 连续排列无视觉分组；Codex 桌面端按"环境/当前对话/全局设置"分组。
+**Next**: 全局命令面板（Cmd+K 的替代）加 settings / release notes / 帮助入口；或把 Plan mode 与 harness 协议层深度集成。
+
 ## v0.5.129 — feat(ui): composer "+" 按钮对齐 Codex 桌面端下拉菜单（含 /plan + MakeHistory 双向严格回填）
 **Date**: 2026-09-08
 **Tag**: v0.5.129
