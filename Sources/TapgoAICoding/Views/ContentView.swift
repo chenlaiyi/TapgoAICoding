@@ -576,6 +576,19 @@ private struct CommandPaletteView: View {
                     .frame(maxWidth: .infinity)
                     .onSubmit { sendMiniPrompt() }
 
+                // Access-level badge: matches the "完全访问" indicator in
+                // Codex desktop. Reads the live sandbox mode from
+                // UserDefaults so toggling "工作区" → 设置 → 电脑控制 is
+                // reflected immediately on next open.
+                HStack(spacing: 3) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 10))
+                    Text(currentAccessLevel)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                }
+                .foregroundStyle(accessLevelColor)
+                .help("沙箱模式：\(currentAccessLevel)（设置 → 电脑控制 调整）")
+
                 // Quick model label (read-only snapshot of selected model).
                 Text(currentModelLabel)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
@@ -757,6 +770,28 @@ private struct CommandPaletteView: View {
         case .empty: return "没有可 compact 的会话。"
         case .busy: return "请先等当前回合结束再 compact。"
         case .compacted(let turns, let items): return "折叠了 \(turns) 个回合、\(items) 个 assistant 项。"
+        }
+    }
+
+    /// Snapshot of the current Codex sandbox mode (display name only).
+    /// Mirrors the "完全访问" / "工作区" badge in Codex desktop. Reads
+    /// live from UserDefaults so changes in 设置 → 电脑控制 take effect
+    /// the next time the dock is opened.
+    private var currentAccessLevel: String {
+        let raw = UserDefaults.standard.string(forKey: TapgoConfig.sandboxKey)
+            ?? TapgoConfig.SandboxMode.dangerFullAccess.rawValue
+        let mode = TapgoConfig.SandboxMode(rawValue: raw) ?? .dangerFullAccess
+        return mode.displayName
+    }
+
+    private var accessLevelColor: Color {
+        let raw = UserDefaults.standard.string(forKey: TapgoConfig.sandboxKey)
+            ?? TapgoConfig.SandboxMode.dangerFullAccess.rawValue
+        let mode = TapgoConfig.SandboxMode(rawValue: raw) ?? .dangerFullAccess
+        switch mode {
+        case .dangerFullAccess: return .orange
+        case .workspaceWrite: return .secondary
+        case .readOnly: return .secondary
         }
     }
 
