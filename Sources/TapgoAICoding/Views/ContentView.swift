@@ -732,7 +732,17 @@ private struct CommandPaletteView: View {
     }
 
     private var actions: [PaletteAction] {
-        [
+        let activeID = store.activeThreadId
+        let activeThread = store.liveThreads.first(where: { $0.id == activeID })
+        // 上下文相关 title：当前 thread 有 goal → "编辑目标（goal 截断）"；
+        // 当前 thread 已置顶 → "取消置顶"。其余 actions 保持静态。
+        let goalTitle: String = {
+            guard let goal = activeThread?.goal, !goal.isEmpty else { return "目标" }
+            let prefix = String(goal.prefix(18))
+            return "编辑目标（\(prefix)）"
+        }()
+        let pinTitle = (activeThread?.isPinned == true) ? "取消置顶" : "置顶聊天"
+        return [
             .init("mcp", "MCP", "server.rack", nil, { paletteInfoAlert = .init(title: "MCP", message: store.mcpStatusSummary()) }),
             .init("review", "代码审查", "magnifyingglass", nil,
                   { store.startReviewThread(scope: "") }),
@@ -758,9 +768,9 @@ private struct CommandPaletteView: View {
             .init("plan", "Plan 模式", "lightbulb", nil,
                   { UserDefaults.standard.set(true, forKey: "tapgo.planningMode")
                     paletteInfoAlert = .init(title: "Plan 模式", message: "已开启。下一条消息会让 Codex 先出方案不执行工具。") }),
-            .init("goal", "目标", "target", nil,
+            .init("goal", goalTitle, "target", nil,
                   { NotificationCenter.default.post(name: .tapgoOpenGoalEditor, object: nil) }),
-            .init("pin", "置顶聊天", "pin", nil,
+            .init("pin", pinTitle, "pin", nil,
                   { if let id = store.activeThreadId { store.togglePinned(id) } }),
             .init("toggleSidebar", "切换侧边栏", "sidebar.left", "⌘\\",
                   { NotificationCenter.default.post(name: .tapgoToggleSidebar, object: nil) }),
