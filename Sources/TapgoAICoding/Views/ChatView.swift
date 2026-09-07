@@ -2180,6 +2180,8 @@ struct ComposerView: View {
             else { store.setActiveThreadGoal(goal) }
         case .newTask:
             store.newThread()
+        case .clear:
+            store.clearActiveThread()
         }
         text = ""
         showSlashMenu = false
@@ -2204,7 +2206,13 @@ struct ComposerView: View {
                 text = ""
                 showSlashMenu = false
             }
-            Text("输入 /goal 后加目标文字，回车设置。")
+            slashRow("/clear", "清空当前会话") {
+                store.clearActiveThread()
+                text = ""
+                showSlashMenu = false
+                focused = true
+            }
+            Text("输入 /goal 后加目标文字，回车设置；输入 /clear 清空当前会话。")
                 .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 10)

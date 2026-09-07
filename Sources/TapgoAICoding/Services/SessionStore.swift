@@ -501,6 +501,26 @@ final class SessionStore: ObservableObject {
         replaceThread(updated)
     }
 
+    /// `/clear` command: wipe the active thread's `turns` in place so the
+    /// next message starts from a clean local + harness context. Thread
+    /// metadata (id, title, projectId, cwd, goal, pinned, goal state)
+    /// survives — only the conversation history and the harness thread
+    /// handle are reset. Any in-flight turn is cancelled first so harness
+    /// events arriving after the clear land on a thread that no longer
+    /// carries the dropped turns.
+    func clearActiveThread() {
+        guard let id = activeThreadId,
+              let idx = liveThreads.firstIndex(where: { $0.id == id }) else { return }
+        if runRegistry.isRunning(id) { cancelActiveTurn() }
+        var updated = liveThreads[idx]
+        updated.turns = []
+        updated.harnessThreadId = nil
+        updated.updatedAt = Date()
+        replaceThread(updated)
+        NotificationCenter.default.post(name: .tapgoClearComposer, object: nil)
+        NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil)
+    }
+
     /// 开始: mark the goal running and kick off a turn with the goal text so
     /// the agent actually works on it (output appears in the conversation).
     func startGoal() {
