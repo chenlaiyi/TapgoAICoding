@@ -222,6 +222,73 @@ public enum PluginConfigEditor {
     }
 }
 
+/// `~/.tapgo/plugins.toml` 的最小读写：只管理 `[plugins]` 表下的
+/// `"<pluginId>" = true|false` 键，作为 Tapgo 官方插件启用/停用的持久化。
+/// 没有记录的插件默认启用——"装了即启用"，停用是显式动作。
+public enum TapgoPluginsToml {
+    /// 解析 `[plugins]` 表里显式为 `true` 的 pluginId 集合；注释行与损坏行
+    /// 原样跳过，其它表（`[其它]`）不参与。
+    public static func enabledPluginIds(in source: String) -> Set<String> {
+        var result: Set<String> = []
+        var inPlugins = false
+        for rawLine in source.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("[") {
+                inPlugins = line == "[plugins]"
+                continue
+            }
+            guard inPlugins, !line.isEmpty, !line.hasPrefix("#") else { continue }
+            let parts = line.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            let value = parts[1].split(separator: "#").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+            if value == "true" { result.insert(key) }
+        }
+        return result
+    }
+
+    /// 把 `pluginId` 的启用状态写回 toml 源：键已存在时原地翻转，缺 `[plugins]`
+    /// 表时在文件末尾追加；其它行原样保留。pluginId 含 `..`、以 `/` 开头或
+    /// 不通过 isSafePluginId 时返回 nil（isSafePluginId 允许 `/`，这里再挡
+    /// 一层路径穿越）。
+    public static func settingEnabled(_ enabled: Bool, pluginId: String, in source: String) -> String? {
+        guard PluginConfigEditor.isSafePluginId(pluginId),
+              !pluginId.contains(".."),
+              !pluginId.hasPrefix("/") else { return nil }
+        var lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var inPlugins = false
+        var pluginsHeaderIndex: Int? = nil
+        var keyLineIndex: Int? = nil
+        for i in lines.indices {
+            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") {
+                inPlugins = trimmed == "[plugins]"
+                if inPlugins, pluginsHeaderIndex == nil { pluginsHeaderIndex = i }
+                continue
+            }
+            guard inPlugins else { continue }
+            let parts = trimmed.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            if key == pluginId { keyLineIndex = i; break }
+        }
+        let newLine = "\"\(pluginId)\" = \(enabled ? "true" : "false")"
+        if let idx = keyLineIndex {
+            lines[idx] = newLine
+        } else if let header = pluginsHeaderIndex {
+            lines.insert(newLine, at: header + 1)
+        } else {
+            while let last = lines.last, last.trimmingCharacters(in: .whitespaces).isEmpty {
+                lines.removeLast()
+            }
+            lines.append("")
+            lines.append("[plugins]")
+            lines.append(newLine)
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+}
+
 
 // MARK: - Tapgo 官方插件目录
 //

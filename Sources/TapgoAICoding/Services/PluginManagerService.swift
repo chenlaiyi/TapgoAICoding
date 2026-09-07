@@ -278,7 +278,19 @@ struct PluginManagerService: Sendable {
         do {
             let data = try await Self.fetchTapgoCatalog(url: tapgoCatalogURL)
             let installed = Self.installedTapgoPluginIds(root: tapgoPluginsRoot())
-            return try PluginCatalogParser.decodeTapgo(data, installedIds: installed)
+            let items = try PluginCatalogParser.decodeTapgo(data, installedIds: installed)
+            // 已安装项的 enabled 从 plugins.toml 读取（无记录默认启用）。
+            let tomlURL = tapgoPluginsTomlURL
+            let enabledIds = (try? await Task.detached(priority: .utility) {
+                TapgoPluginsToml.enabledPluginIds(in: (try? String(contentsOf: tomlURL, encoding: .utf8)) ?? "")
+            }.value) ?? []
+            return items.map { item in
+                guard item.installed else { return item }
+                var updated = item
+                let pluginId = (try? Self.tapgoPluginId(from: item.id)) ?? item.id
+                updated.enabled = enabledIds.contains(pluginId)
+                return updated
+            }
         } catch {
             // 官方目录拉取/解析失败时静默降级，避免阻塞其它市场；网络问题留到
             // 用户点击「Tapgo 官方」Tab 时通过空列表的 emptyMessage 提示。
@@ -328,6 +340,32 @@ struct PluginManagerService: Sendable {
         if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted]) {
             try? data.write(to: manifest)
         }
+        // 安装即启用：plugins.toml 显式记 true，后续可用开关停用。
+        try await Self.writeTapgoEnabled(true, pluginId: pluginId, tomlURL: tapgoPluginsTomlURL)
+    }
+
+    /// `~/.tapgo/plugins.toml`。Tapgo 官方插件启用/停用的持久化。
+    private var tapgoPluginsTomlURL: URL {
+        tapgoPluginsRoot().appendingPathComponent("plugins.toml")
+    }
+
+    /// 启用/停用 Tapgo 官方插件：写 `~/.tapgo/plugins.toml`（后台执行，
+    /// pluginId 安全校验在 tapgoPluginId(from:) 里已做）。
+    func setTapgoEnabled(_ enabled: Bool, item: PluginCatalogItem) async throws {
+        let pluginId = try Self.tapgoPluginId(from: item.id)
+        try await Self.writeTapgoEnabled(enabled, pluginId: pluginId, tomlURL: tapgoPluginsTomlURL)
+    }
+
+    private static func writeTapgoEnabled(_ enabled: Bool, pluginId: String, tomlURL: URL) async throws {
+        try await Task.detached(priority: .utility) {
+            let fm = FileManager.default
+            let source = (try? String(contentsOf: tomlURL, encoding: .utf8)) ?? ""
+            guard let updated = TapgoPluginsToml.settingEnabled(enabled, pluginId: pluginId, in: source) else {
+                throw PluginManagerError.invalidPluginId
+            }
+            try fm.createDirectory(at: tomlURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try updated.write(to: tomlURL, atomically: true, encoding: .utf8)
+        }.value
     }
 
     private func uninstallTapgoPlugin(_ item: PluginCatalogItem) async throws {
@@ -335,6 +373,20 @@ struct PluginManagerService: Sendable {
         let fm = FileManager.default
         if fm.fileExists(atPath: target.path) {
             try fm.removeItem(at: target)
+        }
+        // 停用记录一并清掉，重装时回到默认启用。
+        if let pluginId = try? Self.tapgoPluginId(from: item.id) {
+            let tomlURL = tapgoPluginsTomlURL
+            try await Task.detached(priority: .utility) {
+                guard let source = try? String(contentsOf: tomlURL, encoding: .utf8),
+                      source.contains("\"\(pluginId)\"") else { return }
+                let cleaned = source
+                    .components(separatedBy: "\n")
+                    .filter { !$0.trimmingCharacters(in: .whitespaces)
+                        .hasPrefix("\"\(pluginId)\"") }
+                    .joined(separator: "\n")
+                try? cleaned.write(to: tomlURL, atomically: true, encoding: .utf8)
+            }.value
         }
     }
 

@@ -74,7 +74,11 @@ final class PluginManagerViewModel: ObservableObject {
         errorMessage = nil
         defer { operatingId = nil }
         do {
-            try await service.setCodexEnabled(enabled, item: item)
+            switch item.marketplace {
+            case .codex: try await service.setCodexEnabled(enabled, item: item)
+            case .tapgo: try await service.setTapgoEnabled(enabled, item: item)
+            default: return
+            }
             if let index = items.firstIndex(where: { $0.id == item.id }) {
                 items[index].enabled = enabled
             }
@@ -360,7 +364,9 @@ struct PluginManagerView: View {
             if model.operatingId == item.id {
                 ProgressView().controlSize(.small).frame(width: 64)
             } else if item.installed {
-                if item.marketplace == .codex {
+                // Tapgo 官方插件与 Codex 一样提供启用/停用开关（持久化到
+                // ~/.tapgo/plugins.toml），停用后 UI 显示灰态。
+                if item.marketplace == .codex || item.marketplace == .tapgo {
                     Toggle("", isOn: Binding(
                         get: { item.enabled },
                         set: { enabled in Task { await model.setEnabled(enabled, item: item) } }

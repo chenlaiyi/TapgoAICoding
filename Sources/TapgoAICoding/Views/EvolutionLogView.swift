@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.116", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.116",
+                    summary: "插件市场补齐启停开关；根治两处滚动/流式卡死；输出样式对齐 Codex。",
+                    changes: ["Tapgo 官方插件支持启用/停用开关，持久化到 ~/.tapgo/plugins.toml。", "流式增量批量上屏，回复实时渐进显示、界面全程可交互。", "根治滚动经过表格时的连续重排版卡死；持久化写盘移到后台。", "行内代码淡胶囊、编号跨块递增、嵌套缩进、表格细线、### 无空格标题识别。"],
+                    why: "流式期间主线程被全量重渲染打满导致 UI 冻结、只能最后看到结论；排版细节与 Codex 桌面端差距过大，按参考截图逐项对齐。",
+                    next: "官方插件市场随服务端 catalog.json 上线自动出现首批插件；继续按真实使用打磨输出排版。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.115", date: "2026-09-06", commit: "见源码提交", tag: "v0.5.115",
                     summary: "接入 Tapgo 官方插件市场，消息渲染与子进程环境持续打磨。",
                     changes: ["插件管理器新增「Tapgo 官方」分类，一键安装/卸载官方插件到 ~/.tapgo/plugins/。", "目录来自 plugins.itapgo.com/catalog.json，网络不可用时静默降级。", "消息中的文件引用渲染为独立样式，嵌套列表按缩进层级正确展示。", "大消息解析加缓存；修复 Finder 启动时 Codex 版本探测失败。"],

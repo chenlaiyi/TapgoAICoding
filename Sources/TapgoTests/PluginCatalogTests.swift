@@ -192,3 +192,33 @@ func runPluginCatalogRepoExample(_ runner: TestRunner) {
         runner.expect(false, "catalog.example.json 协议必须兼容 decodeTapgo: \(error)")
     }
 }
+
+/// TapgoPluginsToml：`~/.tapgo/plugins.toml` 启用/停用持久化的读写往返。
+@MainActor
+func runTapgoPluginsToml(_ t: TestRunner) {
+    // 空文件 → 追加 [plugins] 表并写入 true
+    let fresh = TapgoPluginsToml.settingEnabled(true, pluginId: "tapgo-plugin-sparkle-publish", in: "")
+    t.expect(fresh?.contains("[plugins]") == true, "toml: appends [plugins] header to empty file")
+    t.expect(fresh?.contains("\"tapgo-plugin-sparkle-publish\" = true") == true, "toml: writes enabled=true")
+
+    // 解析：true 集合、注释与其它表忽略
+    let sample = """
+    # 注释
+    [plugins]
+    "a" = true
+    "b" = false
+    "c" = true # 行内注释
+
+    [other]
+    "d" = true
+    """
+    t.expectEqual(TapgoPluginsToml.enabledPluginIds(in: sample), Set(["a", "c"]), "toml: parses enabled set, ignores comments and other tables")
+
+    // 翻转已有键：其它行原样保留
+    let flipped = TapgoPluginsToml.settingEnabled(false, pluginId: "a", in: sample)
+    t.expect(flipped?.contains("\"a\" = false") == true, "toml: flips existing key in place")
+    t.expect(flipped?.contains("\"c\" = true") == true, "toml: preserves sibling keys")
+
+    // 非法 pluginId 拒绝
+    t.expect(TapgoPluginsToml.settingEnabled(true, pluginId: "../escape", in: "") == nil, "toml: rejects unsafe pluginId")
+}
