@@ -1595,12 +1595,19 @@ final class SessionStore: ObservableObject {
             guard !alreadyHasDiff else { return }
 
             let root = baseline.repositoryRoot
+            let untracked = await Task.detached(priority: .utility) {
+                WorktreeChangeTracker.untrackedPaths(root: root)
+            }.value
             let fileChanges = stats.perFile.map { stat in
                 FileChange(
                     id: "worktree-\(turnId)-\(stat.path)",
-                    kind: .update,
+                    kind: untracked.contains(stat.path) ? .create : .update,
                     path: stat.path,
-                    diff: WorktreeChangeTracker.untrackedDiff(root: root, path: stat.path, additions: stat.additions),
+                    diff: WorktreeChangeTracker.untrackedDiff(
+                        root: root, path: stat.path,
+                        additions: stat.additions,
+                        isUntracked: untracked.contains(stat.path)
+                    ),
                     status: .applied
                 )
             }

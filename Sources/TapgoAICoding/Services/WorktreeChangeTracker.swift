@@ -85,18 +85,34 @@ enum WorktreeChangeTracker {
         )
     }
 
-    /// 为每个本 turn 新增的文件生成一份极简 unified diff（全部 + 行），
-    /// 供 FileChange 卡点开审核。二进制/超大文件返回空 diff（卡片仍显示统计）。
-    static func untrackedDiff(root: URL, path: String, additions: Int) -> String {
-        guard additions <= 2000, additions > 0 else { return "" }
-        let url = root.appendingPathComponent(path)
-        guard let data = try? Data(contentsOf: url),
-              let content = String(data: data, encoding: .utf8) else { return "" }
-        let body = content
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { "+" + $0 }
-            .joined(separator: "\n")
-        return "--- /dev/null\n+++ \(path)\n@@ -0,0 +1,\(additions) @@\n" + body
+    /// 为每个本 turn 触及的文件生成 diff 供 FileChange 卡审核：
+    /// - untracked 新文件：合成 `--- /dev/null +++ path` 的全 + 行 diff；
+    /// - 已跟踪修改：直接取真 git diff（`git diff HEAD -- path`），行数与
+    ///   numstat 一致。此前对 tracked 修改也套用"全 +"合成，hunk 头声称
+    ///   0 旧行、行内容却与删除行矛盾，split 渲染对齐时布局越界崩溃。
+    static func untrackedDiff(root: URL, path: String, additions: Int, isUntracked: Bool) -> String {
+        if isUntracked {
+            guard additions <= 2000, additions > 0 else { return "" }
+            let url = root.appendingPathComponent(path)
+            guard let data = try? Data(contentsOf: url),
+                  let content = String(data: data, encoding: .utf8) else { return "" }
+            let body = content
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map { "+" + $0 }
+                .joined(separator: "\n")
+            return "--- /dev/null\n+++ \(path)\n@@ -0,0 +1,\(additions) @@\n" + body
+        }
+        return runGit(["diff", "HEAD", "--", path], cwd: root)
+            .map { String(decoding: $0, as: UTF8.self) } ?? ""
+    }
+
+    /// 本 turn 之前就存在的脏路径集合（baseline.ignoredPaths）以外的 untracked
+    /// 文件才算纯新增。
+    static func untrackedPaths(root: URL) -> Set<String> {
+        guard let data = runGit(["ls-files", "--others", "--exclude-standard", "-z"], cwd: root) else {
+            return []
+        }
+        return Set(nulSeparatedPaths(data))
     }
 
     private static func changedPaths(cwd: URL) -> Set<String> {
