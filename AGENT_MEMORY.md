@@ -41,3 +41,36 @@
 - **今后所有任务都由 Codex 自己完成，不再委派给 MiniMax Code（含 `MiniMax Code.app` 桌面应用、`codex exec` CLI、其它 sub-agent 等）。**
 - 这条规则覆盖 `<INSTRUCTIONS>` 中"MiniMax Code 优先协作"段落；用户已明确要求 Codex 独立完成所有实质性工作。
 - Codex 不再因"AGENTS.md 最高优先级规则"主动委派；除非用户单次任务里临时追加委派指令，否则一切任务由 Codex 直接执行。
+
+## 机器身份与发布链路事实（2026-09-07 增补）
+
+### 机器身份与项目路径（避免路径混淆）
+
+- **本机（Codex 当前 shell）** = `fafadeMac-mini.local`，用户 `fafa`，项目路径 `/Users/fafa/TapgoAICoding`。AGENTS.md 头部 ssh 配置段落未单独列出这台机器，但 AGENTS.md 的"每次更新完成后安装到本机、JKmacmini、fafamacmini"明确把 fafamacmini 与 JKmacmini 并列。
+- **jkmacmini** = `100.71.223.108`，用户 `chanlaiyi`，TapgoAICoding 项目路径 `/Users/chanlaiyi/TapgoAICoding`（git 仓库），免密登录（`~/.ssh/id_ed25519`）。
+- **macbookpro** = `100.100.191.111`，用户 `chenlaiyi`，TapgoAICoding 项目路径同样为 `/Users/chenlaiyi/TapgoAICoding`（git 仓库），免密登录。**勿混淆** `/Users/chenlaiyi/AiTapgo`（独立项目：监控/控制台/Dashboard/Deploy，与 TapgoAICoding 无关）。
+- chanlaiyi（jkmacmini）和 chenlaiyi（macbookpro）是同一自然人在两台 Mac 上的不同用户命名；GitHub 仓库 `chenlaiyi/TapgoAICoding` 由 chenlaiyi 账号持有，发布 token 也属于 chenlaiyi。
+
+### 工具链缺失与兼容性
+
+- macOS 系统 bash = 3.2.57（GNU bash），`set -u` + 空数组展开 (`${ARR[@]}`) 触发 unbound variable 误报。`scripts/build-app.sh` 已通过去掉 `set -u` 修复（v0.5.117 release commit `59bcf51`）。新增 macOS 兼容脚本慎用 `set -u`。
+- 本机无 `gh` CLI；发布需 GitHub Release 时需借用 jkmacmini 上 chanlaiyi 用户（与 GitHub 仓库同账号）的 GitHub token，通过 curl + GitHub Releases API 上传 zip。
+- 本机登录 keychain 无 Sparkle 私钥（fafamacmini 是新机器），发布签名靠从 jkmacmini 导出的 PEM 文件。
+
+### Sparkle 签名链路
+
+- 私钥位置：macOS login keychain item，service = `https://sparkle-project.org`，account = `com.tapgo.aicoding`，value = 32 字节 ed25519 seed 的 base64（无 PEM 包装）。`sign_update` / `generate_appcast` 都直接接受这种格式作为 `--ed-key-file`。
+- keychain 里同名 service 还有一条 account = `ed25519` 的旧 item（2026-07-09 创建），是历史密钥，**当前项目已不用**——发布时必须用 `com.tapgo.aicoding` 这条。
+- 非交互 SSH 无法解锁 macOS keychain（缺登录密码）→ 导出私钥必须在 GUI 终端跑 `security find-generic-password -s "https://sparkle-project.org" -a "com.tapgo.aicoding" -w`，再 scp 到本机。
+- `scripts/create-github-release-artifacts.sh` 已支持 `SPARKLE_KEY_FILE` 环境变量；本机用文件路径，jkmacmini 默认从 keychain 读。
+
+### 代码签名陷阱
+
+- 本机无 Developer ID 证书，`scripts/build-app.sh` 自动走 ad-hoc 分支，但 Sparkle.framework 与主 App 二进制各自 ad-hoc Team ID 不一致时 dyld 报 `code signature ... not valid for use in process`。解决：安装前对所有组件 `codesign --remove-signature`，然后 `codesign --force --deep --sign -` 整体强制重新签名。
+- jkmacmini 上 Developer ID 证书存在但 `codesign --timestamp` 报 `errSecInternalComponent`（keychain 同样未在 SSH session 解锁）；回退到 ad-hoc + 强制重新签名同样可行。
+
+### Release 自动化
+
+- 当前没有 GitHub Actions workflow；`git push origin v0.5.X` 不会自动创建 Release。
+- 标准发布流程：本地 fast-forward → `SPARKLE_KEY_FILE=~/.tapgo/sparkle/ed25519.pem bash scripts/create-github-release-artifacts.sh`（自动 commit appcast.xml + push）→ 在 jkmacmini 上用 chanlaiyi 的 token 调 GitHub API 创建 draft release → upload zip → PATCH `draft=false` 发布。
+- 安装到 jkmacmini 时无需手动 scp 二进制，直接 `cd /Users/chanlaiyi/TapgoAICoding && bash scripts/build-app.sh && codesign --force --deep --sign - /Applications/Tapgo\ AICoding.app` 即可（jkmacmini 已 fast-forward）。
