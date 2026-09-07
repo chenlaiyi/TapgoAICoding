@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.127", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.127",
+                    summary: "test: MakeHistory parity suite — 防 v0.5.125 中文双引号 bug 重现 + Info.plist/project.yml sync 测试。",
+                    changes: ["MakeHistoryParityTests.swift 抽 version 模式 + 验证引号偶数 + 最近 10 版本对齐。", "TestMain.swift 注册 MakeHistory parity section。"],
+                    why: "v0.5.125 中文双引号 bug 靠手工 patch 修；加自动测试。",
+                    next: "补 EVOLUTION.md 漏段 或放宽双向对齐为 EVOLUTION ⊆ makeHistory。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.126", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.126",
                     summary: "命令面板上下文相关 — 目标显示当前 goal, 置顶显示实时状态。",
                     changes: ["actions 从 let 改 var 计算属性，每次 body 重算时读 activeThread。", "'目标' 有 goal 时显示 '编辑目标（<截断>）'。", "'置顶聊天' 已置顶时显示 '取消置顶'。"],

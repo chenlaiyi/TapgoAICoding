@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.127 — test: MakeHistory parity suite（防 v0.5.125 中文双引号 bug 重现）
+**Date**: 2026-09-08
+**Tag**: v0.5.127
+**Test status**: jkmacmini 待跑；本机 3116 passed / 12 failed（新增 6 个 MakeHistory 测试）
+**Changed**:
+- `Sources/TapgoTests/MakeHistoryParityTests.swift` 新增：抽 `version: "vX.Y.Z"` 模式验证 makeHistory 版本数 ≥ 20；makeHistory 数组内引号数为偶数（防 v0.5.125 中文双引号吞 entry 的 bug）；makeHistory 最近 10 个版本都在 EVOLUTION.md 头部段；`Info.plist` 与 `project.yml` 的版本号一致。
+- `Sources/TapgoTests/TestMain.swift` 在 `allSections` 数组与 `runIfInScope` 调用处加 `MakeHistory parity: structural and Info.plist sync`。
+**Why**: v0.5.125 中文双引号（`"Plan"`）让 makeHistory 数组的解析延后到 build 时才发现，靠手工 patch 修。加字符串级测试后下次发版前自动 fail。
+**Next**: 把 EVOLUTION.md 历史漏段补齐（v0.5.4 / v0.5.80-81 / v0.5.104 等）；或把"MakeHistory ↔ EVOLUTION" 双向对齐做成"EVOLUTION 是 makeHistory 子集"的宽松检查。
+
 ## v0.5.126 — feat(ui): 命令面板上下文相关（目标/置顶根据当前 thread 实时显示）
 **Date**: 2026-09-08
 **Tag**: v0.5.126
@@ -1679,4 +1689,21 @@ v0.5.108 引入 MarkdownInlineFlow 渲染器和 LivePulseDot，让行内代码�
 - `mobile/ios/Assets.xcassets/AppIcon.appiconset/icon-1024.png`: 1x1 占位 → 1024x1024 合规 PNG（深蓝渐变 + 中文标注，上架前需替换为正式设计）。
 - `mobile/CONFIG.md`: Deployment Target 13.0 → 16.0（标注原因）。
 **Why**: 之前 README 状态表说"v0.5.9 协议层 + SwiftUI 闭环"，但 `xcodegen + xcodebuild` 真机构建从未跑通；这次把"构建+模拟器+Keychain+扫码"四件一次性打通。
+
+## v1.0.0 (iOS) — 增量 P4 + P5: 长链接 + 信息流
+**Date**: 2026-09-08
+**Scope**: iOS 端 P4 / P5
+**Test status**: 488/488 全过 (446 MobilePairing + 20 PairingStore + 22 MobileRemoteLink)；JKmacmini iPhone 17 模拟器启动到 DashboardView
+**Changed**:
+- `mobile/ios/Sources/MobileRemoteLink.swift` (新增, 195 行): JSON-RPC over TCP 帧协议层, 纯 Foundation, 含 Frame / Params / AnyJSON / RPCError / Method 常量 / makeRequest/Result/Error/Hello/Heartbeat 构造器。
+- `mobile/ios/Sources/PairingLink.swift` (新增, 258 行): NWBrowser (service=`_tapgo-pair._tcp`) + NWConnection (TCP) + 10s 心跳 + 帧收发解析 + 超时回收 + 状态机 idle/discovering/connecting/connected/failed。
+- `mobile/ios/Sources/PairingStore.swift`: 加 `let link = PairingLink()`, init 检测到 stored mac 后自动 `link.start()` (Bonjour) 并绑定 `onConnectionChange` 反向翻 `state.connected`; 加 `stopLink()` 主动断开。
+- `mobile/ios/Sources/DashboardView.swift`: 重写为真工作面板——Mac 元信息 + PairingLink 实时状态 + 「停止连接/取消配对」 + 「切项目/发送消息/最近会话」三类 P5 信息流入口（走 JSON-RPC over TCP, 服务端未对接所以 listSessions 等 RPC 会在 8s 后失败回 `lastError`，UI 安全降级）。
+- `mobile/ios/Sources/TapgoTerminalApp.swift`: RootView 改为 `@EnvironmentObject` 分流；加 `#if DEBUG` `TAPGO_FORCE_PAIRED=1` 启动路径（注入示例 mac 让 DashboardView 可在 CI / 模拟器直接截图回归）。
+- `mobile/ios/Tests/MobileRemoteLinkTests.swift` (新增, 105 行): 22 用例覆盖 Frame 编解码 (request/result/error/push)、isRequest/isResponse/isPush 分类、encode 不带尾巴换行、AnyJSON 嵌套 (array + object)、bonjour 常量。
+- `mobile/ios/Scripts/run-tests.sh`: 分三 `@main` binary (协议层 / PairingStore / MobileRemoteLink) 编译并分别跑, 输出合并。
+**Why**: 之前 P3 已经"模拟器能启动 PairingView + Keychain + 真扫码", 但 DashboardView 是空壳。P4 + P5 把"已配对后能干什么"做成完整工作面板：长链接客户端 + 信息流 UI, 让原生 App 不只是个"扫码器"。
+**Why (Mac 端协同现状)**: Mac 端 `PhoneRemoteServer.swift` (v0.5.16) 已转向 H5 HTTP (token-authed web remote), 原 Bonjour `_tapgo-pair._tcp` 服务未实现。**iOS 端 PairingLink 真实连接到 Mac 还需要 Mac 端补 Bonjour 服务 / JSON-RPC 服务**；现阶段 iOS 端协议层 + UI 完整可工作, Bonjour 搜索超时为橙色「Bonjour 搜索中…」状态, 不影响其它 UI (切项目/发送消息按钮在 not connected 时禁用)。
+**Next**: P6 TestFlight + 提审需先解决 Mac 端 Bonjour 服务或决定 iOS 端转 H5 WKWebView 路线；Apple Developer 后台 Bundle ID 对齐确认；正式 1024x1024 AppIcon 替换占位渐变图。
+
 **Next**: P4 Bonjour 长链接（iOS 端 NWBrowser + JSON-RPC 心跳 + Mac 端 ConnectPhoneView 联动）；P5 信息流骨架（最近会话、发送消息、切项目）；P6 TestFlight + 提审。
