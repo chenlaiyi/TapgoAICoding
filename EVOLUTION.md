@@ -1,4 +1,18 @@
 # Evolution Log
+## v0.5.119 — feat(chat)+feat(ui): 命令面板浮层化 + slash 命令补齐 (/init /compact)
+**Date**: 2026-09-07
+**Tag**: v0.5.119
+**Test status**: jkmacmini 待跑；本机 fafamacmini 3104 passed / 12 failed（新增 ComposerLocalCommand 6 个 /compact case + 6 个 /init case；12 项失败均为 SSH 远程集成 + auth.json 环境性）
+**Changed**:
+- `ContentView` 命令面板从 `.sheet(isPresented:)` 改为 `.overlay` 浮层：半透明黑色背景 + `.regularMaterial` 模糊 + 圆角阴影 + spring 弹性进场（响应 0.28s / 阻尼 0.85）；点背景关闭。
+- `ComposerLocalCommand` 加 `.initProject` 与 `.compact` cases；`/init` 与 `/compact` 都是 bare token；其他 slash 命令与测试同步更新。
+- `SessionStore.startInitProjectThread()` 创建引导 thread 预填 AGENTS.md 起草 prompt；prompt 显式约束：不输出空泛推断、不覆盖既有 AGENTS.md、保留 `<待补充>` 占位、必须先 ls/cat 扫描项目根。
+- `SessionStore.compactActiveThread()` 折叠 assistant items：每回合的 user message 保留，其余 items 替换为单条 compact 提示；harnessThreadId 重置让下次发消息从干净上下文开始；回合正在跑时返回 `.busy`。
+- `ChatView` 加 `case .initProject` 与 `case .compact` 分支；`CompactOutcomeAlert` 结构体把 outcome 翻译成中文提示（empty / busy / compacted）。
+- `slashMenu` 加 `/init` 与 `/compact` 两行；提示文本同步覆盖所有 slash 命令用法。
+**Why**: 命令面板的 sheet 样式视觉割裂 Codex 桌面端；slash 命令 `/clear` `/model` `/init` `/compact` 是 Codex 桌面端核心习惯，纳入让 composer 内一步可达。
+**Next**: 下一阶段补 `/review`（Codex 桌面端常用，让 Codex 审阅当前 diff）或 Plan mode（先让 Codex 出方案再执行，需 harness 协议支持）；同时把 `makeHistory` 之外的 EVOLUTION.md 章节（如 ETag 备注 / release cadence）结构化。
+
 ## v0.5.118 — feat(chat): slash 命令补齐 — /clear 清空会话 + /model 模糊切模型
 **Date**: 2026-09-07
 **Tag**: v0.5.118

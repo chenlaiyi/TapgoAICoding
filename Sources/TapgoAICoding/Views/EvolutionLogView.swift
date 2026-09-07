@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.119", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.119",
+                    summary: "命令面板升级为中心浮层 + slash 补齐 /init /compact。",
+                    changes: ["ContentView 命令面板 .sheet → .overlay；半透明背景 + regularMaterial 模糊 + spring 弹性进场。", "ComposerLocalCommand 加 .initProject / .compact cases 与测试。", "SessionStore.startInitProjectThread 创建引导 thread 预填 AGENTS.md 起草 prompt。", "SessionStore.compactActiveThread 折叠 assistant items；harnessThreadId 重置；回合在跑返回 busy。", "ChatView 加 case 与 slashMenu /init /compact 行；CompactOutcomeAlert 翻译 outcome。"],
+                    why: "sheet 样式割裂 Codex 桌面端；slash 命令 /clear /model /init /compact 是 Codex 桌面端核心习惯。",
+                    next: "下一阶段补 /review 或 Plan mode（harness 协议支持）；同时把 makeHistory 之外的 EVOLUTION 章节结构化。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.118", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.118",
                     summary: "slash 命令补齐 — /clear 清空会话 + /model 模糊切模型。",
                     changes: ["ComposerLocalCommand 加 .clear 与 .model cases；提取 strippingLocalCommandPrefix 复用分隔逻辑。", "SessionStore.clearActiveThread 清空当前 thread turns 并取消 in-flight；元数据保留。", "SessionStore.selectModel 模糊匹配 selectableModelOptions，返回 5 种 outcome 给 alert 提示。", "ChatView.handleLocalCommand + slashMenu 接入新命令；ModelSelectAlert 结构体翻译 outcome。", "复用 TapgoConfig.selectProviderModel 实际切换，写 UserDefaults + 注册表 + 重写 config.toml。"],
