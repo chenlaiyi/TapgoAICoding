@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.126", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.126",
+                    summary: "命令面板上下文相关 — 目标显示当前 goal, 置顶显示实时状态。",
+                    changes: ["actions 从 let 改 var 计算属性，每次 body 重算时读 activeThread。", "'目标' 有 goal 时显示 '编辑目标（<截断>）'。", "'置顶聊天' 已置顶时显示 '取消置顶'。"],
+                    why: "Codex 桌面端 palette 状态实时显示；Tapgo 此前静态。",
+                    next: "makeHistory 字符串测试 或 EVOLUTION 章节结构化。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.125", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.125",
                     summary: "Plan mode（Codex 桌面端'先出方案'模式）— composer toggle + palette 入口。",
                     changes: ["ChatView 加 planningMode AppStorage + composer 工具栏 Plan 按钮。", "send() 若 planningMode 自动前置 [计划模式] 指令；发送后归位。", "CommandPaletteView.actions 加 Plan 模式 action。"],

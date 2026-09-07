@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.126 — feat(ui): 命令面板上下文相关（目标/置顶根据当前 thread 实时显示）
+**Date**: 2026-09-08
+**Tag**: v0.5.126
+**Test status**: jkmacmini 待跑；本机 3110 passed / 12 failed
+**Changed**:
+- `CommandPaletteView.actions` 从 `let [...]` 改为 `var actions: [PaletteAction]` 计算属性，每次 body 重新计算时读 `store.activeThreadId` + `liveThreads.first(where: { $0.id == activeID })`。
+- "目标" 标题动态化：当前 thread 有 `goal` 且非空 → "编辑目标（<goal 前 18 字符>）"，否则 "目标"。
+- "置顶聊天" 标题动态化：当前 thread `isPinned == true` → "取消置顶"，否则 "置顶聊天"。
+- 行动 `run` 闭包保持原有 `store.togglePinned(id)` / `tapgoOpenGoalEditor` 通知逻辑——只是 title 反映状态。
+**Why**: Codex 桌面端 palette 的"目标"/"置顶"行右侧会有实时状态指示；Tapgo 此前只显示静态文字，让用户每次要点开才知道当前是否已设。
+**Next**: MakeHistory 之外的 EVOLUTION 章节结构化（如 Roadmap / Known issues 列表）；或 makeHistory 自身的字符串解析测试覆盖（v0.5.125 的中文双引号 bug 是手工 patch 暴露的——加自动测试可防止再次出现）。
+
 ## v0.5.125 — feat(chat): Plan mode（Codex 桌面端"先出方案"模式）
 **Date**: 2026-09-08
 **Tag**: v0.5.125
@@ -1649,3 +1661,22 @@ v0.5.108 引入 MarkdownInlineFlow 渲染器和 LivePulseDot，让行内代码�
 - 修复测试错误使用真实 daemon 目录，改为临时路径和正确清理范围。
 **Validation**: Core 2916 passed / 0 failed；后续打包与安装回读见本次发布验收记录。
 **Limits**: 无 phase 的旧模型在回合完成后显示最终回复；个性化仅保存于当前 Mac。
+
+## v1.0.0 (iOS) — 点点够终端 模拟器闭环 + Keychain + 真扫码
+**Date**: 2026-09-08
+**Scope**: iOS 端 (Mac 主仓 v0.5.x 仍独立演进)
+**Test status**: MobilePairing 446/446 + PairingStore 20/20 = 466/466；JKmacmini BUILD SUCCEEDED (arm64+x86_64 universal)
+**Changed**:
+- `mobile/ios/project.yml`: deployment target 13.0 → 16.0（与 SwiftUI @main/App/StateObject/NavigationStack 对齐）；删除顶层 `info:` 块（xcodegen 会覆盖 `INFOPLIST_FILE`），强制走我们手写的 `Info.plist`。
+- `mobile/ios/Scripts/build.sh`: ROOT 计算 `../..` → `../../..`（与 `check-sync.sh` 对齐）；xcodegen 改为 force regenerate（避免新源文件漏扫描）。
+- `mobile/ios/Info.plist`: 加 `NSCameraUsageDescription`（AVFoundation 扫码所需）。
+- `mobile/ios/Sources/PairingKeychain.swift` (新增): `PairingKeychain` (SecureStorage 实现，service=`com.devtools.terminalSimple.pairing`，kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly) + `PairingKeychainProbeKey` (写入+读回探测)。
+- `mobile/ios/Sources/PairingStore.swift`: `init` 默认 `storage: PairingKeychain()` + `fallback: UserDefaultsStorage?`；Keychain probe 失败时降级到 UserDefaults。
+- `mobile/ios/Sources/QRScannerView.swift` (新增): `UIViewControllerRepresentable` 包 `AVCaptureSession` + `AVCaptureMetadataOutput` (.qr)，含权限请求、CameraDeniedView、CameraUnavailableView 兜底。
+- `mobile/ios/Sources/PairingView.swift`: 「扫码配对」从占位卡换成真按钮，触发 `sheet` 弹 `QRScannerView`；`handleScannedCode` 同时支持 `tapgo-pair://` URL 与裸 6 位码。
+- `mobile/ios/Tests/PairingStoreTests.swift` (新增): 20 用例覆盖 handleIncomingURL (合法/非法 scheme/字符集/v=0)、acceptManualCode (合法/非法字符)、unpair、InMemoryStorage round-trip、持久化路径。
+- `mobile/ios/Scripts/run-tests.sh`: 分两个 `@main` binary 编译并分别跑（MobilePairing 协议 + PairingStore），输出合并。
+- `mobile/ios/Assets.xcassets/AppIcon.appiconset/icon-1024.png`: 1x1 占位 → 1024x1024 合规 PNG（深蓝渐变 + 中文标注，上架前需替换为正式设计）。
+- `mobile/CONFIG.md`: Deployment Target 13.0 → 16.0（标注原因）。
+**Why**: 之前 README 状态表说"v0.5.9 协议层 + SwiftUI 闭环"，但 `xcodegen + xcodebuild` 真机构建从未跑通；这次把"构建+模拟器+Keychain+扫码"四件一次性打通。
+**Next**: P4 Bonjour 长链接（iOS 端 NWBrowser + JSON-RPC 心跳 + Mac 端 ConnectPhoneView 联动）；P5 信息流骨架（最近会话、发送消息、切项目）；P6 TestFlight + 提审。
