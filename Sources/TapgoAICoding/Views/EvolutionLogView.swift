@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.136", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.136",
+                    summary: "Plan mode 视觉强化（composer 顶部蓝色 banner）。",
+                    changes: ["ComposerView body 顶部加 if planningMode { PlanModeBanner() }。", "PlanModeBanner struct：brandPrimary + 灯泡 + 主文 + 副文。", "Plan toggle 后立即显示；send() 后自动消失。"],
+                    why: "Codex 桌面端 composer 顶部显示 Plan mode 提示。",
+                    next: "全局 hotkey 或更新日志日期筛选。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.135", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.135",
                     summary: "更新日志 sheet 底部加 commit 历史 + release tag 链接。",
                     changes: ["ReleaseNotesSheet footer Link → GitHub commits/main。", "Link → 当前 release tag URL。"],

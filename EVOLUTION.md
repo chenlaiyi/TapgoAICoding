@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.136 — feat(ui): Plan mode 视觉强化（composer 顶部蓝色 banner）
+**Date**: 2026-09-08
+**Tag**: v0.5.136
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `ComposerView` body 顶部加 `if planningMode { PlanModeBanner() }`。
+- 新 `PlanModeBanner` struct：蓝色 brandPrimary 背景 + 灯泡图标 + "Plan mode 已开启" 主文 + "下一条消息会让 Codex 先出方案不执行工具" 副文。
+- 触发方式：点 composer 工具栏 Plan 按钮 / palette "Plan 模式" / /plan slash / `tapgoTogglePlanMode` 通知。
+**Why**: Codex 桌面端 composer 顶部显示 Plan mode 提示；Tapgo 此前只在按钮 + send() 时隐式生效。
+**Next**: 全局 hotkey 注册（让 palette 快捷键真触发动作而不仅 UI 显示）；或更新日志 sheet 加日期筛选。
+
 ## v0.5.135 — feat(ui): 更新日志 sheet 底部加 commit 历史链接
 **Date**: 2026-09-08
 **Tag**: v0.5.135

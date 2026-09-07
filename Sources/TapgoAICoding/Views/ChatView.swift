@@ -1263,6 +1263,9 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            if planningMode {
+                PlanModeBanner()
+            }
             if !store.attachedImages.isEmpty {
                 if showAttachments {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -2852,5 +2855,31 @@ private struct StableComposerTextView: NSViewRepresentable {
             lastHeight = height
             parent.onHeightChange(height)
         }
+    }
+}
+
+/// Plan mode 视觉提示 — 在 composer 顶部显示蓝色 banner，提示
+/// 当前会话已开启 Plan mode，下一条消息会自动加 [计划模式] 指令
+/// 前缀让 Codex 先出方案不执行工具。Codex 桌面端同样在 composer 顶部
+/// 显示类似提示。
+struct PlanModeBanner: View {
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lightbulb.fill")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.white)
+            Text("Plan mode 已开启")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.white)
+                .bold()
+            Text("— 下一条消息会让 Codex 先出方案不执行工具")
+                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.white.opacity(0.85))
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(DSHTheme.brandPrimary, in: RoundedRectangle(cornerRadius: 6))
     }
 }
