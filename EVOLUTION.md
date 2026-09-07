@@ -1842,3 +1842,26 @@ v0.5.108 引入 MarkdownInlineFlow 渲染器和 LivePulseDot，让行内代码�
 - `mobile/README.md`: 状态表加7 行 v1.0.0 + 修 shell 误吃字段
 **Why**: 之前 README 说"v0.5.9 协议层 + SwiftUI 闭环", 但 xcodegen+xcodebuild 真机构建从未跑通. 这次把 构建+模拟器+Keychain+扫码+Bonjour 长链接+信息流+真机 install+Mac logo 对齐 八件事一次性打通.
 **Next (P6)**: Apple Developer 后台 Capabilities 勾选 App Groups + Sign In with Apple, 取消 Runner.entitlements 注释; Archive + Distribute → App Store Connect → TestFlight; Mac 端补 Bonjour 服务或 iOS 端决定改走 H5 WKWebView 路线, 让 P4 端到端联调变绿; 正式 AppIcon (当前用 Mac 端 logo 拍平白底, 上线前可优化设计).
+
+## v1.0.1 (iOS) — 增量: Mac 端 PairCode 集成 + tapgo-pair:// UI + Bonjour 长链接
+**Date**: 2026-09-08
+**Scope**: iOS 端独立 patch (Mac 主仓 v0.5.129, iOS 仍为 1.0.0)
+**Tag**: v1.0.1
+**Test status**: 488/488 (iOS 端未变, 协议层 sync 通过); Mac 端 `swift build --target TapgoAICoding` 在 JKmacmini (Xcode 26.6) 通过
+**Changed**:
+- `Sources/TapgoCore/MobileRemoteLink.swift` (新增, 134 行): JSON-RPC over TCP 帧协议层, 真源.
+- `Sources/TapgoAICoding/Services/PairingLinkListener.swift` (新增, 163 行): Bonjour `_tapgo-pair._tcp` NWListener + JSON-RPC 帧解析; hello → onId(deviceId) + ack push; request → RequestHandler 路由 (Phase 2 占位).
+- `Sources/TapgoAICoding/Services/PhoneRemoteServer.swift` (+69 行):
+  - `@Published private(set) var pairingCode: MobilePairing.PairCode?` (60 秒 TTL)
+  - `@Published private(set) var pairingURLString: String` (tapgo-pair:// URL)
+  - `let macDeviceId: String` (UserDefaults 持久化)
+  - `refreshPairingCode()` / `startPairingTimer()` / `startPairingLinkListener()` / `handlePairingId(_:)` 四个新方法
+  - `init` + `startIfNeeded` + `stop` 同步集成
+- `Sources/TapgoAICoding/Views/ConnectPhoneView.swift` (+130 行): 新增 `pairingCard` (6 位码大字体 + 60s 倒计时 + tapgo-pair:// QR + 复制按钮 + Hostname) + `PairingQRRenderer` (CIQRCodeGenerator → NSImage) + `String.nonEmpty` extension
+- `mobile/ios/Sources/MobileRemoteLink.swift` (新增, 283 行): Mac 真源的 iOS 副本 (字节级同步, MARK 注释块)
+- `mobile/ios/Scripts/check-sync.sh` (+56 行): 扩展为同时校验 `MobilePairing` + `MobileRemoteLink` 双协议层
+- `mobile/E2E-TEST-v1.0.1.md` (新增, 90 行): 端到端测试脚本 (Mac 端 PairCode 卡片 + iPhone 真机扫码 → DashboardView 已连接)
+
+**Why**: 之前 v0.5.16 Mac 端 `ConnectPhoneView` 重写转 H5 路线时把 6 位配对码 UI 删了，导致 iOS App v1.0.0 配对功能孤立. 本次恢复 v0.5.7 路径, 端到端配对闭环.
+**Test status (manual)**: 端到端真机测试需 JKmacmini 登录桌面手工跑 (SSH session 无 display 权限). 模拟器 build + 真机 build 都通过, 但 PairCode 卡片 UI 截图 + DashboardView 已连接状态截图需用户手工.
+**Next (Phase 3)**: Mac 端 `PairingLinkListener` `RequestHandler` 路由到 `SessionStore` / `WorkspaceStore`; 实现 `listSessions` / `switchProject` / `sendMessage` 真业务流.

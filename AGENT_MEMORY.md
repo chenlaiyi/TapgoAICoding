@@ -74,3 +74,20 @@
 - 当前没有 GitHub Actions workflow；`git push origin v0.5.X` 不会自动创建 Release。
 - 标准发布流程：本地 fast-forward → `SPARKLE_KEY_FILE=~/.tapgo/sparkle/ed25519.pem bash scripts/create-github-release-artifacts.sh`（自动 commit appcast.xml + push）→ 在 jkmacmini 上用 chanlaiyi 的 token 调 GitHub API 创建 draft release → upload zip → PATCH `draft=false` 发布。
 - 安装到 jkmacmini 时无需手动 scp 二进制，直接 `cd /Users/chanlaiyi/TapgoAICoding && bash scripts/build-app.sh && codesign --force --deep --sign - /Applications/Tapgo\ AICoding.app` 即可（jkmacmini 已 fast-forward）。
+
+## iOS 端 v1.0.1 PairCode 集成事实（2026-09-08 增补）
+
+- **iOS 端 App 名称**：「点点够终端」（Apple Developer 后台 Bundle ID `com.devtools.terminalSimple`）。
+- **iOS 端版本策略**：独立计数（`MARKETING_VERSION=1.0`，`CURRENT_PROJECT_VERSION=1`），跟 Mac 主仓 `v0.5.x` 不同步；后续 iOS 内部小版本用 `1.0.x` 演进。
+- **Mac ↔ iOS 配对协议 v1 协议层双端**：
+  - **真源**：`Sources/TapgoCore/MobilePairing.swift` + `Sources/TapgoCore/MobileRemoteLink.swift`（Mac 端）。
+  - **iOS 副本**：`mobile/ios/Sources/MobilePairing.swift` + `mobile/ios/Sources/MobileRemoteLink.swift`（独立 Xcode 工程，字节级同步）。
+  - **同步校验**：`mobile/ios/Scripts/check-sync.sh`，在两个协议的 iOS 副本末尾都插了 `// MARK: - iOS 工程自包含副本` 注释块，awk 自动剥离后再 sha256 比对 Core 真源。Mac 端改动协议字段必须同步 iOS 副本，否则脚本非零退出 + CI 拒绝。
+- **Mac 端 PairCode UI**：在 `Sources/TapgoAICoding/Views/ConnectPhoneView.swift` 的 `pairingCard`，展示 6 位码 + `tapgo-pair://` QR + 60 秒倒计时 + 复制按钮 + Hostname 显示；`PhoneRemoteController` 加 `pairingCode` / `pairingURLString` / `macDeviceId` @Published 属性，60 秒自动轮换。
+- **Mac 端 Bonjour 服务**：`Sources/TapgoAICoding/Services/PairingLinkListener.swift` 监听 `_tapgo-pair._tcp`，`NWListener` + JSON-RPC 帧解析；iOS 端 `Sources/PairingLink.swift` 用 `NWBrowser` 自动发现 + 心跳。`hello` 帧触发 Mac 端 `onId(deviceId)` 回调 + ack push；`request/*` 帧路由到 `RequestHandler`（Phase 2 占位，未接 SessionStore）。
+- **iOS 真机回归脚本**：`mobile/ios/Scripts/install-device.sh` 一键 install + launch，依赖 `xcrun devicectl`（Xcode 26.6 必备）。`xcrun devicectl` 在 Xcode 26.6 没有 screenshot 子命令——真机截图需在 JKmacmini 桌面手工 `Xcode → Window → Devices and Simulators → Take Screenshot` 或 `idevicescreenshot`（注意 Developer disk image mount 问题）。
+- **iOS 真机构建需先解锁 keychain**：`security unlock-keychain -p "" login.keychain-db`，否则 `CodeSign` 报 `errSecInternalComponent`；`Scripts/build.sh` 真机 path 已自动处理。
+- **iOS 真机 Provisioning Profile**：`com.devtools.terminalSimple` 当前只在 Apple Developer 后台（Team `KF2CE24685`）勾选了 App 主体；**未勾选** App Groups + Sign In with Apple——`mobile/ios/Runner.entitlements` 临时注释这两个 entitlement 让 build 过；上线前去 Apple Developer 后台勾选再取消注释。
+- **iOS AppIcon**：当前用 Mac 端 logo (`AppBuilder/AppIcon.icns`，1024×1024 ic12 type) 拍平到白底（紫蓝渐变 + 白色 C 形 + 中心绿色三角）；占位，上线前可让设计师优化。
+- **TapgoComputerUse 不能在 iOS 端 import**：`TapgoAICoding.app` 依赖 `TapgoComputerUse` (ComputerUse 截图/输入)，iOS 端 PairingLink 不依赖——但 iOS 真机 install 时仍然因为 TapgoAICoding app 把 TapgoComputerUse.xcframework 链进去而体积较大；这不是问题，仅记录。
+- **E2E 测试脚本**：`mobile/E2E-TEST-v1.0.1.md` 端到端测试清单（Mac 端启 app → PairCode 卡片 → iPhone 扫码/手动输入 → DashboardView 已连接 → 截图归档）。

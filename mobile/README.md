@@ -77,6 +77,7 @@ mobile/ios/
 | iOS 长链接 (Bonjour + JSON-RPC over TCP) | ✅ v1.0.0 客户端代码到位 | Sources/PairingLink.swift (NWBrowser + 心跳) + Sources/MobileRemoteLink.swift (JSON-RPC 帧协议)；PairingStore.init 自动 start()；端到端联调需 Mac 端补 _tapgo-pair._tcp 服务 (现 Mac 端 v0.5.16 转 H5 HTTP, 原 Bonjour 服务未实现) |
 | iOS 信息流 UI (P5 骨架) | ✅ DashboardView 渲染验证 | 切项目 / 发送消息 / 最近会话三入口；UI 截图见 artifacts/ios/v1.0.0-1/11-dashboard-clean.png |
 | iOS 真机 build + install (JK14pro iPhone 14 Pro) | ✅ v1.0.0 | Scripts/build.sh 加 BUILD_TARGET=device 真机构建；Scripts/install-device.sh 一键 install+launch；App Store Connect 显示 Bundle ID=com.devtools.terminalSimple, version=1.0(1)；devicectl 无 screenshot 子命令 (Xcode 26.6)，截图需在 JKmacmini 上手工 Xcode → Devices and Simulators → Take Screenshot |
+| iOS v1.0.1 Mac 端 PairCode 集成 | ✅ v1.0.0+ | Mac 端 `ConnectPhoneView.pairingCard` (6 位码 + tapgo-pair:// QR + 60s 倒计时) + `PhoneRemoteController` PairCode 状态机 + `Sources/TapgoAICoding/Services/PairingLinkListener.swift` Bonjour `_tapgo-pair._tcp` + JSON-RPC over TCP；`Sources/TapgoCore/MobileRemoteLink.swift` 真源 + `mobile/ios/Sources/MobileRemoteLink.swift` 副本 字节级 sync; iPhone 端 PairingLink NWBrowser 发现 Mac → NWConnection → 心跳 → DashboardView 「已连接」|
 | iOS 已配对状态自动启动长链接 | ✅ v1.0.0 | PairingStore.init 检测到 stored mac 后自动启动 PairingLink；Bonjour 搜索中 (橙色圆点) |
 
 ## 一键跑命令
