@@ -252,9 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.132", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.132",
+                    summary: "命令面板加更新日志 + 快捷键 + 设置入口。",
+                    changes: ["actions 末尾加 release-notes + help entry。", "新增 ReleaseNotesSheet 从 EVOLUTION.md 解析版本段。", "CommandPaletteView 加 showReleaseNotesSheet/showShortNotes @State。", "ContentView 顶层 showShortcuts sheet 移除。"],
+                    why: "命令面板应是命令中心。",
+                    next: "Plan mode 接 harness 协议 或补全 action 快捷键。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.131", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.131",
                     summary: "命令面板 section header 文字（环境 / 当前对话 / 全局）。",
-                    changes: ["PaletteAction 加 sectionName + sectionDivider(_:preceding:)。", "Entry 加 sectionName 字段。", "actions 数组中 3 个 divider 传 "环境"/"当前对话"/"全局"。", "ForEach 渲染 section header 文字 (caption2 + secondary + 大写)。"],
+                    changes: ["PaletteAction 加 sectionName + sectionDivider(_:preceding:)。", "Entry 加 sectionName 字段。", "actions 数组中 3 个 divider 传 \"环境\"/\"当前对话\"/\"全局\"。", "ForEach 渲染 section header 文字 (caption2 + secondary + 大写)。"],
                     why: "v0.5.130 只加 Divider；Codex 桌面端用 caption 文字 + Divider 一起标识 section 名。",
                     next: "全局命令面板加 settings/release notes/帮助入口 或 Plan mode 接 harness 协议。"
                 ),

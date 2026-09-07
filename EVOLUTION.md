@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.132 — feat(ui): 命令面板加 settings / 更新日志 / 快捷键入口
+**Date**: 2026-09-08
+**Tag**: v0.5.132
+**Test status**: jkmacmini 待跑；本机 3117 passed / 12 failed
+**Changed**:
+- `CommandPaletteView` actions 末尾加 2 个 entry：更新日志（弹 `ReleaseNotesSheet` sheet 从 EVOLUTION.md 头部读 12 个版本段 + 当前 App 版本）+ 快捷键（弹 `ShortcutsView` sheet）。
+- 新增 `ReleaseNotesSheet` 私有 struct（从 `EVOLUTION.md` 解析 `## v...` 段标题）。
+- `CommandPaletteView` 加 `showReleaseNotesSheet` + `showShortNotes` 两个 @State（独立于 ContentView 顶层 state）。
+- ContentView 顶层 `showShortcuts` sheet 移除（已移入 CommandPaletteView 内）。
+**Why**: 命令面板应是"命令中心"——settings/release notes/help 都该是其一键可达。
+**Next**: Plan mode 与 harness 协议层深度集成；或让每个 action 的快捷键更全（key column 完整化）。
+
 ## v0.5.131 — feat(ui): 命令面板 section header 文字（环境 / 当前对话 / 全局）
 **Date**: 2026-09-08
 **Tag**: v0.5.131

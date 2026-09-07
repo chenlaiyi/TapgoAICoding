@@ -425,6 +425,8 @@ private struct CommandPaletteView: View {
     @State private var selectedIndex = 0
     @State private var paletteInfoAlert: PaletteInfoAlert?
     @State private var pendingBranchPrompt: Bool = false
+    @State private var showShortNotes: Bool = false
+    @State private var showReleaseNotesSheet: Bool = false
     @State private var branchNameDraft: String = ""
     @State private var miniPrompt: String = ""
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
@@ -647,6 +649,10 @@ private struct CommandPaletteView: View {
             .accessibilityHidden(true)
         .onAppear { selectedIndex = 0 }
         .onChange(of: query) { _, _ in selectedIndex = 0 }
+        .sheet(isPresented: $showReleaseNotesSheet) {
+            ReleaseNotesSheet()
+        }
+
     }
 
     private struct Entry: Identifiable {
@@ -801,6 +807,10 @@ private struct CommandPaletteView: View {
             PaletteAction.sectionDivider("div-global"),
             .init("toggleSidebar", "切换侧边栏", "sidebar.left", "⌘\\",
                   { NotificationCenter.default.post(name: .tapgoToggleSidebar, object: nil) }),
+            .init("release-notes", "更新日志", "doc.text", "⇧⌘R",
+                  { showReleaseNotesSheet = true }),
+            .init("help", "快捷键", "questionmark.circle", "⇧?",
+                  { showShortNotes = true }),
             .init("settings", "运行设置", "gear", "⌘,", { onSettings() }),
         ]
     }
@@ -962,5 +972,62 @@ private struct ArrowTextField: NSViewRepresentable {
             default: return false
             }
         }
+    }
+}
+
+/// 命令面板"更新日志"sheet。从 EVOLUTION.md 读取头部段位 + 写入当前 App 版本号。
+struct ReleaseNotesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("更新日志")
+                    .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier))
+                    .bold()
+                Spacer()
+                Button("关闭") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                        Text("当前版本：v\(version)")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    ForEach(Self.recentEntries(), id: \.self) { entry in
+                        Text(entry)
+                            .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
+        }
+        .frame(width: 640, height: 560)
+    }
+
+    /// 读取项目根 EVOLUTION.md，提取头部 12 个 `## v...` 段标题。失败时返回空数组。
+    private static func recentEntries() -> [String] {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // ContentView.swift
+            .deletingLastPathComponent()  // Views
+            .deletingLastPathComponent()  // TapgoAICoding
+            .deletingLastPathComponent()  // Sources
+            .deletingLastPathComponent()  // repo root
+            .appendingPathComponent("EVOLUTION.md")
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return []
+        }
+        return text.components(separatedBy: "\n")
+            .filter { $0.hasPrefix("## v") }
+            .prefix(12)
+            .map { String($0.dropFirst(3)) }  // drop "## "
     }
 }
