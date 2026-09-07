@@ -3,6 +3,29 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.131</title>
+            <pubDate>Tue, 08 Sep 2026 01:59:42 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.131</link>
+            <sparkle:version>0.5.131</sparkle:version>
+            <sparkle:shortVersionString>0.5.131</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.131
+
+## 命令面板 section header 文字（Codex 桌面端风格）
+
+- 命令面板在 3 个 Divider 分组前加 section 标题（caption2 + secondary 色 + 大写）：
+  - **环境**（MCP）
+  - **当前对话**（代码审查 / 侧边 / 创建聊天分支 / 压缩 / 反馈 / 归档 / 状态 / 目标 / Plan 模式 / 新聊天）
+  - **全局**（置顶聊天 / 切换侧边栏 / 运行设置）
+- `PaletteAction` 加 `sectionName: String?` 字段；`sectionDivider(_:preceding:)` 接受 section 名。
+- `Entry` 加 `sectionName` 字段；`ForEach` 渲染 `if let section = e.sectionName, section != lastSectionName` 时插 caption header。
+
+测试：3117 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.131/Tapgo-AICoding-0.5.131.zip" length="12070727" type="application/octet-stream" sparkle:edSignature="wxfv7Wr8tdebPwgMBtwzQRynlGM4kjosDMosDwJMmtOAusqKR1GNnpjCjPReolsi4YX/xuxKbNVqHT2lZJvjCQ=="/>
+        </item>
+        <item>
             <title>0.5.130</title>
             <pubDate>Tue, 08 Sep 2026 01:54:01 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.130</link>
@@ -57,29 +80,6 @@
 测试：3123 passed / 12 failed（12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.129/Tapgo-AICoding-0.5.129.zip" length="12064042" type="application/octet-stream" sparkle:edSignature="8Wpp2TN2JB5u550VlWgijFhoeyiBM4b/SKBudyZ3SKY17mkddixHW4VJJnxF3Z8dxQi6tPil4K15L7ETvSPAAw=="/>
-        </item>
-        <item>
-            <title>0.5.128</title>
-            <pubDate>Tue, 08 Sep 2026 01:13:09 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.128</link>
-            <sparkle:version>0.5.128</sparkle:version>
-            <sparkle:shortVersionString>0.5.128</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.128
-
-## 测试覆盖升级
-
-- `MakeHistory parity: structural and Info.plist sync` 套件从单向（makeHistory → EVOLUTION）升级为**双向严格**（makeHistory ↔ EVOLUTION）：
-  - makeHistory 每个版本必须在 EVOLUTION.md 头部段出现
-  - EVOLUTION.md 每个 v0.5+ 段必须在 makeHistory 出现（iOS 子项目 v1.x 与 v0.0-v0.2 旧段不参与）
-- 补齐 19 个历史漏段以让测试通过：
-  - makeHistory 新增 v0.3.0/2/3、v0.4.0/1/3、v0.5.0/1/4、v0.5.52、v0.5.58-61、v0.5.80/81、v0.5.84-99、v0.5.105、v0.5.108 等 19 个 EvolutionEntry（commit SHA 来自 git log 反查）
-  - EVOLUTION.md 头部 v0.5.5 之前补齐 12 个 v0.3.0-v0.5.4 段
-
-测试：3117 passed / 12 failed（+1 个新增双向校验，+16 个新增 makeHistory 条目；12 项 SSH 环境性不变）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.128/Tapgo-AICoding-0.5.128.zip" length="11994422" type="application/octet-stream" sparkle:edSignature="4Ob8LLP6ExPVJDosJIqiu8DYE3D2a81xXoMxaUd8rkhcWBkUsToPYl4+EvTpD2NV5PiHfl9IPqYPfr2v20rRAQ=="/>
         </item>
     </channel>
 </rss>
