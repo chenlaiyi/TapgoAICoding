@@ -755,6 +755,9 @@ private struct CommandPaletteView: View {
             .init("new", "新聊天", "square.and.pencil", "⌘N", { onNewTask() }),
             .init("status", "状态", "info.circle", nil,
                   { paletteInfoAlert = .init(title: "状态", message: store.statusSnapshotForActiveThread()) }),
+            .init("plan", "Plan 模式", "lightbulb", nil,
+                  { UserDefaults.standard.set(true, forKey: "tapgo.planningMode")
+                    paletteInfoAlert = .init(title: "Plan 模式", message: "已开启。下一条消息会让 Codex 先出方案不执行工具。") }),
             .init("goal", "目标", "target", nil,
                   { NotificationCenter.default.post(name: .tapgoOpenGoalEditor, object: nil) }),
             .init("pin", "置顶聊天", "pin", nil,

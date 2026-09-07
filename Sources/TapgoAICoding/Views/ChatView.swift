@@ -1157,6 +1157,7 @@ struct ComposerView: View {
     /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
         "builtin:\(TapgoModel.minimaxM3.rawValue)"
+    @AppStorage("tapgo.planningMode") private var planningMode = false
     /// 归一化后的选中 ID（旧裸 slug → builtin: 前缀），用于菜单勾选判断。
     private var selectedModelID: String { ModelRegistry.normalizedID(selectedModelRaw) }
     /// How much of the "任务" status card's bottom is tucked behind the
@@ -1354,6 +1355,23 @@ struct ComposerView: View {
                     }
 
                     environmentChip
+
+                    // Plan mode toggle (Codex desktop parity). When on, the
+                    // next message is prefixed with a "plan only" directive
+                    // and the toggle snaps back to off after the send.
+                    Button {
+                        planningMode.toggle()
+                    } label: {
+                        Text("Plan")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(planningMode ? Color.white : DSHTheme.labelDim)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(planningMode ? DSHTheme.brandPrimary : Color.clear, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .help(planningMode ? "Plan mode：下一条消息先让 Codex 出方案" : "Plan mode：先让 Codex 出方案再执行")
+                    .accessibilityLabel("Plan mode 切换")
 
                     if !isWelcome {
                         if computerUseShowInComposer { computerControlChip }
@@ -2199,14 +2217,24 @@ struct ComposerView: View {
     }
 
     /// Send the composed message. While a turn is running the message is
-    /// queued instead of dropped.
+    /// queued instead of dropped. When the user has Plan mode toggled on
+    /// (Codex desktop parity), prepend a directive telling Codex to plan
+    /// first and skip tool calls so the user can review the approach
+    /// before any side effects run.
     private func send() {
         if handleLocalCommand() { return }
         let t = text
         guard !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || !store.attachedImages.isEmpty else { return }
         text = ""
-        store.sendUserMessage(t)
+        let payload: String
+        if planningMode {
+            payload = "[计划模式] 请先给方案（Markdown：步骤 / 风险 / 验证），不要执行任何工具调用。\n\n" + t
+        } else {
+            payload = t
+        }
+        store.sendUserMessage(payload)
+        planningMode = false  // single-shot: turn off after the plan is sent
         // The user just spoke — land at the latest message. We bypass the
         // "isNearBottom" gate (which is async from preferences) so the new
         // user bubble always sits right above the composer, matching Codex.
