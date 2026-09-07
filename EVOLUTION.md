@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.118 — feat(chat): slash 命令补齐 — /clear 清空会话 + /model 模糊切模型
+**Date**: 2026-09-07
+**Tag**: v0.5.118
+**Test status**: jkmacmini 待跑（commit 在 fafamacmini 上完成）；本机 fafamacmini 3092 passed / 12 failed（新增 ComposerLocalCommand 11 个 case 全过；12 项失败均为 SSH 远程集成 + auth.json 环境性，与改动无关；AppUpdateDistributionTests 在 tag v0.5.117 后已自动通过）
+**Changed**:
+- `ComposerLocalCommand` 新增 `.clear` 与 `.model(String)` cases；`/clear` 是 bare token，`/model <query>` 用字符串前缀 + 空白分隔严格解析（`/modelA`、`/modeling`、`请解释 /model` 一律走模型）；提取出 `strippingLocalCommandPrefix(_:)` helper 复用分隔逻辑。
+- `SessionStore.clearActiveThread()` 清空当前 thread 的 turns + 重置 harnessThreadId + 取消 in-flight turn + 清空 composer；thread 元数据保留。
+- `SessionStore.selectModel(matching:)` 模糊匹配 `selectableModelOptions()`：按 displayName / modelID / providerName 大小写无关 substring；返回 `ModelSelectOutcome`（empty / notFound / ambiguous / selected / notConfigured）让 ChatView 用 alert 提示。
+- `ChatView.handleLocalCommand` 加 `.clear` 与 `.model` 分支；`slashMenu` 加 `/clear` + `/model` 两行（`/model` 占位补全 + 提示文本更新）；`ModelSelectAlert` 结构体把每种 outcome 翻译成中英文标题/消息。
+- 复用 `TapgoConfig.selectProviderModel(providerID:modelID:)` 做实际切换——写 UserDefaults + 注册表 + 重写 config.toml / 目录让 harness 热加载。
+**Why**: Codex 桌面端常见 `/clear` 与 `/model` 命令对长对话很有用——前者跳出 token 越界，后者按任务类型换模型。命令面板 已有等价 UI（⌘K 弹出），但内联 slash 命令是 Codex 桌面端的"快键"习惯，纳入让 composer 一步到位。
+**Next**: 下一阶段补 `/init`（让 Codex 扫描项目结构生成 AGENTS.md）与 `/compact`（本地压缩 turns 摘要，Codex app-server 无原生 API 需本地模拟）；同时把命令面板从 sheet 升级为中心浮层背景模糊，与 Codex 桌面端对齐。
+
 ## v0.5.117 — fix(harness)+feat(chat): 回合兜底完成 + 文件变更卡 per-file 兜底 + HTML 预览
 **Date**: 2026-09-07
 **Tag**: v0.5.117

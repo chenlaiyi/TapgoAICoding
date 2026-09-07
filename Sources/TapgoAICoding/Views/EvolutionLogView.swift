@@ -252,6 +252,13 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.118", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.118",
+                    summary: "slash 命令补齐 — /clear 清空会话 + /model 模糊切模型。",
+                    changes: ["ComposerLocalCommand 加 .clear 与 .model cases；提取 strippingLocalCommandPrefix 复用分隔逻辑。", "SessionStore.clearActiveThread 清空当前 thread turns 并取消 in-flight；元数据保留。", "SessionStore.selectModel 模糊匹配 selectableModelOptions，返回 5 种 outcome 给 alert 提示。", "ChatView.handleLocalCommand + slashMenu 接入新命令；ModelSelectAlert 结构体翻译 outcome。", "复用 TapgoConfig.selectProviderModel 实际切换，写 UserDefaults + 注册表 + 重写 config.toml。"],
+                    why: "命令面板已有等价 UI，但内联 slash 是 Codex 桌面端的快键习惯；/clear 跳 token 越界，/model 按任务类型换模型。",
+                    next: "下一阶段补 /init（Codex 起草项目 AGENTS.md）与 /compact（本地压缩 turns 摘要）；同时把命令面板从 sheet 升级为中心浮层背景模糊。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.117", date: "2026-09-07", commit: "见源码提交", tag: "v0.5.117",
                     summary: "回合兜底完成 + 文件变更卡 per-file 兜底 + HTML 预览，修兜底卡崩溃。",
                     changes: ["ExecEventParser 把 thread/status: idle 映射为 turnCompleted；SessionStore 加回合终结态保护，已结束回合不再被覆盖。", "WorktreeChangeTracker.collect 升级为 per-file 明细，命令产出的文件也能生成 FileChange 卡片。", "FileChangeRowView 对 html/htm 新增 WKWebView 内部预览弹窗，关闭支持 Esc。", "untrackedDiff 区分来源——tracked 修改走真 git diff HEAD -- path，根治 split 模式对齐越界崩溃。", "本机 14 项失败全是环境性（SSH 远程 + auth.json + 发版前版本对齐），jkmacmini 3080 全过。"],
