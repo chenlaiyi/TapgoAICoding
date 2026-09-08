@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.163 — feat(ui): NewTaskView 加底部"取消"按钮 + ESC 快捷键
+**Date**: 2026-09-08
+**Tag**: v0.5.163
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 加 `footer` view：右下角"取消"按钮（bordered style + 文字，比 X 关闭按钮更明显）。
+  - `.keyboardShortcut(.cancelAction)` 让 ESC 触发 dismiss。
+  - body frame height 460 → 480 容纳 footer。
+**Why**: 之前 NewTaskView 只在右上角放 X 关闭按钮（22x22），user 经常找不到取消入口。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.162 — feat(ui): NewTaskView recentRow hover 加 border
 **Date**: 2026-09-08
 **Tag**: v0.5.162

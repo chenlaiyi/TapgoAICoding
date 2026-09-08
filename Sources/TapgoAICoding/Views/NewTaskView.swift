@@ -32,8 +32,11 @@ struct NewTaskView: View {
                 }
                 .padding(20)
             }
+            // v0.5.163: 加 footer，左下"取消"按钮（之前只有右上 X，太隐蔽）。
+            Divider()
+            footer
         }
-        .frame(width: 520, height: 460)
+        .frame(width: 520, height: 480)
         .alert("打开本地目录失败", isPresented: Binding(
             get: { error != nil }, set: { _ in error = nil }
         )) {
@@ -63,6 +66,26 @@ struct NewTaskView: View {
     }
 
     // MARK: - Sections
+
+    @ViewBuilder
+    private var footer: some View {
+        HStack {
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Text("取消")
+                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .keyboardShortcut(.cancelAction)
+            .accessibilityLabel("取消新建任务")
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+    }
 
     @ViewBuilder
     private var header: some View {
