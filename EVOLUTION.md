@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.170 — fix(ui): Sidebar 重命名会话 alert TextField 默认 focus
+**Date**: 2026-09-08
+**Tag**: v0.5.170
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - 加 `@FocusState private var renameFocused: Bool` + TextField `.focused()` + `.onChange(of: renamingThreadId)` 触发 focus。
+**Why**: 之前重命名 alert 弹出后 user 必须先点 TextField 才能输入。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.169 — feat(ui): Sidebar thread item 右键菜单加"在 Finder 中显示附件"
 **Date**: 2026-09-08
 **Tag**: v0.5.169

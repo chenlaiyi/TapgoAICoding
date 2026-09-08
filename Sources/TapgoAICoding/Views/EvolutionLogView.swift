@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.170", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.170",
+                    summary: "Sidebar 重命名会话 alert TextField 默认 focus。",
+                    changes: ["加 @FocusState renameFocused + TextField .focused() + .onChange 触发。"],
+                    why: "之前重命名 alert 弹出后 user 必须先点 TextField 才能输入。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.169", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.169",
                     summary: "Sidebar thread item 右键菜单加\"在 Finder 中显示附件\"。",
                     changes: ["contextMenu 加 paperclip Button。", "openThreadAttachmentsDir helper：目录存在 open，不存在弹 alert。"],

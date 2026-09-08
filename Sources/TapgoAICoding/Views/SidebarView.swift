@@ -10,6 +10,8 @@ struct SidebarView: View {
     @State private var isDropTargeted = false
     @State private var renamingThreadId: String?
     @State private var renameDraft: String = ""
+    // v0.5.170: 让重命名 alert 的 TextField 默认 focus（user 打开就能直接输入）。
+    @FocusState private var renameFocused: Bool
     @State private var confirmingDelete: TapgoCore.Thread?
     @State private var confirmingProjectRemove: String? = nil
     @State private var editingProject: Project?
@@ -70,11 +72,20 @@ struct SidebarView: View {
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
             acceptDroppedFolder(providers)
         }
+        .onChange(of: renamingThreadId) { _, id in
+            // v0.5.170: alert 显示后默认 focus TextField（user 直接输入不用先点）。
+            if id != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    renameFocused = true
+                }
+            }
+        }
         .alert("重命名会话", isPresented: Binding(
             get: { renamingThreadId != nil },
             set: { if !$0 { renamingThreadId = nil } }
         )) {
             TextField("标题", text: $renameDraft)
+                .focused($renameFocused)
             Button("确定") {
                 if let id = renamingThreadId {
                     store.renameThread(id, to: renameDraft)
