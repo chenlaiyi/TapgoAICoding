@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.186", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.186",
+                    summary: "Sidebar project group header + 按钮加 ⌘N 快捷键。",
+                    changes: ["project group header 的 + 按钮加 .keyboardShortcut(\"n\", modifiers: .command)。"],
+                    why: "之前主菜单\"新建任务\"绑 ⌘N 但 sidebar + 按钮不绑。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.185", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.185",
                     summary: "ApprovalRow 拒绝按钮加 ⌘⌫ 快捷键。",
                     changes: ["拒绝按钮加 .keyboardShortcut(.delete, modifiers: .command)。"],

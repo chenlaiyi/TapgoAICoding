@@ -522,6 +522,8 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("在 \(p.displayName) 中新建任务")
                 .help("在此项目中新建任务")
+                // v0.5.186: ⌘N 快捷键让 user 在 sidebar focus 时按 ⌘N 直接在此 project 创建任务。
+                .keyboardShortcut("n", modifiers: .command)
                 // v0.5.178: 非 hover 时 opacity 0.25 太隐蔽（用户不知道有 + 按钮），
                 // 改 0.6 让按钮总是可见，hover 时变 1.0。
                 .opacity(hoveredProjectId == p.id ? 1 : 0.6)

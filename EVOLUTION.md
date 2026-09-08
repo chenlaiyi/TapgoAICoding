@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.186 — feat(ui): Sidebar project group header + 按钮加 ⌘N 快捷键
+**Date**: 2026-09-08
+**Tag**: v0.5.186
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - project group header 的 + 按钮加 `.keyboardShortcut("n", modifiers: .command)`。
+**Why**: 之前主菜单 "新建任务" 绑 ⌘N 但 sidebar + 按钮不绑，user 按 ⌘N 总是打开无 project 新任务。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.185 — feat(ui): ApprovalRow 拒绝按钮加 ⌘⌫ 快捷键
 **Date**: 2026-09-08
 **Tag**: v0.5.185
