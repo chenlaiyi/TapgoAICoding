@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.190", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.190",
+                    summary: "ConversationActivityRow running 时显示 spinner。",
+                    changes: ["Image(systemName:) 在 running && !isFailure 时替换为 ProgressView。"],
+                    why: "之前 running 显示静态 icon，user 不知道是否执行中。Codex 桌面端显示旋转 spinner。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.189", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.189",
                     summary: "streaming 时显示闪烁光标（对齐 Codex 桌面端）。",
                     changes: ["body 末尾加 .overlay(alignment: .bottomLeading) + StreamingCursor()。", "新增 StreamingCursor View：TimelineView 0.5s 周期切换 ▍ opacity + brand 色。"],

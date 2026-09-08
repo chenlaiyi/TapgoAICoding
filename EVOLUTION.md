@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.190 — feat(ui): ConversationActivityRow running 时显示 spinner
+**Date**: 2026-09-08
+**Tag**: v0.5.190
+**Test status**: 本机 3117 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - `ConversationActivityRow` body 里 `Image(systemName:)` 在 `running && !display.isFailure` 时替换为 `ProgressView().controlSize(.small).scaleEffect(0.6)`。
+**Why**: 之前 running 时显示静态 icon，user 不知道是否真正执行中。Codex 桌面端 running 显示旋转 spinner。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.189 — feat(ui): streaming 时显示闪烁光标（对齐 Codex 桌面端）
 **Date**: 2026-09-08
 **Tag**: v0.5.189

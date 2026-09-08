@@ -135,7 +135,15 @@ private struct ConversationActivityRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Button { expanded.toggle() } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: display.systemImage ?? "circle").frame(width: 16)
+                    // v0.5.190: running 且未失败时显示 spinner（对齐 Codex 桌面端）。
+                    if running && !display.isFailure {
+                        ProgressView()
+                            .controlSize(.small)
+                            .scaleEffect(0.6)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: display.systemImage ?? "circle").frame(width: 16)
+                    }
                     Text(ConversationPresentation.activityTitle(activity, running: running)).lineLimit(1)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 9))
                 }
