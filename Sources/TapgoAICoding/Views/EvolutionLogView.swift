@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.185", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.185",
+                    summary: "ApprovalRow 拒绝按钮加 ⌘⌫ 快捷键。",
+                    changes: ["拒绝按钮加 .keyboardShortcut(.delete, modifiers: .command)。"],
+                    why: "之前拒绝按钮只能鼠标点。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.184", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.184",
                     summary: "NewTaskView 取消 preselected 预选时加 0.2s 动画反馈。",
                     changes: ["preselectedHint X 按钮 action 加 withAnimation(.easeOut(duration: 0.2))。"],

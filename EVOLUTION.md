@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.185 — feat(ui): ApprovalRow 拒绝按钮加 ⌘⌫ 快捷键
+**Date**: 2026-09-08
+**Tag**: v0.5.185
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 拒绝按钮加 `.keyboardShortcut(.delete, modifiers: .command)`。
+**Why**: 之前拒绝按钮只能鼠标点。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.184 — feat(ui): NewTaskView 取消 preselected 预选时加 0.2s 动画反馈
 **Date**: 2026-09-08
 **Tag**: v0.5.184

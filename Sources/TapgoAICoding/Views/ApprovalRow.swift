@@ -74,6 +74,8 @@ struct ApprovalRow: View {
                         Label(L10n.deny, systemImage: "xmark")
                     }
                     .buttonStyle(.borderedProminent)
+                    // v0.5.185: ⌘⌫ 快捷键（macOS destructive action 标准）。
+                    .keyboardShortcut(.delete, modifiers: .command)
                 }
                 .padding(.top, 2)
             }
