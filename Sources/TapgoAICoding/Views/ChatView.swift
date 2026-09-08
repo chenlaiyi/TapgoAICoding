@@ -2725,14 +2725,17 @@ struct ComposerView: View {
         }
     }
 
-    /// Composer placeholder, mentioning the active project when set.
+    /// Composer placeholder — Codex 桌面端对齐。Codex 桌面端 placeholder
+    /// 是 "添加文件等内容 @ 人/项目" 提示 composer 可以做什么。
+    /// TapgoAICoding 不支持 @ 人/@ 项目但支持 @ 插件（v0.5.147），
+    /// 所以 hint 改 "发消息 / 添加文件 / @ 插件"，更贴近实际能力。
     /// 自进化会话必须显式覆盖——否则仍按 activeProject 显示「给 OctTapgo
     /// 发条任务…」，用户会误以为没切进自进化、把指令发去项目会话。
     private var composerPlaceholder: String {
         if activeThread?.isEvolution == true {
             return "向自进化下达本轮指令…"
         }
-        return "随心输入"
+        return "发消息 / 添加文件 / @ 插件"
     }
 
     /// The active thread's current goal text (drives the 目标 chip highlight).

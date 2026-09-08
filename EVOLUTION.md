@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.148 — fix(ui): Composer placeholder 文案对齐 Codex 桌面端
+**Date**: 2026-09-08
+**Tag**: v0.5.148
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `composerPlaceholder` 默认文案 `"随心输入"` → `"发消息 / 添加文件 / @ 插件"`。Codex 桌面端 placeholder 提示 composer 能做什么，TapgoAICoding 不支持 @ 人但支持 v0.5.147 接通的 @ 插件。
+  - 自进化会话特殊文案 `"向自进化下达本轮指令…"` 不变。
+**Why**: Codex 桌面端 placeholder 是 "添加文件等内容 @ 人/项目"，对标后改成更贴合实际能力的文案。
+**Next**: 下 compose 端 chip 视觉对齐精修；或 NSEvent 全局 hotkey 与系统保留快捷键冲突处理（v0.5.140 EVOLUTION 抽象预留项，目前 addLocalMonitorForEvents 已是 app-local，无具体冲突案例可修）。
+
+
 ## v0.5.147 — feat(protocol): Codex app-server enabledMcpServers 协议层集成（plugin 真激活）
 **Date**: 2026-09-08
 **Tag**: v0.5.147

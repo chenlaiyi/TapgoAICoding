@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.148", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.148",
+                    summary: "Composer placeholder 文案对齐 Codex 桌面端。",
+                    changes: ["composerPlaceholder 默认文案 \"随心输入\" → \"发消息 / 添加文件 / @ 插件\"。自进化会话特殊文案不变。"],
+                    why: "Codex 桌面端 placeholder 提示 composer 能做什么，TapgoAICoding 对标后改成更贴合实际能力的文案。",
+                    next: "下 compose 端 chip 视觉对齐精修；或 NSEvent 全局 hotkey 与系统保留快捷键冲突处理（抽象预留项，目前 addLocalMonitorForEvents 已是 app-local，无具体冲突案例）。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.147", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.147",
                     summary: "Codex app-server enabledMcpServers 协议层集成（plugin 真激活）。",
                     changes: ["CodexHarnessClient.run 加 enabledMcpServers；threadRuntimeParams 附加 enabledMcpServers 字段。", "SessionStore.QueuedMessage / sendUserMessage / sendNow / newRunner.run 逐层透传。", "ChatView.send 加 enabledMcpServersFromText：扫 @DisplayName 匹配 pluginCatalogEntries。"],
