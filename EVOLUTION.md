@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.158 — feat(ui): + 菜单"目标"项显示当前 goal 状态
+**Date**: 2026-09-08
+**Tag**: v0.5.158
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - "目标"项从 addMenuItems 数组拿出来单独渲染，根据 activeThreadGoal 显示不同 icon + 文案。
+  - 无 goal 时 `target`；有 goal 时 `target.fill` + "目标（已设置）" + 当前目标摘要。
+**Why**: 与 v0.5.157 一致 — + 菜单的 toggle/state 项都该显示当前状态。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.157 — feat(ui): + 菜单"计划模式"项显示当前状态
 **Date**: 2026-09-08
 **Tag**: v0.5.157

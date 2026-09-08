@@ -1183,9 +1183,6 @@ struct ComposerView: View {
         .init(id: "tapgo", title: "附加 Tapgo AICoding", icon: "plus.app",
               detail: "把当前项目文件夹挂载到会话上下文",
               action: .attachTapgoProject),
-        .init(id: "goal", title: "目标", icon: "target",
-              detail: "设置要持续追求的目标",
-              action: .setGoal),
         .init(id: "record", title: "录制技能", icon: "record.circle",
               detail: "录制可重放的操作序列并保存为技能",
               action: .openRecordSkillSettings),
@@ -1242,6 +1239,19 @@ struct ComposerView: View {
                     detail: planningMode
                         ? "下一条消息会让 Codex 先出方案不执行工具"
                         : "启用计划模式：下一条消息只给方案不执行工具")
+            }
+            // v0.5.158: 目标项也单独渲染，显示当前 goal 状态。
+            Button {
+                runAddMenuAction(.setGoal)
+            } label: {
+                let goalText = activeThreadGoal ?? ""
+                let hasGoal = !goalText.isEmpty
+                composerAddMenuRow(
+                    icon: hasGoal ? "target.fill" : "target",
+                    title: hasGoal ? "目标（已设置）" : "目标",
+                    detail: hasGoal
+                        ? "当前目标：" + goalText.prefix(40) + (goalText.count > 40 ? "…" : "")
+                        : "设置要持续追求的目标")
             }
             ForEach(Self.addMenuItems) { item in
                 Button {
