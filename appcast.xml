@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.183</title>
+            <pubDate>Tue, 08 Sep 2026 13:12:26 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.183</link>
+            <sparkle:version>0.5.183</sparkle:version>
+            <sparkle:shortVersionString>0.5.183</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.183
+
+## NewTaskView "快速任务"副文在 preselectedProject 时改"在 X 项目中创建临时对话"
+
+之前 v0.5.171-174 让"快速任务"action card 标题在有 preselectedProject 时改"在 X 项目中创建"，但副文仍用静态 `L10n.quickNoProjectHint = "不绑定项目,仅作为临时对话"`，跟新行为矛盾。v0.5.183 让副文在有 preselectedProject 时改"在 X 项目中创建临时对话"。
+
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 副文改成 if/else：有 preselectedOverride ?? preselectedProject 时显示 `"在 \"<p.displayName>\" 中创建临时对话"`，无时显示原 L10n.quickNoProjectHint。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.183/Tapgo-AICoding-0.5.183.zip" length="12182889" type="application/octet-stream" sparkle:edSignature="xd0Mfexk6fDuWO4+eB/jKPGSKrG1wCd0AjwVTSpSikmKoSJ8ZrjFcEheG3rw60a4Q5ymPaybDW+/YRz4qOueDQ=="/>
+        </item>
+        <item>
             <title>0.5.182</title>
             <pubDate>Tue, 08 Sep 2026 13:06:00 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.182</link>
@@ -48,28 +69,6 @@ v0.5.170 加 rename alert TextField focus，但 SwiftUI 14+ alert 是 native NSA
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.181/Tapgo-AICoding-0.5.181.zip" length="12175514" type="application/octet-stream" sparkle:edSignature="ACqWDcKTC19xnQZh3lpte1RVMRGUtXLh/JhGG54WsMzOgtDyWSa0tWpG+5L5dMjDvT/hmMZ8JtMCd5SDvqaYCg=="/>
-        </item>
-        <item>
-            <title>0.5.180</title>
-            <pubDate>Tue, 08 Sep 2026 12:54:31 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.180</link>
-            <sparkle:version>0.5.180</sparkle:version>
-            <sparkle:shortVersionString>0.5.180</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.180
-
-## NewTaskView preselectedHint 视觉强化：brand 浅蓝背景 + accent 边框
-
-v0.5.171 加的 preselectedHint 背景用 `DSHTheme.interactiveHover`（淡灰），视觉太弱——重要的预选信息不够明显。改用 `Color.accentColor.opacity(0.08)` 背景 + `Color.accentColor.opacity(0.4)` 边框，跟 v0.5.162 actionCard 风格一致。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - `preselectedHint` 背景 `DSHTheme.interactiveHover` → `Color.accentColor.opacity(0.08)`。
-  - 加 `.overlay(RoundedRectangle...)` accent 边框。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.180/Tapgo-AICoding-0.5.180.zip" length="12174924" type="application/octet-stream" sparkle:edSignature="NwPOCnf5IJ3lwHDnxic9VrMqjEYUwkLodCJGOAla4PGoN3J39I2XoE9HZag2rnI5DPKxQAykwLrXPmh0QruIBQ=="/>
         </item>
     </channel>
 </rss>
