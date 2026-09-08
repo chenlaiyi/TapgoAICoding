@@ -166,7 +166,14 @@ struct NewTaskView: View {
                     showRemoteSheet = true
                 }
                 actionCard(
-                    title: L10n.quickNoProject,
+                    // v0.5.174: 有 preselectedProject（sidebar + 按钮）时标题改"在 X 项目中创建"，
+                    // 让 user 看到 preselectedOverride ?? preselectedProject 还在用。
+                    title: {
+                        if let p = preselectedOverride ?? preselectedProject {
+                            return "\u{201C}" + p.displayName + "\u{201D}中创建"
+                        }
+                        return L10n.quickNoProject
+                    }(),
                     system: "bolt.fill",
                     color: .secondary
                 ) {

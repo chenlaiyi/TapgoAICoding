@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.174 — feat(ui): NewTaskView 快速任务 action card 标题在 preselectedProject 时改"在 X 项目中创建"
+**Date**: 2026-09-08
+**Tag**: v0.5.174
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - "快速任务" action card title 用 closure 根据 preselectedOverride ?? preselectedProject 返回动态文案。
+**Why**: v0.5.173 修"快速任务"用 preselectedProject 但 card 标题仍"快速任务"让 user 看不到预选被尊重。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.173 — fix(ui): NewTaskView "快速任务"action 尊重 preselectedProject
 **Date**: 2026-09-08
 **Tag**: v0.5.173
