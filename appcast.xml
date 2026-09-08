@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.167</title>
+            <pubDate>Tue, 08 Sep 2026 11:35:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.167</link>
+            <sparkle:version>0.5.167</sparkle:version>
+            <sparkle:shortVersionString>0.5.167</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.167
+
+## PlanModeBanner persistent 模式背景更深（视觉区分常驻 vs 普通）
+
+之前 PlanModeBanner 两种状态都用 `DSHTheme.brand` 背景，仅靠文字"Plan mode 已开启"/"Plan mode（常驻）"区分。persistent 模式背景加 `0.75` opacity，让 user 一眼看出常驻 vs 普通模式（普通模式浅，常驻模式深）。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner` 背景：`isPersistent ? DSHTheme.brand : DSHTheme.brand.opacity(0.75)`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.167/Tapgo-AICoding-0.5.167.zip" length="12154826" type="application/octet-stream" sparkle:edSignature="VhzCxkY8lRGnugfHjWThE44J4Cj/w3Jlvegz6TJIGscPLdPE5zxclRme8VUeq5aNPsrGqy0F7pGQ7gxsbRnVBg=="/>
+        </item>
+        <item>
             <title>0.5.166</title>
             <pubDate>Tue, 08 Sep 2026 11:30:30 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.166</link>
@@ -44,27 +65,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.165/Tapgo-AICoding-0.5.165.zip" length="12154434" type="application/octet-stream" sparkle:edSignature="7RvSG9z8O9AkTx/rDJzcj8XX/18yVHRIZZCBzdvNoGcSGHxl0AJfrJrBJo5euq9kqBLykC1GmJloEwU0bMbfBw=="/>
-        </item>
-        <item>
-            <title>0.5.164</title>
-            <pubDate>Tue, 08 Sep 2026 11:14:30 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.164</link>
-            <sparkle:version>0.5.164</sparkle:version>
-            <sparkle:shortVersionString>0.5.164</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.164
-
-## SidebarTaskLabel 选中时加左侧 accent border 提示
-
-之前 sidebar 选中项只靠背景色区分（dark mode `sidebarSelection` 0x383839 vs `sidebarHover` 0x303032 颜色相近），不够明显。加左侧 3pt accent-color border 提示。
-
-- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
-  - `SidebarTaskLabel` 选中时（`.overlay(alignment: .leading)`）加 `Color.accentColor` 3pt 圆角矩形（垂直 padding 4pt，水平 2pt）。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.164/Tapgo-AICoding-0.5.164.zip" length="12154530" type="application/octet-stream" sparkle:edSignature="r7/Jl647XwSAriKPRUWsRhfbPE67L9dPcf/adcfPy0G6bQrhpCEjhY+0MhrdOZ2OIIK8LB6K6o1Nc2c1cM+9Dw=="/>
         </item>
     </channel>
 </rss>
