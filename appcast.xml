@@ -3,6 +3,29 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.170</title>
+            <pubDate>Tue, 08 Sep 2026 11:55:51 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.170</link>
+            <sparkle:version>0.5.170</sparkle:version>
+            <sparkle:shortVersionString>0.5.170</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.170
+
+## Sidebar 重命名会话 alert TextField 默认 focus
+
+之前 sidebar 右键菜单选"重命名"时弹 alert，user 必须先点 TextField 才能输入标题——多一步操作。v0.5.170 让 TextField 默认 focus，alert 弹出 user 就能直接输入。
+
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - 加 `@FocusState private var renameFocused: Bool`。
+  - TextField 加 `.focused($renameFocused)`。
+  - 加 `.onChange(of: renamingThreadId)`：id 从 nil 变非 nil 时 `DispatchQueue.main.asyncAfter(0.05) { renameFocused = true }`，让 alert 显示后 focus 落在 TextField。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.170/Tapgo-AICoding-0.5.170.zip" length="12159555" type="application/octet-stream" sparkle:edSignature="itMao2vrL2e3sxeQaUvN6TTehS7xw4Bm8Pa6WXfeCaNAaEOCtt7EBp1ACBzp1QrSA6RuwMoCCxHcmj5rfUhZBw=="/>
+        </item>
+        <item>
             <title>0.5.169</title>
             <pubDate>Tue, 08 Sep 2026 11:50:36 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.169</link>
@@ -44,27 +67,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.168/Tapgo-AICoding-0.5.168.zip" length="12154808" type="application/octet-stream" sparkle:edSignature="307TlFuhqqgT6MbLGYCwT4feS22HLlSWmrQeCJ2jf/tOSNqPj6tw6a6WSWlV9CxQEWqNy2DiJlze6j607x6oDw=="/>
-        </item>
-        <item>
-            <title>0.5.167</title>
-            <pubDate>Tue, 08 Sep 2026 11:35:45 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.167</link>
-            <sparkle:version>0.5.167</sparkle:version>
-            <sparkle:shortVersionString>0.5.167</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.167
-
-## PlanModeBanner persistent 模式背景更深（视觉区分常驻 vs 普通）
-
-之前 PlanModeBanner 两种状态都用 `DSHTheme.brand` 背景，仅靠文字"Plan mode 已开启"/"Plan mode（常驻）"区分。persistent 模式背景加 `0.75` opacity，让 user 一眼看出常驻 vs 普通模式（普通模式浅，常驻模式深）。
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `PlanModeBanner` 背景：`isPersistent ? DSHTheme.brand : DSHTheme.brand.opacity(0.75)`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.167/Tapgo-AICoding-0.5.167.zip" length="12154826" type="application/octet-stream" sparkle:edSignature="VhzCxkY8lRGnugfHjWThE44J4Cj/w3Jlvegz6TJIGscPLdPE5zxclRme8VUeq5aNPsrGqy0F7pGQ7gxsbRnVBg=="/>
         </item>
     </channel>
 </rss>
