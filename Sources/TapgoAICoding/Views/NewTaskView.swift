@@ -99,8 +99,9 @@ struct NewTaskView: View {
                 }
                 Spacer()
                 // v0.5.172: 点 X 取消预选（让 user 走 NewTaskView 默认行为）
+                // v0.5.184: 加 0.2s 动画反馈，避免瞬间消失。
                 Button {
-                    preselectedOverride = nil
+                    withAnimation(.easeOut(duration: 0.2)) { preselectedOverride = nil }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.tertiary)

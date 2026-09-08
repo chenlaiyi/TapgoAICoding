@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.184", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.184",
+                    summary: "NewTaskView 取消 preselected 预选时加 0.2s 动画反馈。",
+                    changes: ["preselectedHint X 按钮 action 加 withAnimation(.easeOut(duration: 0.2))。"],
+                    why: "之前 preselectedHint 瞬间消失，user 没动画反馈。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.183", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.183",
                     summary: "NewTaskView 快速任务副文在 preselectedProject 时改\"在 X 项目中创建临时对话\"。",
                     changes: ["副文 if/else：有 preselectedProject 时改\"在 X 项目中创建临时对话\"。"],

@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.184 — feat(ui): NewTaskView 取消 preselected 预选时加 0.2s 动画反馈
+**Date**: 2026-09-08
+**Tag**: v0.5.184
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - preselectedHint X 按钮 action 加 `withAnimation(.easeOut(duration: 0.2))`。
+**Why**: 之前 preselectedHint 瞬间消失，user 没动画反馈。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.183 — fix(ui): NewTaskView 快速任务副文在 preselectedProject 时改"在 X 项目中创建临时对话"
 **Date**: 2026-09-08
 **Tag**: v0.5.183
