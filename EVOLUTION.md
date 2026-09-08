@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.191 — fix(ui): GoalEditorSheet 自动 focus TextEditor
+**Date**: 2026-09-08
+**Tag**: v0.5.191
+**Test status**: 本机 3117 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `GoalEditorSheet` 加 `@FocusState focused` + TextEditor `.focused($focused)` + `.onAppear { focused = true }`。
+**Why**: + 菜单"目标"项点击后打开 sheet，但 TextEditor 没自动 focus，user 必须先点才能输入。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.190 — feat(ui): ConversationActivityRow running 时显示 spinner
 **Date**: 2026-09-08
 **Tag**: v0.5.190

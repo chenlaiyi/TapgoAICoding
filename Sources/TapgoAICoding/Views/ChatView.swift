@@ -1038,14 +1038,18 @@ private struct GoalEditorSheet: View {
         _text = State(initialValue: initial)
     }
 
+    @FocusState private var focused: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("编辑目标").font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+            // v0.5.191: 打开 sheet 时自动 focus TextEditor，user 直接输入。
             TextEditor(text: $text)
                 .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .frame(minHeight: 80, maxHeight: 140)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(DSHTheme.border, lineWidth: 1))
                 .padding(6)
+                .focused($focused)
+                .onAppear { focused = true }
             Text("保存目标后，点击“开始”执行。")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.tertiary)
