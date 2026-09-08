@@ -3069,7 +3069,10 @@ struct PlanModeBanner: View {
                     .foregroundStyle(.white.opacity(0.85))
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("关闭 Plan mode 提示")
+            // v0.5.151 修：v0.5.149 让 X 按钮始终 planningMode = false（关 plan mode 本身），
+            // 不只是 dismiss banner。accessibilityLabel 同步改成"关闭 Plan mode"。
+            .accessibilityLabel("关闭 Plan mode")
+            .help("关闭 Plan mode")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

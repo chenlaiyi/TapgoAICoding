@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.151 — fix(ui): PlanModeBanner X 按钮 accessibilityLabel 与实际行为一致
+**Date**: 2026-09-08
+**Tag**: v0.5.151
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner` X 按钮 `.accessibilityLabel` 从 "关闭 Plan mode 提示" 改为 "关闭 Plan mode"（v0.5.149 行为改后 label 没同步）。
+  - 新增 `.help("关闭 Plan mode")` tooltip。
+**Why**: 行为是关 plan mode 本身，但 a11y label 说"关提示"会误导 VoiceOver 用户。
+**Next**: 继续对齐 Codex 桌面端其他细节；或 composer 输入框底部 chip 视觉对齐精修。
+
+
 ## v0.5.150 — fix(ui): PlanModeBanner 副文精简 + 完整说明放 tooltip
 **Date**: 2026-09-08
 **Tag**: v0.5.150

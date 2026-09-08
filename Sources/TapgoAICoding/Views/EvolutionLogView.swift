@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.151", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.151",
+                    summary: "PlanModeBanner X 按钮 accessibilityLabel 与实际行为一致。",
+                    changes: ["X 按钮 .accessibilityLabel 改 \"关闭 Plan mode\"。", "新增 .help(\"关闭 Plan mode\") tooltip。"],
+                    why: "v0.5.149 行为改后 a11y label 没同步，会误导 VoiceOver 用户。",
+                    next: "继续对齐 Codex 桌面端其他细节；或 composer 输入框底部 chip 视觉对齐精修。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.150", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.150",
                     summary: "PlanModeBanner 副文精简 + 完整说明放 tooltip。",
                     changes: ["副文从 28 字符精简到 10 字符。", "完整说明放 .help tooltip（persistent vs single-shot 文案区分）。"],
