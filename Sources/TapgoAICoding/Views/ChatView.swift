@@ -1180,7 +1180,8 @@ struct ComposerView: View {
               detail: "附加本地文件、文件夹或图片到会话",
               action: .attachFiles),
         .init(id: "tapgo", title: "附加 Tapgo AICoding", icon: "plus.app",
-              detail: "把当前项目文件夹挂载到会话上下文",
+              // v0.5.168: 副文精简（之前 14 字"把当前项目文件夹挂载到会话上下文"过长）。
+              detail: "挂载当前项目文件夹到会话",
               action: .attachTapgoProject),
         .init(id: "record", title: "录制技能", icon: "record.circle",
               detail: "录制可重放的操作序列并保存为技能",

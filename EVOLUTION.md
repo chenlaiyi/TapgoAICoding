@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.168 — fix(ui): + 菜单"附加 Tapgo AICoding"项副文精简
+**Date**: 2026-09-08
+**Tag**: v0.5.168
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `addMenuItems` "附加 Tapgo AICoding" 副文 "把当前项目文件夹挂载到会话上下文" → "挂载当前项目文件夹到会话"。
+**Why**: 之前副文过长。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.167 — feat(ui): PlanModeBanner persistent 模式背景更深
 **Date**: 2026-09-08
 **Tag**: v0.5.167
