@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.177</title>
+            <pubDate>Tue, 08 Sep 2026 12:38:46 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.177</link>
+            <sparkle:version>0.5.177</sparkle:version>
+            <sparkle:shortVersionString>0.5.177</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.177
+
+## Sidebar thread item 双击进入 rename 模式
+
+之前 sidebar thread item 双击只 select thread（无效操作）。v0.5.177 加 `.onTapGesture(count: 2)` 触发 rename 模式（macOS Finder 习惯），打开重命名 alert（v0.5.170 加了 TextField 默认 focus）。
+
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - 3 个 thread item Button（flattenedThreads / flatTaskThreads / visible）加 `.onTapGesture(count: 2)` 触发 `renamingThreadId = thread.id + renameDraft = thread.title`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.177/Tapgo-AICoding-0.5.177.zip" length="12172718" type="application/octet-stream" sparkle:edSignature="e37oTk9mKphs+GXBhGaSCYyvjP1VdjlqNhDvpAtqxgOtCAgiG29qVYk6yXiI8GJ65JwvQAlV7X44/i2c6sCmBA=="/>
+        </item>
+        <item>
             <title>0.5.176</title>
             <pubDate>Tue, 08 Sep 2026 12:33:50 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.176</link>
@@ -43,27 +64,6 @@ v0.5.165 加 `Button(role: .destructive)` 让 macOS 标记 destructive action，
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.175/Tapgo-AICoding-0.5.175.zip" length="12169485" type="application/octet-stream" sparkle:edSignature="xSicLF38EHZN9EgpENQzU42WmIyBLIWQLJ6ofX4xcPkX/ZDWAOML6Axa6So5drY3rOvwAv3ZXAnvejFGF0cLDw=="/>
-        </item>
-        <item>
-            <title>0.5.174</title>
-            <pubDate>Tue, 08 Sep 2026 12:23:52 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.174</link>
-            <sparkle:version>0.5.174</sparkle:version>
-            <sparkle:shortVersionString>0.5.174</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.174
-
-## NewTaskView "快速任务"action card 标题在 preselectedProject 时改"在 X 项目中创建"
-
-v0.5.173 修了"快速任务"action 用 preselectedProject 代替 nil，但 card 标题仍是静态"快速任务"。v0.5.174 让 card 标题在 `preselectedOverride ?? preselectedProject != nil` 时改为 `"<project>中创建"`，让 user 看到预选被尊重（v0.5.173 改动对 user 可见）。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - "快速任务" action card title 用 closure 根据 `preselectedOverride ?? preselectedProject` 返回动态文案。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.174/Tapgo-AICoding-0.5.174.zip" length="12170287" type="application/octet-stream" sparkle:edSignature="0UML31O33DxtruBnQem0msgfbBSMULBX+zZyBTisl3sfePOHGhOJCCl5pekmL+zOP5CrHomzvqgQDv5oWF0AAw=="/>
         </item>
     </channel>
 </rss>
