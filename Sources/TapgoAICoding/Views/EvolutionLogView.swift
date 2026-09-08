@@ -254,7 +254,7 @@ struct EvolutionLogView: View {
                     version: "v0.5.191", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.191",
                     summary: "GoalEditorSheet 自动 focus TextEditor。",
                     changes: ["@FocusState focused + TextEditor .focused() + .onAppear。"],
-                    why: "+ 菜单\\"目标\\"项点击后打开 sheet，但 TextEditor 没自动 focus。",
+                    why: "Plus 菜单目标项点击后打开 sheet，但 TextEditor 没自动 focus。",
                     next: "继续对齐 Codex 桌面端其他细节。"
                 ),
                 EvolutionEntry(
