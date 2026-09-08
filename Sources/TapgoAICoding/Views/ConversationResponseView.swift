@@ -48,6 +48,7 @@ struct AssistantResponseText: View {
     let text: String
     var isStreaming = false
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
+    @State private var pulse = false
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             MarkdownMessageView(text, isStreaming: isStreaming)
@@ -57,10 +58,26 @@ struct AssistantResponseText: View {
                     Button("复制回复", systemImage: "doc.on.doc") { copy(text) }
                     Button("复制为纯文本", systemImage: "text.alignleft") { copy(MarkdownPlainText.render(text)) }
                 }
-            // v0.5.193: streaming 时显示"生成中"指示行，对齐 codex 桌面端。
+            // v0.5.195: streaming 时显示 3 跳动 dots + 弱化文字（对齐 Codex 桌面端，与 v0.5.192/194 一致）。
             if isStreaming {
                 HStack(spacing: 6) {
-                    ProgressView().controlSize(.mini)
+                    HStack(spacing: 3) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .frame(width: 4, height: 4)
+                                .foregroundStyle(DSHTheme.labelDim)
+                                .opacity(pulse ? 1.0 : 0.3)
+                                .animation(
+                                    .easeInOut(duration: 0.6)
+                                    .repeatForever(autoreverses: true)
+                                    .delay(Double(i) * 0.2),
+                                    value: pulse
+                                )
+                        }
+                    }
+                    .frame(width: 14, alignment: .leading)
+                    .accessibilityHidden(true)
+                    .onAppear { pulse = true }
                     Text("生成中…")
                         .font(AppFont.scaled(.caption2, multiplier: scale.multiplier))
                         .foregroundStyle(DSHTheme.labelTertiary)
@@ -120,13 +137,25 @@ private struct ConversationWorkDisclosure: View {
     @State private var expansionOverride: Bool?
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
     private var active: Bool { status == .pending || status == .running || status == .awaitingApproval }
-    private var expanded: Bool { expansionOverride ?? active }
+    // v0.5.195: 默认收起（之前 `?? active` 让 running 时强制展开，6 步同屏展开视觉乱）。
+    // 用户点 chevron 后用 expansionOverride 维持状态；onChange 在 turn 结束时清掉 override（用户已读完可重新收）。
+    private var expanded: Bool { expansionOverride ?? false }
+    private var blockCount: Int { TurnPresentation.compactBlocks(items).count }
+    private var headerTitle: String {
+        let base = ConversationPresentation.workTitle(status: status, duration: duration)
+        guard blockCount > 0 else { return base }
+        return "\(base) · \(blockCount) 步"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Button { expansionOverride = !expanded } label: {
+            Button { expansionOverride = expanded ? false : true } label: {
                 HStack(spacing: 7) {
-                    Text(ConversationPresentation.workTitle(status: status, duration: duration))
+                    // v0.5.195: running 时标题旁加 3 跳动 dots 表明正在跑（替换 progress spinner，风格与其他位置统一）。
+                    if active {
+                        StreamingDotsInline()
+                    }
+                    Text(headerTitle)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 10))
                 }
                 .font(.system(size: 13 * scale.multiplier))
@@ -136,7 +165,7 @@ private struct ConversationWorkDisclosure: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(expanded ? "收起工作过程" : "展开工作过程")
-            .accessibilityValue(ConversationPresentation.workTitle(status: status, duration: duration))
+            .accessibilityValue(headerTitle)
             if expanded {
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(TurnPresentation.compactBlocks(items)) { block in
@@ -157,6 +186,30 @@ private struct ConversationWorkDisclosure: View {
         .onChange(of: active) { _, value in
             if !value { expansionOverride = nil }
         }
+    }
+}
+
+/// v0.5.195: 内联 3 跳动 dots（用于 ConversationWorkDisclosure 标题旁表明正在 running）。
+private struct StreamingDotsInline: View {
+    @State private var pulse = false
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .frame(width: 4, height: 4)
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .opacity(pulse ? 1.0 : 0.3)
+                    .animation(
+                        .easeInOut(duration: 0.6)
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(i) * 0.2),
+                        value: pulse
+                    )
+            }
+        }
+        .frame(width: 14, alignment: .leading)
+        .accessibilityHidden(true)
+        .onAppear { pulse = true }
     }
 }
 

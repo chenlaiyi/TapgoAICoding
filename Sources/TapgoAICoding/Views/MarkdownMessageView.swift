@@ -45,23 +45,27 @@ struct MarkdownMessageView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
-        // v0.5.189: streaming 时显示 0.5s 周期闪烁光标（对齐 Codex 桌面端）。
-        .overlay(alignment: .bottomLeading) {
+        // v0.5.195: streaming 时用真正的 SwiftUI caret shape + opacity 闪烁（对齐 Codex 桌面端）。
+        // overlay 钉到 VStack 的 bottomTrailing：视觉上 caret 紧贴最后一段末尾（Codex 桌面端风格）。
+        .overlay(alignment: .bottomTrailing) {
             if isStreaming {
                 StreamingCursor()
             }
         }
     }
 
-    /// v0.5.189: streaming 闪烁光标（对齐 Codex 桌面端样式）。
+    /// v0.5.195: streaming 闪烁光标 — SwiftUI 真 caret shape（2pt × 14pt 细矩形 + 0.5s opacity 闪烁），对齐 Codex 桌面端样式。
     private struct StreamingCursor: View {
+        @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+        @State private var on = true
         var body: some View {
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                Text("▍")
-                    .font(.system(size: 13))
-                    .foregroundStyle(DSHTheme.brand)
-                    .opacity(context.date.timeIntervalSince1970.truncatingRemainder(dividingBy: 1) < 0.5 ? 1.0 : 0.0)
-            }
+            Rectangle()
+                .fill(DSHTheme.brand)
+                .frame(width: 2, height: 14 * appFontScale.multiplier)
+                .opacity(on ? 1.0 : 0.0)
+                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: on)
+                .onAppear { on = false }
+                .accessibilityHidden(true)
         }
     }
 
