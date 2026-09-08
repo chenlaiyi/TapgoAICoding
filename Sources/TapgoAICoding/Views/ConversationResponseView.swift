@@ -62,14 +62,36 @@ struct AssistantResponseText: View {
     }
 }
 
+/// v0.5.192: 对齐 codex 桌面端，running 状态用 3 跳动 dots 动画（不再是 spinner + 文字）。
 struct ConversationWorkingIndicator: View {
     let title: String
     var animated = true
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
+    @State private var pulse = false
     var body: some View {
         HStack(spacing: 8) {
-            if animated { ProgressView().controlSize(.mini).accessibilityHidden(true) }
-            else { Image(systemName: "hand.raised").accessibilityHidden(true) }
+            if animated {
+                // 3 跳动 dots 动画（每个 dot 错开 0.2s 起始）
+                HStack(spacing: 3) {
+                    ForEach(0..<3, id: \.self) { i in
+                        Circle()
+                            .frame(width: 5, height: 5)
+                            .foregroundStyle(DSHTheme.labelDim)
+                            .opacity(pulse ? 1.0 : 0.3)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(i) * 0.2),
+                                value: pulse
+                            )
+                    }
+                }
+                .accessibilityHidden(true)
+                .frame(width: 16, alignment: .leading)
+                .onAppear { pulse = true }
+            } else {
+                Image(systemName: "hand.raised").accessibilityHidden(true)
+            }
             Text(title).font(.system(size: 13 * scale.multiplier))
         }
         .foregroundStyle(DSHTheme.labelDim)

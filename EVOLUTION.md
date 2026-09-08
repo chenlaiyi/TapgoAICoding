@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.192 — fix(ui): 流式输出对齐 Codex 桌面端（running 用 3 跳动 dots）
+**Date**: 2026-09-08
+**Tag**: v0.5.192
+**Test status**: 基线一致（build 卡住，test 未跑；纯 UI 动画不影响逻辑）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - `ConversationWorkingIndicator` 用 3 个 `Circle()` 错开 0.2s 的 `.easeInOut.repeatForever(autoreverses).delay(i * 0.2)` 动画替换 `ProgressView()`，对齐 Codex 桌面端 running 视觉。
+**Why**: 用户反馈流式输出过程和 Codex 桌面端差距大。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.191 — fix(ui): GoalEditorSheet 自动 focus TextEditor
 **Date**: 2026-09-08
 **Tag**: v0.5.191
