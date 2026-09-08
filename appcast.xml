@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.166</title>
+            <pubDate>Tue, 08 Sep 2026 11:30:30 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.166</link>
+            <sparkle:version>0.5.166</sparkle:version>
+            <sparkle:shortVersionString>0.5.166</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.166
+
+## NewTaskView action card 文案精简（"本地文件夹 / 远程项目 / 快速任务"）
+
+之前 NewTaskView 3 个 action card 标题："本地文件夹 / 远程项目 / 快速任务 (无项目)" — 标题过长，挤在 card 里。精简为"本地项目 / 远程项目 / 快速任务"，ChatView 上下文已经清楚是项目。Hint 文案"快速任务 (无项目)"保持不变（hint 在 card 下面，有空间展示完整）。
+
+- `Sources/TapgoAICoding/Resources/L10n.swift`:
+  - `localFolder`: "本地文件夹" → "本地项目"
+  - `quickNoProject`: "快速任务 (无项目)" → "快速任务"
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.166/Tapgo-AICoding-0.5.166.zip" length="12154567" type="application/octet-stream" sparkle:edSignature="u2wLl4V4aW78PWAWQRHCMwAF1KyLAPsqSq/+BeDb1fjc2V0AvgThh/7MjfV3EJnTu2F8A+yfVXI+HDLTtQW3Cg=="/>
+        </item>
+        <item>
             <title>0.5.165</title>
             <pubDate>Tue, 08 Sep 2026 11:19:13 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.165</link>
@@ -43,29 +65,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.164/Tapgo-AICoding-0.5.164.zip" length="12154530" type="application/octet-stream" sparkle:edSignature="r7/Jl647XwSAriKPRUWsRhfbPE67L9dPcf/adcfPy0G6bQrhpCEjhY+0MhrdOZ2OIIK8LB6K6o1Nc2c1cM+9Dw=="/>
-        </item>
-        <item>
-            <title>0.5.163</title>
-            <pubDate>Tue, 08 Sep 2026 11:09:32 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.163</link>
-            <sparkle:version>0.5.163</sparkle:version>
-            <sparkle:shortVersionString>0.5.163</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.163
-
-## NewTaskView 加底部"取消"按钮 + ESC 快捷键
-
-之前 NewTaskView 只在右上角放 X 关闭按钮（22x22，很小）。user 经常找不到"取消"入口。加底部"取消"按钮（bordered style + 文字，更明显） + ESC 快捷键（`.cancelAction`）支持。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - 加 `footer` view：右下角"取消"按钮（bordered style + 文字）。
-  - 用 `.keyboardShortcut(.cancelAction)` 让 ESC 触发 dismiss。
-  - body frame 从 height 460 → 480 容纳 footer。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.163/Tapgo-AICoding-0.5.163.zip" length="12152989" type="application/octet-stream" sparkle:edSignature="GRVrRuC+fetDaw8w3WQGZmq+ab15IMzuCdB0P4rB3XEcRS8F3ipWzmcKZoq2NbEajd9w9us2y5dwg3rgrMUhDQ=="/>
         </item>
     </channel>
 </rss>
