@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.187", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.187",
+                    summary: "NewTaskView preselectedHint 标题加 .bold。",
+changes: ["preselectedHint 标题\"将在以下项目创建任务\"加 .bold()。"],
+                    why: "之前 .caption + .secondary 普通字重在 accent 边框浅蓝背景里不够显眼。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.186", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.186",
                     summary: "Sidebar project group header + 按钮加 ⌘N 快捷键。",
                     changes: ["project group header 的 + 按钮加 .keyboardShortcut(\"n\", modifiers: .command)。"],
