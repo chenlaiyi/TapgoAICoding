@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.193 — fix(ui): 流式输出对齐 Codex 桌面端（assistant streaming 显示生成中）
+**Date**: 2026-09-09
+**Tag**: v0.5.193
+**Test status**: build 通过（未跑 test，纯 UI 改动不影响逻辑）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - `AssistantResponseText` 加 `@Environment(\.tapgoFontScale) private var scale: AppFontScale`。
+  - `body` 用 VStack 包 MarkdownMessageView + streaming 时显示 `ProgressView + "生成中…"` 行（对齐 Codex 桌面端）。
+**Why**: v0.5.192 改了 working indicator（3 dots），但 streaming 消息本身没显示"生成中"指示。Codex 桌面端 streaming 时消息下方有 subtle "生成中..." 行。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.192 — fix(ui): 流式输出对齐 Codex 桌面端（running 用 3 跳动 dots）
 **Date**: 2026-09-08
 **Tag**: v0.5.192

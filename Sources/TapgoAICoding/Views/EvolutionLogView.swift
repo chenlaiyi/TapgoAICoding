@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.193", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.193",
+                    summary: "流式输出对齐 Codex 桌面端（assistant streaming 显示生成中）。",
+                    changes: ["AssistantResponseText 加 scale 环境 + streaming 时显示 ProgressView + 生成中 行。"],
+                    why: "v0.5.192 改 working indicator 但 streaming 消息本身没显示生成中指示。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.192", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.192",
                     summary: "流式输出对齐 Codex 桌面端（running 用 3 跳动 dots）。",
                     changes: ["ConversationWorkingIndicator 改用 3 个 Circle 错开 0.2s 的 easeInOut.repeatForever(autoreverses).delay(i*0.2) 动画。"],
