@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.152 — fix(ui): SidebarTaskLabel awaiting approval 加 warn 色（与 failed 同等显眼）
+**Date**: 2026-09-08
+**Tag**: v0.5.152
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 的 `.awaitingApproval` case icon 加 `.foregroundStyle(DSHTheme.warn)`，让 awaiting approval 在 sidebar 列表里跟 failed 一样显眼。
+**Why**: 之前 awaiting approval 跟 running 同色淡，user 容易忽略需要批准的会话。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.151 — fix(ui): PlanModeBanner X 按钮 accessibilityLabel 与实际行为一致
 **Date**: 2026-09-08
 **Tag**: v0.5.151

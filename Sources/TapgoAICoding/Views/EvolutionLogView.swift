@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.152", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.152",
+                    summary: "SidebarTaskLabel awaiting approval 加 warn 色。",
+                    changes: [".awaitingApproval case icon 加 .foregroundStyle(DSHTheme.warn)。"],
+                    why: "之前 awaiting approval 跟 running 同色淡，user 容易忽略需要批准的会话。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.151", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.151",
                     summary: "PlanModeBanner X 按钮 accessibilityLabel 与实际行为一致。",
                     changes: ["X 按钮 .accessibilityLabel 改 \"关闭 Plan mode\"。", "新增 .help(\"关闭 Plan mode\") tooltip。"],
