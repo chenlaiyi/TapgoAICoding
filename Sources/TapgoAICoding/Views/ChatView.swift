@@ -1482,16 +1482,13 @@ struct ComposerView: View {
         VStack(spacing: 8) {
             if planningMode {
                 PlanModeBanner(
-                    // v0.5.149 修：persistent 模式下 X 按钮不再绕开关 planMode。
-                    // 之前 `if !planModePersistent { planningMode = false }` 在
-                    // persistent=true 时跳过，导致 banner 永远不消失（render
-                    // 条件仍是 `if planningMode`）。X 按钮 = 关 plan mode，
-                    // persistent 模式下用户点 X 即"主动关"，符合常驻语义。
-                    onDismiss: {
+                    // v0.5.197: 整体可点击 toggle plan mode（替代独立 X 按钮）。
+                    // persistent 模式下点 banner = 主动关 plan mode，符合常驻语义。
+                    isPersistent: planModePersistent,
+                    onToggle: {
                         planningMode = false
                         NotificationCenter.default.post(name: .tapgoPlanModeBannerDidDismiss, object: nil)
-                    },
-                    isPersistent: planModePersistent
+                    }
                 )
             }
 
@@ -3065,41 +3062,41 @@ private struct StableComposerTextView: NSViewRepresentable {
 /// 当前会话已开启 Plan mode，下一条消息会自动加 [计划模式] 指令
 /// 前缀让 Codex 先出方案不执行工具。Codex 桌面端同样在 composer 顶部
 /// 显示类似提示。
+/// v0.5.197: Plan mode 状态提示 banner — 整体可点击 toggle（替代原来独立的 X 按钮）。
+/// 用户原话"+里也有计划模式，plan 按钮是否多余了"指出 + 菜单已有 toggle 入口，
+/// banner 上独立 X 控件冗余。banner 现在做成单一 chip：点 banner 任何位置都 toggle plan mode。
 struct PlanModeBanner: View {
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
-    /// 点 X 关闭 banner（single-shot 模式时同时关 planMode；persistent 模式时仅 dismiss banner）
-    var onDismiss: () -> Void
     /// 是否常驻 Plan mode（关闭 banner 不重置 planMode）
     var isPersistent: Bool
+    /// 点 banner 任何位置 = toggle plan mode（onDismiss 不再被独立 X 按钮调用）。
+    var onToggle: () -> Void
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "lightbulb.fill")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.white)
-            Text(isPersistent ? "Plan mode（常驻）" : "Plan mode 已开启")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.white)
-                .bold()
-            // v0.5.150: 副文从 28 字符精简到 10 字符，避免 banner 过高。完整说明放 help tooltip。
-            Text("先出方案不执行工具")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.white.opacity(0.85))
-            Spacer()
-            Button {
-                onDismiss()
-            } label: {
+        Button {
+            onToggle()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: isPersistent ? "lightbulb.max.fill" : "lightbulb.fill")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.white)
+                Text(isPersistent ? "Plan mode（常驻）" : "Plan mode 已开启")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.white)
+                    .bold()
+                // v0.5.150: 副文从 28 字符精简到 10 字符，避免 banner 过高。完整说明放 help tooltip。
+                Text("点击关闭")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.white.opacity(0.85))
+                Spacer()
                 Image(systemName: "xmark.circle.fill")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.white.opacity(0.85))
             }
-            .buttonStyle(.borderless)
-            // v0.5.151 修：v0.5.149 让 X 按钮始终 planningMode = false（关 plan mode 本身），
-            // 不只是 dismiss banner。accessibilityLabel 同步改成"关闭 Plan mode"。
-            .accessibilityLabel("关闭 Plan mode")
-            .help("关闭 Plan mode")
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .contentShape(RoundedRectangle(cornerRadius: 6))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .buttonStyle(.plain)
         // v0.5.144 修：之前用 brandPrimary（dark 模式下近白色），banner 变成白条。
         // brandPrimary 是「主前景色」不是品牌蓝。正确的蓝色是 brand。
         // v0.5.167: persistent 模式背景更深，让 user 一眼区分"常驻"vs"普通"。
@@ -3107,7 +3104,8 @@ struct PlanModeBanner: View {
                     in: RoundedRectangle(cornerRadius: 6))
         // v0.5.150: 把完整说明放进 tooltip，避免 banner 文本过长。
         .help(isPersistent
-              ? "Plan mode 常驻：所有消息都会让 Codex 先出方案不执行工具"
-              : "Plan mode：下一条消息会让 Codex 先出方案不执行工具")
+              ? "Plan mode 常驻（点击关闭）：所有消息都会让 Codex 先出方案不执行工具"
+              : "Plan mode（点击关闭）：下一条消息会让 Codex 先出方案不执行工具")
+        .accessibilityLabel(isPersistent ? "关闭 Plan mode（常驻）" : "关闭 Plan mode")
     }
 }

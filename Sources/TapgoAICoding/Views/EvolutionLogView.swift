@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.197", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.197",
+                    summary: "Plan mode toggle 对齐 Codex 桌面端（PlanModeBanner 整体可点击，移除 X 按钮）。",
+                    changes: [
+                        "PlanModeBanner 改成整体 Button 包裹（onToggle 替代 onDismiss），点 banner 任何位置都 toggle plan mode。",
+                        "副文从「先出方案不执行工具」改成「点击关闭」。",
+                        "X 图标作为视觉装饰保留但不再是独立按钮。",
+                        "persistent 模式下 lightbulb 图标改 lightbulb.max.fill。"
+                    ],
+                    why: "用户反馈 + 菜单已有 toggle 入口，banner 上的 X 按钮冗余。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.196", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.196",
                     summary: "输入框交互对齐 Codex 桌面端（附件缩略图搬入 composer 卡片内部 + 消息记录附件加固）。",
                     changes: [

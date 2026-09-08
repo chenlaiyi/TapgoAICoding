@@ -1,4 +1,18 @@
 # Evolution Log
+## v0.5.197 — fix(ui): Plan mode toggle 对齐 Codex 桌面端（PlanModeBanner 整体可点击，移除 X 按钮）
+**Date**: 2026-09-09
+**Tag**: v0.5.197
+**Test status**: 未跑（纯 UI 改动）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner` 改成整体 `Button` 包裹（onToggle 替代 onDismiss），点 banner 任何位置都 toggle plan mode。
+  - 副文从 "先出方案不执行工具" 改成 "点击关闭"，X 图标作为视觉装饰保留但不再是独立按钮。
+  - persistent 模式下 lightbulb 图标改 `lightbulb.max.fill`。
+- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.197。
+
+**Why**: 用户反馈"+里也有计划模式，那么plan按钮是否多余了？"指出 + 菜单已有 toggle 入口，banner 上独立 X 按钮冗余。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.196 — fix(ui): 输入框交互对齐 Codex 桌面端（附件缩略图搬入 composer 卡片内部 + 消息记录附件加固）
 **Date**: 2026-09-09
 **Tag**: v0.5.196
