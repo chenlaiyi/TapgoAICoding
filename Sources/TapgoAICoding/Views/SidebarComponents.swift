@@ -58,7 +58,7 @@ struct SidebarTaskLabel: View {
             Group {
                 switch status {
                 case .running: Image(systemName: "circle.lefthalf.filled").accessibilityLabel("进行中")
-                case .awaitingApproval: Image(systemName: "hand.raised").foregroundStyle(DSHTheme.warn).accessibilityLabel("待批准")
+                case .awaitingApproval: Image(systemName: "hand.raised.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("待批准")
                 case .failed: Image(systemName: "exclamationmark.circle").foregroundStyle(DSHTheme.warn).accessibilityLabel("未完成")
                 default: Text(date).monospacedDigit()
                 }

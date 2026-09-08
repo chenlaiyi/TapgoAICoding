@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.153 — fix(ui): SidebarTaskLabel awaiting approval 改用实心图标
+**Date**: 2026-09-08
+**Tag**: v0.5.153
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 的 `.awaitingApproval` case icon 从 `hand.raised` → `hand.raised.fill`（实心），跟其他 fill 系列图标风格统一。
+**Why**: v0.5.152 改了 warn 色但 icon 仍是 outline，跟 running 的 `circle.lefthalf.filled` 风格不一致。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.152 — fix(ui): SidebarTaskLabel awaiting approval 加 warn 色（与 failed 同等显眼）
 **Date**: 2026-09-08
 **Tag**: v0.5.152

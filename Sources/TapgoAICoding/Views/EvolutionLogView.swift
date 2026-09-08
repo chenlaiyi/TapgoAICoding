@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.153", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.153",
+                    summary: "SidebarTaskLabel awaiting approval 改用实心图标。",
+                    changes: [".awaitingApproval case icon 从 hand.raised → hand.raised.fill（实心）。"],
+                    why: "v0.5.152 改 warn 色但 icon 仍是 outline，跟 running 的 circle.lefthalf.filled 风格不一致。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.152", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.152",
                     summary: "SidebarTaskLabel awaiting approval 加 warn 色。",
                     changes: [".awaitingApproval case icon 加 .foregroundStyle(DSHTheme.warn)。"],
