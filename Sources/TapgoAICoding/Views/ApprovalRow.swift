@@ -64,12 +64,14 @@ struct ApprovalRow: View {
                     // 按钮变成白底白字。改用 brand 蓝。
                     .tint(DSHTheme.brand)
 
+                    // v0.5.175: 改用 .borderedProminent 才能让 role: .destructive 真显示
+                    // 红色 destructive 样式（.bordered 不支持 role tinting）。
                     Button(role: .destructive) {
                         store.respondToApproval(request, approve: false)
                     } label: {
                         Label(L10n.deny, systemImage: "xmark")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                 }
                 .padding(.top, 2)
             }

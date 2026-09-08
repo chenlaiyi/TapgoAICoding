@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.175", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.175",
+                    summary: "ApprovalRow 拒绝按钮改用 .borderedProminent 让 destructive style 真显示。",
+                    changes: ["拒绝按钮 .buttonStyle(.bordered) → .buttonStyle(.borderedProminent)。"],
+                    why: "v0.5.165 加 Button(role: .destructive) 但 .bordered 不支持 role tinting，role 被忽略按按钮没显示红色。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.174", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.174",
                     summary: "NewTaskView 快速任务 action card 标题在 preselectedProject 时改\"在 X 项目中创建\"。",
                     changes: ["action card title 用 closure 根据 preselectedOverride ?? preselectedProject 返回动态文案。"],

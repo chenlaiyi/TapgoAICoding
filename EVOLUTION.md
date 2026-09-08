@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.175 — fix(ui): ApprovalRow 拒绝按钮改用 .borderedProminent 让 destructive style 真显示
+**Date**: 2026-09-08
+**Tag**: v0.5.175
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 拒绝按钮 `.buttonStyle(.bordered)` → `.buttonStyle(.borderedProminent)`。
+**Why**: v0.5.165 加 `Button(role: .destructive)` 但 `.bordered` 不支持 role tinting，role 被忽略按按钮没显示红色。改 `.borderedProminent` 让 role 真生效。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.174 — feat(ui): NewTaskView 快速任务 action card 标题在 preselectedProject 时改"在 X 项目中创建"
 **Date**: 2026-09-08
 **Tag**: v0.5.174
