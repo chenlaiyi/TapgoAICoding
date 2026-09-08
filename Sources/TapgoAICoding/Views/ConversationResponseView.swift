@@ -47,14 +47,27 @@ struct ConversationResponseView<Notices: View>: View {
 struct AssistantResponseText: View {
     let text: String
     var isStreaming = false
+    @Environment(\.tapgoFontScale) private var scale: AppFontScale
     var body: some View {
-        MarkdownMessageView(text, isStreaming: isStreaming)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contextMenu {
-                Button("复制回复", systemImage: "doc.on.doc") { copy(text) }
-                Button("复制为纯文本", systemImage: "text.alignleft") { copy(MarkdownPlainText.render(text)) }
+        VStack(alignment: .leading, spacing: 4) {
+            MarkdownMessageView(text, isStreaming: isStreaming)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contextMenu {
+                    Button("复制回复", systemImage: "doc.on.doc") { copy(text) }
+                    Button("复制为纯文本", systemImage: "text.alignleft") { copy(MarkdownPlainText.render(text)) }
+                }
+            // v0.5.193: streaming 时显示"生成中"指示行，对齐 codex 桌面端。
+            if isStreaming {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.mini)
+                    Text("生成中…")
+                        .font(AppFont.scaled(.caption2, multiplier: scale.multiplier))
+                        .foregroundStyle(DSHTheme.labelTertiary)
+                }
+                .padding(.leading, 2)
             }
+        }
     }
     private func copy(_ text: String) {
         NSPasteboard.general.clearContents()
