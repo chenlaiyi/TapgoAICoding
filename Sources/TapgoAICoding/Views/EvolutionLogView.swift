@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.149", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.149",
+                    summary: "修复 persistent 模式下 PlanModeBanner X 按钮不真 dismiss。",
+                    changes: ["PlanModeBanner.onDismiss 改为始终 planningMode = false（v0.5.141 引入 bug：persistent=true 时跳过关闭）。"],
+                    why: "persistent 模式下 X 按钮 = \"主动关 plan mode\"，符合常驻模式语义。",
+                    next: "composer 输入框底部 chip 视觉对齐精修；或继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.148", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.148",
                     summary: "Composer placeholder 文案对齐 Codex 桌面端。",
                     changes: ["composerPlaceholder 默认文案 \"随心输入\" → \"发消息 / 添加文件 / @ 插件\"。自进化会话特殊文案不变。"],

@@ -1388,8 +1388,13 @@ struct ComposerView: View {
         VStack(spacing: 8) {
             if planningMode {
                 PlanModeBanner(
+                    // v0.5.149 修：persistent 模式下 X 按钮不再绕开关 planMode。
+                    // 之前 `if !planModePersistent { planningMode = false }` 在
+                    // persistent=true 时跳过，导致 banner 永远不消失（render
+                    // 条件仍是 `if planningMode`）。X 按钮 = 关 plan mode，
+                    // persistent 模式下用户点 X 即"主动关"，符合常驻语义。
                     onDismiss: {
-                        if !planModePersistent { planningMode = false }
+                        planningMode = false
                         NotificationCenter.default.post(name: .tapgoPlanModeBannerDidDismiss, object: nil)
                     },
                     isPersistent: planModePersistent

@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.149 — fix(ui): persistent 模式下 PlanModeBanner X 按钮不真 dismiss
+**Date**: 2026-09-08
+**Tag**: v0.5.149
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner.onDismiss` 改为始终 `planningMode = false`（v0.5.141 引入 bug：persistent=true 时跳过关闭，banner 永远不消失）。
+**Why**: persistent 模式下 X 按钮 = "主动关 plan mode"，符合常驻模式语义。
+**Next**: composer 输入框底部 chip 视觉对齐精修（差异小）；或继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.148 — fix(ui): Composer placeholder 文案对齐 Codex 桌面端
 **Date**: 2026-09-08
 **Tag**: v0.5.148
