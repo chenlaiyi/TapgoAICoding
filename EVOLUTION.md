@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.165 — fix(ui): ApprovalRow 拒绝按钮加 destructive role
+**Date**: 2026-09-08
+**Tag**: v0.5.165
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 拒绝按钮加 `Button(role: .destructive)` 让 macOS 标记 destructive action。
+**Why**: 之前用 `.bordered` 普通样式跟批准按钮区分不明显。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.164 — feat(ui): SidebarTaskLabel 选中时加左侧 accent border
 **Date**: 2026-09-08
 **Tag**: v0.5.164

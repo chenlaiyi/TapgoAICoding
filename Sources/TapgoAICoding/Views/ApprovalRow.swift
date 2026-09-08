@@ -64,7 +64,7 @@ struct ApprovalRow: View {
                     // 按钮变成白底白字。改用 brand 蓝。
                     .tint(DSHTheme.brand)
 
-                    Button {
+                    Button(role: .destructive) {
                         store.respondToApproval(request, approve: false)
                     } label: {
                         Label(L10n.deny, systemImage: "xmark")

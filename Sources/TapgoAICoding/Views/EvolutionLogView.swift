@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.165", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.165",
+                    summary: "ApprovalRow 拒绝按钮加 destructive role。",
+                    changes: ["拒绝按钮加 Button(role: .destructive)。"],
+                    why: "之前用 .bordered 普通样式跟批准按钮区分不明显。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.164", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.164",
                     summary: "SidebarTaskLabel 选中时加左侧 accent border。",
                     changes: [".overlay(alignment: .leading) 加 Color.accentColor 3pt 圆角矩形。"],
