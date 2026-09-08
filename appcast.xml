@@ -2,7 +2,33 @@
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Tapgo AICoding</title>
-                                <item>
+                                        <item>
+            <title>0.5.198</title>
+            <pubDate>Wed, 09 Sep 2026 01:24:00 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.198</link>
+            <sparkle:version>0.5.198</sparkle:version>
+            <sparkle:shortVersionString>0.5.198</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.198
+
+## FileChangeView / RowView statusBadge 对齐 Codex 桌面端：inFlight 状态用 3 跳动 dots
+
+延续 v0.5.192/194/195 的"running 用 3 跳动 dots"统一风格，FileChangeView / FileChangeRowView 的 statusBadge 在 `change.status == .pending` 或 `.awaitingApproval` 时把静态 `clock` / `hand.raised` 图标替换为 3 个错开 0.2s 的 3pt 圆点 + `.easeInOut.repeatForever(autoreverses: true)` 动画，背景色和文字保留（"待应用"/"待批准"），与 v0.5.192/194/195 风格一致。
+
+## 改动
+
+- `Sources/TapgoAICoding/Views/FileChangeView.swift`:
+  - `FileChangeRowView.statusBadge` 加 `@State pulse` + inFlight 分支：3 个错开 0.2s 的 3pt 圆点 + 0.6s repeatForever 动画替换原 `Image(systemName:)`。
+  - 静态 icon 仅在非 inFlight 状态（已应用/失败/已拒绝）渲染。
+
+## 测试
+
+未跑（纯 UI 改动不影响逻辑）。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.198/Tapgo-AICoding-0.5.198.zip" length="14278657" type="application/octet-stream" sparkle:edSignature="LtxXdNiYTQQLpdxJAUaVaYGzXA89cboQ9peydATavqO+ilVtmg4qzxKKu1DqNa4KiQUJ37FbutVNlyXO6hAaCw=="/>
+        </item>
+<item>
             <title>0.5.197</title>
             <pubDate>Wed, 09 Sep 2026 01:18:00 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.197</link>
