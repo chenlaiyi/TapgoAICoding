@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.154", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.154",
+                    summary: "SidebarTaskLabel failed 改用实心图标。",
+                    changes: [".failed case icon 从 exclamationmark.circle → exclamationmark.circle.fill（实心）。"],
+                    why: "v0.5.152-153 awaiting approval 改实心，failed 还是 outline 风格不一致。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.153", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.153",
                     summary: "SidebarTaskLabel awaiting approval 改用实心图标。",
                     changes: [".awaitingApproval case icon 从 hand.raised → hand.raised.fill（实心）。"],

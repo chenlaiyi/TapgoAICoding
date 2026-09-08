@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.154 — fix(ui): SidebarTaskLabel failed 改用实心图标
+**Date**: 2026-09-08
+**Tag**: v0.5.154
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 的 `.failed` case icon 从 `exclamationmark.circle` → `exclamationmark.circle.fill`（实心）。
+**Why**: v0.5.152-153 把 awaiting approval 改实心 + warn 色，failed 还是 outline 风格不一致。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.153 — fix(ui): SidebarTaskLabel awaiting approval 改用实心图标
 **Date**: 2026-09-08
 **Tag**: v0.5.153
