@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.148</title>
+            <pubDate>Tue, 08 Sep 2026 08:14:20 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.148</link>
+            <sparkle:version>0.5.148</sparkle:version>
+            <sparkle:shortVersionString>0.5.148</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.148
+
+## Composer placeholder 文案对齐 Codex 桌面端
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `composerPlaceholder` 默认文案 `"随心输入"` → `"发消息 / 添加文件 / @ 插件"`。
+  - 理由：Codex 桌面端 placeholder 是 "添加文件等内容 @ 人/项目" 提示 composer 能做什么。TapgoAICoding 不支持 @ 人/@ 项目 reference（仅支持 v0.5.147 接通的 @ 插件），所以 hint 改成"发消息 / 添加文件 / @ 插件"，更贴近实际能力。
+  - 自进化会话仍走特殊文案 `"向自进化下达本轮指令…"` 不变（v0.5.33 用户实测踩坑后加的覆盖逻辑）。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.148/Tapgo-AICoding-0.5.148.zip" length="12138487" type="application/octet-stream" sparkle:edSignature="yKfQPhTdQqBslacovKazKPgxVbDtusdNBaY7wTqIQfQYpDmXOwDZf7gmVcQnqiq1XN2jHVdQ2VTkzmrCuokuAA=="/>
+        </item>
+        <item>
             <title>0.5.147</title>
             <pubDate>Tue, 08 Sep 2026 08:09:01 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.147</link>
@@ -61,33 +82,6 @@
 测试：3116 passed / 13 failed（与 v0.5.144 baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.146/Tapgo-AICoding-0.5.146.zip" length="12135358" type="application/octet-stream" sparkle:edSignature="UzPB4djWXgLFN4UGaNkrT38covsvp040j4XXTkNqTdY26Cy9QlsW+EayqBvpGe9MwD6en68+Q6iVtyx+a5/mAg=="/>
-        </item>
-        <item>
-            <title>0.5.144</title>
-            <pubDate>Tue, 08 Sep 2026 07:55:34 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.144</link>
-            <sparkle:version>0.5.144</sparkle:version>
-            <sparkle:shortVersionString>0.5.144</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.144
-
-## 修复：Plan mode 强调色误用 brandPrimary（dark mode 下变白条 / 白色按钮）
-
-用户报告：点 Plan 按钮后顶部出现白条，按钮本身也变白色块。根因：`DSHTheme.brandPrimary` 名字误导——它不是品牌蓝，而是「主前景色」（light: `0x0F1115` 近黑 / dark: `0xF9FAFB` 近白）。PlanModeBanner / Plan toggle / Stop 按钮 / ApprovalRow 批准按钮 之前都把它当强调背景色，在 dark mode 下变成白底。
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `PlanModeBanner.background`: `DSHTheme.brandPrimary` → `DSHTheme.brand`（真品牌蓝，light `0x4176E6` / dark `0x5686FE`）。
-  - Plan toggle button background: 同上。
-  - Stop 按钮圆形背景: 同上。
-- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
-  - 批准按钮 `.tint()`: 同上。
-- `Sources/TapgoAICoding/Views/ContentView.swift`:
-  - 顺手修 `onReceive(tapgoOpenCommandPalette)` 的 toggle bug：之前 `showCommandPalette = true` 没 toggle，⌘K 不管 dock 开闭都会"打开"，违背 Codex 桌面端 toggle 语义；改成 `toggle()` 并同步发 `paletteDidOpen` / `paletteDidClose` 让 App.swift 的 `PaletteState` 跟踪正确状态。
-
-测试：3116 passed / 13 failed（比 baseline 3117/12 多 1 个 SSH 网络性 fail，与改动无关）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.144/Tapgo-AICoding-0.5.144.zip" length="12143494" type="application/octet-stream" sparkle:edSignature="0dqIffFdsfo3cT+ky9cUy/xETTvC31oZfsjUtCNeoQPDdQVFXQ1Om2JxCyVmb2kfVG1SJOTQCFDDI/Fc1IV+CA=="/>
         </item>
     </channel>
 </rss>
