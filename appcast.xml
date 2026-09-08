@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.154</title>
+            <pubDate>Tue, 08 Sep 2026 10:13:16 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.154</link>
+            <sparkle:version>0.5.154</sparkle:version>
+            <sparkle:shortVersionString>0.5.154</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.154
+
+## SidebarTaskLabel failed 改用实心图标（与 awaiting approval 风格统一）
+
+v0.5.152-153 把 awaiting approval 改实心 + warn 色。failed 还是 outline（`exclamationmark.circle`），跟 awaiting approval 风格不一致。改用实心 `exclamationmark.circle.fill`。
+
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 的 `.failed` case icon 从 `exclamationmark.circle` → `exclamationmark.circle.fill`（实心）。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.154/Tapgo-AICoding-0.5.154.zip" length="12140428" type="application/octet-stream" sparkle:edSignature="pEPW2vPsrOY27FkjhyymKTUU2FKDjBnYME6Ko7MGT+fp/kGzhEbK+Q7g9aKton39ZTMst5Z/wxG+gQB9Ss1XDg=="/>
+        </item>
+        <item>
             <title>0.5.153</title>
             <pubDate>Tue, 08 Sep 2026 10:08:21 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.153</link>
@@ -43,28 +64,6 @@ v0.5.152 把 awaiting approval 改 warn 色，但 icon 还是 outline (`hand.rai
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.152/Tapgo-AICoding-0.5.152.zip" length="12140273" type="application/octet-stream" sparkle:edSignature="RwSzTQAr6+uEV95bY4S/NOnWR6FfZyHsrAqlfH8P2rs7rrFWqRujVK1lEJM8EiNQa0U9WBYsDW0jxWngG3ODCQ=="/>
-        </item>
-        <item>
-            <title>0.5.151</title>
-            <pubDate>Tue, 08 Sep 2026 09:57:29 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.151</link>
-            <sparkle:version>0.5.151</sparkle:version>
-            <sparkle:shortVersionString>0.5.151</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.151
-
-## 修复：PlanModeBanner X 按钮 accessibilityLabel 与实际行为一致
-
-v0.5.149 让 X 按钮始终 `planningMode = false`（关 plan mode 本身），但 accessibilityLabel 仍是 "关闭 Plan mode 提示"（关 banner 提示），不准。同步加 help tooltip。
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `PlanModeBanner` X 按钮 `.accessibilityLabel` 从 `"关闭 Plan mode 提示"` 改为 `"关闭 Plan mode"`，与 v0.5.149 行为一致。
-  - 新增 `.help("关闭 Plan mode")` tooltip。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.151/Tapgo-AICoding-0.5.151.zip" length="12139512" type="application/octet-stream" sparkle:edSignature="pbORE1N6fD2YH2srAZWlJL4W2J6QAYYyPiBPVuUt9kBK+cAtTuGVZFux0+vMv1PN94AZg7z3pmNqFlCc/1eZBQ=="/>
         </item>
     </channel>
 </rss>
