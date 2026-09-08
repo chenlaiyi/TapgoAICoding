@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.178</title>
+            <pubDate>Tue, 08 Sep 2026 12:43:42 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.178</link>
+            <sparkle:version>0.5.178</sparkle:version>
+            <sparkle:shortVersionString>0.5.178</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.178
+
+## Sidebar project group header 的 + 和 more 按钮 opacity 0.25 → 0.6
+
+之前 sidebar 项目 group header 的"+"按钮和 more menu 按钮在非 hover 时 opacity = 0.25（25%），用户不知道有这些按钮。改 0.6（60%）让按钮总是可见，hover 时变 1.0。
+
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - project group header 的 + 按钮和 projectMoreMenu `.opacity(hoveredProjectId == p.id ? 1 : 0.25)` → `0.6`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.178/Tapgo-AICoding-0.5.178.zip" length="12173249" type="application/octet-stream" sparkle:edSignature="vvo0F2f4dzC31NISP0ppaNYJfX4idMMt2T7EGCAt7iklHQ8UO1xcSoY/lYLu2Cm9Do4LjoEtyfa4J+1pz9CLAQ=="/>
+        </item>
+        <item>
             <title>0.5.177</title>
             <pubDate>Tue, 08 Sep 2026 12:38:46 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.177</link>
@@ -43,27 +64,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.176/Tapgo-AICoding-0.5.176.zip" length="12170736" type="application/octet-stream" sparkle:edSignature="t4wqt+ScfLQnsT9L2H0bJ7WAn2b7dz2GAxBV80e164Ut61nM2vFYC7x0DE3spEsmYWntC2+HiaEcKEC7L3kLCQ=="/>
-        </item>
-        <item>
-            <title>0.5.175</title>
-            <pubDate>Tue, 08 Sep 2026 12:28:48 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.175</link>
-            <sparkle:version>0.5.175</sparkle:version>
-            <sparkle:shortVersionString>0.5.175</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.175
-
-## 修复：ApprovalRow 拒绝按钮改用 .borderedProminent 让 destructive style 真显示
-
-v0.5.165 加 `Button(role: .destructive)` 让 macOS 标记 destructive action，但 `.buttonStyle(.bordered)` 不支持 role tinting —— role 实际被忽略，按钮没显示红色。改用 `.borderedProminent` 让 role 真生效显示红色 destructive 样式。
-
-- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
-  - 拒绝按钮 `.buttonStyle(.bordered)` → `.buttonStyle(.borderedProminent)`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.175/Tapgo-AICoding-0.5.175.zip" length="12169485" type="application/octet-stream" sparkle:edSignature="xSicLF38EHZN9EgpENQzU42WmIyBLIWQLJ6ofX4xcPkX/ZDWAOML6Axa6So5drY3rOvwAv3ZXAnvejFGF0cLDw=="/>
         </item>
     </channel>
 </rss>
