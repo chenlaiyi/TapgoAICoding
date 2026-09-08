@@ -467,6 +467,14 @@ struct SidebarView: View {
                 Label("打开项目目录", systemImage: "folder")
             }
         }
+        // v0.5.169: 加"在 Finder 中显示附件"——打开 attachments/<threadId>
+        // 目录（该目录由 UserImageAttachmentStore 创建）。如果目录不存在弹
+        // alert 提示。
+        Button {
+            openThreadAttachmentsDir(t.id)
+        } label: {
+            Label("在 Finder 中显示附件", systemImage: "paperclip")
+        }
         Button(role: .destructive) {
             confirmingDelete = t
         } label: {
@@ -698,6 +706,26 @@ struct SidebarView: View {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(s, forType: .string)
+    }
+
+    /// v0.5.169: 在 Finder 中显示 thread 的附件目录（attachments/<threadId>）。
+    /// 目录不存在时弹 alert 提示（不静默失败）。
+    private func openThreadAttachmentsDir(_ threadId: String) {
+        let base = TapgoConfig.codexHome
+            .deletingLastPathComponent()
+            .appendingPathComponent("attachments", isDirectory: true)
+        let dir = base.appendingPathComponent(threadId, isDirectory: true)
+        if FileManager.default.fileExists(atPath: dir.path) {
+            NSWorkspace.shared.open(dir)
+        } else {
+            // 目录不存在 — 弹 alert（不能 silent return）
+            let alert = NSAlert()
+            alert.messageText = "没有附件"
+            alert.informativeText = "该会话尚未保存任何图片附件。"
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "好")
+            alert.runModal()
+        }
     }
 
 

@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.169 — feat(ui): Sidebar thread item 右键菜单加"在 Finder 中显示附件"
+**Date**: 2026-09-08
+**Tag**: v0.5.169
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - `contextMenu(for: Thread)` 加"在 Finder 中显示附件" Button（paperclip icon）。
+  - 加 `openThreadAttachmentsDir(_:)` helper：目录存在时 NSWorkspace.open；不存在弹 NSAlert 提示。
+**Why**: user 想找 thread 附件存放位置但没入口。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.168 — fix(ui): + 菜单"附加 Tapgo AICoding"项副文精简
 **Date**: 2026-09-08
 **Tag**: v0.5.168

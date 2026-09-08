@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.169", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.169",
+                    summary: "Sidebar thread item 右键菜单加\"在 Finder 中显示附件\"。",
+                    changes: ["contextMenu 加 paperclip Button。", "openThreadAttachmentsDir helper：目录存在 open，不存在弹 alert。"],
+                    why: "user 想找 thread 附件存放位置但没入口。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.168", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.168",
                     summary: "+ 菜单\"附加 Tapgo AICoding\"项副文精简。",
                     changes: ["副文 \"把当前项目文件夹挂载到会话上下文\" → \"挂载当前项目文件夹到会话\"。"],
