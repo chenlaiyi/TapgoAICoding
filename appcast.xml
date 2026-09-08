@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.174</title>
+            <pubDate>Tue, 08 Sep 2026 12:23:52 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.174</link>
+            <sparkle:version>0.5.174</sparkle:version>
+            <sparkle:shortVersionString>0.5.174</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.174
+
+## NewTaskView "快速任务"action card 标题在 preselectedProject 时改"在 X 项目中创建"
+
+v0.5.173 修了"快速任务"action 用 preselectedProject 代替 nil，但 card 标题仍是静态"快速任务"。v0.5.174 让 card 标题在 `preselectedOverride ?? preselectedProject != nil` 时改为 `"<project>中创建"`，让 user 看到预选被尊重（v0.5.173 改动对 user 可见）。
+
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - "快速任务" action card title 用 closure 根据 `preselectedOverride ?? preselectedProject` 返回动态文案。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.174/Tapgo-AICoding-0.5.174.zip" length="12170287" type="application/octet-stream" sparkle:edSignature="0UML31O33DxtruBnQem0msgfbBSMULBX+zZyBTisl3sfePOHGhOJCCl5pekmL+zOP5CrHomzvqgQDv5oWF0AAw=="/>
+        </item>
+        <item>
             <title>0.5.173</title>
             <pubDate>Tue, 08 Sep 2026 12:18:10 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.173</link>
@@ -46,32 +67,6 @@ v0.5.171 加了 preselectedProject 预选提示（"将在 X 项目中创建任�
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.172/Tapgo-AICoding-0.5.172.zip" length="12170108" type="application/octet-stream" sparkle:edSignature="a859H1gkZ9F87w15HpjBPCmggCIlpZ90bL1ZO5xX8EPqQYr7pK8LZt9ePrmx0GAmISH28rTlZ0q1G6Gc7zOCCw=="/>
-        </item>
-        <item>
-            <title>0.5.171</title>
-            <pubDate>Tue, 08 Sep 2026 12:08:00 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.171</link>
-            <sparkle:version>0.5.171</sparkle:version>
-            <sparkle:shortVersionString>0.5.171</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.171
-
-## NewTaskView 接 preselectedProject 参数（sidebar + 按钮预选 active project）
-
-之前从 sidebar 项目组 + 按钮进入 NewTaskView 时，user 还得手动选一次当前 project（即使 active project 就是它）。v0.5.171 让 NewTaskView 接 preselectedProject 参数，ContentView 传 `workspace.state.activeProject`，让 NewTaskView 显示"将在 X 项目中创建"预选提示。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - 加 `var preselectedProject: Project? = nil`。
-  - 加 `preselectedHint` view：folder/globe icon + "将在以下项目创建任务" + project displayName + `DSHTheme.interactiveHover` 背景。
-  - body 在 primaryActions 后显示 preselectedHint（如果 preselectedProject != nil）。
-- `Sources/TapgoAICoding/Views/ContentView.swift`:
-  - `.sheet($showNewTask)` 里 NewTaskView 传 preselectedProject = workspace.state.activeProject。
-  - 顺手拆出 `.onChange(of: store.activeThreadId)` 逻辑到 `activeThreadIdChanged` helper，让 body 简化、Swift type-checker 不超时。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.171/Tapgo-AICoding-0.5.171.zip" length="12166783" type="application/octet-stream" sparkle:edSignature="IjO6WBQvJsxLAc9ruSVfL/vUSzCYEUDKavrmhqOiIUqZutLMkIRiq2QgyUNNh30nqOxVgeicVmwLlX6IKARKDw=="/>
         </item>
     </channel>
 </rss>
