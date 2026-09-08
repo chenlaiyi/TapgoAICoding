@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.155</title>
+            <pubDate>Tue, 08 Sep 2026 10:18:09 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.155</link>
+            <sparkle:version>0.5.155</sparkle:version>
+            <sparkle:shortVersionString>0.5.155</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.155
+
+## 改进 command palette 关闭后自动 focus 回 composer
+
+之前 command palette 关闭（点 ↩ 选命令 / 点 backdrop / 按 ESC）后 composer 失去 focus，用户用完 palette 还得手动点 composer 才能继续输入。Codex 桌面端 palette 关闭后会自动 focus 回 composer。
+
+- `Sources/TapgoAICoding/Views/ContentView.swift`:
+  - `CommandPaletteView.onDismiss` 在关闭 palette 时多 post 一个 `.tapgoFocusComposer` 通知，触发 `ChatView` 已有 `tapgoFocusComposer` handler（v0.4.x 接入）把 focus 设回 composer。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.155/Tapgo-AICoding-0.5.155.zip" length="12140615" type="application/octet-stream" sparkle:edSignature="poU7ilTftjdgbK+IjT8dZUeWxyW2KMi8K+KX4oPzaSMVFrYmnzcdoZ6rNtNr2omkTLV2e7BbSof09VH+zX/ICA=="/>
+        </item>
+        <item>
             <title>0.5.154</title>
             <pubDate>Tue, 08 Sep 2026 10:13:16 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.154</link>
@@ -43,27 +64,6 @@ v0.5.152 把 awaiting approval 改 warn 色，但 icon 还是 outline (`hand.rai
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.153/Tapgo-AICoding-0.5.153.zip" length="12140272" type="application/octet-stream" sparkle:edSignature="S+i77Fx12thkXjx++TD4cBo8KBCRiLNemgw1xLsK6/+wP8qNVM1Andb8TCQ7OROA5Ca0mK2qPflr2yg9mTRBDg=="/>
-        </item>
-        <item>
-            <title>0.5.152</title>
-            <pubDate>Tue, 08 Sep 2026 10:03:28 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.152</link>
-            <sparkle:version>0.5.152</sparkle:version>
-            <sparkle:shortVersionString>0.5.152</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.152
-
-## SidebarTaskLabel awaiting approval 状态加 warn 色（与 failed 同等显眼）
-
-之前 sidebar thread item 的 awaiting approval 用 `hand.raised` icon + `labelTertiary` 淡色，跟 running 没区分，user 容易忽略需要批准的会话。改成 warn 色，跟 failed 同等显眼。
-
-- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
-  - `SidebarTaskLabel` 的 `.awaitingApproval` case icon 加 `.foregroundStyle(DSHTheme.warn)`，让 awaiting approval 在 sidebar 列表里跟 failed 一样显眼。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.152/Tapgo-AICoding-0.5.152.zip" length="12140273" type="application/octet-stream" sparkle:edSignature="RwSzTQAr6+uEV95bY4S/NOnWR6FfZyHsrAqlfH8P2rs7rrFWqRujVK1lEJM8EiNQa0U9WBYsDW0jxWngG3ODCQ=="/>
         </item>
     </channel>
 </rss>
