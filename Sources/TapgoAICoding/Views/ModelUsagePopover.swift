@@ -172,7 +172,7 @@ struct ModelUsagePopover: View {
         switch TapgoConfig.resolveSelected().builtIn {
         case .minimaxM3: return "MiniMax coding_plan/remains"
         case .glm53Flash: return "BigModel monitor/usage/quota/limit"
-        case .deepSeekV4Flash, .deepSeekV4Pro: return "DeepSeek user/balance"
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "DeepSeek user/balance"
         case nil: return "自定义模型未配置额度接口"
         }
     }
@@ -182,7 +182,7 @@ struct ModelUsagePopover: View {
         switch TapgoConfig.resolveSelected().builtIn {
         case .minimaxM3: return "等待首次订阅用量上报"
         case .glm53Flash: return "暂无 GLM 额度数据（检查 auth-glm.json）"
-        case .deepSeekV4Flash, .deepSeekV4Pro: return "暂无 DeepSeek 余额数据（检查 auth-deepseek.json）"
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "暂无 DeepSeek 余额数据（检查 auth-deepseek.json）"
         case nil: return "自定义模型暂无额度数据"
         }
     }

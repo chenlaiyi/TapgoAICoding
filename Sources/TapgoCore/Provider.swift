@@ -92,6 +92,12 @@ public enum TapgoProviderKind: String, Codable, CaseIterable, Equatable {
                     apiModel: "deepseek-v4-pro",
                     contextWindow: 1_048_576,
                     isCustom: false),
+                ProviderModel(
+                    id: "builtin:deepseek::deepseek-v4-flash-vision-exp",
+                    displayName: "DeepSeek V4 Flash Vision",
+                    apiModel: "deepseek-v4-flash-vision-exp",
+                    contextWindow: 1_048_576,
+                    isCustom: false),
             ]
         }
     }

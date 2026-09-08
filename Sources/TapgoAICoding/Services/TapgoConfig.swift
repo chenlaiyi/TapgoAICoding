@@ -706,7 +706,7 @@ enum TapgoConfig {
         switch model {
         case .minimaxM3: path = authPath
         case .glm53Flash: path = glmAuthPath
-        case .deepSeekV4Flash, .deepSeekV4Pro: path = deepSeekAuthPath
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: path = deepSeekAuthPath
         }
         try? FileManager.default.removeItem(at: path)
         syncModelConfigFiles()
@@ -723,7 +723,7 @@ enum TapgoConfig {
             switch builtIn {
             case .minimaxM3: key = ModelSettingsProbe.readAPIKey(at: authPath)
             case .glm53Flash: key = ModelSettingsProbe.readAPIKey(at: glmAuthPath)
-            case .deepSeekV4Flash, .deepSeekV4Pro: key = ModelSettingsProbe.readAPIKey(at: deepSeekAuthPath)
+            case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: key = ModelSettingsProbe.readAPIKey(at: deepSeekAuthPath)
             }
         } else {
             key = TapgoConfig.modelRegistry().customModel(id: row.id)?.apiKey
@@ -807,7 +807,7 @@ enum TapgoConfig {
     static func effectiveBaseURL(for model: TapgoModel) -> String {
         switch model {
         case .minimaxM3: return effectiveBaseURL
-        case .glm53Flash, .deepSeekV4Flash, .deepSeekV4Pro: return model.defaultBaseURL
+        case .glm53Flash, .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return model.defaultBaseURL
         }
     }
 

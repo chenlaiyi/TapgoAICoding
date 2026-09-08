@@ -161,7 +161,7 @@ final class SessionStore: ObservableObject {
                     snapshot = try await GLMQuotaClient(
                         apiKey: TapgoConfig.providerAPIKey(.zhipu)
                     ).fetchRemains()
-                case .deepSeekV4Flash, .deepSeekV4Pro:
+                case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp:
                     snapshot = try await DeepSeekQuotaClient(
                         apiKey: TapgoConfig.providerAPIKey(.deepseek)
                     ).fetchBalance()

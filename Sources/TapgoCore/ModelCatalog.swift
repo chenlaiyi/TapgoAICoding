@@ -15,6 +15,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// DeepSeek 官方 slug 为小写（api-docs.deepseek.com Codex 接入文档）。
     case deepSeekV4Flash = "deepseek-v4-flash"
     case deepSeekV4Pro = "deepseek-v4-pro"
+    case deepSeekV4FlashVisionExp = "deepseek-v4-flash-vision-exp"
 
     public var id: String { rawValue }
 
@@ -25,6 +26,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         case .minimaxM3: return "MiniMax M3"
         case .glm53Flash: return "GLM 5.3 Flash"
         case .deepSeekV4Flash: return "DeepSeek V4 Flash"
+        case .deepSeekV4FlashVisionExp: return "DeepSeek V4 Flash Vision"
         case .deepSeekV4Pro: return "DeepSeek V4 Pro"
         }
     }
@@ -35,7 +37,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .minimaxM3: return "minimax"
         case .glm53Flash: return "glm"
-        case .deepSeekV4Flash, .deepSeekV4Pro: return "deepseek"
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "deepseek"
         }
     }
 
@@ -46,7 +48,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         case .minimaxM3: return "https://api.minimaxi.com/v1"
         case .glm53Flash: return "https://open.bigmodel.cn/api/v1"
         // DeepSeek API 原生支持 OpenAI Responses 协议 (codex 会追加 /responses)。
-        case .deepSeekV4Flash, .deepSeekV4Pro: return "https://api.deepseek.com"
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "https://api.deepseek.com"
         }
     }
 
@@ -55,7 +57,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     public var contextWindow: Int {
         switch self {
         case .minimaxM3, .glm53Flash: return 1_000_000
-        case .deepSeekV4Flash, .deepSeekV4Pro: return 1_048_576
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return 1_048_576
         }
     }
 
@@ -94,6 +96,7 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
         case .minimaxM3: return "MiniMax 官方 Coding Plan 模型。"
         case .glm53Flash: return "智谱 GLM-5.3-Flash（BigModel Coding Plan）。"
         case .deepSeekV4Flash: return "DeepSeek V4-Flash（按量计费，原生 Responses API）。"
+        case .deepSeekV4FlashVisionExp: return "DeepSeek V4-Flash Vision Exp（实验性多模态视觉模型，文本能力同 V4 Flash，额外支持图像输入）。"
         case .deepSeekV4Pro: return "DeepSeek V4-Pro（按量计费，原生 Responses API）。"
         }
     }

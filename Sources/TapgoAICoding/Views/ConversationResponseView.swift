@@ -106,8 +106,10 @@ private struct ConversationWorkDisclosure: View {
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(TurnPresentation.compactBlocks(items)) { block in
                         switch block {
+                        // v0.5.188: 工作过程中的 assistantMessage 改为紧凑单行可展开
+                        // （之前以完整 Markdown 渲染，跟最终答案/其他 activity 重复）。
                         case .item(.assistantMessage(_, let text)):
-                            MarkdownMessageView(text).environment(\.conversationBodySize, 14)
+                            ConversationWorkAssistantRow(text: text, running: active)
                         case .activity(let activity):
                             ConversationActivityRow(activity: activity, running: active)
                         default: EmptyView()
@@ -160,6 +162,48 @@ private struct ConversationActivityRow: View {
                 .frame(maxHeight: 220)
                 .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(DSHTheme.border, lineWidth: 0.5))
+            }
+        }
+    }
+}
+
+/// v0.5.188: 工作过程中的 assistantMessage 紧凑单行 + 可点击展开
+/// 完整 Markdown，跟 ConversationActivityRow 保持一致的交互样式。
+private struct ConversationWorkAssistantRow: View {
+    let text: String
+    let running: Bool
+    @State private var expanded = false
+    @Environment(\.tapgoFontScale) private var scale: AppFontScale
+
+    private var previewText: String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
+        return firstLine.count > 60 ? String(firstLine.prefix(60)) + "…" : firstLine
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "text.quote").frame(width: 16)
+                    Text(previewText).lineLimit(1)
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 9))
+                }
+                .font(.system(size: 12 * scale.multiplier))
+                .foregroundStyle(DSHTheme.labelDim)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(previewText)
+            .accessibilityValue(expanded ? "详情已展开" : "详情已收起")
+            if expanded {
+                MarkdownMessageView(text)
+                    .environment(\.conversationBodySize, 12)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(DSHTheme.border, lineWidth: 0.5))
             }
         }
     }

@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.188 — fix(ui): 运行中 work 过程 assistantMessage 改为紧凑单行可展开
+**Date**: 2026-09-08
+**Tag**: v0.5.188
+**Test status**: 本机 3117 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - 新增 `ConversationWorkAssistantRow` view：单行显示 assistantMessage 文本前 60 字 + 折叠箭头，点击展开完整 Markdown。
+  - `ConversationWorkDisclosure.expanded` 里 `.item(.assistantMessage)` 改用 `ConversationWorkAssistantRow` 替代 `MarkdownMessageView`。
+**Why**: 之前 v0.5.187 running 显示 work items 但 assistantMessage 以完整 Markdown 渲染——重复显示来源之一。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.187 — feat(ui): NewTaskView preselectedHint 标题加 .bold
 **Date**: 2026-09-08
 **Tag**: v0.5.187

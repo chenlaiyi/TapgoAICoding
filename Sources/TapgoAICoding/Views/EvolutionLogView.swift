@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.188", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.188",
+                    summary: "运行中 work 过程 assistantMessage 改为紧凑单行可展开。",
+                    changes: ["新增 ConversationWorkAssistantRow view。", "ConversationWorkDisclosure.expanded 里 .item(.assistantMessage) 改用新 view。"],
+                    why: "之前 v0.5.187 running 显示 work items 但 assistantMessage 以完整 Markdown 渲染——重复显示来源之一。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.187", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.187",
                     summary: "NewTaskView preselectedHint 标题加 .bold。",
 changes: ["preselectedHint 标题\"将在以下项目创建任务\"加 .bold()。"],
