@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.186</title>
+            <pubDate>Tue, 08 Sep 2026 13:28:46 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.186</link>
+            <sparkle:version>0.5.186</sparkle:version>
+            <sparkle:shortVersionString>0.5.186</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.186
+
+## Sidebar project group header + 按钮加 ⌘N 快捷键
+
+之前 sidebar 主菜单 "新建任务" 已绑定 ⌘N。sidebar 每个 project group header 的 + 按钮没快捷键——user 在 sidebar 焦点上按 ⌘N 总是打开无 project 新任务（v0.5.171-174 改进后 contextView 才有 preselectedProject）。让 + 按钮也响应 ⌘N，user 按 ⌘N 直接在当前 project 创建任务（macOS 习惯）。
+
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - project group header 的 + 按钮加 `.keyboardShortcut("n", modifiers: .command)`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.186/Tapgo-AICoding-0.5.186.zip" length="12184932" type="application/octet-stream" sparkle:edSignature="ylyLFltJ904jtS0KhBGo0fh7dzbEAnhQUm+x6nAUkdlCzcOYQJ65coXkn7KCYsMDZaKBKtzZwQsYJD1czWZ5Dg=="/>
+        </item>
+        <item>
             <title>0.5.185</title>
             <pubDate>Tue, 08 Sep 2026 13:22:37 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.185</link>
@@ -43,27 +64,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.184/Tapgo-AICoding-0.5.184.zip" length="12183078" type="application/octet-stream" sparkle:edSignature="P/rlytCVfUJY10GmUpFCqZC3EnQb3/YKDb4RaUqH3bsUPO5P+SC5XJnU+y39WufeIPktliFggCixRELumxGeBw=="/>
-        </item>
-        <item>
-            <title>0.5.183</title>
-            <pubDate>Tue, 08 Sep 2026 13:12:26 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.183</link>
-            <sparkle:version>0.5.183</sparkle:version>
-            <sparkle:shortVersionString>0.5.183</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.183
-
-## NewTaskView "快速任务"副文在 preselectedProject 时改"在 X 项目中创建临时对话"
-
-之前 v0.5.171-174 让"快速任务"action card 标题在有 preselectedProject 时改"在 X 项目中创建"，但副文仍用静态 `L10n.quickNoProjectHint = "不绑定项目,仅作为临时对话"`，跟新行为矛盾。v0.5.183 让副文在有 preselectedProject 时改"在 X 项目中创建临时对话"。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - 副文改成 if/else：有 preselectedOverride ?? preselectedProject 时显示 `"在 \"<p.displayName>\" 中创建临时对话"`，无时显示原 L10n.quickNoProjectHint。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.183/Tapgo-AICoding-0.5.183.zip" length="12182889" type="application/octet-stream" sparkle:edSignature="xd0Mfexk6fDuWO4+eB/jKPGSKrG1wCd0AjwVTSpSikmKoSJ8ZrjFcEheG3rw60a4Q5ymPaybDW+/YRz4qOueDQ=="/>
         </item>
     </channel>
 </rss>
