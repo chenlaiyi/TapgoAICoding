@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.167", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.167",
+                    summary: "PlanModeBanner persistent 模式背景更深。",
+                    changes: ["背景: isPersistent ? DSHTheme.brand : DSHTheme.brand.opacity(0.75)。"],
+                    why: "之前两种状态都用 brand 色，仅靠文字区分。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.166", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.166",
                     summary: "NewTaskView action card 文案精简。",
                     changes: ["localFolder: 本地文件夹 → 本地项目。", "quickNoProject: 快速任务 (无项目) → 快速任务。"],

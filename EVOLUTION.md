@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.167 — feat(ui): PlanModeBanner persistent 模式背景更深
+**Date**: 2026-09-08
+**Tag**: v0.5.167
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner` 背景：`isPersistent ? DSHTheme.brand : DSHTheme.brand.opacity(0.75)`。
+**Why**: 之前两种状态都用 brand 色，仅靠文字区分。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.166 — fix(ui): NewTaskView action card 文案精简
 **Date**: 2026-09-08
 **Tag**: v0.5.166
