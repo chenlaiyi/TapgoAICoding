@@ -3,6 +3,29 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.179</title>
+            <pubDate>Tue, 08 Sep 2026 12:49:30 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.179</link>
+            <sparkle:version>0.5.179</sparkle:version>
+            <sparkle:shortVersionString>0.5.179</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.179
+
+## NewTaskView 打开时焦点默认在 footer 取消按钮（避免 Enter 误触"本地项目"）
+
+之前 NewTaskView 打开时焦点默认在第一个 action card（"本地项目"），按 Enter 立即触发"打开本地目录" NSOpenPanel。user 想取消却按 Enter 误触发的风险高。改焦点默认在 footer 取消按钮（更安全默认）。
+
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 加 `@FocusState private var cancelFocused: Bool`。
+  - footer 取消按钮加 `.focused($cancelFocused)`。
+  - body 加 `.onAppear { cancelFocused = true }`，sheet 显示时触发 focus。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.179/Tapgo-AICoding-0.5.179.zip" length="12174697" type="application/octet-stream" sparkle:edSignature="Jh/565WV7piYgOetW9StoNL/TrrPl72I4Zq32/xTSw/Pa8F5+r+zveP241crW9EwMGD3Xrv7HhDo4sz+pVwGAQ=="/>
+        </item>
+        <item>
             <title>0.5.178</title>
             <pubDate>Tue, 08 Sep 2026 12:43:42 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.178</link>
@@ -43,27 +66,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.177/Tapgo-AICoding-0.5.177.zip" length="12172718" type="application/octet-stream" sparkle:edSignature="e37oTk9mKphs+GXBhGaSCYyvjP1VdjlqNhDvpAtqxgOtCAgiG29qVYk6yXiI8GJ65JwvQAlV7X44/i2c6sCmBA=="/>
-        </item>
-        <item>
-            <title>0.5.176</title>
-            <pubDate>Tue, 08 Sep 2026 12:33:50 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.176</link>
-            <sparkle:version>0.5.176</sparkle:version>
-            <sparkle:shortVersionString>0.5.176</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.176
-
-## ApprovalRow 批准按钮加 .keyboardShortcut(.defaultAction)
-
-之前 user 必须鼠标点批准按钮。v0.5.176 加 `.keyboardShortcut(.defaultAction)` 让按 Return 自动批准——macOS alert 默认 button = Return 行为。
-
-- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
-  - 批准按钮加 `.keyboardShortcut(.defaultAction)`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.176/Tapgo-AICoding-0.5.176.zip" length="12170736" type="application/octet-stream" sparkle:edSignature="t4wqt+ScfLQnsT9L2H0bJ7WAn2b7dz2GAxBV80e164Ut61nM2vFYC7x0DE3spEsmYWntC2+HiaEcKEC7L3kLCQ=="/>
         </item>
     </channel>
 </rss>
