@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.180 — feat(ui): NewTaskView preselectedHint 视觉强化（brand 浅蓝 + accent 边框）
+**Date**: 2026-09-08
+**Tag**: v0.5.180
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - `preselectedHint` 背景 `DSHTheme.interactiveHover` → `Color.accentColor.opacity(0.08)`。
+  - 加 accent 边框 1.5pt。
+**Why**: 之前 interactiveHover 太淡，重要的预选信息不够明显。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.179 — fix(ui): NewTaskView 打开时焦点默认在 footer 取消按钮
 **Date**: 2026-09-08
 **Tag**: v0.5.179

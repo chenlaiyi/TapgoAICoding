@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.180", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.180",
+                    summary: "NewTaskView preselectedHint 视觉强化（brand 浅蓝 + accent 边框）。",
+                    changes: ["背景 DSHTheme.interactiveHover → Color.accentColor.opacity(0.08)。", "加 accent 边框 1.5pt。"],
+                    why: "之前 interactiveHover 太淡，重要的预选信息不够明显。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.179", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.179",
                     summary: "NewTaskView 打开时焦点默认在 footer 取消按钮。",
                     changes: ["加 @FocusState cancelFocused + footer 取消按钮 .focused() + body .onAppear 触发。"],

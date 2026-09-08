@@ -110,7 +110,13 @@ struct NewTaskView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(DSHTheme.interactiveHover, in: RoundedRectangle(cornerRadius: 8))
+            // v0.5.180: 改 brand 浅蓝背景 + accent 边框（跟 v0.5.162 actionCard 风格一致），
+            // 让 preselectedHint 更显眼。
+            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.accentColor.opacity(0.4), lineWidth: 1.5)
+            )
         }
     }
 
