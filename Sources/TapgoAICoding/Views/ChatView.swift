@@ -1186,9 +1186,6 @@ struct ComposerView: View {
         .init(id: "goal", title: "目标", icon: "target",
               detail: "设置要持续追求的目标",
               action: .setGoal),
-        .init(id: "plan", title: "计划模式", icon: "lightbulb",
-              detail: "启用计划模式：下一条消息只给方案不执行工具",
-              action: .togglePlanMode),
         .init(id: "record", title: "录制技能", icon: "record.circle",
               detail: "录制可重放的操作序列并保存为技能",
               action: .openRecordSkillSettings),
@@ -1234,6 +1231,18 @@ struct ComposerView: View {
             Text("添加")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
+            // v0.5.157: 计划模式项从 addMenuItems 数组拿出来单独渲染，
+            // 让菜单项前面能显示当前 planMode 状态（✓ + 文案"已开启"）。
+            Button {
+                planningMode.toggle()
+            } label: {
+                composerAddMenuRow(
+                    icon: planningMode ? "checkmark.circle.fill" : "lightbulb",
+                    title: planningMode ? "计划模式（已开启）" : "计划模式",
+                    detail: planningMode
+                        ? "下一条消息会让 Codex 先出方案不执行工具"
+                        : "启用计划模式：下一条消息只给方案不执行工具")
+            }
             ForEach(Self.addMenuItems) { item in
                 Button {
                     runAddMenuAction(item.action)

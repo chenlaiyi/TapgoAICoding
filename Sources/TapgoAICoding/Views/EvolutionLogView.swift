@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.157", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.157",
+                    summary: "+ 菜单\"计划模式\"项显示当前状态。",
+                    changes: ["计划模式项从 addMenuItems 数组拿出来单独渲染，根据 planningMode 显示不同 icon + 文案。", "关闭时 lightbulb；开启时 checkmark.circle.fill。"],
+                    why: "Codex 桌面端 plan mode toggle 菜单项会显示当前状态。Tapgo 之前无法从 + 菜单看出 plan mode 是否已开启。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.156", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.156",
                     summary: "点 backdrop 关闭 command palette 也自动 focus 回 composer。",
                     changes: ["backdrop 的 .onTapGesture 关闭 palette 时也 post .tapgoFocusComposer 通知。"],

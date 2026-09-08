@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.157 — feat(ui): + 菜单"计划模式"项显示当前状态
+**Date**: 2026-09-08
+**Tag**: v0.5.157
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - "计划模式"项从 `addMenuItems` 数组拿出来单独渲染，根据 `planningMode` 显示不同 icon + 文案。
+  - 关闭时 `lightbulb` + "计划模式"；开启时 `checkmark.circle.fill` + "计划模式（已开启）"。
+**Why**: Codex 桌面端 plan mode toggle 菜单项会显示当前状态。Tapgo 之前无法从 + 菜单看出 plan mode 是否已开启。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.156 — fix(ui): 点 backdrop 关闭 command palette 也自动 focus 回 composer
 **Date**: 2026-09-08
 **Tag**: v0.5.156
