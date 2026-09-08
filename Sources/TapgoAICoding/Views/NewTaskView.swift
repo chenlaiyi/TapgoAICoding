@@ -179,7 +179,8 @@ struct NewTaskView: View {
         title: String, system: String, color: Color,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        @State var hovering = false
+        return Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: system)
                     .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier))
@@ -188,9 +189,17 @@ struct NewTaskView: View {
                     .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
             }
             .frame(maxWidth: .infinity, minHeight: 80)
-            .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+            // v0.5.160: hover 时背景更深 + 加 border 提示可点。
+            .background(
+                hovering ? DSHTheme.interactiveHover : DSHTheme.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+            .overlay(
+                RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                    .stroke(hovering ? color.opacity(0.4) : .clear, lineWidth: 1.5)
+            )
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
         .accessibilityLabel(title)
     }
 

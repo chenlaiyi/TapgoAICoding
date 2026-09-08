@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.160 — feat(ui): NewTaskView actionCard 加 hover 反馈
+**Date**: 2026-09-08
+**Tag**: v0.5.160
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - `actionCard` 加 `@State var hovering` + `.onHover`。
+  - hover 时背景从 `surfaceRaised` → `interactiveHover` + 1.5pt icon-color 边框。
+**Why**: 之前 actionCard 是 plain button，无 hover 反馈，user 不知道可点。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.159 — refactor: 清理 AddMenuAction.togglePlanMode dead code
 **Date**: 2026-09-08
 **Tag**: v0.5.159

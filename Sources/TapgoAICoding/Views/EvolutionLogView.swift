@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.160", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.160",
+                    summary: "NewTaskView actionCard 加 hover 反馈。",
+                    changes: ["actionCard 加 @State var hovering + .onHover。", "hover 背景 + 边框提示可点。"],
+                    why: "之前 actionCard 无 hover 反馈，user 不知道可点。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.159", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.159",
                     summary: "清理 AddMenuAction.togglePlanMode dead code。",
                     changes: ["AddMenuAction enum 移除 .togglePlanMode case。", "runAddMenuAction switch 移除对应分支。"],
