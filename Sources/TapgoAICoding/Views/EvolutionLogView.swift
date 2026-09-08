@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.194", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.194",
+                    summary: "ToolCall / CommandExecution running 用 3 跳动 dots。",
+                    changes: ["ToolCallRow / CommandExecutionView running 时用 3 跳动 dots 动画替换 ProgressView。"],
+                    why: "统一 streaming 视觉（与 v0.5.192/v0.5.193 一致）。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.193", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.193",
                     summary: "流式输出对齐 Codex 桌面端（assistant streaming 显示生成中）。",
                     changes: ["AssistantResponseText 加 scale 环境 + streaming 时显示 ProgressView + 生成中 行。"],

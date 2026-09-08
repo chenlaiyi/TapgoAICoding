@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.194 — fix(ui): ToolCall / CommandExecution running 用 3 跳动 dots
+**Date**: 2026-09-09
+**Tag**: v0.5.194
+**Test status**: 未跑（纯 UI 改动）
+**Changed**:
+- `Sources/TapgoAICoding/Views/MessageRow.swift`:
+  - `ToolCallRow` / `CommandExecutionView` running 时用 3 跳动 dots 动画替换 ProgressView（对齐 codex 桌面端）。
+- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.194。
+**Why**: v0.5.192/v0.5.193 改 working indicator + assistant streaming 指示。v0.5.194 继续统一 streaming 视觉。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.193 — fix(ui): 流式输出对齐 Codex 桌面端（assistant streaming 显示生成中）
 **Date**: 2026-09-09
 **Tag**: v0.5.193

@@ -499,6 +499,7 @@ struct ToolCallRow: View {
     let toolCall: ToolCall
     var isRunning: Bool = false
     @State private var isExpanded = false
+    @State private var pulse = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
@@ -521,7 +522,23 @@ struct ToolCallRow: View {
                     .truncationMode(.tail)
                 Spacer(minLength: 0)
                 if isRunning {
-                    ProgressView().controlSize(.mini)
+                    // v0.5.194: 3 跳动 dots 动画（对齐 codex 桌面端 + 与 v0.5.192 一致）
+                    HStack(spacing: 3) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .frame(width: 4, height: 4)
+                                .foregroundStyle(toolIconColor)
+                                .opacity(pulse ? 1.0 : 0.3)
+                                .animation(
+                                    .easeInOut(duration: 0.6)
+                                    .repeatForever(autoreverses: true)
+                                    .delay(Double(i) * 0.2),
+                                    value: pulse
+                                )
+                        }
+                    }
+                    .frame(width: 16, height: 6)
+                    .onAppear { pulse = true }
                 }
                 if toolCall.status != .succeeded {
                     StatusBadge(status: toolCall.status.rawValue)
