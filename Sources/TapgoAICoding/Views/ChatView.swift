@@ -2411,7 +2411,11 @@ struct ComposerView: View {
         } else {
             payload = t
         }
-        store.sendUserMessage(payload, planMode: planningMode)
+        // v0.5.147: 从 composer 文本里扫 @DisplayName，匹配 pluginCatalogEntries
+        // 后把 installSpecifier 收集传给 harness — Codex app-server 会把
+        // 这些 MCP server 在本 thread 内激活，harness 直接调对应 tool。
+        let enabledMcpServers = enabledMcpServersFromText(t)
+        store.sendUserMessage(payload, planMode: planningMode, enabledMcpServers: enabledMcpServers)
         if !planModePersistent {
             planningMode = false  // single-shot: turn off after the plan is sent
         }
@@ -2422,6 +2426,27 @@ struct ComposerView: View {
         // Keep the composer focused so the user can type the next message
         // immediately, matching Codex's always-ready input.
         focused = true
+    }
+
+    /// v0.5.147: 从 composer 文本里扫 `@DisplayName`，匹配 pluginCatalogEntries
+    /// 的 displayName（不区分大小写）。匹配到的 installSpecifier 传给
+    /// harness 作为 thread-level enabledMcpServers 激活 Codex 插件。
+    private func enabledMcpServersFromText(_ text: String) -> [String] {
+        let displayNames = Set(pluginCatalogEntries.map { $0.displayName.lowercased() })
+        guard !displayNames.isEmpty else { return [] }
+        var hits: [String] = []
+        var seen: Set<String> = []
+        for token in text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }) {
+            guard token.hasPrefix("@"), token.count > 1 else { continue }
+            let name = String(token.dropFirst()).lowercased()
+            guard displayNames.contains(name) else { continue }
+            guard let item = pluginCatalogEntries.first(where: { $0.displayName.lowercased() == name })
+            else { continue }
+            if seen.insert(item.installSpecifier).inserted {
+                hits.append(item.installSpecifier)
+            }
+        }
+        return hits
     }
 
     /// "插话发送全部" (Cmd/Ctrl+Enter): append the current draft to the queue

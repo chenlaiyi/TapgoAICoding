@@ -218,6 +218,10 @@ final class CodexHarnessClient {
         /// (the user accepts the plan, then explicitly resumes execute).
         /// Falls back to thread-level policy once plan mode is off.
         planMode: Bool = false,
+        /// v0.5.145: Codex 桌面端 plugin 协议层 — 从 composer `@DisplayName`
+        /// 匹配出的 plugin installSpecifier 列表，注入 thread-level
+        /// `enabledMcpServers` 让 harness 在本 thread 内激活对应 MCP server。
+        enabledMcpServers: [String] = [],
         onEvent: @escaping @MainActor (ExecEvent) -> Void
     ) async -> RunState {
         if case .running = state {
@@ -276,7 +280,8 @@ final class CodexHarnessClient {
                         cwd: executionCwd,
                         baseInstructions: resumeBaseInstructions,
                         includeServiceName: false,
-                        clearBaseInstructionsWhenNil: true
+                        clearBaseInstructionsWhenNil: true,
+                        enabledMcpServers: enabledMcpServers
                     )
                     params["threadId"] = .string(resumeThreadId)
                     let response = try await request(method: "thread/resume", params: params)
@@ -288,10 +293,10 @@ final class CodexHarnessClient {
                     // thread with the bounded recovery baseInstructions built
                     // by SessionStore instead of dropping the user's context.
                     TapgoConfig.log("[harness] rollout unavailable; recovering with thread/start")
-                    threadId = try await startThread(cwd: executionCwd, baseInstructions: baseInstructions)
+                    threadId = try await startThread(cwd: executionCwd, baseInstructions: baseInstructions, enabledMcpServers: enabledMcpServers)
                 }
             } else {
-                threadId = try await startThread(cwd: executionCwd, baseInstructions: baseInstructions)
+                threadId = try await startThread(cwd: executionCwd, baseInstructions: baseInstructions, enabledMcpServers: enabledMcpServers)
             }
             activeThreadId = threadId
             activeThreadIdSnapshot = threadId
@@ -488,12 +493,13 @@ final class CodexHarnessClient {
 
     // MARK: - JSON-RPC transport
 
-    private func startThread(cwd: String?, baseInstructions: String?) async throws -> String {
+    private func startThread(cwd: String?, baseInstructions: String?, enabledMcpServers: [String] = []) async throws -> String {
         let params = threadRuntimeParams(
             cwd: cwd,
             baseInstructions: baseInstructions,
             includeServiceName: true,
-            clearBaseInstructionsWhenNil: false
+            clearBaseInstructionsWhenNil: false,
+            enabledMcpServers: enabledMcpServers
         )
         let response = try await request(method: "thread/start", params: params)
         guard let id = response.objectValue?["thread"]?.objectValue?["id"]?.stringValue else {
@@ -541,7 +547,8 @@ final class CodexHarnessClient {
         cwd: String?,
         baseInstructions: String?,
         includeServiceName: Bool,
-        clearBaseInstructionsWhenNil: Bool
+        clearBaseInstructionsWhenNil: Bool,
+        enabledMcpServers: [String] = []
     ) -> [String: JSONValue] {
         // v0.5.31: model/modelProvider 跟随用户在 composer 弹窗里的选择，
         // 对新建会话生效；v0.5.42 起支持自定义模型（注册表解析）。
@@ -553,6 +560,12 @@ final class CodexHarnessClient {
             "sandbox": .string(TapgoConfig.sandboxMode.rawValue),
         ]
         if includeServiceName { params["serviceName"] = .string(TapgoConfig.serviceName) }
+        // v0.5.145: Codex plugin 协议 — 让本 thread 激活指定 MCP server
+        // （GitHub / Cloudflare / Figma / Gmail 等）。Codex app-server 把
+        // 不在列表里的 MCP server 视为未启用，harness 不会调对应 tool。
+        if !enabledMcpServers.isEmpty {
+            params["enabledMcpServers"] = .array(enabledMcpServers.map { .string($0) })
+        }
         if let cwd, !cwd.isEmpty { params["cwd"] = .string(cwd) }
         if let baseInstructions, !baseInstructions.isEmpty {
             params["baseInstructions"] = .string(baseInstructions)

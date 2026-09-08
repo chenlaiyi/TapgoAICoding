@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.147", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.147",
+                    summary: "Codex app-server enabledMcpServers 协议层集成（plugin 真激活）。",
+                    changes: ["CodexHarnessClient.run 加 enabledMcpServers；threadRuntimeParams 附加 enabledMcpServers 字段。", "SessionStore.QueuedMessage / sendUserMessage / sendNow / newRunner.run 逐层透传。", "ChatView.send 加 enabledMcpServersFromText：扫 @DisplayName 匹配 pluginCatalogEntries。"],
+                    why: "v0.5.142 + 菜单加 Codex plugin 只是『插入文本』placeholder；Codex 桌面端真行为是把对应 MCP server 在 thread-level 启用，harness 才能调对应 tool。",
+                    next: "NSEvent 全局 hotkey 与系统保留快捷键冲突处理；或 composer 底部 chip 视觉对齐精修。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.146", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.146",
                     summary: "移除底部冗余 Plan toggle + 重命名 codexPlugins → pluginCatalogEntries。",
                     changes: ["删除底部 Plan toggle 按钮（+ 菜单已有『计划模式』项，与 Codex 桌面端底部布局对齐）。", "codexPlugins → pluginCatalogEntries，loadCodexPlugins → loadInstalledPlugins，codexPluginIcon → pluginIcon，insertCodexPlugin → insertPlugin。"],

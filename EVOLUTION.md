@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.147 — feat(protocol): Codex app-server enabledMcpServers 协议层集成（plugin 真激活）
+**Date**: 2026-09-08
+**Tag**: v0.5.147
+**Test status**: 本机 3116 passed / 13 failed（与 v0.5.144/146 baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Services/CodexHarnessClient.swift`:
+  - `run(...)` 加 `enabledMcpServers: [String] = []`；`threadRuntimeParams` 在 params 里附加 `enabledMcpServers`；thread/start + thread/resume 调用点都透传。
+- `Sources/TapgoAICoding/Services/SessionStore.swift`:
+  - `QueuedMessage` 加 `enabledMcpServers` 字段（drain 保留）；`sendUserMessage` / `sendNow` / `newRunner.run` 逐层透传。
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `send()` 加 `enabledMcpServersFromText(_:)`：扫 composer 文本里的 `@DisplayName`，匹配 `pluginCatalogEntries.displayName`（小写不敏感），命中项的 `installSpecifier` 收集传给 harness。
+**Why**: v0.5.142 + 菜单加 Codex plugin 是「插入文本」placeholder；Codex 桌面端的真实 plugin 行为是把对应 MCP server 在 thread-level 启用，harness 才能调对应 tool。v0.5.147 让 Tapgo AICoding 真接通 Codex app-server 的 `enabledMcpServers` 字段。
+**Next**: NSEvent 全局 hotkey 与系统保留快捷键冲突处理；或 composer 输入框底部 chip 视觉对齐精修。
+
+
 ## v0.5.146 — fix(ui): 移除底部冗余 Plan toggle + 重命名 codexPlugins → pluginCatalogEntries
 **Date**: 2026-09-08
 **Tag**: v0.5.146

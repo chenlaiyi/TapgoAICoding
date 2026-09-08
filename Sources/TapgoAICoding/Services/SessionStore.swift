@@ -15,23 +15,27 @@ struct QueuedMessage: Identifiable, Equatable, Codable {
     let enqueuedAt: Date
     /// v0.5.143: 排队消息也保留 plan mode 标志，drain 时按原 plan mode 发送。
     var planMode: Bool = false
+    /// v0.5.145: 排队消息也保留 enabledMcpServers，drain 时按原 thread 启用。
+    var enabledMcpServers: [String] = []
 
-    init(threadId: String, text: String, images: [URL] = [], planMode: Bool = false) {
+    init(threadId: String, text: String, images: [URL] = [], planMode: Bool = false, enabledMcpServers: [String] = []) {
         self.id = "q-" + UUID().uuidString
         self.threadId = threadId
         self.text = text
         self.images = images
         self.enqueuedAt = Date()
         self.planMode = planMode
+        self.enabledMcpServers = enabledMcpServers
     }
 
-    init(id: String, threadId: String, text: String, images: [URL], enqueuedAt: Date, planMode: Bool = false) {
+    init(id: String, threadId: String, text: String, images: [URL], enqueuedAt: Date, planMode: Bool = false, enabledMcpServers: [String] = []) {
         self.id = id
         self.threadId = threadId
         self.text = text
         self.images = images
         self.enqueuedAt = enqueuedAt
         self.planMode = planMode
+        self.enabledMcpServers = enabledMcpServers
     }
 }
 
@@ -901,7 +905,7 @@ final class SessionStore: ObservableObject {
 
     // MARK: - Send user message
 
-    func sendUserMessage(_ text: String, planMode: Bool = false) {
+    func sendUserMessage(_ text: String, planMode: Bool = false, enabledMcpServers: [String] = []) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImages = !attachedImages.isEmpty
         guard !trimmed.isEmpty || hasImages else { return }
@@ -918,11 +922,12 @@ final class SessionStore: ObservableObject {
                 threadId: targetThreadId,
                 text: trimmed,
                 images: imagesToUse,
-                planMode: planMode
+                planMode: planMode,
+                enabledMcpServers: enabledMcpServers
             ))
             return
         }
-        sendNow(text: trimmed, images: imagesToUse, threadId: targetThreadId, planMode: planMode)
+        sendNow(text: trimmed, images: imagesToUse, threadId: targetThreadId, planMode: planMode, enabledMcpServers: enabledMcpServers)
     }
 
     /// Text-only send path for a workbench-owned auxiliary conversation.
@@ -948,7 +953,8 @@ final class SessionStore: ObservableObject {
     /// idle, and by the queue drain). `images` is the snapshot captured by the
     /// caller — never the live `attachedImages` store.
     /// v0.5.143: `planMode` 透传到 harness.run，turn 级别强制 approvalPolicy + sandbox。
-    private func sendNow(text rawText: String, images: [URL], threadId requestedThreadId: String? = nil, planMode: Bool = false) {
+    /// v0.5.145: `enabledMcpServers` 透传到 threadRuntimeParams，激活 Codex plugin。
+    private func sendNow(text rawText: String, images: [URL], threadId requestedThreadId: String? = nil, planMode: Bool = false, enabledMcpServers: [String] = []) {
         let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasImages = !images.isEmpty
         if requestedThreadId == nil, activeThreadId == nil { newThread() }
@@ -1090,7 +1096,8 @@ final class SessionStore: ObservableObject {
                 images: images,
                 baseInstructions: base,
                 resumeBaseInstructions: persistentBase,
-                planMode: planMode
+                planMode: planMode,
+                enabledMcpServers: enabledMcpServers
             ) { [weak self] event in
                 self?.handle(event: event, threadId: threadId, turnId: turnId)
             }
@@ -1510,7 +1517,7 @@ final class SessionStore: ObservableObject {
         while let idx = queue.firstIndex(where: { $0.threadId == threadId }) {
             let next = queue.remove(at: idx)
             guard liveThreads.contains(where: { $0.id == threadId }) else { continue }
-            sendNow(text: next.text, images: next.images, threadId: next.threadId, planMode: next.planMode)
+            sendNow(text: next.text, images: next.images, threadId: next.threadId, planMode: next.planMode, enabledMcpServers: next.enabledMcpServers)
             return
         }
     }
