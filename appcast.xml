@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.158</title>
+            <pubDate>Tue, 08 Sep 2026 10:37:49 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.158</link>
+            <sparkle:version>0.5.158</sparkle:version>
+            <sparkle:shortVersionString>0.5.158</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.158
+
+## + 菜单"目标"项显示当前 goal 状态（与计划模式一致）
+
+v0.5.157 让"计划模式"项显示当前 planMode 状态。"目标"项之前也是静态 — 用户从 + 菜单看不出当前 thread 是否有 goal。Codex 桌面端 goal 状态在 menu item 上有视觉指示。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - "目标"项从 `addMenuItems` 静态数组拿出来单独渲染。
+  - 无 goal 时：`target` icon + "目标" + "设置要持续追求的目标" 副文。
+  - 有 goal 时：`target.fill` icon + "目标（已设置）" + "当前目标：..." 副文（前 40 字符 + 省略号）。
+  - 点击行为不变：`.setGoal` → 编辑 goal sheet。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.158/Tapgo-AICoding-0.5.158.zip" length="12145390" type="application/octet-stream" sparkle:edSignature="uwcFYd5rEyooBSRBDweQle5auyLqIzTKwwCHabxkvWBHG0gXmCRh4smaAjk+jbWDalMPQTisH2DHip0tcMPjDg=="/>
+        </item>
+        <item>
             <title>0.5.157</title>
             <pubDate>Tue, 08 Sep 2026 10:32:20 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.157</link>
@@ -46,27 +70,6 @@ v0.5.155 让 `onDismiss`（↩ 选命令 / X 按钮）关闭 palette 时 focus �
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.156/Tapgo-AICoding-0.5.156.zip" length="12140708" type="application/octet-stream" sparkle:edSignature="tiJ5luU4yRCiN+1CjqwunQq+WsMNI4aE3i/+sw9xENiPWvo3RRdoyWUnP2lHiPysD/IA8aw74jYkJDcDEg64BQ=="/>
-        </item>
-        <item>
-            <title>0.5.155</title>
-            <pubDate>Tue, 08 Sep 2026 10:18:09 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.155</link>
-            <sparkle:version>0.5.155</sparkle:version>
-            <sparkle:shortVersionString>0.5.155</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.155
-
-## 改进 command palette 关闭后自动 focus 回 composer
-
-之前 command palette 关闭（点 ↩ 选命令 / 点 backdrop / 按 ESC）后 composer 失去 focus，用户用完 palette 还得手动点 composer 才能继续输入。Codex 桌面端 palette 关闭后会自动 focus 回 composer。
-
-- `Sources/TapgoAICoding/Views/ContentView.swift`:
-  - `CommandPaletteView.onDismiss` 在关闭 palette 时多 post 一个 `.tapgoFocusComposer` 通知，触发 `ChatView` 已有 `tapgoFocusComposer` handler（v0.4.x 接入）把 focus 设回 composer。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.155/Tapgo-AICoding-0.5.155.zip" length="12140615" type="application/octet-stream" sparkle:edSignature="poU7ilTftjdgbK+IjT8dZUeWxyW2KMi8K+KX4oPzaSMVFrYmnzcdoZ6rNtNr2omkTLV2e7BbSof09VH+zX/ICA=="/>
         </item>
     </channel>
 </rss>
