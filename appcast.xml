@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.175</title>
+            <pubDate>Tue, 08 Sep 2026 12:28:48 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.175</link>
+            <sparkle:version>0.5.175</sparkle:version>
+            <sparkle:shortVersionString>0.5.175</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.175
+
+## 修复：ApprovalRow 拒绝按钮改用 .borderedProminent 让 destructive style 真显示
+
+v0.5.165 加 `Button(role: .destructive)` 让 macOS 标记 destructive action，但 `.buttonStyle(.bordered)` 不支持 role tinting —— role 实际被忽略，按钮没显示红色。改用 `.borderedProminent` 让 role 真生效显示红色 destructive 样式。
+
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 拒绝按钮 `.buttonStyle(.bordered)` → `.buttonStyle(.borderedProminent)`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.175/Tapgo-AICoding-0.5.175.zip" length="12169485" type="application/octet-stream" sparkle:edSignature="xSicLF38EHZN9EgpENQzU42WmIyBLIWQLJ6ofX4xcPkX/ZDWAOML6Axa6So5drY3rOvwAv3ZXAnvejFGF0cLDw=="/>
+        </item>
+        <item>
             <title>0.5.174</title>
             <pubDate>Tue, 08 Sep 2026 12:23:52 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.174</link>
@@ -43,30 +64,6 @@ v0.5.171 加 preselectedProject 后，sidebar 项目组 + 按钮触发 NewTaskVi
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.173/Tapgo-AICoding-0.5.173.zip" length="12170583" type="application/octet-stream" sparkle:edSignature="nFDixhouijEITdCQgrrDM7Ii7z2PvyebAVWXt6ey8zl3+shsHK4lP7Q/mEMlRRytEasI7jVz09a3L/XQdMU5DQ=="/>
-        </item>
-        <item>
-            <title>0.5.172</title>
-            <pubDate>Tue, 08 Sep 2026 12:13:14 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.172</link>
-            <sparkle:version>0.5.172</sparkle:version>
-            <sparkle:shortVersionString>0.5.172</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.172
-
-## NewTaskView preselectedHint 加 X 按钮让 user 取消预选
-
-v0.5.171 加了 preselectedProject 预选提示（"将在 X 项目中创建任务"），但 user 无法取消预选。v0.5.172 加 X 按钮让 user 取消预选回 NewTaskView 默认行为。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - `var preselectedProject` → `let preselectedProject`（caller 设，不可写）。
-  - 加 `@State private var preselectedOverride: Project?` 本地可写覆盖。
-  - `preselectedHint` 显示 `preselectedOverride ?? preselectedProject`（X 按钮设 override = nil 取消）。
-  - 加 `xmark.circle.fill` 按钮 + `.accessibilityLabel("取消预选项目")`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.172/Tapgo-AICoding-0.5.172.zip" length="12170108" type="application/octet-stream" sparkle:edSignature="a859H1gkZ9F87w15HpjBPCmggCIlpZ90bL1ZO5xX8EPqQYr7pK8LZt9ePrmx0GAmISH28rTlZ0q1G6Gc7zOCCw=="/>
         </item>
     </channel>
 </rss>
