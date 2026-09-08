@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.176 — feat(ui): ApprovalRow 批准按钮加 .keyboardShortcut(.defaultAction)
+**Date**: 2026-09-08
+**Tag**: v0.5.176
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 批准按钮加 `.keyboardShortcut(.defaultAction)`。
+**Why**: user 之前必须鼠标点批准按钮。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.175 — fix(ui): ApprovalRow 拒绝按钮改用 .borderedProminent 让 destructive style 真显示
 **Date**: 2026-09-08
 **Tag**: v0.5.175

@@ -63,6 +63,8 @@ struct ApprovalRow: View {
                     // v0.5.144 修：brandPrimary 在 dark 模式下近白色 → approve
                     // 按钮变成白底白字。改用 brand 蓝。
                     .tint(DSHTheme.brand)
+                    // v0.5.176: 按 Return 自动批准（macOS alert 默认 button = Return 行为）。
+                    .keyboardShortcut(.defaultAction)
 
                     // v0.5.175: 改用 .borderedProminent 才能让 role: .destructive 真显示
                     // 红色 destructive 样式（.bordered 不支持 role tinting）。

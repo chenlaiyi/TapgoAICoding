@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.176", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.176",
+                    summary: "ApprovalRow 批准按钮加 .keyboardShortcut(.defaultAction)。",
+                    changes: ["批准按钮加 .keyboardShortcut(.defaultAction)。"],
+                    why: "user 之前必须鼠标点批准按钮。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.175", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.175",
                     summary: "ApprovalRow 拒绝按钮改用 .borderedProminent 让 destructive style 真显示。",
                     changes: ["拒绝按钮 .buttonStyle(.bordered) → .buttonStyle(.borderedProminent)。"],
