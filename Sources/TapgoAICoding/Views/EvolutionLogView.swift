@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.181", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.181",
+                    summary: "Sidebar thread item hover tooltip 加 thread ID 前缀。",
+                    changes: ["SidebarTaskLabel 加 threadId 参数 + .help() 显示 title · threadId前8字符。", "threadRow 传 threadId: t.id。"],
+                    why: "之前 hover tooltip 只显示 title，user 找 thread ID 要右键复制。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.180", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.180",
                     summary: "NewTaskView preselectedHint 视觉强化（brand 浅蓝 + accent 边框）。",
                     changes: ["背景 DSHTheme.interactiveHover → Color.accentColor.opacity(0.08)。", "加 accent 边框 1.5pt。"],

@@ -716,6 +716,7 @@ struct SidebarView: View {
     @ViewBuilder
     private func threadRow(_ t: TapgoCore.Thread, indented: Bool = true) -> some View {
         SidebarTaskLabel(title: t.title, date: relativeDate(for: t.updatedAt),
+                         threadId: t.id,
                          status: t.turns.last?.status, pinned: t.isPinned,
                          selected: store.activeThreadId == t.id, indented: indented)
     }

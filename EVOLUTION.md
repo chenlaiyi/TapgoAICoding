@@ -1,4 +1,18 @@
 # Evolution Log
+## v0.5.181 — feat(ui): Sidebar thread item hover tooltip 加 thread ID 前缀
+**Date**: 2026-09-08
+**Tag**: v0.5.181
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 加 `var threadId: String? = nil` 参数。
+  - `.help()` 显示 `title · threadId前8字符`。
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - `threadRow` 传 `threadId: t.id`。
+**Why**: 之前 hover tooltip 只显示 title，user 找 thread ID 要右键复制。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.180 — feat(ui): NewTaskView preselectedHint 视觉强化（brand 浅蓝 + accent 边框）
 **Date**: 2026-09-08
 **Tag**: v0.5.180

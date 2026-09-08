@@ -42,6 +42,7 @@ struct SidebarNavigationRow: View {
 struct SidebarTaskLabel: View {
     let title: String
     let date: String
+    var threadId: String? = nil
     var status: Turn.Status?
     var pinned = false
     var selected = false
@@ -84,7 +85,8 @@ struct SidebarTaskLabel: View {
             }
         }
         .onHover { hovering = $0 }
-        .help(title)
+        // v0.5.181: hover tooltip 加 thread ID 前缀方便用户复制完整 ID。
+        .help(threadId.map { "\(title) · " + String($0.prefix(8)) } ?? title)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("任务：\(title)")
         .accessibilityValue(SidebarPresentation.statusText(status) ?? date)
