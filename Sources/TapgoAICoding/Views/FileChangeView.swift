@@ -562,7 +562,11 @@ struct FileChangeView: View {
         case .delete: return .red
         }
     }
+    // v0.5.198: inFlight (pending / awaitingApproval) 时 statusBadge 用 3 跳动 dots
+    // 替换静态 clock / hand.raised 图标（对齐 v0.5.192/194 的 running 视觉与 Codex 桌面端）。
+    @State private var pulse = false
     private var statusBadge: some View {
+        let inFlight = change.status == .pending || change.status == .awaitingApproval
         let (label, icon, color): (String, String, Color) = {
             switch change.status {
             case .applied: return ("已应用", "checkmark", .green)
@@ -573,7 +577,27 @@ struct FileChangeView: View {
             }
         }()
         return HStack(spacing: 3) {
-            Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            if inFlight {
+                HStack(spacing: 2) {
+                    ForEach(0..<3, id: \.self) { i in
+                        Circle()
+                            .frame(width: 3, height: 3)
+                            .foregroundStyle(color)
+                            .opacity(pulse ? 1.0 : 0.3)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(i) * 0.2),
+                                value: pulse
+                            )
+                    }
+                }
+                .frame(width: 12, height: 6)
+                .accessibilityHidden(true)
+                .onAppear { pulse = true }
+            } else {
+                Image(systemName: icon).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+            }
             Text(label).font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
         }
         .padding(.horizontal, 6)

@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.198", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.198",
+                    summary: "FileChangeView/RowView statusBadge inFlight 用 3 跳动 dots（统一 v0.5.192/194/195 风格）。",
+                    changes: [
+                        "FileChangeRowView.statusBadge 加 @State pulse。",
+                        "inFlight 状态（pending / awaitingApproval）显示 3 个 3pt 圆点 + 0.6s repeatForever 动画替换静态 clock 图标。",
+                        "静态 icon 仅在非 inFlight 状态（已应用/失败/已拒绝）渲染。"
+                    ],
+                    why: "延续 v0.5.192/194/195 的 running 视觉统一风格，FileChangeView/RowView 之前 inFlight 用静态 clock 与 Codex 桌面端不一致。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.197", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.197",
                     summary: "Plan mode toggle 对齐 Codex 桌面端（PlanModeBanner 整体可点击，移除 X 按钮）。",
                     changes: [

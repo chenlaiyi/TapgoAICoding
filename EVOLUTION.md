@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.198 — fix(ui): FileChangeView/RowView statusBadge inFlight 用 3 跳动 dots（统一 v0.5.192/194/195 风格）
+**Date**: 2026-09-09
+**Tag**: v0.5.198
+**Test status**: 未跑（纯 UI 改动）
+**Changed**:
+- `Sources/TapgoAICoding/Views/FileChangeView.swift`:
+  - `FileChangeRowView.statusBadge` 加 `@State pulse` + inFlight 分支：3 个错开 0.2s 的 3pt 圆点 + 0.6s repeatForever 动画替换原 `Image(systemName: "clock")` / `hand.raised`。
+  - 静态 icon 仅在非 inFlight 状态（已应用/失败/已拒绝）渲染。
+- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.198。
+
+**Why**: 延续 v0.5.192/194/195 的"running 用 3 跳动 dots"统一风格。FileChangeView/RowView 之前 inFlight 状态用静态 clock 图标，与 Codex 桌面端风格不一致。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.197 — fix(ui): Plan mode toggle 对齐 Codex 桌面端（PlanModeBanner 整体可点击，移除 X 按钮）
 **Date**: 2026-09-09
 **Tag**: v0.5.197
