@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.181</title>
+            <pubDate>Tue, 08 Sep 2026 13:00:13 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.181</link>
+            <sparkle:version>0.5.181</sparkle:version>
+            <sparkle:shortVersionString>0.5.181</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.181
+
+## Sidebar thread item hover tooltip 加 thread ID 前缀
+
+之前 sidebar thread item hover tooltip 只显示 title（`t.title`），user 想找完整 thread ID 只能看右键"复制会话 ID"。v0.5.181 在 tooltip 加 thread ID 前 8 字符，方便 user 快速识别。
+
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 加 `var threadId: String? = nil` 参数。
+  - `.help()` 改为显示 `"\(title) · <threadId 前 8 字符>"`（有 threadId 时）或 title（无时）。
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - `threadRow(_:indented:)` 调用 `SidebarTaskLabel` 时传 `threadId: t.id`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.181/Tapgo-AICoding-0.5.181.zip" length="12175514" type="application/octet-stream" sparkle:edSignature="ACqWDcKTC19xnQZh3lpte1RVMRGUtXLh/JhGG54WsMzOgtDyWSa0tWpG+5L5dMjDvT/hmMZ8JtMCd5SDvqaYCg=="/>
+        </item>
+        <item>
             <title>0.5.180</title>
             <pubDate>Tue, 08 Sep 2026 12:54:31 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.180</link>
@@ -46,27 +70,6 @@ v0.5.171 加的 preselectedHint 背景用 `DSHTheme.interactiveHover`（淡灰�
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.179/Tapgo-AICoding-0.5.179.zip" length="12174697" type="application/octet-stream" sparkle:edSignature="Jh/565WV7piYgOetW9StoNL/TrrPl72I4Zq32/xTSw/Pa8F5+r+zveP241crW9EwMGD3Xrv7HhDo4sz+pVwGAQ=="/>
-        </item>
-        <item>
-            <title>0.5.178</title>
-            <pubDate>Tue, 08 Sep 2026 12:43:42 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.178</link>
-            <sparkle:version>0.5.178</sparkle:version>
-            <sparkle:shortVersionString>0.5.178</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.178
-
-## Sidebar project group header 的 + 和 more 按钮 opacity 0.25 → 0.6
-
-之前 sidebar 项目 group header 的"+"按钮和 more menu 按钮在非 hover 时 opacity = 0.25（25%），用户不知道有这些按钮。改 0.6（60%）让按钮总是可见，hover 时变 1.0。
-
-- `Sources/TapgoAICoding/Views/SidebarView.swift`:
-  - project group header 的 + 按钮和 projectMoreMenu `.opacity(hoveredProjectId == p.id ? 1 : 0.25)` → `0.6`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.178/Tapgo-AICoding-0.5.178.zip" length="12173249" type="application/octet-stream" sparkle:edSignature="vvo0F2f4dzC31NISP0ppaNYJfX4idMMt2T7EGCAt7iklHQ8UO1xcSoY/lYLu2Cm9Do4LjoEtyfa4J+1pz9CLAQ=="/>
         </item>
     </channel>
 </rss>
