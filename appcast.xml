@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.159</title>
+            <pubDate>Tue, 08 Sep 2026 10:48:08 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.159</link>
+            <sparkle:version>0.5.159</sparkle:version>
+            <sparkle:shortVersionString>0.5.159</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.159
+
+## 清理 AddMenuAction.togglePlanMode dead code
+
+v0.5.157 把 + 菜单的"计划模式"项从 `addMenuItems` 静态数组拿出来，单独渲染时直接 `planningMode.toggle()`，不走 `runAddMenuAction(.togglePlanMode)`。`AddMenuAction.togglePlanMode` case 变成 dead code。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `AddMenuAction` enum 移除 `.togglePlanMode` case。
+  - `runAddMenuAction` switch 移除对应 case 分支。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.159/Tapgo-AICoding-0.5.159.zip" length="12145247" type="application/octet-stream" sparkle:edSignature="DHXRkazFoysCyoR0Tp1WsMhA7+56AZae20rSYyKjKXH7EkOQ8Y+lgrg68vrTB3oI/Wys2mHPsNun+xO/zPhnAw=="/>
+        </item>
+        <item>
             <title>0.5.158</title>
             <pubDate>Tue, 08 Sep 2026 10:37:49 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.158</link>
@@ -49,27 +71,6 @@ v0.5.157 让"计划模式"项显示当前 planMode 状态。"目标"项之前也
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.157/Tapgo-AICoding-0.5.157.zip" length="12142480" type="application/octet-stream" sparkle:edSignature="xqqKNpJYIUt7HcdaE/7PlhKBZmTCnYT7+oYElqQZpUsaD7VnVvVJT9enAKiuizmslkQQLXDUr1itrEDRhYkAAg=="/>
-        </item>
-        <item>
-            <title>0.5.156</title>
-            <pubDate>Tue, 08 Sep 2026 10:27:08 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.156</link>
-            <sparkle:version>0.5.156</sparkle:version>
-            <sparkle:shortVersionString>0.5.156</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.156
-
-## 修复：点 backdrop 关闭 command palette 也自动 focus 回 composer
-
-v0.5.155 让 `onDismiss`（↩ 选命令 / X 按钮）关闭 palette 时 focus 回 composer，但点 backdrop（半透明黑色区域）关闭时没 focus。统一所有关闭路径都 focus composer。
-
-- `Sources/TapgoAICoding/Views/ContentView.swift`:
-  - backdrop 的 `.onTapGesture` 关闭 palette 时也 post `.tapgoFocusComposer` 通知。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.156/Tapgo-AICoding-0.5.156.zip" length="12140708" type="application/octet-stream" sparkle:edSignature="tiJ5luU4yRCiN+1CjqwunQq+WsMNI4aE3i/+sw9xENiPWvo3RRdoyWUnP2lHiPysD/IA8aw74jYkJDcDEg64BQ=="/>
         </item>
     </channel>
 </rss>
