@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.176</title>
+            <pubDate>Tue, 08 Sep 2026 12:33:50 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.176</link>
+            <sparkle:version>0.5.176</sparkle:version>
+            <sparkle:shortVersionString>0.5.176</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.176
+
+## ApprovalRow 批准按钮加 .keyboardShortcut(.defaultAction)
+
+之前 user 必须鼠标点批准按钮。v0.5.176 加 `.keyboardShortcut(.defaultAction)` 让按 Return 自动批准——macOS alert 默认 button = Return 行为。
+
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 批准按钮加 `.keyboardShortcut(.defaultAction)`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.176/Tapgo-AICoding-0.5.176.zip" length="12170736" type="application/octet-stream" sparkle:edSignature="t4wqt+ScfLQnsT9L2H0bJ7WAn2b7dz2GAxBV80e164Ut61nM2vFYC7x0DE3spEsmYWntC2+HiaEcKEC7L3kLCQ=="/>
+        </item>
+        <item>
             <title>0.5.175</title>
             <pubDate>Tue, 08 Sep 2026 12:28:48 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.175</link>
@@ -43,27 +64,6 @@ v0.5.173 修了"快速任务"action 用 preselectedProject 代替 nil，但 card
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.174/Tapgo-AICoding-0.5.174.zip" length="12170287" type="application/octet-stream" sparkle:edSignature="0UML31O33DxtruBnQem0msgfbBSMULBX+zZyBTisl3sfePOHGhOJCCl5pekmL+zOP5CrHomzvqgQDv5oWF0AAw=="/>
-        </item>
-        <item>
-            <title>0.5.173</title>
-            <pubDate>Tue, 08 Sep 2026 12:18:10 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.173</link>
-            <sparkle:version>0.5.173</sparkle:version>
-            <sparkle:shortVersionString>0.5.173</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.173
-
-## NewTaskView "快速任务"action 尊重 preselectedProject
-
-v0.5.171 加 preselectedProject 后，sidebar 项目组 + 按钮触发 NewTaskView 显示"将在 X 项目中创建"提示，但 user 选"快速任务"action 时仍调 `onCreate(nil)` 创建无 project 的 thread，违反 sidebar 按钮意图。v0.5.173 让"快速任务"在 preselectedOverride ?? preselectedProject 仍有值时用它。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - "快速任务" action card action 改 `onCreate(preselectedOverride ?? preselectedProject)`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.173/Tapgo-AICoding-0.5.173.zip" length="12170583" type="application/octet-stream" sparkle:edSignature="nFDixhouijEITdCQgrrDM7Ii7z2PvyebAVWXt6ey8zl3+shsHK4lP7Q/mEMlRRytEasI7jVz09a3L/XQdMU5DQ=="/>
         </item>
     </channel>
 </rss>
