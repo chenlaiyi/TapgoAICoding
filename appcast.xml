@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.188</title>
+            <pubDate>Tue, 08 Sep 2026 23:14:04 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.188</link>
+            <sparkle:version>0.5.188</sparkle:version>
+            <sparkle:shortVersionString>0.5.188</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.188
+
+## 运行中 work 过程 assistantMessage 改为紧凑单行可展开
+
+v0.5.187 让 running 时显示 work items 单行（对齐 Codex 桌面端），但 work 过程中的 assistantMessage（reasoning 提示文本）以完整 MarkdownMessageView 渲染——这是「重复显示」的来源之一（assistant 阶段性提示以完整 Markdown 展示，跟最终答案/其他 activity 重复）。
+
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - 新增 `ConversationWorkAssistantRow` view：单行显示 assistantMessage 文本前 60 字 + 折叠箭头，点击展开完整 Markdown。
+  - `ConversationWorkDisclosure.expanded` 里 `.item(.assistantMessage)` 改用 `ConversationWorkAssistantRow` 替代 `MarkdownMessageView`。
+
+效果：运行中每条 work item 都是紧凑单行（包括 assistant 阶段性提示），用户点击展开查看完整内容，跟 Codex 桌面端 UI 行为一致。
+
+测试：3117 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.188/Tapgo-AICoding-0.5.188.zip" length="12191574" type="application/octet-stream" sparkle:edSignature="Ww/3DPlfFJk/ddaZ+nH60qzA9Iy8waaceF83siPvu7y9Cf0J7k5/nnXH+osBFVQA2JFq675zRlGoSxRxtdwgBA=="/>
+        </item>
+        <item>
             <title>0.5.187</title>
             <pubDate>Tue, 08 Sep 2026 22:46:28 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.187</link>
@@ -43,27 +67,6 @@ v0.5.171 加的 preselectedHint 标题"将在以下项目创建任务"是 .capti
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.186/Tapgo-AICoding-0.5.186.zip" length="12184932" type="application/octet-stream" sparkle:edSignature="ylyLFltJ904jtS0KhBGo0fh7dzbEAnhQUm+x6nAUkdlCzcOYQJ65coXkn7KCYsMDZaKBKtzZwQsYJD1czWZ5Dg=="/>
-        </item>
-        <item>
-            <title>0.5.185</title>
-            <pubDate>Tue, 08 Sep 2026 13:22:37 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.185</link>
-            <sparkle:version>0.5.185</sparkle:version>
-            <sparkle:shortVersionString>0.5.185</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.185
-
-## ApprovalRow 拒绝按钮加 ⌘⌫ 快捷键
-
-之前 ApprovalRow 拒绝按钮只能鼠标点（v0.5.176 加了 Return 批准，⌘⌫ 拒绝缺）。加 `.keyboardShortcut(.delete, modifiers: .command)` 让 ⌘⌫ 触发拒绝——macOS destructive action 标准快捷键。
-
-- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
-  - 拒绝按钮加 `.keyboardShortcut(.delete, modifiers: .command)`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.185/Tapgo-AICoding-0.5.185.zip" length="12183726" type="application/octet-stream" sparkle:edSignature="BEKq/lZsABEkoH63rrngtVDhtGnUSHoDa5RjrzHjogHhM7tleJfkVKntNN2Fw0Krkv66dngZaPqjLlykkwFaBw=="/>
         </item>
     </channel>
 </rss>
