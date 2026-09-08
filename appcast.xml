@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.152</title>
+            <pubDate>Tue, 08 Sep 2026 10:03:28 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.152</link>
+            <sparkle:version>0.5.152</sparkle:version>
+            <sparkle:shortVersionString>0.5.152</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.152
+
+## SidebarTaskLabel awaiting approval 状态加 warn 色（与 failed 同等显眼）
+
+之前 sidebar thread item 的 awaiting approval 用 `hand.raised` icon + `labelTertiary` 淡色，跟 running 没区分，user 容易忽略需要批准的会话。改成 warn 色，跟 failed 同等显眼。
+
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 的 `.awaitingApproval` case icon 加 `.foregroundStyle(DSHTheme.warn)`，让 awaiting approval 在 sidebar 列表里跟 failed 一样显眼。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.152/Tapgo-AICoding-0.5.152.zip" length="12140273" type="application/octet-stream" sparkle:edSignature="RwSzTQAr6+uEV95bY4S/NOnWR6FfZyHsrAqlfH8P2rs7rrFWqRujVK1lEJM8EiNQa0U9WBYsDW0jxWngG3ODCQ=="/>
+        </item>
+        <item>
             <title>0.5.151</title>
             <pubDate>Tue, 08 Sep 2026 09:57:29 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.151</link>
@@ -45,27 +66,6 @@ banner 副文从 "下一条消息会让 Codex 先出方案不执行工具" 精�
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.150/Tapgo-AICoding-0.5.150.zip" length="12139181" type="application/octet-stream" sparkle:edSignature="20RSbxv85XOntzcXWY7bHvMm8B+A2e7F+S9ujuusalOG0cJvnXTtO+HSST+VNXn4RLKckWJ3yIU0IIJA5WN5DQ=="/>
-        </item>
-        <item>
-            <title>0.5.149</title>
-            <pubDate>Tue, 08 Sep 2026 09:41:00 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.149</link>
-            <sparkle:version>0.5.149</sparkle:version>
-            <sparkle:shortVersionString>0.5.149</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.149
-
-## 修复：persistent 模式下 PlanModeBanner X 按钮不真 dismiss
-
-v0.5.141 加 `planModePersistent` 常驻模式时引入的 bug：banner X 按钮的 `onDismiss` 是 `if !planModePersistent { planningMode = false }`。persistent=true 时跳过关闭 `planningMode`，banner render条件仍满足（`if planningMode`），X 按钮变成无操作。
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `PlanModeBanner.onDismiss` 改为始终 `planningMode = false`：X 按钮 = 关闭 plan mode，符合常驻模式"一直开直到主动关"的语义（X 就是那个"主动关"按钮）。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.149/Tapgo-AICoding-0.5.149.zip" length="12138507" type="application/octet-stream" sparkle:edSignature="bJmCR5/EzdVDs6RisM3qJnqMxUhcQekun20ml67uMLcRsa6dA6fFIXt2zQJEGjpKintbXZSlZpASziaeT2CGDw=="/>
         </item>
     </channel>
 </rss>
