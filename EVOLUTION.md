@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.189 — feat(ui): streaming 时显示闪烁光标（对齐 Codex 桌面端）
+**Date**: 2026-09-08
+**Tag**: v0.5.189
+**Test status**: 本机 3117 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/MarkdownMessageView.swift`:
+  - body 末尾加 `.overlay(alignment: .bottomLeading)` + `if isStreaming { StreamingCursor() }`。
+  - 新增 `StreamingCursor` View：TimelineView(.periodic 0.5s) 切换"▍"光标的 opacity + brand 色。
+**Why**: `MarkdownMessageView` 有 `isStreaming` 参数但 body 里没实现光标闪烁。Codex 桌面端 streaming 时显示 0.5s 周期闪烁的"▍"光标。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.188 — fix(ui): 运行中 work 过程 assistantMessage 改为紧凑单行可展开
 **Date**: 2026-09-08
 **Tag**: v0.5.188

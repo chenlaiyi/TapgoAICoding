@@ -45,6 +45,24 @@ struct MarkdownMessageView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
+        // v0.5.189: streaming 时显示 0.5s 周期闪烁光标（对齐 Codex 桌面端）。
+        .overlay(alignment: .bottomLeading) {
+            if isStreaming {
+                StreamingCursor()
+            }
+        }
+    }
+
+    /// v0.5.189: streaming 闪烁光标（对齐 Codex 桌面端样式）。
+    private struct StreamingCursor: View {
+        var body: some View {
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                Text("▍")
+                    .font(.system(size: 13))
+                    .foregroundStyle(DSHTheme.brand)
+                    .opacity(context.date.timeIntervalSince1970.truncatingRemainder(dividingBy: 1) < 0.5 ? 1.0 : 0.0)
+            }
+        }
     }
 
     private enum Block {

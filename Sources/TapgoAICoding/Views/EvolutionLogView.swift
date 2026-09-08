@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.189", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.189",
+                    summary: "streaming 时显示闪烁光标（对齐 Codex 桌面端）。",
+                    changes: ["body 末尾加 .overlay(alignment: .bottomLeading) + StreamingCursor()。", "新增 StreamingCursor View：TimelineView 0.5s 周期切换 ▍ opacity + brand 色。"],
+                    why: "MarkdownMessageView 有 isStreaming 但 body 里没实现光标闪烁。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.188", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.188",
                     summary: "运行中 work 过程 assistantMessage 改为紧凑单行可展开。",
                     changes: ["新增 ConversationWorkAssistantRow view。", "ConversationWorkDisclosure.expanded 里 .item(.assistantMessage) 改用新 view。"],
