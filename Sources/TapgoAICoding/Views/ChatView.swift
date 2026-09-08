@@ -1174,7 +1174,7 @@ struct ComposerView: View {
         case togglePlanMode
         case openRecordSkillSettings
         case insertSkill(String)
-        case insertCodexPlugin(name: String, detail: String)
+        case insertPlugin(name: String, detail: String)
     }
     private static let addMenuItems: [AddMenuItem] = [
         .init(id: "files", title: "文件和文件夹", icon: "paperclip",
@@ -1208,12 +1208,12 @@ struct ComposerView: View {
 
     /// Codex 插件目录里 installed+enabled 的条目（v0.5.142 切到实时）。
     /// 加载失败或为空时 `composerAddMenu` 回落显示 `addMenuPlugins`。
-    @State private var codexPlugins: [PluginCatalogItem] = []
+    @State private var pluginCatalogEntries: [PluginCatalogItem] = []
     private static let codexPluginLoadFailed = false
 
     /// Codex 插件名 → SF Symbol 图标的静态映射（`PluginCatalogItem`
     /// 没有 icon 字段，用人维护一份常用映射，未知走 `puzzlepiece.extension`）。
-    private static func codexPluginIcon(for item: PluginCatalogItem) -> String {
+    private static func pluginIcon(for item: PluginCatalogItem) -> String {
         let key = item.name.lowercased()
         if key.contains("github") { return "chevron.left.forwardslash.chevron.right" }
         if key.contains("cloudflare") { return "cloud.fill" }
@@ -1245,15 +1245,15 @@ struct ComposerView: View {
             Text("插件")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-            if !codexPlugins.isEmpty {
-                ForEach(codexPlugins, id: \.id) { item in
+            if !pluginCatalogEntries.isEmpty {
+                ForEach(pluginCatalogEntries, id: \.id) { item in
                     Button {
-                        runAddMenuAction(.insertCodexPlugin(
+                        runAddMenuAction(.insertPlugin(
                             name: item.displayName,
                             detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary))
                     } label: {
                         composerAddMenuRow(
-                            icon: Self.codexPluginIcon(for: item),
+                            icon: Self.pluginIcon(for: item),
                             title: item.displayName,
                             detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary)
                     }
@@ -1317,20 +1317,22 @@ struct ComposerView: View {
             )
         case .insertSkill(let name):
             NotificationCenter.default.post(name: .tapgoInsertSkill, object: name)
-        case .insertCodexPlugin(let name, _):
+        case .insertPlugin(let name, _):
             NotificationCenter.default.post(name: .tapgoInsertSkill, object: name)
         }
     }
 
     /// 异步加载 Codex 插件目录，筛选 installed + enabled。失败静默，
-    /// `codexPlugins` 保持空数组让菜单回落显示本地静态项。
-    private func loadCodexPlugins() async {
+    /// `pluginCatalogEntries` 保持空数组让菜单回落显示本地静态项。
+    /// 异步加载 Tapgo 插件目录，筛选 marketplace == .codex 且 installed + enabled。
+    /// 失败静默，`pluginCatalogEntries` 保持空数组让菜单回落显示本地静态项。
+    private func loadInstalledPlugins() async {
         let service = PluginManagerService()
         do {
             let all = try await service.loadCatalog()
-            codexPlugins = all.filter { $0.marketplace == .codex && $0.installed && $0.enabled }
+            pluginCatalogEntries = all.filter { $0.marketplace == .codex && $0.installed && $0.enabled }
         } catch {
-            codexPlugins = []
+            pluginCatalogEntries = []
         }
     }
 
@@ -1518,24 +1520,9 @@ struct ComposerView: View {
 
                     environmentChip
 
-                    // Plan mode toggle (Codex desktop parity). When on, the
-                    // next message is prefixed with a "plan only" directive
-                    // and the toggle snaps back to off after the send.
-                    Button {
-                        planningMode.toggle()
-                    } label: {
-                        Text("Plan")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(planningMode ? Color.white : DSHTheme.labelDim)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            // v0.5.144 修：brandPrimary 是「主前景色」不是品牌蓝，
-                            // 在 dark 模式下几乎白色 → Plan 按钮变成白色胶囊。
-                            .background(planningMode ? DSHTheme.brand : Color.clear, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .help(planningMode ? "Plan mode：下一条消息先让 Codex 出方案" : "Plan mode：先让 Codex 出方案再执行")
-                    .accessibilityLabel("Plan mode 切换")
+                    // v0.5.146: 移除底部 Plan toggle 按钮 — Codex 桌面端底部只有
+                    // `+` / `🛡 完全访问` / 模型 / 发送，Plan mode 入口只在 + 菜单里。
+                    // 用户已经可以从 + 菜单的"计划模式"项开启 Plan mode。
 
                     if !isWelcome {
                         if computerUseShowInComposer { computerControlChip }
@@ -1756,7 +1743,7 @@ struct ComposerView: View {
         if store.activeThreadId != nil { focused = true }
         setUpPasteMonitor()
         // 后台拉 Codex 插件目录。失败静默（菜单回落本地静态项）。
-        Task { await loadCodexPlugins() }
+        Task { await loadInstalledPlugins() }
     }
 
     /// 拆出 onDisappear 让 Swift type-checker 不超时（v0.5.141 修）：

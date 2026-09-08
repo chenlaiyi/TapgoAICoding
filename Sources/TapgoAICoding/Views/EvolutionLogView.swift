@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.146", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.146",
+                    summary: "移除底部冗余 Plan toggle + 重命名 codexPlugins → pluginCatalogEntries。",
+                    changes: ["删除底部 Plan toggle 按钮（+ 菜单已有『计划模式』项，与 Codex 桌面端底部布局对齐）。", "codexPlugins → pluginCatalogEntries，loadCodexPlugins → loadInstalledPlugins，codexPluginIcon → pluginIcon，insertCodexPlugin → insertPlugin。"],
+                    why: "用户报告：+ 菜单已有计划模式项，底部按钮冗余；项目是 Tapgo AICoding，内部 API 命名应与产品名一致，避免与外部对标对象 Codex 混淆。",
+                    next: "v0.5.147 把 enabledMcpServers 协议层改动（git stash@{0}）正式发布；或 NSEvent 全局 hotkey 与系统保留快捷键冲突处理。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.144", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.144",
                     summary: "Plan mode 强调色误用 brandPrimary（dark mode 白条） + dock ⌘K toggle bug。",
                     changes: ["PlanModeBanner / Plan toggle / Stop 按钮 背景：brandPrimary → brand 真品牌蓝。", "ApprovalRow 批准按钮 .tint() 同修。", "ContentView.onReceive(tapgoOpenCommandPalette) 改 toggle() 并同步发 paletteDidOpen/Close。"],

@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.146 — fix(ui): 移除底部冗余 Plan toggle + 重命名 codexPlugins → pluginCatalogEntries
+**Date**: 2026-09-08
+**Tag**: v0.5.146
+**Test status**: 本机 3116 passed / 13 failed（与 v0.5.144 baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - 移除底部 Plan toggle 按钮（Codex 桌面端底部只有 `+` / `🛡 完全访问` / 模型 / 发送；Plan 入口在 + 菜单）。
+  - 重命名内部 API 与产品名 Tapgo 一致：`codexPlugins` → `pluginCatalogEntries`，`loadCodexPlugins()` → `loadInstalledPlugins()`，`codexPluginIcon(for:)` → `pluginIcon(for:)`，`insertCodexPlugin` → `insertPlugin`。"Codex 桌面端"作为产品目标保留。
+**Why**: 用户报告 + 菜单已有"计划模式"，底部 Plan 按钮冗余；项目是 Tapgo AICoding，内部代码命名应是 Tapgo 相关，与 Codex（外部对标对象）区分。
+**Next**: v0.5.147 把 git stash@{0} 的 enabledMcpServers 协议层改动正式发布；或 NSEvent 全局 hotkey 与系统保留快捷键冲突处理。
+
+
 ## v0.5.144 — fix(ui): Plan mode 强调色误用 brandPrimary（dark mode 白条） + dock ⌘K toggle bug
 **Date**: 2026-09-08
 **Tag**: v0.5.144
