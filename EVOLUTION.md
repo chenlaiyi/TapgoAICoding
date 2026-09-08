@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.155 — fix(ui): command palette 关闭后自动 focus 回 composer
+**Date**: 2026-09-08
+**Tag**: v0.5.155
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ContentView.swift`:
+  - `CommandPaletteView.onDismiss` 在关闭 palette 时多 post 一个 `.tapgoFocusComposer` 通知，触发 `ChatView` 已有 `tapgoFocusComposer` handler（v0.4.x 接入）把 focus 设回 composer。
+**Why**: Codex 桌面端 palette 关闭后自动 focus 回 composer，避免 user 用完 palette 还得手动点 composer 才能继续输入。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.154 — fix(ui): SidebarTaskLabel failed 改用实心图标
 **Date**: 2026-09-08
 **Tag**: v0.5.154

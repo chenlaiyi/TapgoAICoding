@@ -111,7 +111,7 @@ struct ContentView: View {
                                 settingsPresentation = SettingsPresentation(tab: .general)
                             },
                             onToggleTrajectory: { showTrajectory.toggle() },
-                        onDismiss: { withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { showCommandPalette = false; NotificationCenter.default.post(name: .tapgoPaletteDidClose, object: nil) } }
+                        onDismiss: { withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { showCommandPalette = false; NotificationCenter.default.post(name: .tapgoPaletteDidClose, object: nil); NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil) } }
                         )
                         .environmentObject(workspace)
                         .environmentObject(store)
