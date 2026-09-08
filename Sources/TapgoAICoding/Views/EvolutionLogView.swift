@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.177", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.177",
+                    summary: "Sidebar thread item 双击进入 rename 模式。",
+                    changes: ["3 个 thread item Button 加 .onTapGesture(count: 2) 触发 rename。"],
+                    why: "之前双击只 select thread，无 rename 行为。macOS Finder 习惯是双击重命名。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.176", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.176",
                     summary: "ApprovalRow 批准按钮加 .keyboardShortcut(.defaultAction)。",
                     changes: ["批准按钮加 .keyboardShortcut(.defaultAction)。"],

@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.177 — feat(ui): Sidebar thread item 双击进入 rename 模式
+**Date**: 2026-09-08
+**Tag**: v0.5.177
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - 3 个 thread item Button 加 `.onTapGesture(count: 2)` 触发 rename 模式。
+**Why**: 之前双击只 select thread，无 rename 行为。macOS Finder 习惯是双击重命名。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.176 — feat(ui): ApprovalRow 批准按钮加 .keyboardShortcut(.defaultAction)
 **Date**: 2026-09-08
 **Tag**: v0.5.176

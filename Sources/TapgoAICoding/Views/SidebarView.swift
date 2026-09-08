@@ -320,6 +320,11 @@ struct SidebarView: View {
                         threadRow(thread, indented: false)
                     }
                     .buttonStyle(.plain)
+                    // v0.5.177: 双击进入 rename 模式（macOS Finder 习惯）。
+                    .onTapGesture(count: 2) {
+                        renamingThreadId = thread.id
+                        renameDraft = thread.title
+                    }
                     .contextMenu { contextMenu(for: thread) }
                 }
             } else {
@@ -336,6 +341,11 @@ struct SidebarView: View {
                         threadRow(thread, indented: false)
                     }
                     .buttonStyle(.plain)
+                    // v0.5.177: 双击进入 rename 模式（macOS Finder 习惯）。
+                    .onTapGesture(count: 2) {
+                        renamingThreadId = thread.id
+                        renameDraft = thread.title
+                    }
                     .contextMenu { contextMenu(for: thread) }
                 }
             }
@@ -382,6 +392,11 @@ struct SidebarView: View {
                         threadRow(t)
                     }
                         .buttonStyle(.plain)
+                    // v0.5.177: 双击进入 rename 模式（macOS Finder 习惯）。
+                    .onTapGesture(count: 2) {
+                        renamingThreadId = t.id
+                        renameDraft = t.title
+                    }
                         .contextMenu { contextMenu(for: t) }
                 }
                 if !isSearching, group.threads.count > limit {
