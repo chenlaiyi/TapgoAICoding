@@ -3,6 +3,29 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.182</title>
+            <pubDate>Tue, 08 Sep 2026 13:06:00 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.182</link>
+            <sparkle:version>0.5.182</sparkle:version>
+            <sparkle:shortVersionString>0.5.182</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.182
+
+## Sidebar 重命名从 alert 改 sheet（TextField focus 可靠工作）
+
+v0.5.170 加 rename alert TextField focus，但 SwiftUI 14+ alert 是 native NSAlert，TextField `.focused()` 行为有限制——focus 可能不工作。改用 sheet 让 SwiftUI 完整渲染 TextField，focus 可靠。
+
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - 重命名从 `.alert(...)` 改 `.sheet(isPresented:)` + 新的 `renameSheet` view。
+  - `renameSheet`：360pt 宽 VStack，含标题"重命名会话"、roundedBorder TextField（`.focused($renameFocused)` + `.onSubmit(commitRename)`）、取消/确定按钮（确定用 `.buttonStyle(.borderedProminent)` + `.keyboardShortcut(.defaultAction)`）。
+  - 加 `commitRename()` helper（onSubmit + 确定按钮共享逻辑）。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.182/Tapgo-AICoding-0.5.182.zip" length="12181827" type="application/octet-stream" sparkle:edSignature="oPjmQDn+yJ2KOlmCoLFkHPSlmeurf8/AO2mD61EkX5+h/bHdFtg0REItml+6QGdowKJq04gJ1py9Emp56bJUDw=="/>
+        </item>
+        <item>
             <title>0.5.181</title>
             <pubDate>Tue, 08 Sep 2026 13:00:13 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.181</link>
@@ -47,29 +70,6 @@ v0.5.171 加的 preselectedHint 背景用 `DSHTheme.interactiveHover`（淡灰�
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.180/Tapgo-AICoding-0.5.180.zip" length="12174924" type="application/octet-stream" sparkle:edSignature="NwPOCnf5IJ3lwHDnxic9VrMqjEYUwkLodCJGOAla4PGoN3J39I2XoE9HZag2rnI5DPKxQAykwLrXPmh0QruIBQ=="/>
-        </item>
-        <item>
-            <title>0.5.179</title>
-            <pubDate>Tue, 08 Sep 2026 12:49:30 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.179</link>
-            <sparkle:version>0.5.179</sparkle:version>
-            <sparkle:shortVersionString>0.5.179</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.179
-
-## NewTaskView 打开时焦点默认在 footer 取消按钮（避免 Enter 误触"本地项目"）
-
-之前 NewTaskView 打开时焦点默认在第一个 action card（"本地项目"），按 Enter 立即触发"打开本地目录" NSOpenPanel。user 想取消却按 Enter 误触发的风险高。改焦点默认在 footer 取消按钮（更安全默认）。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - 加 `@FocusState private var cancelFocused: Bool`。
-  - footer 取消按钮加 `.focused($cancelFocused)`。
-  - body 加 `.onAppear { cancelFocused = true }`，sheet 显示时触发 focus。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.179/Tapgo-AICoding-0.5.179.zip" length="12174697" type="application/octet-stream" sparkle:edSignature="Jh/565WV7piYgOetW9StoNL/TrrPl72I4Zq32/xTSw/Pa8F5+r+zveP241crW9EwMGD3Xrv7HhDo4sz+pVwGAQ=="/>
         </item>
     </channel>
 </rss>
