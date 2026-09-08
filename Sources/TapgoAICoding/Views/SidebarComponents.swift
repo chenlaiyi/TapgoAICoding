@@ -72,6 +72,17 @@ struct SidebarTaskLabel: View {
         .frame(height: 32 * scale.multiplier)
         .contentShape(Rectangle())
         .background(selected ? DSHTheme.sidebarSelection : (hovering ? DSHTheme.sidebarHover : .clear), in: RoundedRectangle(cornerRadius: 7))
+        // v0.5.164: 选中时加左侧 accent border 提示（dark mode sidebarSelection vs sidebarHover
+        // 颜色相近，光背景色区分不明显）。Codex 桌面端选中项通常有左侧条。
+        .overlay(alignment: .leading) {
+            if selected {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.accentColor)
+                    .frame(width: 3)
+                    .padding(.vertical, 4)
+                    .padding(.leading, 2)
+            }
+        }
         .onHover { hovering = $0 }
         .help(title)
         .accessibilityElement(children: .ignore)

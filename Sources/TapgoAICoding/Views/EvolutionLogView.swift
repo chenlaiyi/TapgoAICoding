@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.164", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.164",
+                    summary: "SidebarTaskLabel 选中时加左侧 accent border。",
+                    changes: [".overlay(alignment: .leading) 加 Color.accentColor 3pt 圆角矩形。"],
+                    why: "dark mode sidebarSelection vs sidebarHover 颜色相近，光背景色不够明显。Codex 桌面端选中项通常有左侧条。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.163", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.163",
                     summary: "NewTaskView 加底部\"取消\"按钮 + ESC 快捷键。",
                     changes: ["加 footer view，右下角 bordered \"取消\" 按钮。", ".keyboardShortcut(.cancelAction) 让 ESC 触发 dismiss。", "body frame 460 → 480。"],

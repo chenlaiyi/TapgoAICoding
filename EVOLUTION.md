@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.164 — feat(ui): SidebarTaskLabel 选中时加左侧 accent border
+**Date**: 2026-09-08
+**Tag**: v0.5.164
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
+  - `SidebarTaskLabel` 选中时（`.overlay(alignment: .leading)`）加 `Color.accentColor` 3pt 圆角矩形。
+**Why**: 之前 sidebar 选中只靠背景色区分（dark mode 颜色相近），不够明显。Codex 桌面端选中项通常有左侧条。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.163 — feat(ui): NewTaskView 加底部"取消"按钮 + ESC 快捷键
 **Date**: 2026-09-08
 **Tag**: v0.5.163
