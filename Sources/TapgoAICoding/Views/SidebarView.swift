@@ -80,21 +80,12 @@ struct SidebarView: View {
                 }
             }
         }
-        .alert("重命名会话", isPresented: Binding(
+        // v0.5.182: 改用 sheet 让 TextField focus 可靠工作（alert 内 .focused 行为有限制）。
+        .sheet(isPresented: Binding(
             get: { renamingThreadId != nil },
             set: { if !$0 { renamingThreadId = nil } }
         )) {
-            TextField("标题", text: $renameDraft)
-                .focused($renameFocused)
-            Button("确定") {
-                if let id = renamingThreadId {
-                    store.renameThread(id, to: renameDraft)
-                }
-                renamingThreadId = nil
-            }
-            Button("取消", role: .cancel) { renamingThreadId = nil }
-        } message: {
-            Text("为这个会话起一个新标题。")
+            renameSheet
         }
         .confirmationDialog("删除会话?",
                             isPresented: Binding(
@@ -760,6 +751,42 @@ struct SidebarView: View {
 
     /// Accept a folder dropped onto the sidebar: add it as a project, make it
     /// active, and start a thread in it — the drag-and-drop "设立目录" path.
+    /// v0.5.182: 重命名 sheet（替代 alert 让 TextField focus 可靠工作）。
+    @ViewBuilder
+    private var renameSheet: some View {
+        VStack(spacing: 12) {
+            Text("重命名会话")
+                .font(AppFont.scaled(.headline, multiplier: appFontScale.multiplier))
+                .bold()
+            TextField("标题", text: $renameDraft)
+                .textFieldStyle(.roundedBorder)
+                .focused($renameFocused)
+                .onSubmit(commitRename)
+            HStack {
+                Spacer()
+                Button("取消", role: .cancel) {
+                    renamingThreadId = nil
+                }
+                .keyboardShortcut(.cancelAction)
+                Button("确定") {
+                    commitRename()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
+    }
+
+    /// v0.5.182: 提交重命名（onSubmit 也能触发）。
+    private func commitRename() {
+        if let id = renamingThreadId {
+            store.renameThread(id, to: renameDraft)
+        }
+        renamingThreadId = nil
+    }
+
     private func acceptDroppedFolder(_ providers: [NSItemProvider]) -> Bool {
         guard let provider = providers.first else { return false }
         _ = provider.loadObject(ofClass: URL.self) { url, _ in

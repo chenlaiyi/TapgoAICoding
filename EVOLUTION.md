@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.182 — fix(ui): Sidebar 重命名从 alert 改 sheet（TextField focus 可靠工作）
+**Date**: 2026-09-08
+**Tag**: v0.5.182
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - 重命名从 `.alert(...)` 改 `.sheet(...)` + 新 `renameSheet` view。
+  - `renameSheet` roundedBorder TextField + `.focused($renameFocused)` + `.onSubmit(commitRename)`。
+  - `commitRename()` helper 共享提交逻辑。
+**Why**: v0.5.170 加 alert TextField focus 但 SwiftUI 14+ alert 内 `.focused()` 行为有限制。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.181 — feat(ui): Sidebar thread item hover tooltip 加 thread ID 前缀
 **Date**: 2026-09-08
 **Tag**: v0.5.181
