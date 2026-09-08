@@ -1160,6 +1160,79 @@ struct ComposerView: View {
     var isWelcome = false
     @State private var preserveDraftOnProjectChange = false
 
+    // v0.5.196: 附件缩略图带 — 搬进 composer 卡片内部，文本编辑器上方。
+    // 保留展开/收起两种形态、移除/清空按钮、上下文菜单。
+    @ViewBuilder
+    private var attachmentStrip: some View {
+        if !store.attachedImages.isEmpty {
+            if showAttachments {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(store.attachedImages, id: \.self) { url in
+                            ZStack(alignment: .topTrailing) {
+                                thumbnail(for: url)
+                                Button { store.removeImage(url) } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                                        .foregroundStyle(.white, .black.opacity(0.6))
+                                }
+                                .buttonStyle(.borderless)
+                                .offset(x: 5, y: -5)
+                                .help("移除")
+                                .accessibilityLabel("移除图片 \(url.lastPathComponent)")
+                            }
+                            .help(url.lastPathComponent)
+                            .contextMenu {
+                                Button { copyGlobal(url.path) } label: {
+                                    Label("复制路径", systemImage: "doc.on.doc")
+                                }
+                                Button {
+                                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                                } label: {
+                                    Label("在访达中显示", systemImage: "folder")
+                                }
+                            }
+                        }
+                        Button { store.clearImages() } label: {
+                            Label("清空", systemImage: "trash")
+                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
+                        .help("清空已添加的图片")
+                        .accessibilityLabel("清空已添加的图片")
+                    }
+                    .padding(.horizontal, 4)
+                }
+                .frame(height: 46)
+                .frame(maxWidth: contentWidth)
+                .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                HStack(spacing: 6) {
+                    Text("已添加 \(store.attachedImages.count) 张图片")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                    Button { showAttachments = true } label: {
+                        Label("展开", systemImage: "chevron.down")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    }
+                    .buttonStyle(.borderless)
+                    Spacer()
+                    Button { store.clearImages() } label: {
+                        Label("清空", systemImage: "trash")
+                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(maxWidth: contentWidth)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
     /// 静态菜单项定义（标题 + SF Symbol 图标 + 副标题描述）— 让 + 菜单
     /// 在视觉上与 Codex 桌面端对齐：每个命令带一行描述，插件分组使用
     /// 本地描述。等 Codex 插件目录接入后把 plugins 换成动态加载的
@@ -1421,80 +1494,6 @@ struct ComposerView: View {
                     isPersistent: planModePersistent
                 )
             }
-            if !store.attachedImages.isEmpty {
-                if showAttachments {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(store.attachedImages, id: \.self) { url in
-                                ZStack(alignment: .topTrailing) {
-                                    thumbnail(for: url)
-                                    Button { store.removeImage(url) } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                            .foregroundStyle(.white, .black.opacity(0.6))
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .offset(x: 5, y: -5)
-                                    .help("移除")
-                                    .accessibilityLabel("移除图片 \(url.lastPathComponent)")
-                                }
-                                .help(url.lastPathComponent)
-                                .contextMenu {
-                                    Button {
-                                        copyGlobal(url.path)
-                                    } label: {
-                                        Label("复制路径", systemImage: "doc.on.doc")
-                                    }
-                                    Button {
-                                        NSWorkspace.shared.activateFileViewerSelecting([url])
-                                    } label: {
-                                        Label("在访达中显示", systemImage: "folder")
-                                    }
-                                }
-                            }
-                            Button {
-                                store.clearImages()
-                            } label: {
-                                Label("清空", systemImage: "trash")
-                                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(.secondary)
-                            .help("清空已添加的图片")
-                            .accessibilityLabel("清空已添加的图片")
-                        }.padding(.horizontal, 4)
-                    }
-                    .frame(height: 46)
-                    .frame(maxWidth: contentWidth)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                } else {
-                    HStack(spacing: 6) {
-                        Text("已添加 \(store.attachedImages.count) 张图片")
-                            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            .foregroundStyle(.secondary)
-                        Button {
-                            showAttachments = true
-                        } label: {
-                            Label("展开", systemImage: "chevron.down")
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                        }
-                        .buttonStyle(.borderless)
-                        Spacer()
-                        Button {
-                            store.clearImages()
-                        } label: {
-                            Label("清空", systemImage: "trash")
-                                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .frame(maxWidth: contentWidth)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
 
             goalCard
 
@@ -1511,6 +1510,10 @@ struct ComposerView: View {
 
                 // Codex Desktop keeps text and controls inside one quiet card.
                 VStack(spacing: 10) {
+                // v0.5.196: 附件缩略图带搬进 composer 卡片内部、文本编辑器上方。
+                if !store.attachedImages.isEmpty {
+                    attachmentStrip
+                }
                 GrowingTextEditor(
                     text: $text,
                     placeholder: composerPlaceholder,

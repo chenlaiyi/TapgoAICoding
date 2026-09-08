@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.196", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.196",
+                    summary: "输入框交互对齐 Codex 桌面端（附件缩略图搬入 composer 卡片内部 + 消息记录附件加固）。",
+                    changes: [
+                        "ChatView 外层 VStack 的附件条移除。",
+                        "attachmentStrip 移到 ComposerView 卡片内部、GrowingTextEditor 上方。",
+                        "UserMessageThumbnail NSImage 加载失败时显示文件名 + 大小 + 在 Finder 中显示按钮。",
+                        "新增 EmptyAttachmentPlaceholder view：纯发图时显示可点击的占位 chip。"
+                    ],
+                    why: "用户反馈附件缩略图应放在输入框内部，且消息记录里附件只看到文字。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.195", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.195",
                     summary: "流式输出过程对齐 Codex 桌面端（caret 真 shape + 3 dots 统一 + 外层抽屉默认收起）。",
                     changes: [

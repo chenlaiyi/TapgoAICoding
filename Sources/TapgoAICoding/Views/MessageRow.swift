@@ -216,6 +216,11 @@ struct MessageBubble: View {
                                     Label("以此内容新建会话", systemImage: "plus.message")
                                 }
                             }
+                    } else {
+                        // v0.5.196: 纯发图时 displayText="(图片)" 但 userImagePaths 非空 — 用户之前反馈
+                        // "附件只看到文字"，这里给一个可点击的占位 chip「📷 图片 (1)」点击查看大图，
+                        // 保证即使缩略图 NSImage 加载失败，用户也有交互入口。
+                        EmptyAttachmentPlaceholder(count: userImagePaths.count, paths: userImagePaths)
                     }
                 }
                 userActionBar
@@ -336,12 +341,37 @@ private struct UserMessageThumbnail: View {
                     .frame(height: 120)
                     .accessibilityLabel("已发送图片 \(URL(fileURLWithPath: path).lastPathComponent)")
             } else {
-                VStack(spacing: 4) {
+                // v0.5.196: NSImage 加载失败时不要静默回退到一个图标 — 显示文件名 + 文件大小，
+                // 让用户能确认附件存在并一键在 Finder 中打开原文件（之前 fallback
+                // 只显示「图片不可用」图标，用户没办法自助恢复）。
+                let url = URL(fileURLWithPath: path)
+                let fileName = url.lastPathComponent
+                let attrs = try? FileManager.default.attributesOfItem(atPath: path)
+                let sizeBytes = (attrs?[.size] as? NSNumber)?.intValue ?? 0
+                let sizeText = ByteCountFormatter.string(fromByteCount: Int64(sizeBytes), countStyle: .file)
+                VStack(spacing: 6) {
                     Image(systemName: "photo.badge.exclamationmark")
-                    Text("图片不可用")
+                        .font(.system(size: 22))
+                    Text(fileName)
                         .font(.caption2)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if !sizeText.isEmpty {
+                        Text(sizeText)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting([url])
+                    } label: {
+                        Label("在 Finder 中显示", systemImage: "folder")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.mini)
                 }
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
             }
         }
         .frame(width: 180, height: 120)
@@ -359,6 +389,42 @@ private struct UserMessageThumbnail: View {
 }
 
 /// 大图预览：居中放大原图，Esc / 点击背景关闭。
+/// v0.5.196: 纯发图时（displayText == "(图片)"）显示一个可点击的占位 chip，
+/// 点击缩略图区域可弹出大图预览，保证附件一定有可见的交互入口。
+private struct EmptyAttachmentPlaceholder: View {
+    let count: Int
+    let paths: [String]
+    @State private var previewingPath: String?
+    var body: some View {
+        let label = count > 1 ? "图片 (\(count))" : "图片"
+        Button {
+            previewingPath = paths.first
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "photo")
+                Text(label)
+            }
+            .font(.system(size: 13))
+            .foregroundStyle(DSHTheme.label)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(DSHTheme.conversationUserBg, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(DSHTheme.border, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .help("点击查看大图")
+        .sheet(item: Binding(get: { previewingPath.map(IdentifiableString.init) },
+                              set: { previewingPath = $0?.value })) { item in
+            ImagePreviewSheet(path: item.value)
+        }
+    }
+}
+
+private struct IdentifiableString: Identifiable {
+    let value: String
+    var id: String { value }
+}
+
 private struct ImagePreviewSheet: View {
     let path: String
 

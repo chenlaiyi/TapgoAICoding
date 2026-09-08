@@ -1,4 +1,21 @@
 # Evolution Log
+## v0.5.196 — fix(ui): 输入框交互对齐 Codex 桌面端（附件缩略图搬入 composer 卡片内部 + 消息记录附件加固）
+**Date**: 2026-09-09
+**Tag**: v0.5.196
+**Test status**: 未跑（纯 UI 改动）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - 外层 VStack 的附件条移除（之前是输入框外侧上方）。
+  - `attachmentStrip` 移到 `ComposerView` body 内、`GrowingTextEditor` 上方，与文本编辑器同卡片容器（VStack(spacing: 10)）。
+  - 保留展开/收起两种形态、移除/清空按钮、上下文菜单。
+- `Sources/TapgoAICoding/Views/MessageRow.swift`:
+  - `UserMessageThumbnail` 在 NSImage 加载失败时显示文件名 + 文件大小 + 「在 Finder 中显示」按钮。
+  - 新增 `EmptyAttachmentPlaceholder` view：纯发图时（`displayText == "(图片)"`）显示可点击的占位 chip「📷 图片 (1)」点击查看大图。
+- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.196。
+
+**Why**: 用户反馈"在输入框里的内部显示缩略图/文件，而不是显示到输入框外面上方"以及"用户发送的截图或者附件在消息记录里怎么只看到文字了"。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.195 — fix(ui): 流式输出过程对齐 Codex 桌面端（caret 真 shape + 3 dots 统一 + 外层抽屉默认收起）
 **Date**: 2026-09-09
 **Tag**: v0.5.195
