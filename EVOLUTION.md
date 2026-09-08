@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.162 — feat(ui): NewTaskView recentRow hover 加 border
+**Date**: 2026-09-08
+**Tag**: v0.5.162
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - `recentRow` hover 时加 1.5pt accent-color 边框。
+**Why**: v0.5.160-161 actionCard 加了 hover border，recentRow 风格不一致。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.161 — fix(ui): v0.5.160 hover 反馈无效（@State in func 被忽略）
 **Date**: 2026-09-08
 **Tag**: v0.5.161

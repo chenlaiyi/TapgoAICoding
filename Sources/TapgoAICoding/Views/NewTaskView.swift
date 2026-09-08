@@ -166,6 +166,11 @@ struct NewTaskView: View {
             .contentShape(Rectangle())
             .background(hoveredProjectId == p.id ? DSHTheme.interactiveHover : DSHTheme.surface,
                         in: RoundedRectangle(cornerRadius: 6))
+            // v0.5.162: hover 时加 border 提示可点，跟 v0.5.160-161 actionCard 风格一致。
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(hoveredProjectId == p.id ? Color.accentColor.opacity(0.4) : .clear, lineWidth: 1.5)
+            )
             .onHover { hovering in
                 hoveredProjectId = hovering ? p.id : (hoveredProjectId == p.id ? nil : hoveredProjectId)
             }

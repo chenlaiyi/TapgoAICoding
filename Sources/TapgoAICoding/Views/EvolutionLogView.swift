@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.162", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.162",
+                    summary: "NewTaskView recentRow hover 加 border。",
+                    changes: ["recentRow hover 时加 1.5pt accent-color 边框。"],
+                    why: "v0.5.160-161 actionCard 加了 hover border，recentRow 风格不一致。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.161", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.161",
                     summary: "v0.5.160 hover 反馈无效（@State in func 被忽略）",
                     changes: ["把 actionCard 函数改成 ActionCard View struct，@State 写在 struct 属性里。"],
