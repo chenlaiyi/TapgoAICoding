@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.156 — fix(ui): 点 backdrop 关闭 command palette 也自动 focus 回 composer
+**Date**: 2026-09-08
+**Tag**: v0.5.156
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ContentView.swift`:
+  - backdrop 的 `.onTapGesture` 关闭 palette 时也 post `.tapgoFocusComposer` 通知。
+**Why**: v0.5.155 只修了 `onDismiss`（↩ 选命令 / X 按钮）路径，backdrop 点击关闭时没 focus。统一所有关闭路径。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.155 — fix(ui): command palette 关闭后自动 focus 回 composer
 **Date**: 2026-09-08
 **Tag**: v0.5.155

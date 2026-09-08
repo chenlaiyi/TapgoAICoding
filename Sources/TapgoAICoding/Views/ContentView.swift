@@ -100,7 +100,7 @@ struct ContentView: View {
                         .ignoresSafeArea()
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.easeOut(duration: 0.15)) { showCommandPalette = false }
+                            withAnimation(.easeOut(duration: 0.15)) { showCommandPalette = false; NotificationCenter.default.post(name: .tapgoFocusComposer, object: nil) }
                         }
                         .transition(.opacity)
                     VStack(spacing: 0) {

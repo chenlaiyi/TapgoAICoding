@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.156", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.156",
+                    summary: "点 backdrop 关闭 command palette 也自动 focus 回 composer。",
+                    changes: ["backdrop 的 .onTapGesture 关闭 palette 时也 post .tapgoFocusComposer 通知。"],
+                    why: "v0.5.155 只修了 onDismiss 路径，backdrop 点击关闭时没 focus。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.155", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.155",
                     summary: "command palette 关闭后自动 focus 回 composer。",
                     changes: ["CommandPaletteView.onDismiss 多 post .tapgoFocusComposer 通知。"],
