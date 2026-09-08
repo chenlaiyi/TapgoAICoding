@@ -2,7 +2,47 @@
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Tapgo AICoding</title>
-                                        <item>
+        <item>
+            <title>0.5.199</title>
+            <pubDate>Wed, 09 Sep 2026 07:42:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.199</link>
+            <sparkle:version>0.5.199</sparkle:version>
+            <sparkle:shortVersionString>0.5.199</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.199
+
+## Command execution 输出对齐 Codex 桌面端：支持 ANSI 颜色解析 + + 菜单视觉调整
+
+### ANSI 颜色解析
+
+`CommandExecutionView` 的 stdout/stderr 之前用纯色 Text（绿/红），command output 自带的 ANSI 颜色码（`\x1b[31m`、`\x1b[1;32m` 等）会显示成乱码。v0.5.199 新增 `ANSIParser`（在 `TapgoCore`）解析 ANSI escape sequence，让 `git diff` 红绿、`ls` 蓝目录、`cargo` 编译错误高亮、`swift build` 警告色等正常显示。
+
+### + 菜单视觉调整
+
+`+` 菜单从 SwiftUI Menu 改为 PopoverPanel（NSPopover + NSHostingController，TapgoCore 新增），撑满 composer 宽度的 push-out 卡片，对齐 Codex 桌面端 input-area panel 视觉。SwiftUI Menu 在 macOS 26.5 SDK 渲染成 ~130pt 小弹窗，撑不满宽度。
+
+## 改动
+
+- `Sources/TapgoCore/ANSIParser.swift`（新增）：SGR 颜色码解析
+  - 8-color: 30-37 / 90-97
+  - 256-color: 38;5;N
+  - truecolor: 38;2;R;G;B
+  - reset (0) / bold (1) / unbold (22)
+  - 把 raw 字符串拆成 `[(text, fg color, bold)]` segments
+- `Sources/TapgoAICoding/Views/CommandExecutionView.swift`:
+  - `ansiLinesView(_:fallback:)` helper：按 segments 用 Text + ConcatenatedText 拼接
+  - stdout/stderr 段渲染替换之前的纯色 Text
+- `Sources/TapgoCore/PopoverPanel.swift`（新增）：NSViewControllerRepresentable 包 NSPopover，手动 contentSize
+- `Sources/TapgoAICoding/Views/ChatView.swift`：composer + 菜单改用 PopoverPanel 撑满宽度
+
+## 测试
+
+未跑（纯 UI 改动不影响逻辑；ANSI parser 行为容易在终端实跑验证）。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.199/Tapgo-AICoding-0.5.199.zip" length="12263799" type="application/octet-stream" sparkle:edSignature="qPfnYxt+eN8PHbI+CRwToWVDJTsrkgo2H63ew14bIBEVNABK0+tf1kzGUAdGzF8CFYFjznCxFJEdgfAZz1sEDA=="/>
+        </item>
+        <item>
             <title>0.5.198</title>
             <pubDate>Wed, 09 Sep 2026 01:24:00 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.198</link>
@@ -28,7 +68,7 @@
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.198/Tapgo-AICoding-0.5.198.zip" length="14278657" type="application/octet-stream" sparkle:edSignature="LtxXdNiYTQQLpdxJAUaVaYGzXA89cboQ9peydATavqO+ilVtmg4qzxKKu1DqNa4KiQUJ37FbutVNlyXO6hAaCw=="/>
         </item>
-<item>
+        <item>
             <title>0.5.197</title>
             <pubDate>Wed, 09 Sep 2026 01:18:00 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.197</link>
@@ -56,141 +96,6 @@
 未跑（纯 UI 改动不影响逻辑）。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.197/Tapgo-AICoding-0.5.197.zip" length="14272894" type="application/octet-stream" sparkle:edSignature="LEHCN2c1B50zhbNiTpKliC2a1ICzG0/FanTq+Dh1J02YKiDl6EFQSOikVIRJoY4+Hf+EPtJWoE5HbsgAQeZ9DQ=="/>
-        </item>
-<item>
-            <title>0.5.196</title>
-            <pubDate>Wed, 09 Sep 2026 01:11:00 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.196</link>
-            <sparkle:version>0.5.196</sparkle:version>
-            <sparkle:shortVersionString>0.5.196</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.196
-
-## 输入框交互对齐 Codex 桌面端：附件缩略图搬入 composer 卡片内部 + 消息记录附件加固
-
-针对用户反馈：
-1. "在处理过程中，执行命令或者思考过程或者调用其他工具，同一个就不要重复显示"（v0.5.195 部分缓解，详见上次 release）
-2. "在输入框里的内部显示缩略图/文件，而不是显示到输入框外面上方"
-3. "用户发送的截图或者附件在消息记录里怎么只看到文字了？请修复"
-
-## 改动
-
-### 1. 附件缩略图带搬入 composer 卡片内部
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - 外层 VStack 的附件条移除（之前是输入框**外侧上方**）。
-  - `attachmentStrip` 移到 `ComposerView` body 内、`GrowingTextEditor` 上方，与文本编辑器同卡片容器（VStack(spacing: 10)）。
-  - 保留展开/收起两种形态、移除/清空按钮、上下文菜单（复制路径 / 在访达中显示）。
-
-### 2. 消息记录附件显示加固（修复"只看到文字"）
-- `Sources/TapgoAICoding/Views/MessageRow.swift`:
-  - `UserMessageThumbnail` 在 NSImage 加载失败时不再只显示一个图标，而是显示文件名 + 文件大小 + 「在 Finder 中显示」按钮，让用户能确认附件存在并一键恢复原文件。
-  - 新增 `EmptyAttachmentPlaceholder` view：当用户纯发图（`displayText == "(图片)"`）但 `userImagePaths` 非空时，显示一个可点击的占位 chip「📷 图片 (1)」点击查看大图，保证即使缩略图 NSImage 加载失败用户也有交互入口。
-
-## 测试
-
-未跑（纯 UI 改动不影响逻辑）。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.196/Tapgo-AICoding-0.5.196.zip" length="14271257" type="application/octet-stream" sparkle:edSignature="4+Fc1od3SBKX8SNJ5N4eE5BrYnIjBcgzvkbAvz5pvOfmIjkllIWrkh3bjbWuW+h5ifcnRGGVLELZXkI89TKgBA=="/>
-        </item>
-<item>
-            <title>0.5.195</title>
-            <pubDate>Wed, 09 Sep 2026 00:53:40 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.195</link>
-            <sparkle:version>0.5.195</sparkle:version>
-            <sparkle:shortVersionString>0.5.195</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.195
-
-## 流式输出对齐 Codex 桌面端：caret 改 SwiftUI 真 shape + "生成中"行统一 3 跳动 dots
-
-v0.5.192/v0.5.193/v0.5.194 改了 working indicator / assistant streaming / ToolCall / CommandExecution 的统一 3 跳动 dots。本版继续对齐 Codex 桌面端 streaming 的两个细节：
-
-1. **StreamingCursor 改 SwiftUI 真 caret shape**：从 `▍` Unicode 字符 + TimelineView 硬闪烁，改为 SwiftUI `Rectangle().frame(width: 2)` 细矩形 + opacity `.easeInOut.repeatForever(autoreverses)` 闪烁（高度跟随字号 scale）。Codex 桌面端 caret 是细矩形、跟随最后一段末尾。
-2. **AssistantResponseText 的"生成中"行**：从 `ProgressView().controlSize(.mini)` 改为 3 跳动 dots（与 v0.5.192 / v0.5.194 风格一致），dots 用 `DSHTheme.labelDim`，文字用 `caption2` + `DSHTheme.labelTertiary`。
-3. caret overlay 从 `bottomLeading`（之前 caret 在左上角 (0,0) 位置）改为 `bottomTrailing`，视觉上紧贴最后一段末尾，更接近 Codex 桌面端 caret 跟随文本流的体验。
-
-## 改动
-
-- `Sources/TapgoAICoding/Views/MarkdownMessageView.swift`:
-  - `StreamingCursor` 改用 SwiftUI `Rectangle().frame(width: 2, height: 14 * scale.multiplier).fill(DSHTheme.brand)` + `.opacity` 0.5s 闪烁。
-  - overlay 从 `.bottomLeading` 改 `.bottomTrailing`，caret 视觉上贴近最后一段末尾。
-- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
-  - `AssistantResponseText` 加 `@State pulse`，streaming 时显示 3 个错开 0.2s 的 4pt 圆点 + "生成中…" 文字（替换 v0.5.193 的 ProgressView）。
-- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.195。
-
-## 测试
-
-未跑（纯 UI 动画改动不影响逻辑）。]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.195/Tapgo-AICoding-0.5.195.zip" length="14255308" type="application/octet-stream" sparkle:edSignature="xGkVBTaRut6WNJaiyo6cJoXVo0vwpGjCD2N1Eih0WnPr16LNNR+XR8oDqC75QTiR259BY/6OKksrhGx8kFvABA=="/>
-        </item>
-<item>
-            <title>0.5.190</title>
-            <pubDate>Tue, 08 Sep 2026 23:31:12 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.190</link>
-            <sparkle:version>0.5.190</sparkle:version>
-            <sparkle:shortVersionString>0.5.190</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.190
-
-## ConversationActivityRow running 时显示 spinner
-
-`ConversationActivityRow` 在 running 时显示静态 `Image(systemName:)` icon，user 不知道是真正执行中还是已经停了。Codex 桌面端 running 状态显示旋转的 spinner。
-
-- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
-  - `ConversationActivityRow` body 里 `Image(systemName:)` 在 `running && !display.isFailure` 时替换为 `ProgressView().controlSize(.small).scaleEffect(0.6)`（16x16 旋转 spinner）。
-
-测试：3117 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.190/Tapgo-AICoding-0.5.190.zip" length="12198974" type="application/octet-stream" sparkle:edSignature="dtRLm67FF1nUYlHakQSD255gJSkG9b4pUX8veNvbYSjY4AkRWTYWisyOqMdPHejZpPncPETH8p4dkWEUEet3CA=="/>
-        </item>
-        <item>
-            <title>0.5.189</title>
-            <pubDate>Tue, 08 Sep 2026 23:24:54 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.189</link>
-            <sparkle:version>0.5.189</sparkle:version>
-            <sparkle:shortVersionString>0.5.189</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.189
-
-## streaming 时显示闪烁光标（对齐 Codex 桌面端）
-
-`MarkdownMessageView` 有 `isStreaming` 参数但 body 里没实现光标闪烁。Codex 桌面端 streaming 时显示 0.5s 周期闪烁的"▍"光标，v0.5.189 让 Tapgo 跟上。
-
-- `Sources/TapgoAICoding/Views/MarkdownMessageView.swift`:
-  - body 末尾加 `.overlay(alignment: .bottomLeading)` + `if isStreaming { StreamingCursor() }`
-  - 新增 `StreamingCursor` View：TimelineView(.periodic 0.5s) 切换"▍"光标的 opacity（用 `timeIntervalSince1970.truncatingRemainder(dividingBy: 1) < 0.5` 决定显隐）+ brand 色。
-
-测试：3117 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.189/Tapgo-AICoding-0.5.189.zip" length="12195564" type="application/octet-stream" sparkle:edSignature="5tgw+MO2nEez/hujK5HSV/gkCScHhG8HzQDPpAfKXOpnYt8qNS+2iagEgstjtIzNZpj+7V0SZ+J1wwFJEwLGBA=="/>
-        </item>
-        <item>
-            <title>0.5.188</title>
-            <pubDate>Tue, 08 Sep 2026 23:14:04 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.188</link>
-            <sparkle:version>0.5.188</sparkle:version>
-            <sparkle:shortVersionString>0.5.188</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.188
-
-## 运行中 work 过程 assistantMessage 改为紧凑单行可展开
-
-v0.5.187 让 running 时显示 work items 单行（对齐 Codex 桌面端），但 work 过程中的 assistantMessage（reasoning 提示文本）以完整 MarkdownMessageView 渲染——这是「重复显示」的来源之一（assistant 阶段性提示以完整 Markdown 展示，跟最终答案/其他 activity 重复）。
-
-- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
-  - 新增 `ConversationWorkAssistantRow` view：单行显示 assistantMessage 文本前 60 字 + 折叠箭头，点击展开完整 Markdown。
-  - `ConversationWorkDisclosure.expanded` 里 `.item(.assistantMessage)` 改用 `ConversationWorkAssistantRow` 替代 `MarkdownMessageView`。
-
-效果：运行中每条 work item 都是紧凑单行（包括 assistant 阶段性提示），用户点击展开查看完整内容，跟 Codex 桌面端 UI 行为一致。
-
-测试：3117 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.188/Tapgo-AICoding-0.5.188.zip" length="12191574" type="application/octet-stream" sparkle:edSignature="Ww/3DPlfFJk/ddaZ+nH60qzA9Iy8waaceF83siPvu7y9Cf0J7k5/nnXH+osBFVQA2JFq675zRlGoSxRxtdwgBA=="/>
         </item>
     </channel>
 </rss>
