@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.160</title>
+            <pubDate>Tue, 08 Sep 2026 10:53:10 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.160</link>
+            <sparkle:version>0.5.160</sparkle:version>
+            <sparkle:shortVersionString>0.5.160</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.160
+
+## NewTaskView actionCard 加 hover 反馈
+
+之前 NewTaskView 的"本地/远程/快速"3 个 actionCard 是 plain button，无 hover 视觉反馈，用户不知道是可点的。Codex 桌面端的类似选择 card 在 hover 时有边框/背景变化。
+
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - `actionCard` 加 `@State var hovering` + `.onHover { hovering = $0 }`。
+  - hover 时背景从 `DSHTheme.surfaceRaised` 改为 `DSHTheme.interactiveHover`，并加 1.5pt 边框（用 icon color 40% opacity）提示可点。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.160/Tapgo-AICoding-0.5.160.zip" length="12147989" type="application/octet-stream" sparkle:edSignature="KLXnNtK3sH2M2/1OgBtf1Tuykvv6slTs7vFudPNjNgb2JFRh3qfRW0nmW4Ud1KxkU0KRUbx3X9UpWpZo38XECw=="/>
+        </item>
+        <item>
             <title>0.5.159</title>
             <pubDate>Tue, 08 Sep 2026 10:48:08 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.159</link>
@@ -47,30 +69,6 @@ v0.5.157 让"计划模式"项显示当前 planMode 状态。"目标"项之前也
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.158/Tapgo-AICoding-0.5.158.zip" length="12145390" type="application/octet-stream" sparkle:edSignature="uwcFYd5rEyooBSRBDweQle5auyLqIzTKwwCHabxkvWBHG0gXmCRh4smaAjk+jbWDalMPQTisH2DHip0tcMPjDg=="/>
-        </item>
-        <item>
-            <title>0.5.157</title>
-            <pubDate>Tue, 08 Sep 2026 10:32:20 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.157</link>
-            <sparkle:version>0.5.157</sparkle:version>
-            <sparkle:shortVersionString>0.5.157</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.157
-
-## + 菜单"计划模式"项显示当前状态（已开启时 ✓ + 文案）
-
-之前 + 菜单的"计划模式"项跟其他项一样（仅文字+图标），无法看出当前 plan mode 是否已开启。Codex 桌面端的 plan mode toggle 菜单项会显示当前状态。
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - "计划模式"项从 `addMenuItems` 静态数组拿出来，单独在 `composerAddMenu` 里渲染。
-  - plan mode 关闭时：`lightbulb` icon + "计划模式" + "启用计划模式：下一条消息只给方案不执行工具" 副文。
-  - plan mode 开启时：`checkmark.circle.fill` icon + "计划模式（已开启）" + "下一条消息会让 Codex 先出方案不执行工具" 副文。
-  - 点击仍然 `planningMode.toggle()`（与之前 .togglePlanMode 行为一致）。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.157/Tapgo-AICoding-0.5.157.zip" length="12142480" type="application/octet-stream" sparkle:edSignature="xqqKNpJYIUt7HcdaE/7PlhKBZmTCnYT7+oYElqQZpUsaD7VnVvVJT9enAKiuizmslkQQLXDUr1itrEDRhYkAAg=="/>
         </item>
     </channel>
 </rss>
