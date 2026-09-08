@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.190</title>
+            <pubDate>Tue, 08 Sep 2026 23:31:12 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.190</link>
+            <sparkle:version>0.5.190</sparkle:version>
+            <sparkle:shortVersionString>0.5.190</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.190
+
+## ConversationActivityRow running 时显示 spinner
+
+`ConversationActivityRow` 在 running 时显示静态 `Image(systemName:)` icon，user 不知道是真正执行中还是已经停了。Codex 桌面端 running 状态显示旋转的 spinner。
+
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - `ConversationActivityRow` body 里 `Image(systemName:)` 在 `running && !display.isFailure` 时替换为 `ProgressView().controlSize(.small).scaleEffect(0.6)`（16x16 旋转 spinner）。
+
+测试：3117 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.190/Tapgo-AICoding-0.5.190.zip" length="12198974" type="application/octet-stream" sparkle:edSignature="dtRLm67FF1nUYlHakQSD255gJSkG9b4pUX8veNvbYSjY4AkRWTYWisyOqMdPHejZpPncPETH8p4dkWEUEet3CA=="/>
+        </item>
+        <item>
             <title>0.5.189</title>
             <pubDate>Tue, 08 Sep 2026 23:24:54 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.189</link>
@@ -47,27 +68,6 @@ v0.5.187 让 running 时显示 work items 单行（对齐 Codex 桌面端），�
 测试：3117 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.188/Tapgo-AICoding-0.5.188.zip" length="12191574" type="application/octet-stream" sparkle:edSignature="Ww/3DPlfFJk/ddaZ+nH60qzA9Iy8waaceF83siPvu7y9Cf0J7k5/nnXH+osBFVQA2JFq675zRlGoSxRxtdwgBA=="/>
-        </item>
-        <item>
-            <title>0.5.187</title>
-            <pubDate>Tue, 08 Sep 2026 22:46:28 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.187</link>
-            <sparkle:version>0.5.187</sparkle:version>
-            <sparkle:shortVersionString>0.5.187</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.187
-
-## NewTaskView preselectedHint 标题"将在以下项目创建任务"加 .bold
-
-v0.5.171 加的 preselectedHint 标题"将在以下项目创建任务"是 .caption + .secondary 普通字重，在 accent 边框浅蓝背景里不够显眼。改加 .bold 让标题更突出。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - preselectedHint 标题"将在以下项目创建任务"加 `.bold()`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.187/Tapgo-AICoding-0.5.187.zip" length="12185426" type="application/octet-stream" sparkle:edSignature="UWy8WmYritlpgifuUveQqVlXjwhOORKzGZ5vsaVCWJAqIKKM3k6a6EujKI3X7XI60swT2zaxWJEAikkJh2wpAA=="/>
         </item>
     </channel>
 </rss>
