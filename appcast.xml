@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.169</title>
+            <pubDate>Tue, 08 Sep 2026 11:50:36 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.169</link>
+            <sparkle:version>0.5.169</sparkle:version>
+            <sparkle:shortVersionString>0.5.169</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.169
+
+## Sidebar thread item 右键菜单加"在 Finder 中显示附件"
+
+之前 sidebar thread item 右键菜单只有"打开项目目录"（仅本地 project）和"复制/置顶/删除"等。user 想知道 thread 的图片附件存哪了，但找不到入口。加"在 Finder 中显示附件"——打开 `~/Library/Application Support/Tapgo AICoding/codex/attachments/<threadId>/` 目录。
+
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - `contextMenu(for: Thread)` 加"在 Finder 中显示附件" Button（paperclip icon）。
+  - 加 `openThreadAttachmentsDir(_:)` helper：目录存在时 NSWorkspace.open；不存在时弹 NSAlert 提示"该会话尚未保存任何图片附件"（不静默失败）。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.169/Tapgo-AICoding-0.5.169.zip" length="12155817" type="application/octet-stream" sparkle:edSignature="XqGorjoMlY3+5oaxD9eAWXpWReXyMCbpfDJa+qTmIX/BlAILIb3m3sRdytIqgtAdKlQR9Nuo+EbG2DPTNDibDg=="/>
+        </item>
+        <item>
             <title>0.5.168</title>
             <pubDate>Tue, 08 Sep 2026 11:42:25 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.168</link>
@@ -43,28 +65,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.167/Tapgo-AICoding-0.5.167.zip" length="12154826" type="application/octet-stream" sparkle:edSignature="VhzCxkY8lRGnugfHjWThE44J4Cj/w3Jlvegz6TJIGscPLdPE5zxclRme8VUeq5aNPsrGqy0F7pGQ7gxsbRnVBg=="/>
-        </item>
-        <item>
-            <title>0.5.166</title>
-            <pubDate>Tue, 08 Sep 2026 11:30:30 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.166</link>
-            <sparkle:version>0.5.166</sparkle:version>
-            <sparkle:shortVersionString>0.5.166</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.166
-
-## NewTaskView action card 文案精简（"本地文件夹 / 远程项目 / 快速任务"）
-
-之前 NewTaskView 3 个 action card 标题："本地文件夹 / 远程项目 / 快速任务 (无项目)" — 标题过长，挤在 card 里。精简为"本地项目 / 远程项目 / 快速任务"，ChatView 上下文已经清楚是项目。Hint 文案"快速任务 (无项目)"保持不变（hint 在 card 下面，有空间展示完整）。
-
-- `Sources/TapgoAICoding/Resources/L10n.swift`:
-  - `localFolder`: "本地文件夹" → "本地项目"
-  - `quickNoProject`: "快速任务 (无项目)" → "快速任务"
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.166/Tapgo-AICoding-0.5.166.zip" length="12154567" type="application/octet-stream" sparkle:edSignature="u2wLl4V4aW78PWAWQRHCMwAF1KyLAPsqSq/+BeDb1fjc2V0AvgThh/7MjfV3EJnTu2F8A+yfVXI+HDLTtQW3Cg=="/>
         </item>
     </channel>
 </rss>
