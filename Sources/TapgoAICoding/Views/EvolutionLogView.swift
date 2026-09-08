@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.183", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.183",
+                    summary: "NewTaskView 快速任务副文在 preselectedProject 时改\"在 X 项目中创建临时对话\"。",
+                    changes: ["副文 if/else：有 preselectedProject 时改"在 X 项目中创建临时对话"。"],
+                    why: "v0.5.171-174 改了 action card 标题但副文仍说\"不绑定项目\"，跟新行为矛盾。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.182", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.182",
                     summary: "Sidebar 重命名从 alert 改 sheet（TextField focus 可靠工作）。",
                     changes: ["重命名从 .alert 改 .sheet + 新 renameSheet view。", "renameSheet roundedBorder TextField + .focused + .onSubmit。", "commitRename() helper 共享提交逻辑。"],

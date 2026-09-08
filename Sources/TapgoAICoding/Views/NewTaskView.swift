@@ -196,9 +196,16 @@ struct NewTaskView: View {
                     dismiss()
                 }
             }
-            Text(L10n.quickNoProjectHint)
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(.secondary)
+            // v0.5.183: 有 preselectedProject 时副文改"在 X 项目中创建临时对话"。
+            if let p = preselectedOverride ?? preselectedProject {
+                Text("在 “\(p.displayName)” 中创建临时对话")
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(L10n.quickNoProjectHint)
+                    .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+            }
         }
         .accessibilityElement(children: .contain)
     }

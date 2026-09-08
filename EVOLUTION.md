@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.183 — fix(ui): NewTaskView 快速任务副文在 preselectedProject 时改"在 X 项目中创建临时对话"
+**Date**: 2026-09-08
+**Tag**: v0.5.183
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 副文 if/else：有 preselectedProject 时显示"在 X 项目中创建临时对话"，无时显示 L10n.quickNoProjectHint。
+**Why**: v0.5.171-174 改了"快速任务"action card 标题但副文仍说"不绑定项目"，跟新行为矛盾。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.182 — fix(ui): Sidebar 重命名从 alert 改 sheet（TextField focus 可靠工作）
 **Date**: 2026-09-08
 **Tag**: v0.5.182
