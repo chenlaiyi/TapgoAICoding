@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.166", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.166",
+                    summary: "NewTaskView action card 文案精简。",
+                    changes: ["localFolder: 本地文件夹 → 本地项目。", "quickNoProject: 快速任务 (无项目) → 快速任务。"],
+                    why: "之前 card 标题过长挤在 card 里。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.165", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.165",
                     summary: "ApprovalRow 拒绝按钮加 destructive role。",
                     changes: ["拒绝按钮加 Button(role: .destructive)。"],

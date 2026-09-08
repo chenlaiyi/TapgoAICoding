@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.166 — fix(ui): NewTaskView action card 文案精简
+**Date**: 2026-09-08
+**Tag**: v0.5.166
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Resources/L10n.swift`:
+  - `localFolder`: "本地文件夹" → "本地项目"
+  - `quickNoProject`: "快速任务 (无项目)" → "快速任务"
+**Why**: 之前 card 标题过长挤在 card 里。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.165 — fix(ui): ApprovalRow 拒绝按钮加 destructive role
 **Date**: 2026-09-08
 **Tag**: v0.5.165

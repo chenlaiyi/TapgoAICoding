@@ -44,9 +44,11 @@ enum L10n {
     // MARK: - New task
     static let newTaskTitle = "新任务"
     static let newTaskChooseProject = "为新任务选择项目"
-    static let localFolder = "本地文件夹"
+    // v0.5.166: action card 文案精简 — "本地项目 / 远程项目 / 快速任务 (无项目)"
+    // 太长，让 card title 挤。"本地"和"远程"在 ChatView 上下文已经清楚是项目。
+    static let localFolder = "本地项目"
     static let remoteProject = "远程项目"
-    static let quickNoProject = "快速任务 (无项目)"
+    static let quickNoProject = "快速任务"
     static let quickNoProjectHint = "不绑定项目,仅作为临时对话"
     static let recentProjects = "最近项目"
     static let noRecentProjects = "没有最近项目"
