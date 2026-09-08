@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.161 — fix(ui): v0.5.160 hover 反馈无效（@State in func 被忽略）
+**Date**: 2026-09-08
+**Tag**: v0.5.161
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 把 `actionCard` 函数改成 `ActionCard` View struct， `@State var hovering` 写在 struct 属性里。
+**Why**: v0.5.160 在普通函数里声明 `@State` 被编译器忽略，hover 反馈不工作。SwiftUI PropertyWrapper 必须放在 View struct 属性里。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.160 — feat(ui): NewTaskView actionCard 加 hover 反馈
 **Date**: 2026-09-08
 **Tag**: v0.5.160

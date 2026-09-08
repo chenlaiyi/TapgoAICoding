@@ -179,28 +179,40 @@ struct NewTaskView: View {
         title: String, system: String, color: Color,
         action: @escaping () -> Void
     ) -> some View {
-        @State var hovering = false
-        return Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: system)
-                    .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+        ActionCard(title: title, system: system, color: color, action: action)
+    }
+
+    // v0.5.161 修：v0.5.160 把 @State 放在 func 里（编译器忽略，导致 hover 反馈不工作）。
+    // 把 actionCard 改成 View struct，@State 写在 struct 属性里才能正确持有。
+    private struct ActionCard: View {
+        let title: String
+        let system: String
+        let color: Color
+        let action: () -> Void
+        @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+        @State private var hovering = false
+        var body: some View {
+            Button(action: action) {
+                VStack(spacing: 6) {
+                    Image(systemName: system)
+                        .font(AppFont.scaled(.title2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(color)
+                    Text(title)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                }
+                .frame(maxWidth: .infinity, minHeight: 80)
+                .background(
+                    hovering ? DSHTheme.interactiveHover : DSHTheme.surfaceRaised,
+                    in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
+                        .stroke(hovering ? color.opacity(0.4) : .clear, lineWidth: 1.5)
+                )
             }
-            .frame(maxWidth: .infinity, minHeight: 80)
-            // v0.5.160: hover 时背景更深 + 加 border 提示可点。
-            .background(
-                hovering ? DSHTheme.interactiveHover : DSHTheme.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: DSHTheme.radiusCard))
-            .overlay(
-                RoundedRectangle(cornerRadius: DSHTheme.radiusCard)
-                    .stroke(hovering ? color.opacity(0.4) : .clear, lineWidth: 1.5)
-            )
+            .buttonStyle(.plain)
+            .onHover { hovering = $0 }
+            .accessibilityLabel(title)
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .accessibilityLabel(title)
     }
 
     // MARK: - Local pick

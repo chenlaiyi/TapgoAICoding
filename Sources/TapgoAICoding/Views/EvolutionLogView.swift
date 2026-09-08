@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.161", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.161",
+                    summary: "v0.5.160 hover 反馈无效（@State in func 被忽略）",
+                    changes: ["把 actionCard 函数改成 ActionCard View struct，@State 写在 struct 属性里。"],
+                    why: "v0.5.160 在普通函数里声明 @State 被编译器忽略。SwiftUI PropertyWrapper 必须放在 View struct 属性里。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.160", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.160",
                     summary: "NewTaskView actionCard 加 hover 反馈。",
                     changes: ["actionCard 加 @State var hovering + .onHover。", "hover 背景 + 边框提示可点。"],
