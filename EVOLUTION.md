@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.159 — refactor: 清理 AddMenuAction.togglePlanMode dead code
+**Date**: 2026-09-08
+**Tag**: v0.5.159
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `AddMenuAction` enum 移除 `.togglePlanMode` case（v0.5.157 改用直接 `planningMode.toggle()`）。
+  - `runAddMenuAction` switch 移除对应分支。
+**Why**: dead code 清理，保持 enum 简洁。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.158 — feat(ui): + 菜单"目标"项显示当前 goal 状态
 **Date**: 2026-09-08
 **Tag**: v0.5.158

@@ -1171,7 +1171,6 @@ struct ComposerView: View {
         case attachFiles
         case attachTapgoProject
         case setGoal
-        case togglePlanMode
         case openRecordSkillSettings
         case insertSkill(String)
         case insertPlugin(name: String, detail: String)
@@ -1327,8 +1326,6 @@ struct ComposerView: View {
         case .setGoal:
             editingGoalItem = GoalEditItem(text: store.liveThreads
                 .first(where: { $0.id == store.activeThreadId })?.goal ?? "")
-        case .togglePlanMode:
-            planningMode.toggle()
         case .openRecordSkillSettings:
             NotificationCenter.default.post(
                 name: .tapgoRequestOpenSettings,

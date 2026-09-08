@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.159", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.159",
+                    summary: "清理 AddMenuAction.togglePlanMode dead code。",
+                    changes: ["AddMenuAction enum 移除 .togglePlanMode case。", "runAddMenuAction switch 移除对应分支。"],
+                    why: "v0.5.157 改用直接 planningMode.toggle()，原 enum case 变 dead code。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.158", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.158",
                     summary: "+ 菜单\"目标\"项显示当前 goal 状态。",
                     changes: ["目标项从 addMenuItems 数组拿出来单独渲染，根据 activeThreadGoal 显示不同 icon + 文案。", "无 goal 时 target；有 goal 时 target.fill + \"目标（已设置）\" + 当前目标摘要。"],
