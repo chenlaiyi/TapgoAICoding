@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.147</title>
+            <pubDate>Tue, 08 Sep 2026 08:09:01 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.147</link>
+            <sparkle:version>0.5.147</sparkle:version>
+            <sparkle:shortVersionString>0.5.147</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.147
+
+## Codex app-server enabledMcpServers 协议层集成（plugin 真激活）
+
+- `Sources/TapgoAICoding/Services/CodexHarnessClient.swift`:
+  - `run(...)` 加 `enabledMcpServers: [String] = []` 参数；`threadRuntimeParams` 接收并在 params 里附加 `enabledMcpServers`（`.array(...)`）。`startThread` 和 thread/resume 两个调用点都透传。
+- `Sources/TapgoAICoding/Services/SessionStore.swift`:
+  - `QueuedMessage` 加 `var enabledMcpServers: [String] = []`，drain 排队消息保留原 enabledMcpServers。
+  - `sendUserMessage(_:planMode:enabledMcpServers:)` / `sendNow(_:images:threadId:planMode:enabledMcpServers:)` 透传到 `newRunner.run(planMode:enabledMcpServers:)`。
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `send()` 加 `enabledMcpServersFromText(_:)` helper：扫 composer 文本里的 `@DisplayName`，跟 `pluginCatalogEntries.displayName`（小写不敏感）匹配，命中的 `installSpecifier` 收集后传给 store。
+  - 效果：用户在 composer 输入 `@GitHub 列出我的 PR`，`send` 时 harness 的 thread-level `enabledMcpServers` 会附加 `["github"]`，harness 真激活 GitHub MCP server 并能调对应 tool。
+
+**为什么不是 turn-level**：Codex app-server 协议里 `enabledMcpServers` 是 thread-level 字段（thread/start / thread/resume 接受），turn-level 不接受。每次 send 都重新设 thread-level 启用列表，harness 会按当前 thread 状态决定。
+
+测试：3116 passed / 13 failed（与 v0.5.144/146 baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.147/Tapgo-AICoding-0.5.147.zip" length="12138091" type="application/octet-stream" sparkle:edSignature="4QSupxUzK+eJv2t79ZD4hzAXxC1EAf14JmoVNEedcLgsvp1oTL20zlzvF6FYz642copIS44/pE1Hq8vzcSxaAw=="/>
+        </item>
+        <item>
             <title>0.5.146</title>
             <pubDate>Tue, 08 Sep 2026 08:02:47 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.146</link>
@@ -61,33 +88,6 @@
 测试：3116 passed / 13 failed（比 baseline 3117/12 多 1 个 SSH 网络性 fail，与改动无关）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.144/Tapgo-AICoding-0.5.144.zip" length="12143494" type="application/octet-stream" sparkle:edSignature="0dqIffFdsfo3cT+ky9cUy/xETTvC31oZfsjUtCNeoQPDdQVFXQ1Om2JxCyVmb2kfVG1SJOTQCFDDI/Fc1IV+CA=="/>
-        </item>
-        <item>
-            <title>0.5.143</title>
-            <pubDate>Tue, 08 Sep 2026 07:45:31 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.143</link>
-            <sparkle:version>0.5.143</sparkle:version>
-            <sparkle:shortVersionString>0.5.143</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.143
-
-## Plan mode 与 harness 协议深度集成（turn-level policy 覆盖）
-
-- `Sources/TapgoAICoding/Services/CodexHarnessClient.swift`:
-  - `run(...)` 加 `planMode: Bool = false` 参数。
-  - plan mode 时 turn/start 在 params 里附加 `approvalPolicy: "on-request"` + `sandbox: "read-only"`，让 harness 在每个工具调用前停下来等用户批准（thread 级策略不动，下次 send 关闭 plan mode 自动恢复）。
-- `Sources/TapgoAICoding/Services/SessionStore.swift`:
-  - `QueuedMessage` 加 `var planMode: Bool = false`，drain 排队消息时保留原 plan mode。
-  - `sendUserMessage(_:planMode:)` / `sendNow(_:images:threadId:planMode:)` 透传 planMode 到 `newRunner.run(planMode:)`。
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `send()` 调用 `store.sendUserMessage(payload, planMode: planningMode)`，文本前缀 + 协议层双重生效。
-
-效果：v0.5.141 之前 Plan mode 是文本层 hack（消息前缀 `[计划模式] 请先给方案...`），依赖模型本身听话。v0.5.143 在 harness 协议层强制 read-only + 每次工具调用前询问，harness 行为跨 Codex app-server 版本一致；同时配合现有 `ApprovalRow` UI（v0.4.1+ 已接通），用户在聊天里接受 plan 后才允许工具继续。
-
-测试：3117 passed / 12 failed（基线一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.143/Tapgo-AICoding-0.5.143.zip" length="12143117" type="application/octet-stream" sparkle:edSignature="n1kGcuiUUkTU8e/I24yNw2KXE1Ix2QOzp6Y2PS7Pj8sGocaGmjmzP6VrkQnmsha9JE3NuDBShxB9MbY4VdInCQ=="/>
         </item>
     </channel>
 </rss>
