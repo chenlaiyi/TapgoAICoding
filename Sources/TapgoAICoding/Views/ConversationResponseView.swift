@@ -11,9 +11,12 @@ struct ConversationResponseView<Notices: View>: View {
     private var running: Bool { turn.status == .running || turn.status == .pending }
     var body: some View {
         let presentation = TurnResponsePresentation(turn)
-        let work = ConversationPresentation.workItems(presentation, showWorkProcess: showWorkProcess)
+        // v0.5.187: 运行中始终显示 work items 单行（对齐 codex 桌面端），
+        // 完成后由 showWorkProcess 决定是否展开。
+        let showWork = showWorkProcess || running
+        let work = showWork ? presentation.work : []
         VStack(alignment: .leading, spacing: 16) {
-            if showWorkProcess {
+            if showWork {
                 if let progress = TurnProgressSummary(turn: turn) {
                     TaskPlanCard(progress: progress, status: turn.status)
                 }

@@ -855,7 +855,7 @@ struct SidebarView: View {
             parts = ["MiniMax", TapgoConfig.planDisplayName]
         case .glm53Flash:
             parts = ["GLM", snapshot?.planLabel ?? "Coding Plan"]
-        case .deepSeekV4Flash, .deepSeekV4Pro:
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp:
             parts = ["DeepSeek"]
             if let credits = snapshot?.credits, credits.isVisible, !credits.balance.isEmpty {
                 parts.append("余额 \(credits.balance)")

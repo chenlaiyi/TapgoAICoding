@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.187 — feat(ui): NewTaskView preselectedHint 标题加 .bold
+**Date**: 2026-09-08
+**Tag**: v0.5.187
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - preselectedHint 标题"将在以下项目创建任务"加 `.bold()`。
+**Why**: 之前 .caption + .secondary 普通字重在 accent 边框浅蓝背景里不够显眼。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.186 — feat(ui): Sidebar project group header + 按钮加 ⌘N 快捷键
 **Date**: 2026-09-08
 **Tag**: v0.5.186

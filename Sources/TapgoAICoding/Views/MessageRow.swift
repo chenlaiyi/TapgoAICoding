@@ -332,6 +332,8 @@ private struct UserMessageThumbnail: View {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
+                    // v0.5.187: 加固定高度避免 ScrollView(.horizontal) 高度塌陷导致图片不可见。
+                    .frame(height: 120)
                     .accessibilityLabel("已发送图片 \(URL(fileURLWithPath: path).lastPathComponent)")
             } else {
                 VStack(spacing: 4) {

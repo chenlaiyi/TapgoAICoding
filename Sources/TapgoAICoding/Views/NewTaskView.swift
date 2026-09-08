@@ -89,8 +89,10 @@ struct NewTaskView: View {
                     .foregroundStyle(.blue)
                     .frame(width: 18)
                 VStack(alignment: .leading, spacing: 0) {
+                    // v0.5.187: 标题加 .bold 让 preselectedHint 标题更显眼。
                     Text("将在以下项目创建任务")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .bold()
                         .foregroundStyle(.secondary)
                     Text(p.displayName)
                         .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
