@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.151</title>
+            <pubDate>Tue, 08 Sep 2026 09:57:29 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.151</link>
+            <sparkle:version>0.5.151</sparkle:version>
+            <sparkle:shortVersionString>0.5.151</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.151
+
+## 修复：PlanModeBanner X 按钮 accessibilityLabel 与实际行为一致
+
+v0.5.149 让 X 按钮始终 `planningMode = false`（关 plan mode 本身），但 accessibilityLabel 仍是 "关闭 Plan mode 提示"（关 banner 提示），不准。同步加 help tooltip。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner` X 按钮 `.accessibilityLabel` 从 `"关闭 Plan mode 提示"` 改为 `"关闭 Plan mode"`，与 v0.5.149 行为一致。
+  - 新增 `.help("关闭 Plan mode")` tooltip。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.151/Tapgo-AICoding-0.5.151.zip" length="12139512" type="application/octet-stream" sparkle:edSignature="pbORE1N6fD2YH2srAZWlJL4W2J6QAYYyPiBPVuUt9kBK+cAtTuGVZFux0+vMv1PN94AZg7z3pmNqFlCc/1eZBQ=="/>
+        </item>
+        <item>
             <title>0.5.150</title>
             <pubDate>Tue, 08 Sep 2026 09:50:38 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.150</link>
@@ -44,27 +66,6 @@ v0.5.141 加 `planModePersistent` 常驻模式时引入的 bug：banner X 按钮
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.149/Tapgo-AICoding-0.5.149.zip" length="12138507" type="application/octet-stream" sparkle:edSignature="bJmCR5/EzdVDs6RisM3qJnqMxUhcQekun20ml67uMLcRsa6dA6fFIXt2zQJEGjpKintbXZSlZpASziaeT2CGDw=="/>
-        </item>
-        <item>
-            <title>0.5.148</title>
-            <pubDate>Tue, 08 Sep 2026 08:14:20 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.148</link>
-            <sparkle:version>0.5.148</sparkle:version>
-            <sparkle:shortVersionString>0.5.148</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.148
-
-## Composer placeholder 文案对齐 Codex 桌面端
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `composerPlaceholder` 默认文案 `"随心输入"` → `"发消息 / 添加文件 / @ 插件"`。
-  - 理由：Codex 桌面端 placeholder 是 "添加文件等内容 @ 人/项目" 提示 composer 能做什么。TapgoAICoding 不支持 @ 人/@ 项目 reference（仅支持 v0.5.147 接通的 @ 插件），所以 hint 改成"发消息 / 添加文件 / @ 插件"，更贴近实际能力。
-  - 自进化会话仍走特殊文案 `"向自进化下达本轮指令…"` 不变（v0.5.33 用户实测踩坑后加的覆盖逻辑）。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.148/Tapgo-AICoding-0.5.148.zip" length="12138487" type="application/octet-stream" sparkle:edSignature="yKfQPhTdQqBslacovKazKPgxVbDtusdNBaY7wTqIQfQYpDmXOwDZf7gmVcQnqiq1XN2jHVdQ2VTkzmrCuokuAA=="/>
         </item>
     </channel>
 </rss>
