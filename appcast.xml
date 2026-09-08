@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.157</title>
+            <pubDate>Tue, 08 Sep 2026 10:32:20 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.157</link>
+            <sparkle:version>0.5.157</sparkle:version>
+            <sparkle:shortVersionString>0.5.157</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.157
+
+## + 菜单"计划模式"项显示当前状态（已开启时 ✓ + 文案）
+
+之前 + 菜单的"计划模式"项跟其他项一样（仅文字+图标），无法看出当前 plan mode 是否已开启。Codex 桌面端的 plan mode toggle 菜单项会显示当前状态。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - "计划模式"项从 `addMenuItems` 静态数组拿出来，单独在 `composerAddMenu` 里渲染。
+  - plan mode 关闭时：`lightbulb` icon + "计划模式" + "启用计划模式：下一条消息只给方案不执行工具" 副文。
+  - plan mode 开启时：`checkmark.circle.fill` icon + "计划模式（已开启）" + "下一条消息会让 Codex 先出方案不执行工具" 副文。
+  - 点击仍然 `planningMode.toggle()`（与之前 .togglePlanMode 行为一致）。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.157/Tapgo-AICoding-0.5.157.zip" length="12142480" type="application/octet-stream" sparkle:edSignature="xqqKNpJYIUt7HcdaE/7PlhKBZmTCnYT7+oYElqQZpUsaD7VnVvVJT9enAKiuizmslkQQLXDUr1itrEDRhYkAAg=="/>
+        </item>
+        <item>
             <title>0.5.156</title>
             <pubDate>Tue, 08 Sep 2026 10:27:08 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.156</link>
@@ -43,27 +67,6 @@ v0.5.155 让 `onDismiss`（↩ 选命令 / X 按钮）关闭 palette 时 focus �
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.155/Tapgo-AICoding-0.5.155.zip" length="12140615" type="application/octet-stream" sparkle:edSignature="poU7ilTftjdgbK+IjT8dZUeWxyW2KMi8K+KX4oPzaSMVFrYmnzcdoZ6rNtNr2omkTLV2e7BbSof09VH+zX/ICA=="/>
-        </item>
-        <item>
-            <title>0.5.154</title>
-            <pubDate>Tue, 08 Sep 2026 10:13:16 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.154</link>
-            <sparkle:version>0.5.154</sparkle:version>
-            <sparkle:shortVersionString>0.5.154</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.154
-
-## SidebarTaskLabel failed 改用实心图标（与 awaiting approval 风格统一）
-
-v0.5.152-153 把 awaiting approval 改实心 + warn 色。failed 还是 outline（`exclamationmark.circle`），跟 awaiting approval 风格不一致。改用实心 `exclamationmark.circle.fill`。
-
-- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
-  - `SidebarTaskLabel` 的 `.failed` case icon 从 `exclamationmark.circle` → `exclamationmark.circle.fill`（实心）。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.154/Tapgo-AICoding-0.5.154.zip" length="12140428" type="application/octet-stream" sparkle:edSignature="pEPW2vPsrOY27FkjhyymKTUU2FKDjBnYME6Ko7MGT+fp/kGzhEbK+Q7g9aKton39ZTMst5Z/wxG+gQB9Ss1XDg=="/>
         </item>
     </channel>
 </rss>
