@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.150 — fix(ui): PlanModeBanner 副文精简 + 完整说明放 tooltip
+**Date**: 2026-09-08
+**Tag**: v0.5.150
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `PlanModeBanner` 副文从 28 字符精简到 10 字符，避免 banner 过高。
+  - 完整说明放 `.help(...)` tooltip（persistent vs single-shot 文案区分）。
+**Why**: 副文过长让 banner 占两行高度，视觉重心不集中。Codex 桌面端 banner 通常是极简短文本 + icon + 关闭按钮。
+**Next**: composer 输入框底部 chip 视觉对齐精修；或继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.149 — fix(ui): persistent 模式下 PlanModeBanner X 按钮不真 dismiss
 **Date**: 2026-09-08
 **Tag**: v0.5.149

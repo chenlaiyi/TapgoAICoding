@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.150", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.150",
+                    summary: "PlanModeBanner 副文精简 + 完整说明放 tooltip。",
+                    changes: ["副文从 28 字符精简到 10 字符。", "完整说明放 .help tooltip（persistent vs single-shot 文案区分）。"],
+                    why: "副文过长让 banner 占两行，视觉重心不集中。",
+                    next: "composer 底部 chip 视觉对齐精修；或继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.149", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.149",
                     summary: "修复 persistent 模式下 PlanModeBanner X 按钮不真 dismiss。",
                     changes: ["PlanModeBanner.onDismiss 改为始终 planningMode = false（v0.5.141 引入 bug：persistent=true 时跳过关闭）。"],

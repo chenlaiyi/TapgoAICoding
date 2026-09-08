@@ -3056,7 +3056,8 @@ struct PlanModeBanner: View {
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.white)
                 .bold()
-            Text("— 下一条消息会让 Codex 先出方案不执行工具")
+            // v0.5.150: 副文从 28 字符精简到 10 字符，避免 banner 过高。完整说明放 help tooltip。
+            Text("先出方案不执行工具")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.white.opacity(0.85))
             Spacer()
@@ -3075,5 +3076,9 @@ struct PlanModeBanner: View {
         // v0.5.144 修：之前用 brandPrimary（dark 模式下近白色），banner 变成白条。
         // brandPrimary 是「主前景色」不是品牌蓝。正确的蓝色是 brand。
         .background(DSHTheme.brand, in: RoundedRectangle(cornerRadius: 6))
+        // v0.5.150: 把完整说明放进 tooltip，避免 banner 文本过长。
+        .help(isPersistent
+              ? "Plan mode 常驻：所有消息都会让 Codex 先出方案不执行工具"
+              : "Plan mode：下一条消息会让 Codex 先出方案不执行工具")
     }
 }
