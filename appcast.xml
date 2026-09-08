@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.168</title>
+            <pubDate>Tue, 08 Sep 2026 11:42:25 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.168</link>
+            <sparkle:version>0.5.168</sparkle:version>
+            <sparkle:shortVersionString>0.5.168</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.168
+
+## + 菜单"附加 Tapgo AICoding"项副文精简
+
+之前副文"把当前项目文件夹挂载到会话上下文"（14 字）过长。精简为"挂载当前项目文件夹到会话"（10 字）。
+
+- `Sources/TapgoAICoding/Views/ChatView.swift`:
+  - `addMenuItems` "附加 Tapgo AICoding" 副文从 "把当前项目文件夹挂载到会话上下文" → "挂载当前项目文件夹到会话"。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.168/Tapgo-AICoding-0.5.168.zip" length="12154808" type="application/octet-stream" sparkle:edSignature="307TlFuhqqgT6MbLGYCwT4feS22HLlSWmrQeCJ2jf/tOSNqPj6tw6a6WSWlV9CxQEWqNy2DiJlze6j607x6oDw=="/>
+        </item>
+        <item>
             <title>0.5.167</title>
             <pubDate>Tue, 08 Sep 2026 11:35:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.167</link>
@@ -44,27 +65,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.166/Tapgo-AICoding-0.5.166.zip" length="12154567" type="application/octet-stream" sparkle:edSignature="u2wLl4V4aW78PWAWQRHCMwAF1KyLAPsqSq/+BeDb1fjc2V0AvgThh/7MjfV3EJnTu2F8A+yfVXI+HDLTtQW3Cg=="/>
-        </item>
-        <item>
-            <title>0.5.165</title>
-            <pubDate>Tue, 08 Sep 2026 11:19:13 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.165</link>
-            <sparkle:version>0.5.165</sparkle:version>
-            <sparkle:shortVersionString>0.5.165</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.165
-
-## ApprovalRow 拒绝按钮加 destructive role
-
-之前 ApprovalRow 拒绝按钮用 `.bordered` 普通样式，跟批准按钮区分不明显。按 macOS convention destructive action 用 `.destructive` role，让 VoiceOver 读出"破坏性"提示 + 系统给红色 accent 提示。
-
-- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
-  - 拒绝按钮加 `Button(role: .destructive)` 让 macOS 标记为 destructive action。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.165/Tapgo-AICoding-0.5.165.zip" length="12154434" type="application/octet-stream" sparkle:edSignature="7RvSG9z8O9AkTx/rDJzcj8XX/18yVHRIZZCBzdvNoGcSGHxl0AJfrJrBJo5euq9kqBLykC1GmJloEwU0bMbfBw=="/>
         </item>
     </channel>
 </rss>
