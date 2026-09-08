@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.172 — feat(ui): NewTaskView preselectedHint 加 X 按钮让 user 取消预选
+**Date**: 2026-09-08
+**Tag**: v0.5.172
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - `var preselectedProject` → `let preselectedProject`（caller 设）。
+  - 加 `@State var preselectedOverride: Project?` 本地覆盖。
+  - `preselectedHint` 显示 `override ?? preselected` + X 按钮设 override = nil。
+**Why**: v0.5.171 预选提示 user 无法取消。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.171 — feat(ui): NewTaskView 接 preselectedProject 参数（sidebar + 按钮预选 active project）
 **Date**: 2026-09-08
 **Tag**: v0.5.171

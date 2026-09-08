@@ -14,7 +14,10 @@ struct NewTaskView: View {
     /// Called with the selected project (or nil for quick).
     let onCreate: (Project?) -> Void
     /// v0.5.171: 从 sidebar 项目组 + 按钮进入时预选 active project。nil = 不预选（user 自己选）。
-    var preselectedProject: Project? = nil
+    /// v0.5.172: 改为 let（caller 设），user 取消预选走下面的 @State override。
+    let preselectedProject: Project?
+    /// v0.5.172: 本地可写覆盖 — user 在 preselectedHint 点 X 取消预选。
+    @State private var preselectedOverride: Project?
 
     @State private var showLocalPicker = false
     @State private var error: String?
@@ -29,7 +32,7 @@ struct NewTaskView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     primaryActions
-                    if preselectedProject != nil {
+                    if preselectedOverride ?? preselectedProject != nil {
                         preselectedHint
                     }
                     Divider()
@@ -74,8 +77,9 @@ struct NewTaskView: View {
 
     @ViewBuilder
     /// v0.5.171: 预选提示 — 从 sidebar + 按钮进入时显示当前 project 让 user 确认。
+    /// v0.5.172: 改用 preselectedOverride 允许 user 点 X 取消预选。
     private var preselectedHint: some View {
-        if let p = preselectedProject {
+        if let p = preselectedOverride ?? preselectedProject {
             HStack(spacing: 8) {
                 Image(systemName: p.isRemote ? "globe" : "folder")
                     .foregroundStyle(.blue)
@@ -90,6 +94,15 @@ struct NewTaskView: View {
                         .lineLimit(1)
                 }
                 Spacer()
+                // v0.5.172: 点 X 取消预选（让 user 走 NewTaskView 默认行为）
+                Button {
+                    preselectedOverride = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("取消预选项目")
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
