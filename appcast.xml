@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.185</title>
+            <pubDate>Tue, 08 Sep 2026 13:22:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.185</link>
+            <sparkle:version>0.5.185</sparkle:version>
+            <sparkle:shortVersionString>0.5.185</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.185
+
+## ApprovalRow 拒绝按钮加 ⌘⌫ 快捷键
+
+之前 ApprovalRow 拒绝按钮只能鼠标点（v0.5.176 加了 Return 批准，⌘⌫ 拒绝缺）。加 `.keyboardShortcut(.delete, modifiers: .command)` 让 ⌘⌫ 触发拒绝——macOS destructive action 标准快捷键。
+
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 拒绝按钮加 `.keyboardShortcut(.delete, modifiers: .command)`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.185/Tapgo-AICoding-0.5.185.zip" length="12183726" type="application/octet-stream" sparkle:edSignature="BEKq/lZsABEkoH63rrngtVDhtGnUSHoDa5RjrzHjogHhM7tleJfkVKntNN2Fw0Krkv66dngZaPqjLlykkwFaBw=="/>
+        </item>
+        <item>
             <title>0.5.184</title>
             <pubDate>Tue, 08 Sep 2026 13:17:41 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.184</link>
@@ -43,29 +64,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.183/Tapgo-AICoding-0.5.183.zip" length="12182889" type="application/octet-stream" sparkle:edSignature="xd0Mfexk6fDuWO4+eB/jKPGSKrG1wCd0AjwVTSpSikmKoSJ8ZrjFcEheG3rw60a4Q5ymPaybDW+/YRz4qOueDQ=="/>
-        </item>
-        <item>
-            <title>0.5.182</title>
-            <pubDate>Tue, 08 Sep 2026 13:06:00 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.182</link>
-            <sparkle:version>0.5.182</sparkle:version>
-            <sparkle:shortVersionString>0.5.182</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.182
-
-## Sidebar 重命名从 alert 改 sheet（TextField focus 可靠工作）
-
-v0.5.170 加 rename alert TextField focus，但 SwiftUI 14+ alert 是 native NSAlert，TextField `.focused()` 行为有限制——focus 可能不工作。改用 sheet 让 SwiftUI 完整渲染 TextField，focus 可靠。
-
-- `Sources/TapgoAICoding/Views/SidebarView.swift`:
-  - 重命名从 `.alert(...)` 改 `.sheet(isPresented:)` + 新的 `renameSheet` view。
-  - `renameSheet`：360pt 宽 VStack，含标题"重命名会话"、roundedBorder TextField（`.focused($renameFocused)` + `.onSubmit(commitRename)`）、取消/确定按钮（确定用 `.buttonStyle(.borderedProminent)` + `.keyboardShortcut(.defaultAction)`）。
-  - 加 `commitRename()` helper（onSubmit + 确定按钮共享逻辑）。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.182/Tapgo-AICoding-0.5.182.zip" length="12181827" type="application/octet-stream" sparkle:edSignature="oPjmQDn+yJ2KOlmCoLFkHPSlmeurf8/AO2mD61EkX5+h/bHdFtg0REItml+6QGdowKJq04gJ1py9Emp56bJUDw=="/>
         </item>
     </channel>
 </rss>
