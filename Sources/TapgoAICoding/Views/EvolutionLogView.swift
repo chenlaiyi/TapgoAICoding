@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.179", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.179",
+                    summary: "NewTaskView 打开时焦点默认在 footer 取消按钮。",
+                    changes: ["加 @FocusState cancelFocused + footer 取消按钮 .focused() + body .onAppear 触发。"],
+                    why: "之前默认 focus 在本地项目 action card，按 Enter 立即触发 NSOpenPanel。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.178", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.178",
                     summary: "Sidebar project group header + 和 more 按钮 opacity 0.25 → 0.6。",
                     changes: ["project group header 的 + 按钮和 projectMoreMenu opacity 0.25 → 0.6。"],

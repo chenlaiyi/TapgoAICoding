@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.179 — fix(ui): NewTaskView 打开时焦点默认在 footer 取消按钮
+**Date**: 2026-09-08
+**Tag**: v0.5.179
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 加 `@FocusState cancelFocused` + footer 取消按钮 `.focused($cancelFocused)` + body `.onAppear { cancelFocused = true }`。
+**Why**: 之前默认 focus 在"本地项目"action card，按 Enter 立即触发 NSOpenPanel。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.178 — fix(ui): Sidebar project group header + 和 more 按钮 opacity 0.25 → 0.6
 **Date**: 2026-09-08
 **Tag**: v0.5.178

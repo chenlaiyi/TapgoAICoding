@@ -23,6 +23,8 @@ struct NewTaskView: View {
     @State private var error: String?
     @State private var showRemoteSheet = false
     @State private var hoveredProjectId: String? = nil
+    // v0.5.179: 默认 focus 在 footer 取消按钮（避免 Enter 误触发"本地项目"选择）。
+    @FocusState private var cancelFocused: Bool
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     var body: some View {
@@ -45,6 +47,8 @@ struct NewTaskView: View {
             footer
         }
         .frame(width: 520, height: 480)
+        // v0.5.179: sheet 显示时默认 focus 取消按钮。
+        .onAppear { cancelFocused = true }
         .alert("打开本地目录失败", isPresented: Binding(
             get: { error != nil }, set: { _ in error = nil }
         )) {
@@ -124,6 +128,8 @@ struct NewTaskView: View {
             }
             .buttonStyle(.bordered)
             .keyboardShortcut(.cancelAction)
+            // v0.5.179: 打开时默认 focus 这个按钮（按 Enter 取消而不是选"本地项目"）。
+            .focused($cancelFocused)
             .accessibilityLabel("取消新建任务")
         }
         .padding(.horizontal, 20)
