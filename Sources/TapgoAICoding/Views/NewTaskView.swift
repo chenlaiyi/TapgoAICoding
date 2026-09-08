@@ -170,7 +170,10 @@ struct NewTaskView: View {
                     system: "bolt.fill",
                     color: .secondary
                 ) {
-                    onCreate(nil)
+                    // v0.5.173: 选"快速"时如果 preselectedOverride 或 preselectedProject 仍有值，
+                    // 用它而不是 nil（避免 sidebar + 按钮"我要在 X 项目创建"的意图被覆盖）。
+                    let project = preselectedOverride ?? preselectedProject
+                    onCreate(project)
                     dismiss()
                 }
             }

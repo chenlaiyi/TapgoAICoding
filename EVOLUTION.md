@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.173 — fix(ui): NewTaskView "快速任务"action 尊重 preselectedProject
+**Date**: 2026-09-08
+**Tag**: v0.5.173
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - "快速任务" action card action 改 `onCreate(preselectedOverride ?? preselectedProject)`。
+**Why**: v0.5.171 加 preselectedProject 后 user 选"快速任务"仍创建无 project 的 thread，违反 sidebar 按钮意图。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.172 — feat(ui): NewTaskView preselectedHint 加 X 按钮让 user 取消预选
 **Date**: 2026-09-08
 **Tag**: v0.5.172

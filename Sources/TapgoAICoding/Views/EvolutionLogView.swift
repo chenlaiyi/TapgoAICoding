@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.173", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.173",
+                    summary: "NewTaskView \"快速任务\"action 尊重 preselectedProject。",
+                    changes: ["action card action 改 onCreate(preselectedOverride ?? preselectedProject)。"],
+                    why: "v0.5.171 加 preselectedProject 后 user 选\"快速任务\"仍创建无 project 的 thread，违反 sidebar 按钮意图。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.172", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.172",
                     summary: "NewTaskView preselectedHint 加 X 按钮让 user 取消预选。",
                     changes: ["var preselectedProject → let preselectedProject。", "加 @State preselectedOverride 本地覆盖。", "preselectedHint 显示 override ?? preselected + X 按钮设 override=nil。"],
