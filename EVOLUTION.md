@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.178 — fix(ui): Sidebar project group header + 和 more 按钮 opacity 0.25 → 0.6
+**Date**: 2026-09-08
+**Tag**: v0.5.178
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/SidebarView.swift`:
+  - project group header 的 + 按钮和 projectMoreMenu opacity 0.25 → 0.6。
+**Why**: 之前 0.25 太隐蔽，用户不知道有按钮。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.177 — feat(ui): Sidebar thread item 双击进入 rename 模式
 **Date**: 2026-09-08
 **Tag**: v0.5.177

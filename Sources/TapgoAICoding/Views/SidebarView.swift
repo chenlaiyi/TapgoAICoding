@@ -531,10 +531,12 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("在 \(p.displayName) 中新建任务")
                 .help("在此项目中新建任务")
-                .opacity(hoveredProjectId == p.id ? 1 : 0.25)
+                // v0.5.178: 非 hover 时 opacity 0.25 太隐蔽（用户不知道有 + 按钮），
+                // 改 0.6 让按钮总是可见，hover 时变 1.0。
+                .opacity(hoveredProjectId == p.id ? 1 : 0.6)
                 projectMoreMenu(p)
                     .frame(width: 20)
-                    .opacity(hoveredProjectId == p.id ? 1 : 0.25)
+                    .opacity(hoveredProjectId == p.id ? 1 : 0.6)
             }
             .padding(.horizontal, SidebarMetrics.rowInset)
             .frame(height: 32 * appFontScale.multiplier)
