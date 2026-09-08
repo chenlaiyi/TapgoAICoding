@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.162</title>
+            <pubDate>Tue, 08 Sep 2026 11:03:10 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.162</link>
+            <sparkle:version>0.5.162</sparkle:version>
+            <sparkle:shortVersionString>0.5.162</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.162
+
+## NewTaskView recentRow hover 加 border（与 actionCard 风格统一）
+
+v0.5.160-161 给 actionCard 加了 hover 背景 + border 反馈。recentRow 之前只改背景色，缺少 border 提示。统一风格。
+
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - `recentRow` hover 时加 1.5pt accent-color 40% opacity 边框。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.162/Tapgo-AICoding-0.5.162.zip" length="12149450" type="application/octet-stream" sparkle:edSignature="OA1RDbgv9lF7s06e4t+At03az45mgIJaNbaZ3/1gRTaXu2F2mq/C5+jZyPdMV2Dejx3ZQR4M67pBAU3SmaggAw=="/>
+        </item>
+        <item>
             <title>0.5.161</title>
             <pubDate>Tue, 08 Sep 2026 10:58:21 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.161</link>
@@ -44,28 +65,6 @@ v0.5.160 在 `actionCard` 普通函数里写 `@State var hovering = false` —�
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.160/Tapgo-AICoding-0.5.160.zip" length="12147989" type="application/octet-stream" sparkle:edSignature="KLXnNtK3sH2M2/1OgBtf1Tuykvv6slTs7vFudPNjNgb2JFRh3qfRW0nmW4Ud1KxkU0KRUbx3X9UpWpZo38XECw=="/>
-        </item>
-        <item>
-            <title>0.5.159</title>
-            <pubDate>Tue, 08 Sep 2026 10:48:08 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.159</link>
-            <sparkle:version>0.5.159</sparkle:version>
-            <sparkle:shortVersionString>0.5.159</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.159
-
-## 清理 AddMenuAction.togglePlanMode dead code
-
-v0.5.157 把 + 菜单的"计划模式"项从 `addMenuItems` 静态数组拿出来，单独渲染时直接 `planningMode.toggle()`，不走 `runAddMenuAction(.togglePlanMode)`。`AddMenuAction.togglePlanMode` case 变成 dead code。
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`:
-  - `AddMenuAction` enum 移除 `.togglePlanMode` case。
-  - `runAddMenuAction` switch 移除对应 case 分支。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.159/Tapgo-AICoding-0.5.159.zip" length="12145247" type="application/octet-stream" sparkle:edSignature="DHXRkazFoysCyoR0Tp1WsMhA7+56AZae20rSYyKjKXH7EkOQ8Y+lgrg68vrTB3oI/Wys2mHPsNun+xO/zPhnAw=="/>
         </item>
     </channel>
 </rss>
