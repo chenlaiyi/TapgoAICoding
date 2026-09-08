@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.165</title>
+            <pubDate>Tue, 08 Sep 2026 11:19:13 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.165</link>
+            <sparkle:version>0.5.165</sparkle:version>
+            <sparkle:shortVersionString>0.5.165</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.165
+
+## ApprovalRow 拒绝按钮加 destructive role
+
+之前 ApprovalRow 拒绝按钮用 `.bordered` 普通样式，跟批准按钮区分不明显。按 macOS convention destructive action 用 `.destructive` role，让 VoiceOver 读出"破坏性"提示 + 系统给红色 accent 提示。
+
+- `Sources/TapgoAICoding/Views/ApprovalRow.swift`:
+  - 拒绝按钮加 `Button(role: .destructive)` 让 macOS 标记为 destructive action。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.165/Tapgo-AICoding-0.5.165.zip" length="12154434" type="application/octet-stream" sparkle:edSignature="7RvSG9z8O9AkTx/rDJzcj8XX/18yVHRIZZCBzdvNoGcSGHxl0AJfrJrBJo5euq9kqBLykC1GmJloEwU0bMbfBw=="/>
+        </item>
+        <item>
             <title>0.5.164</title>
             <pubDate>Tue, 08 Sep 2026 11:14:30 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.164</link>
@@ -45,27 +66,6 @@
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.163/Tapgo-AICoding-0.5.163.zip" length="12152989" type="application/octet-stream" sparkle:edSignature="GRVrRuC+fetDaw8w3WQGZmq+ab15IMzuCdB0P4rB3XEcRS8F3ipWzmcKZoq2NbEajd9w9us2y5dwg3rgrMUhDQ=="/>
-        </item>
-        <item>
-            <title>0.5.162</title>
-            <pubDate>Tue, 08 Sep 2026 11:03:10 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.162</link>
-            <sparkle:version>0.5.162</sparkle:version>
-            <sparkle:shortVersionString>0.5.162</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.162
-
-## NewTaskView recentRow hover 加 border（与 actionCard 风格统一）
-
-v0.5.160-161 给 actionCard 加了 hover 背景 + border 反馈。recentRow 之前只改背景色，缺少 border 提示。统一风格。
-
-- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
-  - `recentRow` hover 时加 1.5pt accent-color 40% opacity 边框。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.162/Tapgo-AICoding-0.5.162.zip" length="12149450" type="application/octet-stream" sparkle:edSignature="OA1RDbgv9lF7s06e4t+At03az45mgIJaNbaZ3/1gRTaXu2F2mq/C5+jZyPdMV2Dejx3ZQR4M67pBAU3SmaggAw=="/>
         </item>
     </channel>
 </rss>
