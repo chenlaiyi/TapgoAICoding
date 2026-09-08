@@ -227,6 +227,27 @@ if command -v codesign >/dev/null 2>&1; then
     --entitlements "$ENTITLEMENTS_SRC" \
     --options runtime \
     "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+  # v0.5.199: launchability repair — some Developer ID certs (e.g. certs
+  # without an embedded Team ID) produce a main binary and embedded Sparkle
+  # whose dyld-visible TeamIDs disagree, which kills the app at launch with
+  # "mapping process and mapped file have different Team IDs". Detect the
+  # mismatch (or an ad-hoc fallback) and repair by stripping component
+  # signatures then deep ad-hoc signing the whole bundle — the known-good
+  # local-development remedy.
+  team_of() { codesign -dvv "$1" 2>&1 | sed -n 's/^TeamIdentifier=//p' | head -1; }
+  MAIN_TEAM="$(team_of "$APP_BUNDLE_DIR/Contents/MacOS/TapgoAICoding")"
+  SPARKLE_BIN_TEAM="$(team_of "$SPARKLE_FRAMEWORK_DST/Versions/B/Sparkle")"
+  if [[ "$SIGNING_IDENTITY" == "-" || -z "$MAIN_TEAM" || "$MAIN_TEAM" == "not set" \
+        || "$MAIN_TEAM" != "$SPARKLE_BIN_TEAM" ]]; then
+    echo "==> Signature repair: TeamID mismatch or ad-hoc fallback (main='$MAIN_TEAM' sparkle='$SPARKLE_BIN_TEAM')"
+    codesign --remove-signature "$APP_BUNDLE_DIR" 2>/dev/null || true
+    for COMPONENT in \
+      "$SPARKLE_FRAMEWORK_DST" \
+      "$HELPER_APP_DIR"; do
+      codesign --remove-signature "$COMPONENT" 2>/dev/null || true
+    done
+    codesign --force --deep --sign - "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+  fi
   codesign --verify --deep --strict "$APP_BUNDLE_DIR"
 else
   echo "WARN: codesign not found; Gatekeeper will require right-click → Open"

@@ -118,28 +118,52 @@ struct CommandExecutionView: View {
                 }
 
                 if isExpanded && !output.isEmpty {
+                    // v0.5.199: command output 用 ANSIParser 解析，让 stdout/stderr 带
+                    // ANSI 颜色码时正常高亮（git diff 红绿 / ls 蓝目录 / cargo 编译错红等）。
+                    // 没有 ANSI 码时回退到默认 terminal 绿/红色，兼容旧版本输出。
                     if !execution.stdout.isEmpty {
                         ScrollView {
-                            Text(execution.stdout)
-                                .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            ansiLinesView(execution.stdout, fallback: .green)
                                 .textSelection(.enabled)
                         }
                         .frame(maxHeight: 200)
                         .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
-                        .foregroundStyle(.green)
                     }
                     if !execution.stderr.isEmpty {
                         ScrollView {
-                            Text(execution.stderr)
-                                .font(AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            ansiLinesView(execution.stderr, fallback: .red)
                                 .textSelection(.enabled)
                         }
                         .frame(maxHeight: 140)
                         .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
-                        .foregroundStyle(.red)
                     }
+                }
+            }
+        }
+    }
+
+    /// v0.5.199: 把 stdout/stderr 字符串按 ANSI escape 拆成多行 segments，
+    /// 每行用 Text+ConcatenatedText 拼接，不同 fg 色分段。没有 ANSI 码的整段用 fallback 颜色。
+    @ViewBuilder
+    private func ansiLinesView(_ raw: String, fallback: Color) -> some View {
+        let lines = ANSIParser.parse(raw)
+        let baseFont = AppFont.monoScaled(size: 11, multiplier: appFontScale.multiplier)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                let segments = line.segments
+                if segments.isEmpty {
+                    Text(" ")
+                        .font(baseFont)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    segments.reduce(Text("")) { acc, seg in
+                        let color = seg.fg.map { ANSIColor.swiftUIColor($0) } ?? fallback
+                        let t = Text(seg.text)
+                            .font(baseFont.weight(seg.bold ? .bold : .regular))
+                            .foregroundStyle(color)
+                        return acc + t
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }

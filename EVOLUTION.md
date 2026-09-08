@@ -1,4 +1,23 @@
 # Evolution Log
+## v0.5.199 — feat(terminal): Command execution 输出支持 ANSI 颜色解析
+**Date**: 2026-09-09
+**Tag**: v0.5.199
+**Test status**: 未跑（纯 UI 改动不影响逻辑）
+**Changed**:
+- `Sources/TapgoCore/ANSIParser.swift`（新增）：SGR 颜色码解析
+  - 8-color: 30-37 / 90-97
+  - 256-color: 38;5;N
+  - truecolor: 38;2;R;G;B
+  - reset (0) / bold (1) / unbold (22)
+- `Sources/TapgoAICoding/Views/CommandExecutionView.swift`:
+  - `ansiLinesView(_:fallback:)` helper：按 segments 用 Text + ConcatenatedText 拼接
+  - stdout/stderr 段渲染替换之前的纯色 Text
+- `Sources/TapgoCore/PopoverPanel.swift`（新增）+ `ChatView.swift`：+ 菜单改 PopoverPanel 撑满 composer 宽度
+- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.199。
+
+**Why**: command output 自带的 ANSI 颜色码（`git diff` 红绿、`ls` 蓝目录、`cargo` 编译错等）之前显示成乱码或被忽略，对齐 Codex 桌面端的真实终端颜色渲染。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.198 — fix(ui): FileChangeView/RowView statusBadge inFlight 用 3 跳动 dots（统一 v0.5.192/194/195 风格）
 **Date**: 2026-09-09
 **Tag**: v0.5.198

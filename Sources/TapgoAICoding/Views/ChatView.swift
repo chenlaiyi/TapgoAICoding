@@ -1296,19 +1296,40 @@ struct ComposerView: View {
         return "puzzlepiece.extension"
     }
 
-    /// Codex desktop parity: composer "+" 按钮弹出的下拉菜单。结构
-    /// 模拟截图：标题"添加"、分组（文件 / 附件 / 目标 / 计划 / 录制 /
-    /// 插件），每项带"标题 + 副标题"双行。
+    /// v0.5.199: + 菜单用 PopoverPanel（NSViewControllerRepresentable 包 NSPopover + contentSize）
+    /// 实现撑满 composer 宽度的 push-out 卡片，对齐 Codex 桌面端。
+    /// SwiftUI Menu 在 macOS 26.5 SDK 渲染成小弹窗（~130pt 宽），不够撑满宽度。
+    @State private var showAddPanel = false
     @ViewBuilder
     private var composerAddMenu: some View {
-        Menu {
+        Button {
+            showAddPanel.toggle()
+        } label: {
+            Image(systemName: "plus")
+        }
+        .buttonStyle(.plain)
+        .help("添加")
+        .accessibilityLabel("添加（文件/附件/插件/目标/计划）")
+        .background(
+            PopoverPanel(isPresented: $showAddPanel, contentSize: NSSize(width: contentWidth, height: 480)) {
+                composerAddPanel
+                    .frame(width: contentWidth)
+            }
+        )
+    }
+
+    /// v0.5.199: + 菜单面板 — 撑满 composer 卡片宽度的下拉面板（对齐 Codex 桌面端）。
+    @ViewBuilder
+    private var composerAddPanel: some View {
+        VStack(alignment: .leading, spacing: 4) {
             Text("添加")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-            // v0.5.157: 计划模式项从 addMenuItems 数组拿出来单独渲染，
-            // 让菜单项前面能显示当前 planMode 状态（✓ + 文案"已开启"）。
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
             Button {
                 planningMode.toggle()
+                showAddPanel = false
             } label: {
                 composerAddMenuRow(
                     icon: planningMode ? "checkmark.circle.fill" : "lightbulb",
@@ -1317,9 +1338,10 @@ struct ComposerView: View {
                         ? "下一条消息会让 Codex 先出方案不执行工具"
                         : "启用计划模式：下一条消息只给方案不执行工具")
             }
-            // v0.5.158: 目标项也单独渲染，显示当前 goal 状态。
+            .buttonStyle(.plain)
             Button {
                 runAddMenuAction(.setGoal)
+                showAddPanel = false
             } label: {
                 let goalText = activeThreadGoal ?? ""
                 let hasGoal = !goalText.isEmpty
@@ -1330,46 +1352,53 @@ struct ComposerView: View {
                         ? "当前目标：" + goalText.prefix(40) + (goalText.count > 40 ? "…" : "")
                         : "设置要持续追求的目标")
             }
+            .buttonStyle(.plain)
             ForEach(Self.addMenuItems) { item in
                 Button {
                     runAddMenuAction(item.action)
+                    showAddPanel = false
                 } label: {
                     composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
                 }
+                .buttonStyle(.plain)
             }
-            Divider()
+            Divider().padding(.horizontal, 8)
             Text("插件")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
             if !pluginCatalogEntries.isEmpty {
                 ForEach(pluginCatalogEntries, id: \.id) { item in
                     Button {
                         runAddMenuAction(.insertPlugin(
                             name: item.displayName,
                             detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary))
+                        showAddPanel = false
                     } label: {
                         composerAddMenuRow(
                             icon: Self.pluginIcon(for: item),
                             title: item.displayName,
                             detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary)
                     }
+                    .buttonStyle(.plain)
                 }
             } else {
                 ForEach(Self.addMenuPlugins) { item in
                     Button {
                         runAddMenuAction(item.action)
+                        showAddPanel = false
                     } label: {
                         composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
                     }
+                    .buttonStyle(.plain)
                 }
             }
-        } label: {
-            Image(systemName: "plus")
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .help("添加")
-        .accessibilityLabel("添加（文件/附件/插件/目标/计划）")
+        .padding(.bottom, 8)
+        .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(DSHTheme.border, lineWidth: 0.5))
+        .shadow(color: DSHTheme.cardShadow, radius: 12, x: 0, y: -2)
     }
 
     /// Codex desktop parity: + 菜单里每个命令的"图标 + 标题 + 描述"双行

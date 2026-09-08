@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.199", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.199",
+                    summary: "Command execution 输出支持 ANSI 颜色解析。",
+                    changes: [
+                        "TapgoCore 新增 ANSIParser：8-color + 256-color + truecolor + bold。",
+                        "CommandExecutionView 的 stdout/stderr 用 ansiLinesView helper 渲染颜色 segments。",
+                        "TapgoCore 新增 PopoverPanel，composer + 菜单改用它撑满宽度。",
+                        "没有 ANSI 码的回退到默认绿/红。"
+                    ],
+                    why: "command output 自带的 ANSI 颜色码之前显示成乱码或被忽略。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.198", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.198",
                     summary: "FileChangeView/RowView statusBadge inFlight 用 3 跳动 dots（统一 v0.5.192/194/195 风格）。",
                     changes: [
