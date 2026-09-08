@@ -53,10 +53,8 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestProjectPicker)) { _ in
             showNewTask = true
         }
-        .onChange(of: store.activeThreadId) { _, id in
-            if store.liveThreads.first(where: { $0.id == id })?.turns.isEmpty != false {
-                showTrajectory = false
-            }
+        .onChange(of: store.activeThreadId) { _, newId in
+            activeThreadIdChanged(newId)
         }
         .onReceive(NotificationCenter.default.publisher(for: .tapgoRequestOpenLocalFolder)) { _ in
             handleOpenLocalFolder()
@@ -84,9 +82,13 @@ struct ContentView: View {
             withAnimation(.easeInOut(duration: 0.18)) { sidebarVisible.toggle() }
         }
         .sheet(isPresented: $showNewTask) {
-            NewTaskView { project in
-                NotificationCenter.default.post(name: .tapgoChooseStarterProject, object: project?.id)
-            }
+            // v0.5.171: 把当前 active project 传给 NewTaskView 让其预选显示。
+            NewTaskView(
+                onCreate: { project in
+                    NotificationCenter.default.post(name: .tapgoChooseStarterProject, object: project?.id)
+                },
+                preselectedProject: workspace.state.activeProject
+            )
             .environmentObject(workspace)
             .environmentObject(store)
         }
@@ -321,6 +323,13 @@ struct ContentView: View {
         settingsPresentation = nil
         showTrajectory = false
         store.newThread()
+    }
+
+    // v0.5.171: 拆出 onChange 逻辑让 body 简化、Swift type-checker 不超时。
+    private func activeThreadIdChanged(_ id: String?) {
+        if store.liveThreads.first(where: { $0.id == id })?.turns.isEmpty != false {
+            showTrajectory = false
+        }
     }
 
     // MARK: - Local folder pick

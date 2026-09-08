@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.171 — feat(ui): NewTaskView 接 preselectedProject 参数（sidebar + 按钮预选 active project）
+**Date**: 2026-09-08
+**Tag**: v0.5.171
+**Test status**: 本机 3116 passed / 13 failed（baseline 一致）
+**Changed**:
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - 加 `var preselectedProject: Project? = nil` + `preselectedHint` view。
+  - body 在 primaryActions 后显示预选提示（如果 preselectedProject != nil）。
+- `Sources/TapgoAICoding/Views/ContentView.swift`:
+  - NewTaskView 传 preselectedProject = workspace.state.activeProject。
+  - 拆出 `.onChange(of: store.activeThreadId)` 逻辑到 `activeThreadIdChanged` helper，让 body 简化、Swift type-checker 不超时。
+**Why**: 之前从 sidebar + 按钮进入 NewTaskView 时 user 还得手动选一次当前 project。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.170 — fix(ui): Sidebar 重命名会话 alert TextField 默认 focus
 **Date**: 2026-09-08
 **Tag**: v0.5.170

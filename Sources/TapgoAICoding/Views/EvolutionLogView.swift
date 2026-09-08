@@ -251,6 +251,13 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [                EvolutionEntry(
+                    version: "v0.5.171", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.171",
+                    summary: "NewTaskView 接 preselectedProject 参数（sidebar + 按钮预选 active project）。",
+                    changes: ["NewTaskView 加 var preselectedProject + preselectedHint view。", "ContentView 传 preselectedProject = workspace.state.activeProject。", "拆出 .onChange 逻辑到 activeThreadIdChanged helper 让 body 简化。"],
+                    why: "之前从 sidebar + 按钮进入 NewTaskView 时 user 还得手动选一次当前 project。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.170", date: "2026-09-08", commit: "见源码提交", tag: "v0.5.170",
                     summary: "Sidebar 重命名会话 alert TextField 默认 focus。",
                     changes: ["加 @FocusState renameFocused + TextField .focused() + .onChange 触发。"],

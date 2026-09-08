@@ -13,6 +13,8 @@ struct NewTaskView: View {
 
     /// Called with the selected project (or nil for quick).
     let onCreate: (Project?) -> Void
+    /// v0.5.171: 从 sidebar 项目组 + 按钮进入时预选 active project。nil = 不预选（user 自己选）。
+    var preselectedProject: Project? = nil
 
     @State private var showLocalPicker = false
     @State private var error: String?
@@ -27,6 +29,9 @@ struct NewTaskView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     primaryActions
+                    if preselectedProject != nil {
+                        preselectedHint
+                    }
                     Divider()
                     recentSection
                 }
@@ -66,6 +71,31 @@ struct NewTaskView: View {
     }
 
     // MARK: - Sections
+
+    @ViewBuilder
+    /// v0.5.171: 预选提示 — 从 sidebar + 按钮进入时显示当前 project 让 user 确认。
+    private var preselectedHint: some View {
+        if let p = preselectedProject {
+            HStack(spacing: 8) {
+                Image(systemName: p.isRemote ? "globe" : "folder")
+                    .foregroundStyle(.blue)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("将在以下项目创建任务")
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                    Text(p.displayName)
+                        .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
+                        .bold()
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(DSHTheme.interactiveHover, in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
 
     @ViewBuilder
     private var footer: some View {
