@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.184</title>
+            <pubDate>Tue, 08 Sep 2026 13:17:41 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.184</link>
+            <sparkle:version>0.5.184</sparkle:version>
+            <sparkle:shortVersionString>0.5.184</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.184
+
+## NewTaskView 取消 preselected 预选时加 0.2s 动画反馈
+
+之前 v0.5.172 加的 preselectedHint X 按钮直接 `preselectedOverride = nil` 让 preselectedHint 瞬间消失。v0.5.184 加 `withAnimation(.easeOut(duration: 0.2))` 让消失有平滑过渡。
+
+- `Sources/TapgoAICoding/Views/NewTaskView.swift`:
+  - preselectedHint X 按钮 action `withAnimation(.easeOut(duration: 0.2)) { preselectedOverride = nil }`。
+
+测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.184/Tapgo-AICoding-0.5.184.zip" length="12183078" type="application/octet-stream" sparkle:edSignature="P/rlytCVfUJY10GmUpFCqZC3EnQb3/YKDb4RaUqH3bsUPO5P+SC5XJnU+y39WufeIPktliFggCixRELumxGeBw=="/>
+        </item>
+        <item>
             <title>0.5.183</title>
             <pubDate>Tue, 08 Sep 2026 13:12:26 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.183</link>
@@ -45,30 +66,6 @@ v0.5.170 加 rename alert TextField focus，但 SwiftUI 14+ alert 是 native NSA
 测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.182/Tapgo-AICoding-0.5.182.zip" length="12181827" type="application/octet-stream" sparkle:edSignature="oPjmQDn+yJ2KOlmCoLFkHPSlmeurf8/AO2mD61EkX5+h/bHdFtg0REItml+6QGdowKJq04gJ1py9Emp56bJUDw=="/>
-        </item>
-        <item>
-            <title>0.5.181</title>
-            <pubDate>Tue, 08 Sep 2026 13:00:13 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.181</link>
-            <sparkle:version>0.5.181</sparkle:version>
-            <sparkle:shortVersionString>0.5.181</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.181
-
-## Sidebar thread item hover tooltip 加 thread ID 前缀
-
-之前 sidebar thread item hover tooltip 只显示 title（`t.title`），user 想找完整 thread ID 只能看右键"复制会话 ID"。v0.5.181 在 tooltip 加 thread ID 前 8 字符，方便 user 快速识别。
-
-- `Sources/TapgoAICoding/Views/SidebarComponents.swift`:
-  - `SidebarTaskLabel` 加 `var threadId: String? = nil` 参数。
-  - `.help()` 改为显示 `"\(title) · <threadId 前 8 字符>"`（有 threadId 时）或 title（无时）。
-- `Sources/TapgoAICoding/Views/SidebarView.swift`:
-  - `threadRow(_:indented:)` 调用 `SidebarTaskLabel` 时传 `threadId: t.id`。
-
-测试：3116 passed / 13 failed（baseline 一致）。开发者签名有效；尚未完成 Apple 公证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.181/Tapgo-AICoding-0.5.181.zip" length="12175514" type="application/octet-stream" sparkle:edSignature="ACqWDcKTC19xnQZh3lpte1RVMRGUtXLh/JhGG54WsMzOgtDyWSa0tWpG+5L5dMjDvT/hmMZ8JtMCd5SDvqaYCg=="/>
         </item>
     </channel>
 </rss>
