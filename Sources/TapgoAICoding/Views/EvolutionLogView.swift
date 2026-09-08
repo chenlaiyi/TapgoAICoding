@@ -250,7 +250,22 @@ struct EvolutionLogView: View {
 
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
-        return [                EvolutionEntry(
+        return [
+                EvolutionEntry(
+                    version: "v0.5.195", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.195",
+                    summary: "流式输出过程对齐 Codex 桌面端（caret 真 shape + 3 dots 统一 + 外层抽屉默认收起）。",
+                    changes: [
+                        "StreamingCursor 改 SwiftUI Rectangle(2pt × 14pt) 真 caret + opacity 闪烁（替换 ▍ Unicode 字符）。",
+                        "overlay 从 bottomLeading 改 bottomTrailing，caret 视觉紧贴最后一段末尾。",
+                        "AssistantResponseText 生成中行 ProgressView → 3 跳动 dots（与 v0.5.192/194 风格统一）。",
+                        "ConversationWorkDisclosure 默认收起（之前 ?? active 让 running 强制展开，6 步同屏乱）。",
+                        "标题拼接 step 数（正在处理 · 6 步 / 已完成 · 6 步）。",
+                        "running 时标题旁加 StreamingDotsInline 3 跳动 dots 表明正在跑。"
+                    ],
+                    why: "用户反馈过程输出与 Codex 桌面端差距大（多个独立卡片 vs 折叠抽屉，且 dots/spinner 风格不统一）。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.194", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.194",
                     summary: "ToolCall / CommandExecution running 用 3 跳动 dots。",
                     changes: ["ToolCallRow / CommandExecutionView running 时用 3 跳动 dots 动画替换 ProgressView。"],

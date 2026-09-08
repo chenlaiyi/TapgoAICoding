@@ -1,4 +1,24 @@
 # Evolution Log
+## v0.5.195 — fix(ui): 流式输出过程对齐 Codex 桌面端（caret 真 shape + 3 dots 统一 + 外层抽屉默认收起）
+**Date**: 2026-09-09
+**Tag**: v0.5.195
+**Test status**: 未跑（纯 UI 动画改动不影响逻辑）
+**Changed**:
+- `Sources/TapgoAICoding/Views/MarkdownMessageView.swift`:
+  - `StreamingCursor` 改用 SwiftUI `Rectangle().frame(width: 2).fill(DSHTheme.brand)` + `.opacity` 0.5s 闪烁（替换 ▍ Unicode 字符 + TimelineView 硬闪烁）。
+  - overlay 从 `.bottomLeading` 改 `.bottomTrailing`，caret 视觉紧贴最后一段末尾（对齐 Codex 桌面端）。
+- `Sources/TapgoAICoding/Views/ConversationResponseView.swift`:
+  - `AssistantResponseText` streaming 时显示 3 个错开 0.2s 的 4pt 圆点 + "生成中…" 文字（替换 v0.5.193 的 ProgressView，与 v0.5.192/194 风格统一）。
+  - `ConversationWorkDisclosure` 默认收起（之前 `expanded = ?? active` 让 running 时强制展开 6 步同屏，视觉乱），改成 `expanded = ?? false`；用户主动展开后用 `expansionOverride` 维持状态。
+  - 标题拼接 step 数："正在处理 · 6 步" / "已完成 · 6 步"。
+  - running 时标题旁加 `StreamingDotsInline` 3 跳动 dots 表明正在跑。
+  - 新增 `StreamingDotsInline` view（4pt × 3 圆点 + 0.6s repeatForever）。
+- `AppBuilder/Info.plist`, `AppBuilder/ComputerUseHelper-Info.plist`, `AppBuilder/project.yml`: bump 到 0.5.195。
+
+**Why**: v0.5.192/193/194 改了 working indicator / 生成中 / ToolCall / CommandExecution 的 3 跳动 dots，但过程展示仍是 6 个独立卡片（外层默认展开 + 内层每个 activity 又是独立行），与 Codex 桌面端折叠抽屉差距大；caret 用 ▍ Unicode 字符也粗糙。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
+
 ## v0.5.194 — fix(ui): ToolCall / CommandExecution running 用 3 跳动 dots
 **Date**: 2026-09-09
 **Tag**: v0.5.194
