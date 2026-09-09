@@ -392,7 +392,7 @@ public enum TurnPresentation {
                 activeText: "正在自动压缩上下文",
                 completedText: "上下文已自动压缩",
                 continuationText: "自动压缩了上下文",
-                icon: "text.line.last.and.arrowtriangle.forward",
+                icon: "arrow.triangle.2.circlepath",
                 running: call.status == .running,
                 failed: call.status == .failed
             )

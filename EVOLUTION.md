@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.220 — fix(ui): 上下文压缩活动图标对齐 Codex 实机（循环箭头）
+**Date**: 2026-09-10
+**Tag**: v0.5.220
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation `.compaction` 图标 `text.line.last.and.arrowtriangle.forward` → `arrow.triangle.2.circlepath`。
+
+**Why**: 对照 Codex 实机截图 1（上下文已自动压缩前的循环箭头图标）。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.219 — fix(ui): 命令活动行完成态对齐 Codex 实机（终端 → 已运行）
 **Date**: 2026-09-10
 **Tag**: v0.5.219
