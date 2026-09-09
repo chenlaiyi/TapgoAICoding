@@ -336,11 +336,13 @@ public enum TurnPresentation {
             let active = change.status == .pending || change.status == .awaitingApproval
             let failed = change.status == .failed || change.status == .denied
             let label = fileChangeLabel(change)
+            // v0.5.217: 完成态改用过去式 + 差异统计（对齐 Codex 实机）。
+            let completedLabel = fileChangeCompletedLabel(change)
             return semantic(
                 key: "edit",
                 kind: .edit,
                 activeText: label,
-                completedText: failed ? label + " · 执行失败" : label,
+                completedText: failed ? completedLabel + " · 执行失败" : completedLabel,
                 continuationText: label,
                 icon: "pencil",
                 running: active,
@@ -590,6 +592,35 @@ public enum TurnPresentation {
         case .delete: verb = "删除"
         }
         return verb + " " + change.path
+    }
+
+    /// v0.5.217: 完成态过去式标签 + 差异统计（对齐 Codex 实机截图 1
+    /// 「已创建 /path +220 -0」）。
+    public static func fileChangeCompletedLabel(_ change: FileChange) -> String {
+        let pastVerb: String
+        switch change.kind {
+        case .create: pastVerb = "已创建"
+        case .update: pastVerb = "已编辑"
+        case .delete: pastVerb = "已删除"
+        }
+        let base = pastVerb + " " + change.path
+        let stats = diffStats(change.diff)
+        guard let s = stats, (s.added + s.removed) > 0 else { return base }
+        return base + " +\(s.added) -\(s.removed)"
+    }
+
+    /// 解 unified diff 文本统计 +N -M。忽略 +++ / --- 文件头与 @@ hunk 头。
+    public static func diffStats(_ diff: String) -> (added: Int, removed: Int)? {
+        guard !diff.isEmpty else { return nil }
+        var added = 0, removed = 0
+        for raw in diff.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = String(raw)
+            if line.hasPrefix("+++") || line.hasPrefix("---") || line.hasPrefix("@@") { continue }
+            if line.hasPrefix("+") { added += 1 }
+            else if line.hasPrefix("-") { removed += 1 }
+        }
+        if added == 0 && removed == 0 { return nil }
+        return (added, removed)
     }
 
     /// Extract only a safe, human-readable skill label. The source path and

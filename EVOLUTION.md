@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.217 — fix(ui): 文件编辑活动行对齐 Codex 实机（完成态过去式 + 差异统计）
+**Date**: 2026-09-10
+**Tag**: v0.5.217
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation.fileChangeCompletedLabel + diffStats：.edit completed 文案改过去式 + 内联 +N/-M 差异统计。
+
+**Why**: 对照 Codex 实机截图 1「已创建 /path +220 -0」。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.216 — fix(ui): 搜索活动动词对齐 Codex 实机（按工具名派生）
 **Date**: 2026-09-10
 **Tag**: v0.5.216
