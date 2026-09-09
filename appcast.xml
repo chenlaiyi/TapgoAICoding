@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.206</title>
+            <pubDate>Wed, 09 Sep 2026 21:23:53 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.206</link>
+            <sparkle:version>0.5.206</sparkle:version>
+            <sparkle:shortVersionString>0.5.206</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.206
+
+## 修复：DeepSeek 欠费（负余额）不再隐藏真实余额
+
+- 实测发现：DeepSeek 账户欠费（如余额 -1.29）时 `/user/balance` 返回 `is_available=false` **且** `balance_infos` 里带真实负余额；旧逻辑把 `is_available=false` 一律当错误抛掉，导致底栏和弹窗都看不到余额。
+- 现在：只要返回 `balance_infos` 就如实解析展示（含负数，如 `¥-1.29 CNY`），让你直接看到需要充值；仅当响应完全没有余额数据时才报错，且错误文案明确提示「通常为余额不足/欠费，请充值」。
+- 新增负余额解析回归用例。
+
+## 测试
+
+全量回归 3119 通过 + 构建 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.206/Tapgo-AICoding-0.5.206.zip" length="12266086" type="application/octet-stream" sparkle:edSignature="n4YhciX02f+4kWVs5ZPU5iwKRHBlyaXK/Xm4O+h9JmWLlSIkMIJ+qZYx3NkGruHzqeaE+KmvzR+x3FyJHHu+Dg=="/>
+        </item>
+        <item>
             <title>0.5.205</title>
             <pubDate>Wed, 09 Sep 2026 20:35:08 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.205</link>
@@ -44,28 +66,6 @@
 构建 + 实机截图验证（额度环紧贴 GLM-5.3-Flash）+ 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.204/Tapgo-AICoding-0.5.204.zip" length="12263668" type="application/octet-stream" sparkle:edSignature="TLb1FZAJuwdtttQTah4P+SPnyVT/s+y57A14Zxb7RnQS+QvmU0uGMA3OWWTAM5SaJIOWISvz4fZE5A9KcufCDw=="/>
-        </item>
-        <item>
-            <title>0.5.203</title>
-            <pubDate>Wed, 09 Sep 2026 19:58:45 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.203</link>
-            <sparkle:version>0.5.203</sparkle:version>
-            <sparkle:shortVersionString>0.5.203</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.203
-
-## 修复：welcome / 自进化指令态不显示模型额度
-
-- Composer 底栏的模型额度环（`contextMeterChip`）此前被 `if !isWelcome` 排除——新会话与自进化指令屏看不到额度。
-- 额度数据来自全局 `rateLimits`（与是否已有会话无关），现改为**任何输入器状态下恒显**；hover/点击仍弹出套餐与余额明细。
-- 顺带确认 0.5.202 生效：底栏模型 chip 已是 Codex 式纯文本（`GLM-5.3-Flash`）。
-
-## 测试
-
-构建 + 实机截图验证（welcome 态额度环显示 61%）+ 全量回归 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.203/Tapgo-AICoding-0.5.203.zip" length="12263279" type="application/octet-stream" sparkle:edSignature="jEjzW4+RbRX211YVM+YgeNzuAT094oDIL20auRUNJ1xjIBTaLwcW9Blt9kmNCWmZTZmM3m+iRm9Wz9hxpOc6Ag=="/>
         </item>
     </channel>
 </rss>
