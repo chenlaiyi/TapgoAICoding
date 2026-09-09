@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.224 — test: 补 v0.5.217/0.5.218/0.5.223 关键对齐回归测试
+**Date**: 2026-09-10
+**Tag**: v0.5.224
+**Test status**: 全量回归 3135 通过（+10 新断言）+ 三机安装
+**Changed**:
+- TurnPresentationTests：diffStats 准确性 + fileChangeCompletedLabel 过去式与差异统计断言。
+
+**Why**: 防止 v0.5.217/0.5.218/0.5.223 改动被无意回退。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.223 — fix(ui): 完成回合工作时长文案对齐 Codex 实机（用时）
 **Date**: 2026-09-10
 **Tag**: v0.5.223

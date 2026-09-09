@@ -193,4 +193,44 @@ func runTurnPresentationTests(_ t: TestRunner) {
     }
     t.expect(mdTitle.contains("读取"), "md read still maps to 读取")
     t.expect(!mdTitle.contains("查看图像"), "non-image read never shows 查看图像")
+
+    // v0.5.217: 文件编辑完成态过去式 + 差异统计（对齐 Codex 实机截图 1
+    // 「已创建 /path +220 -0」）。
+    let sampleDiff = """
+    @@ -1,3 +1,5 @@
+     unchanged
+    -removed line
+    +added line one
+    +added line two
+     unchanged again
+    +added line three
+    """
+    t.expectEqual(TurnPresentation.diffStats(sampleDiff)?.added, 3,
+                  "diffStats counts added lines from + prefix")
+    t.expectEqual(TurnPresentation.diffStats(sampleDiff)?.removed, 1,
+                  "diffStats counts removed lines from - prefix")
+
+    let createChange = FileChange(
+        id: "x", kind: .create, path: "/tmp/new.swift", diff: sampleDiff, status: .applied)
+    let completedCreate = TurnPresentation.fileChangeCompletedLabel(createChange)
+    t.expect(completedCreate.contains("已创建"), "create uses past tense 已创建")
+    t.expect(completedCreate.contains("/tmp/new.swift"), "create includes the path")
+    t.expect(completedCreate.contains("+3 -1"), "create includes diff stats +3 -1")
+
+    let updateChange = FileChange(
+        id: "y", kind: .update, path: "/tmp/edit.swift", diff: "+only add", status: .applied)
+    t.expect(TurnPresentation.fileChangeCompletedLabel(updateChange).contains("已编辑"),
+              "update uses past tense 已编辑")
+
+    let deleteChange = FileChange(
+        id: "z", kind: .delete, path: "/tmp/del.txt", diff: "", status: .applied)
+    let completedDel = TurnPresentation.fileChangeCompletedLabel(deleteChange)
+    t.expect(completedDel.contains("已删除"), "delete uses past tense 已删除")
+    t.expect(completedDel.contains("/tmp/del.txt"), "delete includes the path")
+    t.expect(!completedDel.contains("+") && !completedDel.contains(" -"),
+              "delete without diff has no stats suffix")
+
+    // v0.5.223: 完成回合工作时长文案「用时」（对齐 Codex 实机）。
+    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65),
+                  "用时 1 分 5 秒", "completed with valid duration uses 用时")
 }
