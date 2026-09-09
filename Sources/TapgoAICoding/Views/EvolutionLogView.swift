@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.222", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.222",
+                    summary: "通用工具活动完成态对齐 Codex 实机（已使用）。",
+                    changes: [
+                        ".tool 完成态加「已」前缀（已使用 <name>）。"
+                    ],
+                    why: "对照 Codex 实机截图 3「已使用 浏览器」。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.221", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.221",
                     summary: "同步 v0.5.220 编译修复（源码 = 发布产物）。",
                     changes: [

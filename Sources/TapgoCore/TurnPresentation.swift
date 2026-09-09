@@ -479,11 +479,19 @@ public enum TurnPresentation {
             }
             return past + capturedBase.dropFirst(capturedLabel.count)
         }()
+        // v0.5.222: 对齐 Codex 实机（图 3「已使用 浏览器」）—— `.tool` 完成态
+        // 用过去式「已使用 <name>」（其它活动行 file/search/command 已在 0.5.217
+        // ~0.5.219 完成过去式对齐）。
+        let toolCompletedBase: String = {
+            guard kind == .tool, !running else { return base }
+            let stripped = base.hasPrefix("使用 ") ? String(base.dropFirst(3)) : base
+            return "已使用 " + stripped
+        }()
         return semantic(
             key: "tool:" + name,
             kind: kind,
             activeText: base,
-            completedText: failed ? completedBase + " · 执行失败" : completedBase,
+            completedText: failed ? toolCompletedBase + " · 执行失败" : toolCompletedBase,
             continuationText: base,
             icon: icon,
             running: running,

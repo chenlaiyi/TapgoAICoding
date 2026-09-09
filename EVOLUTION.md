@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.222 — fix(ui): 通用工具活动完成态对齐 Codex 实机（已使用）
+**Date**: 2026-09-10
+**Tag**: v0.5.222
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation.toolSemantic：`.tool` 完成态加「已」前缀（已使用 <name>），与 file/search/command 过去式风格一致。
+
+**Why**: 对照 Codex 实机截图 3「已使用 浏览器」。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.221 — fix(build): 同步 v0.5.220 编译修复（SendableClosureCaptures）
 **Date**: 2026-09-10
 **Tag**: v0.5.221
