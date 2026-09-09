@@ -248,6 +248,22 @@ func runTurnPresentationTests(_ t: TestRunner) {
     }
     t.expectEqual(toolCompletedBase, "已使用 browser_check",
                   ".tool completed uses past tense 已使用")
+
+    // v0.5.219: `.command` 完成态对齐 Codex 实机「已运行 cmd」。
+    var cmdCompleted: String = ""
+    let cmdEvents: [TurnItem] = [
+        .commandExecution(CommandExecution(
+            id: "c1",
+            command: "git status --short; sed -n \"1,260p\" admin/app/Console/Commands/StandardizeXiaobiandouFilters.php",
+            status: .succeeded, startedAt: Date()))
+    ]
+    for block in TurnPresentation.compactBlocks(cmdEvents) {
+        if case .activity(let a) = block {
+            cmdCompleted = TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text
+        }
+    }
+    t.expect(cmdCompleted.hasPrefix("已运行 "), "command completed uses past tense 已运行")
+    t.expect(cmdCompleted.contains("git status --short"), "command completed keeps command body")
     t.expect(!toolCompletedBase.contains("执行失败"),
               ".tool completed without failure has no suffix")
 }

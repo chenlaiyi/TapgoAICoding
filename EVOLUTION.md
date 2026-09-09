@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.226 — test: 补 v0.5.219 命令过去式回归测试
+**Date**: 2026-09-10
+**Tag**: v0.5.226
+**Test status**: 全量回归 3139 通过 + 三机安装
+**Changed**:
+- TurnPresentationTests：`.command` 完成态文案「已运行 cmd」断言。
+
+**Why**: 防止 v0.5.219 改动被无意回退。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.225 — test: 补 v0.5.222 `.tool` 过去式回归测试
 **Date**: 2026-09-10
 **Tag**: v0.5.225
