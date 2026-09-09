@@ -1619,10 +1619,11 @@ struct ComposerView: View {
                     // `+` / `🛡 完全访问` / 模型 / 发送，Plan mode 入口只在 + 菜单里。
                     // 用户已经可以从 + 菜单的"计划模式"项开启 Plan mode。
 
-                    if !isWelcome {
-                        if computerUseShowInComposer { computerControlChip }
-                        contextMeterChip
-                    }
+                    // v0.5.203: 模型额度环不再排除 welcome/自进化指令态 ——
+                    // 额度数据来自全局 rateLimits，与是否已有会话无关；
+                    // Codex 桌面端底栏控件在任何输入器状态下都稳定可见。
+                    if !isWelcome, computerUseShowInComposer { computerControlChip }
+                    contextMeterChip
 
                     Spacer()
 

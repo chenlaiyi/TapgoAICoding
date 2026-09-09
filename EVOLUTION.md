@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.203 — fix(ui): welcome/自进化态恢复显示模型额度环
+**Date**: 2026-09-09
+**Tag**: v0.5.203
+**Test status**: 构建 + 实机截图（额度环 61%）+ 全量回归 + 三机安装
+**Changed**:
+- ChatView：contextMeterChip 移出 `if !isWelcome`，任何输入器状态恒显；额度数据来自全局 rateLimits。
+
+**Why**: 用户反馈 welcome/自进化指令屏看不到模型额度。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.202 — fix(ui): composer 底栏模型 chip / 发送按钮对齐 Codex
 **Date**: 2026-09-09
 **Tag**: v0.5.202

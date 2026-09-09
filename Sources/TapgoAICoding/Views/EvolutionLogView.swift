@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.203", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.203",
+                    summary: "welcome/自进化态恢复显示模型额度环。",
+                    changes: [
+                        "contextMeterChip 不再被 isWelcome 排除，任何输入器状态恒显。",
+                        "额度数据来自全局 rateLimits，hover/点击弹套餐余额明细不变。"
+                    ],
+                    why: "用户反馈 welcome/自进化指令屏看不到模型额度。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.202", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.202",
                     summary: "composer 底栏模型 chip / 发送按钮对齐 Codex。",
                     changes: [
