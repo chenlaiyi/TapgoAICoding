@@ -97,36 +97,49 @@ struct ConversationWorkingIndicator: View {
     let title: String
     var animated = true
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
-    @State private var pulse = false
     var body: some View {
-        HStack(spacing: 8) {
+        // v0.5.213: 对齐 Codex 实机 —— 去掉前面 3 个点，「正在处理」四字做
+        // shimmer 流光（gradient 高亮带从左到右扫过），不是 3 点跳动。
+        Group {
             if animated {
-                // 3 跳动 dots 动画（每个 dot 错开 0.2s 起始）
-                HStack(spacing: 3) {
-                    ForEach(0..<3, id: \.self) { i in
-                        Circle()
-                            .frame(width: 5, height: 5)
-                            .foregroundStyle(DSHTheme.labelDim)
-                            .opacity(pulse ? 1.0 : 0.3)
-                            .animation(
-                                .easeInOut(duration: 0.6)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(i) * 0.2),
-                                value: pulse
-                            )
-                    }
-                }
-                .accessibilityHidden(true)
-                .frame(width: 16, alignment: .leading)
-                .onAppear { pulse = true }
+                ShimmerText(text: title, fontSize: 13 * scale.multiplier)
             } else {
                 Image(systemName: "hand.raised").accessibilityHidden(true)
+                Text(title).font(.system(size: 13 * scale.multiplier))
             }
-            Text(title).font(.system(size: 13 * scale.multiplier))
         }
         .foregroundStyle(DSHTheme.labelDim)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
+    }
+}
+
+/// v0.5.213: 文字流光（Codex 风格的「正在处理」shimmer）。
+private struct ShimmerText: View {
+    let text: String
+    let fontSize: CGFloat
+    /// 0...1 loop, 控制高亮带在文字宽度内的位置（-0.3 ... 1.3 偏移以进入/离开）。
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let phase = (t.truncatingRemainder(dividingBy: 1.6)) / 1.6
+            let base = Text(text).font(.system(size: fontSize))
+            base
+                .foregroundStyle(DSHTheme.labelDim)
+                .overlay(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.0),
+                            Color.white.opacity(0.85),
+                            Color.white.opacity(0.0)
+                        ],
+                        startPoint: UnitPoint(x: phase - 0.25, y: 0.5),
+                        endPoint:   UnitPoint(x: phase + 0.25, y: 0.5)
+                    )
+                    .blendMode(.plusLighter)
+                    .mask(base)
+                )
+        }
     }
 }
 

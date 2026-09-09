@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.213 — fix(ui): 正在处理输出对齐 Codex 实机（文字流光，非三点跳动）
+**Date**: 2026-09-10
+**Tag**: v0.5.213
+**Test status**: 全量回归 3122 通过 + 实机截图 + 三机安装
+**Changed**:
+- ConversationWorkingIndicator：去掉 3 个跳动圆点；「正在处理」改 ShimmerText（TimelineView + LinearGradient mask）做流光。
+
+**Why**: 对照 Codex 实机，按用户反馈。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.212 — fix(ui): 完成态行为行图标对齐 Codex 实机（✓ 绿色对勾）
 **Date**: 2026-09-10
 **Tag**: v0.5.212
