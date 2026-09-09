@@ -1296,6 +1296,17 @@ struct ComposerView: View {
         return "puzzlepiece.extension"
     }
 
+    /// v0.5.201: 插件品牌色（对齐 Codex 桌面端彩色品牌图标）。
+    private static func pluginIconColor(for name: String) -> Color {
+        let key = name.lowercased()
+        if key.contains("github") { return .primary }
+        if key.contains("cloudflare") { return Color(red: 0.96, green: 0.48, blue: 0.16) }
+        if key.contains("figma") { return Color(red: 0.72, green: 0.35, blue: 0.92) }
+        if key.contains("gmail") || key.contains("mail") { return Color(red: 0.89, green: 0.24, blue: 0.21) }
+        if key.contains("slack") { return .indigo }
+        return .primary
+    }
+
     /// v0.5.200: 面板高度按行数估算（compact 单行 ~30pt/行），插件数随目录变化。
     private var addPanelHeight: CGFloat {
         let pluginCount = pluginCatalogEntries.isEmpty ? Self.addMenuPlugins.count : pluginCatalogEntries.count
@@ -1306,23 +1317,22 @@ struct ComposerView: View {
     /// 实现撑满 composer 宽度的 push-out 卡片，对齐 Codex 桌面端。
     /// SwiftUI Menu 在 macOS 26.5 SDK 渲染成小弹窗（~130pt 宽），不够撑满宽度。
     @State private var showAddPanel = false
+    /// v0.5.201: composer 卡片实测高度 — 面板 banner 贴其上沿 6pt。
+    @State private var composerCardHeight: CGFloat = 140
+    private struct ComposerCardHeightKey: PreferenceKey {
+        static var defaultValue: CGFloat = 140
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+    }
     @ViewBuilder
     private var composerAddMenu: some View {
         Button {
-            showAddPanel.toggle()
+            withAnimation(.easeOut(duration: 0.15)) { showAddPanel.toggle() }
         } label: {
             Image(systemName: "plus")
         }
         .buttonStyle(.plain)
         .help("添加")
         .accessibilityLabel("添加（文件/附件/插件/目标/计划）")
-        .background(
-            PopoverPanel(isPresented: $showAddPanel,
-                         contentSize: NSSize(width: contentWidth, height: addPanelHeight)) {
-                composerAddPanel
-                    .frame(width: contentWidth)
-            }
-        )
     }
 
     /// v0.5.199: + 菜单面板 — 撑满 composer 卡片宽度的下拉面板（对齐 Codex 桌面端）。
@@ -1332,7 +1342,7 @@ struct ComposerView: View {
             Text("添加")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 2)
                 .padding(.top, 10)
             // v0.5.200: 行序对齐 Codex 桌面端：文件和文件夹 → 附加 → 目标 →
             // 计划模式 → 录制技能。文件/附加/录制不显示副标题，目标/计划模式
@@ -1385,11 +1395,11 @@ struct ComposerView: View {
                 .buttonStyle(.plain)
                 .focusable(false)
             }
-            Divider().padding(.horizontal, 8)
+            Divider()
             Text("插件")
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 2)
                 .padding(.top, 4)
             if !pluginCatalogEntries.isEmpty {
                 ForEach(pluginCatalogEntries, id: \.id) { item in
@@ -1402,7 +1412,8 @@ struct ComposerView: View {
                         composerAddMenuRow(
                             icon: Self.pluginIcon(for: item),
                             title: item.displayName,
-                            detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary)
+                            detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary,
+                            iconColor: Self.pluginIconColor(for: item.displayName))
                     }
                     .buttonStyle(.plain)
                     .focusable(false)
@@ -1420,7 +1431,9 @@ struct ComposerView: View {
                 }
             }
         }
+        .padding(.horizontal, 12)
         .padding(.bottom, 8)
+        .frame(width: contentWidth, height: addPanelHeight, alignment: .top)
         .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(DSHTheme.border, lineWidth: 0.5))
         .shadow(color: DSHTheme.cardShadow, radius: 12, x: 0, y: -2)
@@ -1430,11 +1443,11 @@ struct ComposerView: View {
     /// 副标题（caption secondary，超长截断）。没有副标题的行只显示标题，
     /// 与 Codex 桌面端 + 菜单一致（文件和文件夹 / 附加 / 录制技能无副标题）。
     @ViewBuilder
-    private func composerAddMenuRow(icon: String, title: String, detail: String) -> some View {
+    private func composerAddMenuRow(icon: String, title: String, detail: String, iconColor: Color = .primary) -> some View {
         HStack(alignment: .center, spacing: 9) {
             Image(systemName: icon)
                 .frame(width: 16, alignment: .center)
-                .foregroundStyle(.primary)
+                .foregroundStyle(iconColor)
             Text(title)
                 .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
                 .foregroundStyle(.primary)
@@ -1740,8 +1753,30 @@ struct ComposerView: View {
             }
             .zIndex(1)
             }
+            .background(
+                GeometryReader { g in
+                    Color.clear.preference(key: ComposerCardHeightKey.self, value: g.size.height)
+                }
+            )
 
         }
+        .overlay {
+            if showAddPanel {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.12)) { showAddPanel = false }
+                    }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if showAddPanel {
+                composerAddPanel
+                    .offset(y: -(composerCardHeight + 6))
+                    .transition(.opacity)
+            }
+        }
+        .onPreferenceChange(ComposerCardHeightKey.self) { composerCardHeight = $0 }
         .frame(maxWidth: contentWidth, alignment: .center)
         .padding(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         .onReceive(NotificationCenter.default.publisher(for: .tapgoOpenGoalEditor)) { _ in

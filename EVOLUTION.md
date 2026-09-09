@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.201 — fix(ui): + 菜单改为 composer 正上方同宽 banner
+**Date**: 2026-09-09
+**Tag**: v0.5.201
+**Test status**: 全量回归 + 构建/启动 + AXPress UI 截图验证 + 三机安装
+**Changed**:
+- ChatView：+ 菜单弃用 NSPopover，改 composer 卡片 overlay（同宽/对齐/贴上沿6pt）；外部点击关闭；行内边距12pt修图标裁切；插件图标品牌色。
+- 移除 TapgoCore/PopoverPanel.swift。
+
+**Why**: NSPopover 自动定位导致面板与 composer 错位、图标贴边裁切、transient 关闭后状态失步；Codex 的面板就是输入框正上方同宽 banner。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.200 — fix(ui): + 菜单单行紧凑布局对齐 Codex + 失败语义修正
 **Date**: 2026-09-09
 **Tag**: v0.5.200

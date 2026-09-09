@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.201", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.201",
+                    summary: "+ 菜单改为 composer 正上方同宽 banner。",
+                    changes: [
+                        "弃用 NSPopover，改 SwiftUI overlay：与 composer 同宽、贴上沿 6pt。",
+                        "面板外点击关闭；行内容加 12pt 内边距修图标裁切。",
+                        "插件图标按品牌着色；移除 PopoverPanel.swift。"
+                    ],
+                    why: "面板必须就是输入框上面的 banner，NSPopover 定位不可控。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.200", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.200",
                     summary: "+ 菜单单行紧凑布局对齐 Codex + 失败语义修正。",
                     changes: [
