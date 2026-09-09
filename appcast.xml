@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.228</title>
+            <pubDate>Thu, 10 Sep 2026 07:45:30 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.228</link>
+            <sparkle:version>0.5.228</sparkle:version>
+            <sparkle:shortVersionString>0.5.228</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.228
+
+## 补 v0.5.214 命令活动态前缀回归测试
+
+- 新增 `TurnPresentationTests`：`.command` 活动态文案含「正在运行 cmd」（对齐 Codex 实机截图 1 活动态）。
+- 防止 v0.5.214 改动被无意回退。
+
+## 测试
+
+全量回归 3143 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.228/Tapgo-AICoding-0.5.228.zip" length="12277972" type="application/octet-stream" sparkle:edSignature="unNPkssNUdCXVbZ4JUw43hc9FI7fBSYoF7MgJdYbFxw/N/bwBUBErQhIPcNCSlQpNV+wlUZcSo18PdFHcTIrAA=="/>
+        </item>
+        <item>
             <title>0.5.227</title>
             <pubDate>Thu, 10 Sep 2026 07:25:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.227</link>
@@ -43,27 +64,6 @@
 全量回归 3139 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.226/Tapgo-AICoding-0.5.226.zip" length="12278260" type="application/octet-stream" sparkle:edSignature="pgrgB/F1yfLGN0Td+22G5OwZPXtB7Nr9izENdHbjZyPJg51ePMqn1qpkbarirBWvT1okPdzSAg6yA6EQ9N4RCQ=="/>
-        </item>
-        <item>
-            <title>0.5.225</title>
-            <pubDate>Thu, 10 Sep 2026 07:03:35 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.225</link>
-            <sparkle:version>0.5.225</sparkle:version>
-            <sparkle:shortVersionString>0.5.225</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.225
-
-## 补 v0.5.222 `.tool` 过去式回归测试
-
-- 新增 `TurnPresentationTests`：`.tool` 默认 fallback 完成态文案「已使用 <name>」（v0.5.222 对齐 Codex 实机截图 3）。
-- 防止 v0.5.222 改动被无意回退。
-
-## 测试
-
-全量回归 3137 通过 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.225/Tapgo-AICoding-0.5.225.zip" length="12278060" type="application/octet-stream" sparkle:edSignature="kewlxy/0VU1JMe8FTOsSJc/RN9tQfot5pC1ynjaSBxJiC8a4Sq6NpJQjcxZll4vscoKt4GupfH/3+eHwaPeTCw=="/>
         </item>
     </channel>
 </rss>
