@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.221", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.221",
+                    summary: "同步 v0.5.220 编译修复（源码 = 发布产物）。",
+                    changes: [
+                        "search 闭包 let 绑定外层变量，修 SendableClosureCaptures。"
+                    ],
+                    why: "v0.5.220 修复未 commit，源码/产物不一致。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.220", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.220",
                     summary: "上下文压缩活动图标对齐 Codex 实机（循环箭头）。",
                     changes: [

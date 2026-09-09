@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.221 — fix(build): 同步 v0.5.220 编译修复（SendableClosureCaptures）
+**Date**: 2026-09-10
+**Tag**: v0.5.221
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation：把 search 完成态过去式逻辑里的外层 `label` / `base` 用 `let capturedLabel` / `let capturedBase` 绑定，让 Swift 6 release build 的 `SendableClosureCaptures` 通过。
+
+**Why**: v0.5.220 修复了 build 错误但未 commit，源码与发布产物不一致。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.220 — fix(ui): 上下文压缩活动图标对齐 Codex 实机（循环箭头）
 **Date**: 2026-09-10
 **Tag**: v0.5.220
