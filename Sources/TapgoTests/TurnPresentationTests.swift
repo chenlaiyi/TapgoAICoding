@@ -280,4 +280,19 @@ func runTurnPresentationTests(_ t: TestRunner) {
     }()
     t.expectEqual(compactionIcon, "arrow.triangle.2.circlepath",
                   ".compaction uses cycle-arrow icon aligned with Codex")
+
+    // v0.5.214/215/216: 活动行活动态文案（对齐 Codex 实机）。
+    var cmdActive: String {
+        let ev: [TurnItem] = [.commandExecution(CommandExecution(
+            id: "c1", command: "swift build", status: .running, startedAt: Date()))]
+        for block in TurnPresentation.compactBlocks(ev) {
+            if case .activity(let a) = block {
+                return TurnPresentation.activityDisplay(for: a, turnIsRunning: true).text
+            }
+        }
+        return ""
+    }
+    t.expect(cmdActive.contains("正在运行 "), "command active contains 正在运行")
+    t.expect(cmdActive.contains("swift build"), "command active keeps command body")
+
 }
