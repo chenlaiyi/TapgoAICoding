@@ -73,12 +73,16 @@ struct ActivityRollupView: View {
             // 标签中灰，思考/终端行更淡一档。
             let rowSize = conversationBodySize * appFontScale.multiplier
             HStack(spacing: 8) {
-                // Codex 用具体类别图标（terminal / magnifyingglass / pencil …）配合一颗小脉动
-                // 圆点表示「仍在进行中」，比裸 ProgressView 更安静，也保留了动作语义。
+                // v0.5.212: 对齐 Codex 实机 —— 完成态用 ✓ 绿色对勾替代类别图标
+                // （失败态保留原图标变红），运行态维持类别图标 + 脉动点。
                 if let icon = display.systemImage {
-                    Image(systemName: icon)
+                    let isCompleted = !isLiveTail && !display.isFailure
+                    let shownIcon = isCompleted ? "checkmark.circle.fill" : icon
+                    let tint = display.isFailure ? DSHTheme.error
+                                              : (isCompleted ? Color.green : (isLiveTail ? DSHTheme.labelDim : DSHTheme.labelTertiary))
+                    Image(systemName: shownIcon)
                         .font(.system(size: rowSize - 2))
-                        .foregroundStyle(isLiveTail ? DSHTheme.labelDim : DSHTheme.labelTertiary)
+                        .foregroundStyle(tint)
                         .frame(width: 18)
                 }
                 if isLiveTail {

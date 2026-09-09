@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.212 — fix(ui): 完成态行为行图标对齐 Codex 实机（✓ 绿色对勾）
+**Date**: 2026-09-10
+**Tag**: v0.5.212
+**Test status**: 全量回归 3122 通过 + 三机安装
+**Changed**:
+- MessageRow：完成态切换为 `checkmark.circle.fill` 绿色，失败态红图标，运行态保留类别图标 + 脉动点。
+
+**Why**: 对照 Codex 实机会话截图，完成态统一 ✓ 绿色对勾。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.211 — fix(ui): 图像文件阅读对齐 Codex 实机（查看图像）
 **Date**: 2026-09-10
 **Tag**: v0.5.211
