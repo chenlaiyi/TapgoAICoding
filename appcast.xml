@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.215</title>
+            <pubDate>Thu, 10 Sep 2026 04:55:12 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.215</link>
+            <sparkle:version>0.5.215</sparkle:version>
+            <sparkle:shortVersionString>0.5.215</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.215
+
+## 工具活动行标签对齐 Codex 实机（使用工具 · → 使用 ）
+
+- Codex 截图实证活动行默认 fallback 格式为「已使用 <tool-name>」/「正在使用 <tool-name>」。
+- 此前 Tapgo 默认工具行显示「使用工具 · <name>」/「正在使用工具 · <name>」——对齐后改为「使用 <name>」/「正在使用 <name>」（去掉「工具 · 」前缀）。
+- 同步更新 ConversationPresentation 的 .tool 折叠标题，与 TurnPresentation 保持一致。
+
+## 测试
+
+全量回归 3122 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.215/Tapgo-AICoding-0.5.215.zip" length="12272363" type="application/octet-stream" sparkle:edSignature="RNru3MUp62JzThXqUikAc52cEQqR0G1XzfZGe+79F6AjvxE1thMffapoquHBvw5RGSfEyoA7J+J6MbfxY5sFBg=="/>
+        </item>
+        <item>
             <title>0.5.214</title>
             <pubDate>Thu, 10 Sep 2026 04:42:20 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.214</link>
@@ -44,28 +66,6 @@
 构建 + 全量回归 3122 通过 + 实机截图 + 三机安装。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.213/Tapgo-AICoding-0.5.213.zip" length="12271771" type="application/octet-stream" sparkle:edSignature="CnJBmDoRXKbbyv0LiMLjQDwOqewWFc/jUgORBMYTW8HMT2WlYBDh0rTLi3q62zUhdjiGd5Eue7iPgf823mKDDA=="/>
-        </item>
-        <item>
-            <title>0.5.212</title>
-            <pubDate>Thu, 10 Sep 2026 04:13:51 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.212</link>
-            <sparkle:version>0.5.212</sparkle:version>
-            <sparkle:shortVersionString>0.5.212</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.212
-
-## 完成态行为行图标对齐 Codex 实机（✓ 绿色对勾）
-
-- Codex 桌面端实机会话：完成态行为行使用 ✓ 绿色对勾替代类别图标。
-- 此前 Tapgo 完成态仍显示原类别图标（terminal / wrench 等）。现在：完成态切换为 `checkmark.circle.fill` 绿色，失败态保留原类别图标并变红，运行态维持类别图标 + 脉动点。
-- 影响：所有带类别图标的行为行（命令 / 工具 / 编辑 / 查询等）。
-
-## 测试
-
-全量回归 3122 通过 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.212/Tapgo-AICoding-0.5.212.zip" length="12267789" type="application/octet-stream" sparkle:edSignature="KTLNTPaqN65D49pn1wx4cKRWf82ZHxEFLyNfcVRRaiugzVidtSnGvKG+zHn1bIVvGGisDiDqC5xY1gaVYT4BDw=="/>
         </item>
     </channel>
 </rss>
