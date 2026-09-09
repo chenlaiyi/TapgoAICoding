@@ -65,7 +65,7 @@ public final class DeepSeekQuotaClient {
             case .decoding(let detail, let endpoint):
                 return "DeepSeek 余额接口 \(endpoint) 响应无法解析：\(detail)"
             case .unavailable(let endpoint):
-                return "DeepSeek \(endpoint) 返回 is_available=false —— 账户余额不可用"
+                return "DeepSeek \(endpoint) 返回 is_available=false —— 账户不可用（通常为余额不足/欠费，请充值）"
             case .noBalanceInfo(let endpoint):
                 return "DeepSeek \(endpoint) 未返回 balance_infos"
             }
@@ -74,10 +74,10 @@ public final class DeepSeekQuotaClient {
 
     /// 拉取余额并转换为与 Codex 弹窗兼容的 `RateLimitsSnapshot`。
     public func fetchBalance(now: Date = Date()) async throws -> RateLimitsSnapshot {
-        let key = try loadAPIKey()
         var request = URLRequest(url: Self.balanceURL)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let key = try loadAPIKey()
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("TapgoAICoding/0.5.35", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 8
@@ -90,12 +90,15 @@ public final class DeepSeekQuotaClient {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw QuotaError.decoding("顶层不是 JSON object", endpoint: endpoint)
         }
+        // v0.5.206: is_available=false（典型为账户欠费/暂停充值）时官方仍
+        // 会返回 balance_infos 真实余额（可为负数，如 -1.29）。余额必须如实
+        // 展示让用户知道要充值；只有 balance_infos 整体缺失时才报错。
         let available = (json["is_available"] as? Bool) ?? false
-        guard available else {
-            throw QuotaError.unavailable(endpoint: endpoint)
-        }
-        guard let infos = (json["balance_infos"] as? [[String: Any]]), !infos.isEmpty else {
-            throw QuotaError.noBalanceInfo(endpoint: endpoint)
+        let infos = (json["balance_infos"] as? [[String: Any]]) ?? []
+        if infos.isEmpty {
+            throw available
+                ? QuotaError.noBalanceInfo(endpoint: endpoint)
+                : QuotaError.unavailable(endpoint: endpoint)
         }
         return Self.build(from: infos, now: now)
     }

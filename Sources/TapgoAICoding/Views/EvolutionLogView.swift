@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.206", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.206",
+                    summary: "DeepSeek 欠费负余额如实展示。",
+                    changes: [
+                        "is_available=false 且带 balance_infos 时照常解析显示余额（含负数）。",
+                        "无余额数据才报错，文案明确提示欠费充值。"
+                    ],
+                    why: "欠费账户余额数字仍在响应里，旧逻辑直接抛错看不到。"
+                    ,next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.205", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.205",
                     summary: "DeepSeek 等按量计费模型底栏显示余额金额。",
                     changes: [

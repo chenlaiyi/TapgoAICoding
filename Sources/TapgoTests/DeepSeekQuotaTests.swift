@@ -37,7 +37,7 @@ func runDeepSeekQuotaClient(_ t: TestRunner) async {
     let missingPath = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("tapgo-ds-\(UUID().uuidString).json")
     let missing = DeepSeekQuotaClient(authPath: missingPath, transport: { _ in
-        (Data(), HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        (Data(), HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL.absoluteURL, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     })
     do {
         _ = try await missing.fetchBalance()
@@ -61,7 +61,7 @@ func runDeepSeekQuotaClient(_ t: TestRunner) async {
     var capturedAuth: String?
     let ok = DeepSeekQuotaClient(authPath: authPath) { request in
         capturedAuth = request.value(forHTTPHeaderField: "Authorization")
-        return (body, HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL, statusCode: 200,
+        return (body, HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL.absoluteURL, statusCode: 200,
                                       httpVersion: nil, headerFields: nil)!)
     }
     do {
@@ -73,10 +73,27 @@ func runDeepSeekQuotaClient(_ t: TestRunner) async {
     t.expectEqual(capturedAuth ?? "", "Bearer ds-test-key",
                   "auth header: Bearer prefix (DeepSeek official style)")
 
-    // MARK: is_available=false surfaces as error
+    // MARK: is_available=false with balance_infos still shows the real (possibly negative) balance
+    let negativeAuthPath = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-ds-\(UUID().uuidString).json")
+    try? "{\"OPENAI_API_KEY\": \"ds-test-key\"}".write(to: negativeAuthPath, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: negativeAuthPath) }
+
+    let negativeBody = Data("{\"is_available\":false,\"balance_infos\":[{\"currency\":\"CNY\",\"total_balance\":\"-1.29\",\"granted_balance\":\"0.00\",\"topped_up_balance\":\"-1.29\"}]}".utf8)
+    do {
+        let client = DeepSeekQuotaClient(authPath: negativeAuthPath, transport: { _ in
+            (negativeBody, HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL.absoluteURL, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        })
+        let snap = try await client.fetchBalance()
+        t.expect(snap.credits?.balance.contains("-1.29") == true, "negative balance surfaced verbatim")
+    } catch {
+        t.expect(false, "negative balance should not throw: \(error)")
+    }
+
+    // is_available=false AND no balance_infos -> error retained
     let unavailBody = Data("{\"is_available\":false,\"balance_infos\":[]}".utf8)
     let unavail = DeepSeekQuotaClient(authPath: authPath) { _ in
-        (unavailBody, HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL, statusCode: 200,
+        (unavailBody, HTTPURLResponse(url: DeepSeekQuotaClient.balanceURL.absoluteURL, statusCode: 200,
                                       httpVersion: nil, headerFields: nil)!)
     }
     do {

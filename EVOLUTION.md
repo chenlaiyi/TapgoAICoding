@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.206 — fix(quota): DeepSeek 欠费负余额如实展示
+**Date**: 2026-09-09
+**Tag**: v0.5.206
+**Test status**: 全量回归 3119 通过 + 三机安装
+**Changed**:
+- DeepSeekQuotaClient：is_available=false 且带 balance_infos 时照常解析余额（可负数）；仅无数据时报错，文案提示欠费充值。
+
+**Why**: 实测欠费账户 is_available=false 但余额数字仍在，旧逻辑直接抛错导致用户看不到需要充值。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.205 — fix(ui): DeepSeek 按量计费底栏显示余额金额
 **Date**: 2026-09-09
 **Tag**: v0.5.205
