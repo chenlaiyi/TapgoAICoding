@@ -266,4 +266,18 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expect(cmdCompleted.contains("git status --short"), "command completed keeps command body")
     t.expect(!toolCompletedBase.contains("执行失败"),
               ".tool completed without failure has no suffix")
+
+    // v0.5.220: 上下文压缩活动图标对齐 Codex 实机（双向循环箭头）。
+    let compactionIcon: String = {
+        let ev: [TurnItem] = [.toolCall(ToolCall(
+            id: "cc1", name: "context_compaction", arguments: "{}", status: .succeeded))]
+        for block in TurnPresentation.compactBlocks(ev) {
+            if case .activity(let a) = block {
+                return TurnPresentation.activityDisplay(for: a, turnIsRunning: false).systemImage ?? ""
+            }
+        }
+        return ""
+    }()
+    t.expectEqual(compactionIcon, "arrow.triangle.2.circlepath",
+                  ".compaction uses cycle-arrow icon aligned with Codex")
 }
