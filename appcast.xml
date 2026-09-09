@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.205</title>
+            <pubDate>Wed, 09 Sep 2026 20:35:08 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.205</link>
+            <sparkle:version>0.5.205</sparkle:version>
+            <sparkle:shortVersionString>0.5.205</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.205
+
+## 修复：DeepSeek 等按量计费模型底栏不显示余额
+
+- DeepSeek 按量计费没有订阅百分比窗口，额度环此前退化成空环，余额金额只藏在 hover 弹窗里。
+- 现在 `worstUsedPercent` 缺失且账户有余额时，底栏直接显示**余额金额**（如 `¥17.95`），带等宽数字排版。
+- 订阅制模型（MiniMax / GLM）行为不变：仍显示剩余百分比环。
+
+## 测试
+
+构建 + 实机验证 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.205/Tapgo-AICoding-0.5.205.zip" length="12266176" type="application/octet-stream" sparkle:edSignature="bC6L4jD65rHPBugjxkFlVAsnB9x3PSGNRuoCq4HK6dDxzUe2K+4/trcxW6TkNnOJkyQHiWsKBSL2E7pAsv9OAQ=="/>
+        </item>
+        <item>
             <title>0.5.204</title>
             <pubDate>Wed, 09 Sep 2026 20:29:15 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.204</link>
@@ -44,27 +66,6 @@
 构建 + 实机截图验证（welcome 态额度环显示 61%）+ 全量回归 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.203/Tapgo-AICoding-0.5.203.zip" length="12263279" type="application/octet-stream" sparkle:edSignature="jEjzW4+RbRX211YVM+YgeNzuAT094oDIL20auRUNJ1xjIBTaLwcW9Blt9kmNCWmZTZmM3m+iRm9Wz9hxpOc6Ag=="/>
-        </item>
-        <item>
-            <title>0.5.202</title>
-            <pubDate>Wed, 09 Sep 2026 09:28:13 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.202</link>
-            <sparkle:version>0.5.202</sparkle:version>
-            <sparkle:shortVersionString>0.5.202</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.202
-
-## Composer 底栏对齐 Codex 桌面端
-
-- 模型控件改为 Codex 式纯文本：**裸模型名 + 空格分隔思考力度**（如「GLM-5.3-Flash 高」）——去掉品牌前缀（智谱/MiniMax/DeepSeek 等）、「·」分隔符与下拉 chevron（点击弹出的模型菜单保留）。
-- 发送按钮空输入禁用态透明度 0.32 → 0.55：Codex 空输入时按钮依然清晰可见。
-
-## 测试
-
-全量回归 + 构建/启动 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.202/Tapgo-AICoding-0.5.202.zip" length="12262295" type="application/octet-stream" sparkle:edSignature="urq1vHaGGBsr6KB+vJpybR4ecE/gn4MEHxdmjmqD0qPiVIQz2+UJ9M5SmIyOGhzHq+jwshUpcsEG4ANnawZVCw=="/>
         </item>
     </channel>
 </rss>
