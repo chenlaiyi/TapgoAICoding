@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.220</title>
+            <pubDate>Thu, 10 Sep 2026 05:54:16 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.220</link>
+            <sparkle:version>0.5.220</sparkle:version>
+            <sparkle:shortVersionString>0.5.220</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.220
+
+## 上下文压缩活动图标对齐 Codex 实机（循环箭头）
+
+- Codex 实机截图 1「上下文已自动压缩」前的图标是循环箭头（↔ 风格）。
+- 此前 Tapgo 用 `text.line.last.and.arrowtriangle.forward`（text →），换成 `arrow.triangle.2.circlepath`（双向循环箭头），更贴合「压缩/循环」语义。
+
+## 测试
+
+全量回归 3125 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.220/Tapgo-AICoding-0.5.220.zip" length="12276964" type="application/octet-stream" sparkle:edSignature="efnMFgV2akRAR0Ki5FLBWgzs+2LuFXt4ISVeQ9ZdXQwcAEFL3ngdYCVWVTs5Odu13ihv48JXIxeNOYv3HjrRBQ=="/>
+        </item>
+        <item>
             <title>0.5.219</title>
             <pubDate>Thu, 10 Sep 2026 05:41:37 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.219</link>
@@ -44,29 +65,6 @@
 全量回归 3125 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.218/Tapgo-AICoding-0.5.218.zip" length="12276820" type="application/octet-stream" sparkle:edSignature="l0tqvF0an8MCaF4Uo1EUyp44j0LFgU0bXrVZLsYw6qnRpPxnqN/8XTVNAzIJE13uhjOg/sToRJL38RXHpDhBAw=="/>
-        </item>
-        <item>
-            <title>0.5.217</title>
-            <pubDate>Thu, 10 Sep 2026 05:20:43 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.217</link>
-            <sparkle:version>0.5.217</sparkle:version>
-            <sparkle:shortVersionString>0.5.217</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.217
-
-## 文件编辑活动行对齐 Codex 实机（完成态过去式 + 差异统计）
-
-- Codex 实机截图 1：完成态显示「已创建 /path +220 -0」，过去式 + 内联 +N/-M 差异统计。
-- 之前 Tapgo 完成态用现时式（新建/编辑/删除），不带差异行数。
-- 现在 `.edit` 活动行：active 用现时式「新建 / 编辑 / 删除」、completed 改过去式「已创建 / 已编辑 / 已删除」+ ` +{adds} -{dels}` 差异统计（解析 unified diff）。
-- 失败态 completed 加 `· 执行失败` 后缀。
-
-## 测试
-
-全量回归 3125 通过 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.217/Tapgo-AICoding-0.5.217.zip" length="12275505" type="application/octet-stream" sparkle:edSignature="xEKWzWcv4ArrWOdM/kC8T9xnbQTjjwuzO407jCcFXCk3Ou56ZDWriPKG9QZUdu9UlhLVie4eRdpZ0S+habL7DQ=="/>
         </item>
     </channel>
 </rss>
