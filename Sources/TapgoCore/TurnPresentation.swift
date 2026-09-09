@@ -371,7 +371,7 @@ public enum TurnPresentation {
         return semantic(
             key: "command",
             kind: .command,
-            activeText: "正在执行 " + command,
+            activeText: "正在运行 " + command,
             completedText: failed ? "终端 " + command + " · 执行失败" : "终端 " + command,
             continuationText: "终端 " + command,
             icon: "terminal",

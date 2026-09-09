@@ -43,7 +43,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     }
 
     let runningBuild = TurnPresentation.activityDisplay(for: .commandExecution(buildCommand))
-    t.expectEqual(runningBuild.text, "正在执行 swift build", "running terminal row shows the live command")
+    t.expectEqual(runningBuild.text, "正在运行 swift build", "running terminal row shows the live command")
 
     // Consecutive search-like tool calls group into one 查阅 row with counts.
     let searchOne = ToolCall(id: "s-1", name: "web_search", arguments: "{}", status: .succeeded)
@@ -119,7 +119,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     )
     let search = TurnPresentation.activityDisplay(for: .commandExecution(searchCommand))
     t.expectEqual(search.kind, .command, "rg stays a terminal command row")
-    t.expectEqual(search.text, "正在执行 rg -n foo Sources", "terminal search shows the live command")
+    t.expectEqual(search.text, "正在运行 rg -n foo Sources", "terminal search shows the live command")
 
     let reasoning = TurnPresentation.activityDisplay(
         for: .reasoning(id: "reasoning", text: "分析中\nInvestigating editor refresh")

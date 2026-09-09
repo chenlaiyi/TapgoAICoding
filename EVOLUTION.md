@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.214 — fix(ui): 活动命令行前缀对齐 Codex 实机（正在运行）
+**Date**: 2026-09-10
+**Tag**: v0.5.214
+**Test status**: 全量回归 3122 通过 + 三机安装
+**Changed**:
+- TurnPresentation.commandSemantic：activeText 「正在执行 <cmd>」→「正在运行 <cmd>」。
+
+**Why**: 对照 Codex 实机会话截图（活动行格式）。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.213 — fix(ui): 正在处理输出对齐 Codex 实机（文字流光，非三点跳动）
 **Date**: 2026-09-10
 **Tag**: v0.5.213
