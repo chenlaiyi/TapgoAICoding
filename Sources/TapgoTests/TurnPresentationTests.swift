@@ -46,8 +46,8 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expectEqual(runningBuild.text, "正在运行 swift build", "running terminal row shows the live command")
 
     // Consecutive search-like tool calls group into one 查阅 row with counts.
-    let searchOne = ToolCall(id: "s-1", name: "web_search", arguments: "{}", status: .succeeded)
-    let searchTwo = ToolCall(id: "s-2", name: "grep", arguments: "{}", status: .succeeded)
+    let searchOne = ToolCall(id: "s-1", name: "web_search", arguments: "", status: .succeeded)
+    let searchTwo = ToolCall(id: "s-2", name: "grep", arguments: "", status: .succeeded)
     let searchGroup = TurnPresentation.compactBlocks([
         .toolCall(searchOne),
         .toolCall(searchTwo),
@@ -233,4 +233,21 @@ func runTurnPresentationTests(_ t: TestRunner) {
     // v0.5.223: 完成回合工作时长文案「用时」（对齐 Codex 实机）。
     t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65),
                   "用时 1 分 5 秒", "completed with valid duration uses 用时")
+
+    // v0.5.222: `.tool` 默认 fallback 完成态对齐 Codex 实机「已使用 <name>」。
+    var toolCompletedBase: String {
+        let events: [TurnItem] = [
+            .toolCall(ToolCall(id: "t1", name: "browser_check", arguments: "", status: .succeeded))
+        ]
+        for block in TurnPresentation.compactBlocks(events) {
+            if case .activity(let a) = block {
+                return TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text
+            }
+        }
+        return ""
+    }
+    t.expectEqual(toolCompletedBase, "已使用 browser_check",
+                  ".tool completed uses past tense 已使用")
+    t.expect(!toolCompletedBase.contains("执行失败"),
+              ".tool completed without failure has no suffix")
 }
