@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.201</title>
+            <pubDate>Wed, 09 Sep 2026 09:13:57 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.201</link>
+            <sparkle:version>0.5.201</sparkle:version>
+            <sparkle:shortVersionString>0.5.201</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.201
+
+## + 菜单改为输入框正上方同宽 banner（对齐 Codex 桌面端）
+
+- 弃用 NSPopover 自动定位（错位、贴边、点外部关闭后状态失步），改为 SwiftUI overlay：面板与 composer 卡片**同宽、左右边缘对齐、贴上沿 6pt**，就是输入框上面的 banner。
+- 面板出现时点击面板外任意区域关闭（含消息流区域）；开合带 150ms 淡入动画。
+- 修复：面板行图标贴左边缘被裁 — 行内容增加 12pt 水平内边距。
+- 插件行图标按品牌着色（GitHub 白 / Cloudflare 橙 / Figma 紫 / Gmail 红 / Slack 蓝紫），对齐 Codex 彩色品牌图标。
+- 移除 TapgoCore/PopoverPanel.swift（不再使用）。
+
+## 测试
+
+全量回归 + 构建/启动 + 本机自动化 UI 验证（AXPress 开面板截图比对）+ 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.201/Tapgo-AICoding-0.5.201.zip" length="12262497" type="application/octet-stream" sparkle:edSignature="0c2glrtQm0o+Mta6OaqDIz70fw/KTtPZji3SUN3A8dk9B/3YfOHXZlD7WdBKdrvE9hsXbhPloIg1s2Io1KW3DQ=="/>
+        </item>
+        <item>
             <title>0.5.200</title>
             <pubDate>Wed, 09 Sep 2026 08:25:07 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.200</link>
@@ -79,32 +103,6 @@
 未跑（纯 UI 改动不影响逻辑；ANSI parser 行为容易在终端实跑验证）。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.199/Tapgo-AICoding-0.5.199.zip" length="12263799" type="application/octet-stream" sparkle:edSignature="qPfnYxt+eN8PHbI+CRwToWVDJTsrkgo2H63ew14bIBEVNABK0+tf1kzGUAdGzF8CFYFjznCxFJEdgfAZz1sEDA=="/>
-        </item>
-        <item>
-            <title>0.5.198</title>
-            <pubDate>Wed, 09 Sep 2026 01:24:00 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.198</link>
-            <sparkle:version>0.5.198</sparkle:version>
-            <sparkle:shortVersionString>0.5.198</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.198
-
-## FileChangeView / RowView statusBadge 对齐 Codex 桌面端：inFlight 状态用 3 跳动 dots
-
-延续 v0.5.192/194/195 的"running 用 3 跳动 dots"统一风格，FileChangeView / FileChangeRowView 的 statusBadge 在 `change.status == .pending` 或 `.awaitingApproval` 时把静态 `clock` / `hand.raised` 图标替换为 3 个错开 0.2s 的 3pt 圆点 + `.easeInOut.repeatForever(autoreverses: true)` 动画，背景色和文字保留（"待应用"/"待批准"），与 v0.5.192/194/195 风格一致。
-
-## 改动
-
-- `Sources/TapgoAICoding/Views/FileChangeView.swift`:
-  - `FileChangeRowView.statusBadge` 加 `@State pulse` + inFlight 分支：3 个错开 0.2s 的 3pt 圆点 + 0.6s repeatForever 动画替换原 `Image(systemName:)`。
-  - 静态 icon 仅在非 inFlight 状态（已应用/失败/已拒绝）渲染。
-
-## 测试
-
-未跑（纯 UI 改动不影响逻辑）。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.198/Tapgo-AICoding-0.5.198.zip" length="14278657" type="application/octet-stream" sparkle:edSignature="LtxXdNiYTQQLpdxJAUaVaYGzXA89cboQ9peydATavqO+ilVtmg4qzxKKu1DqNa4KiQUJ37FbutVNlyXO6hAaCw=="/>
         </item>
     </channel>
 </rss>
