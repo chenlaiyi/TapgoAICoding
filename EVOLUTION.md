@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.215 — fix(ui): 工具活动行标签对齐 Codex 实机（去「工具 · 」前缀）
+**Date**: 2026-09-10
+**Tag**: v0.5.215
+**Test status**: 全量回归 3122 通过 + 三机安装
+**Changed**:
+- TurnPresentation / ConversationPresentation：默认 `.tool` 标签 `使用工具 · <name>` → `使用 <name>`。
+
+**Why**: 对照 Codex 实机截图 3（活动行「已使用 浏览器」）。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.214 — fix(ui): 活动命令行前缀对齐 Codex 实机（正在运行）
 **Date**: 2026-09-10
 **Tag**: v0.5.214

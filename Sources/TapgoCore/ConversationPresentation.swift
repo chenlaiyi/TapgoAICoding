@@ -17,7 +17,8 @@ public enum ConversationPresentation {
         case .read: base = "读取内容"
         case .edit: base = "修改文件"
         case .command: base = running && display.isRunning ? "运行命令" : "运行了命令"
-        case .tool: base = "使用工具"
+        // v0.5.215: 与 TurnPresentation 保持一致 —— 工具行标签去「工具」前缀。
+        case .tool: base = "使用"
         case .compaction: base = "整理上下文"
         }
         let count = activity.events.count > 1 ? " · \(activity.events.count) 项" : ""

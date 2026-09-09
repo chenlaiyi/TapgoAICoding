@@ -421,13 +421,16 @@ public enum TurnPresentation {
         } else if ["read", "open", "view", "get"].contains(where: name.contains) {
             // v0.5.211: 图像文件按 Codex 实机显示「查看图像」（而非通用
             // 「读取」）；其他文件仍显示「读取」。
-            kind = .read; label = "读取"; icon = "book"
+            // v0.5.215: 对齐 Codex 实机文件读取图标（截图 1 显示 stacked-pages 风格）。
+            kind = .read; label = "读取"; icon = "doc.text"
         } else if ["edit", "write", "patch", "update"].contains(where: name.contains) {
             kind = .edit; label = "编辑"; icon = "pencil"
         } else if ["shell", "bash", "command", "exec", "run"].contains(where: name.contains) {
             kind = .command; label = "终端"; icon = "terminal"
         } else {
-            kind = .tool; label = "使用工具 · " + call.name; icon = "wrench"
+            // v0.5.215: 对齐 Codex 实机活动行格式（截图 3：「已使用 浏览器」）。
+            // 默认 fallback 标签由「使用工具 · <name>」改为「使用 <name>」。
+            kind = .tool; label = "使用 " + call.name; icon = "wrench"
         }
 
         // 目标文件行（ZCode 参考样式）：编辑/查询/读取解析出目标文件后，
