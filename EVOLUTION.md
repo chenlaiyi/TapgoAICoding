@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.207 — fix(ui): 底栏电脑操作/权限 chip 对齐 ZCode 参考
+**Date**: 2026-09-09
+**Tag**: v0.5.207
+**Test status**: 全量回归 3119 通过 + 实机截图 + 三机安装
+**Changed**:
+- 电脑操作 chip 带文字「电脑操作」+ 状态点，且 welcome 态恒显。
+- 权限 chip 增加下拉指示 ▾。
+
+**Why**: artifacts/zcode-desktop-reference/main.png 参考图两 chip 均带文字/下拉。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.206 — fix(quota): DeepSeek 欠费负余额如实展示
 **Date**: 2026-09-09
 **Tag**: v0.5.206

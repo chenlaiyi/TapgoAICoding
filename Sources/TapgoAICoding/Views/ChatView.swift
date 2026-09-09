@@ -1622,7 +1622,9 @@ struct ComposerView: View {
                     // v0.5.203: 模型额度环不再排除 welcome/自进化指令态 ——
                     // 额度数据来自全局 rateLimits，与是否已有会话无关。
                     // v0.5.204: 额度环移到右侧贴近模型名。
-                    if !isWelcome, computerUseShowInComposer { computerControlChip }
+                    // v0.5.207: 电脑操作 chip 同理恒显（ZCode 参考图在
+                    // 新建任务态也显示「电脑操作」）。
+                    if computerUseShowInComposer { computerControlChip }
 
                     Spacer()
 
@@ -2066,6 +2068,8 @@ struct ComposerView: View {
             HStack(spacing: 4) {
                 Image(systemName: currentPermission.icon).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                 Text(currentPermission.id == PermissionChoice.full.id ? "完全访问" : currentPermission.title).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                // v0.5.207: ZCode 参考里权限 chip 带 ▾ 下拉指示。
+                Image(systemName: "chevron.down").font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
             }
             .foregroundStyle(currentPermission.id == PermissionChoice.full.id ? DSHTheme.warn : DSHTheme.labelDim)
             .padding(.horizontal, 3).padding(.vertical, 3)
@@ -2111,8 +2115,8 @@ struct ComposerView: View {
             ?? PermissionChoice.full
     }
 
-    /// Compact computer-control status. Codex's composer keeps secondary
-    /// capabilities icon-only so the permission and model remain scannable.
+    /// v0.5.207: 对齐 ZCode 参考 —— chip 带文字标签「电脑操作」+ 状态点
+    ///（此前为纯图标，用户反馈看不出含义）。
     private var computerControlChip: some View {
         let _ = computerPermissionRefresh
         return Button {
@@ -2124,6 +2128,8 @@ struct ComposerView: View {
             HStack(spacing: 3) {
                 Image(systemName: "display")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                Text("电脑操作")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                 Circle()
                     .fill(computerControlStatusColor)
                     .frame(width: 6, height: 6)

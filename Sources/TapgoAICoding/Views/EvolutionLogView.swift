@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.207", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.207",
+                    summary: "底栏电脑操作/权限 chip 对齐 ZCode 参考。",
+                    changes: [
+                        "电脑操作 chip 带文字+状态点，welcome 态恒显。",
+                        "权限 chip 增加 ▾ 下拉指示。"
+                    ],
+                    why: "参考图两 chip 均带文字/下拉，纯图标看不出含义。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.206", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.206",
                     summary: "DeepSeek 欠费负余额如实展示。",
                     changes: [
