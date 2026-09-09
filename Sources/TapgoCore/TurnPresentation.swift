@@ -412,13 +412,15 @@ public enum TurnPresentation {
         let running = call.status == .pending || call.status == .running || call.status == .awaitingApproval
         let failed = call.status == .failed || call.status == .denied
         let kind: TurnActivityDisplay.Kind
-        let label: String
-        let icon: String
+        var label: String
+        var icon: String
         if ["search", "grep", "query", "find", "glob"].contains(where: name.contains) {
             kind = .search; label = "查询"; icon = "magnifyingglass"
         } else if ["list", "ls"].contains(where: name.contains) {
             kind = .search; label = "查询"; icon = "list.bullet"
         } else if ["read", "open", "view", "get"].contains(where: name.contains) {
+            // v0.5.211: 图像文件按 Codex 实机显示「查看图像」（而非通用
+            // 「读取」）；其他文件仍显示「读取」。
             kind = .read; label = "读取"; icon = "book"
         } else if ["edit", "write", "patch", "update"].contains(where: name.contains) {
             kind = .edit; label = "编辑"; icon = "pencil"
@@ -431,6 +433,17 @@ public enum TurnPresentation {
         // 目标文件行（ZCode 参考样式）：编辑/查询/读取解析出目标文件后，
         // 单行只显示「标签 + 文件名 + 路径」，原始 JSON 参数不再上屏。
         let filePath = extractFilePath(from: call.arguments, kind: kind)
+        let imageExts: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "heic", "bmp"]
+        let isImage: Bool = {
+            guard let path = filePath as NSString? else { return false }
+            return imageExts.contains(path.pathExtension.lowercased())
+        }()
+        if isImage {
+            label = "查看图像"
+            icon = "photo"
+        } else if kind == .read {
+            // label/label/icon already set above for text read; no-op.
+        }
         let base: String
         if filePath != nil {
             base = running ? "正在" + label : label

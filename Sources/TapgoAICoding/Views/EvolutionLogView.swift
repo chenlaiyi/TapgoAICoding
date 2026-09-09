@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.211", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.211",
+                    summary: "图像文件阅读对齐 Codex 实机（查看图像）。",
+                    changes: [
+                        "图像扩展路径 → label "查看图像" + photo 图标。"
+                    ],
+                    why: "对照 Codex 实机会话「已查看 1 张图像」。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.210", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.210",
                     summary: "时长格式对齐 Codex 实机（中文 + 空格）。",
                     changes: [

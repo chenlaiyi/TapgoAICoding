@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.211 — fix(ui): 图像文件阅读对齐 Codex 实机（查看图像）
+**Date**: 2026-09-10
+**Tag**: v0.5.211
+**Test status**: 构建 + 三机安装
+**Changed**:
+- TurnPresentation.toolSemantic：解析到图像扩展路径时 label="查看图像"、icon="photo"。
+
+**Why**: 对照 Codex 实机会话「已查看 1 张图像」。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.210 — fix(ui): 时长格式对齐 Codex 实机（中文 + 空格）
 **Date**: 2026-09-10
 **Tag**: v0.5.210
