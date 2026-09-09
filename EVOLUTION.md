@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.205 — fix(ui): DeepSeek 按量计费底栏显示余额金额
+**Date**: 2026-09-09
+**Tag**: v0.5.205
+**Test status**: 构建 + 实机验证 + 三机安装
+**Changed**:
+- ChatView：worstUsedPercent 缺失且有 credits.balance 时，底栏显示余额金额替代空环。
+
+**Why**: DeepSeek 按量计费无百分比窗口，余额只藏在弹窗里。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.204 — fix(ui): 额度环移到模型名旁
 **Date**: 2026-09-09
 **Tag**: v0.5.204

@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.205", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.205",
+                    summary: "DeepSeek 等按量计费模型底栏显示余额金额。",
+                    changes: [
+                        "worstUsedPercent 缺失且有余额时，底栏显示 ¥余额 替代空环。"
+                    ],
+                    why: "DeepSeek 按量计费无百分比窗口，余额只藏在弹窗里。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.204", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.204",
                     summary: "额度环移到模型名旁。",
                     changes: [

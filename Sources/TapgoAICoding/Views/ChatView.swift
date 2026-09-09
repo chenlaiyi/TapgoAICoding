@@ -2266,8 +2266,21 @@ struct ComposerView: View {
             .flatMap { $0.worstUsedPercent }
             .map { max(0, 100 - $0) }
         let meterPercent: Int? = quotaRemaining ?? lastUsage?.contextPercent
+        // v0.5.205: DeepSeek 等按量计费模型没有百分比窗口，只有余额金额
+        //（credits.balance，如「¥17.95」）——底栏直接显示余额文本，
+        // 不再退化成空环。
+        let trimmedBalance = (store.rateLimits?.credits?.balance ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let creditBalance: String? = trimmedBalance.isEmpty ? nil : trimmedBalance
         HStack(spacing: 4) {
-            CircularContextMeter(percent: meterPercent, isActive: isRunning)
+            if quotaRemaining == nil, let creditBalance {
+                Text(creditBalance)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            } else {
+                CircularContextMeter(percent: meterPercent, isActive: isRunning)
+            }
         }
         .padding(.horizontal, 3).padding(.vertical, 3)
         .help("查看模型用量与剩余额度")
@@ -2298,7 +2311,9 @@ struct ComposerView: View {
         }
         .accessibilityLabel(quotaRemaining != nil
             ? "套餐余量 \(quotaRemaining.map(String.init) ?? "未知")%"
-            : "上下文用量 \(meterPercent.map(String.init) ?? "未知")%")
+            : (creditBalance != nil
+                ? "余额 \(creditBalance ?? "")"
+                : "上下文用量 \(meterPercent.map(String.init) ?? "未知")%"))
     }
 
     private func averageCacheHitPercent(thread: TapgoCore.Thread?) -> Int? {
