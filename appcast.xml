@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.203</title>
+            <pubDate>Wed, 09 Sep 2026 19:58:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.203</link>
+            <sparkle:version>0.5.203</sparkle:version>
+            <sparkle:shortVersionString>0.5.203</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.203
+
+## 修复：welcome / 自进化指令态不显示模型额度
+
+- Composer 底栏的模型额度环（`contextMeterChip`）此前被 `if !isWelcome` 排除——新会话与自进化指令屏看不到额度。
+- 额度数据来自全局 `rateLimits`（与是否已有会话无关），现改为**任何输入器状态下恒显**；hover/点击仍弹出套餐与余额明细。
+- 顺带确认 0.5.202 生效：底栏模型 chip 已是 Codex 式纯文本（`GLM-5.3-Flash`）。
+
+## 测试
+
+构建 + 实机截图验证（welcome 态额度环显示 61%）+ 全量回归 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.203/Tapgo-AICoding-0.5.203.zip" length="12263279" type="application/octet-stream" sparkle:edSignature="jEjzW4+RbRX211YVM+YgeNzuAT094oDIL20auRUNJ1xjIBTaLwcW9Blt9kmNCWmZTZmM3m+iRm9Wz9hxpOc6Ag=="/>
+        </item>
+        <item>
             <title>0.5.202</title>
             <pubDate>Wed, 09 Sep 2026 09:28:13 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.202</link>
@@ -46,44 +68,6 @@
 全量回归 + 构建/启动 + 本机自动化 UI 验证（AXPress 开面板截图比对）+ 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.201/Tapgo-AICoding-0.5.201.zip" length="12262497" type="application/octet-stream" sparkle:edSignature="0c2glrtQm0o+Mta6OaqDIz70fw/KTtPZji3SUN3A8dk9B/3YfOHXZlD7WdBKdrvE9hsXbhPloIg1s2Io1KW3DQ=="/>
-        </item>
-        <item>
-            <title>0.5.200</title>
-            <pubDate>Wed, 09 Sep 2026 08:25:07 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.200</link>
-            <sparkle:version>0.5.200</sparkle:version>
-            <sparkle:shortVersionString>0.5.200</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.200
-
-## + 菜单二次对齐 Codex 桌面端 + 失败语义修正
-
-### + 菜单单行紧凑布局（对照 Codex 真机截图）
-
-- 行布局从「标题+副标题双行大卡片」改为 Codex 同款**单行紧凑行**：图标 + 标题 + 同行内联副标题（caption secondary，超长截断）。
-- 行序对齐 Codex：文件和文件夹 → 附加 Tapgo AICoding → 目标 → 计划模式 → 录制技能（之前计划模式在最前）。
-- 无副标题的行（文件和文件夹 / 附加 / 录制技能）只显示标题；目标 / 计划模式用内联副标题表达状态（如「已开启：下一条消息只给方案不执行工具」）。
-- 抑制首行系统焦点蓝框（focusable(false)），面板高度按行数自适应。
-
-### 「未完成」→「失败」
-
-- 消息流命令/工具折叠行的「执行命令 · 未完成」改为「执行命令 · **失败**」：这些行都是已跑完但失败的命令，之前文案像「还在跑」，语义误导。
-- 侧栏失败角标的辅助功能文案同步改为「失败」。轮次级「处理未完成」（整轮没跑完）保持不变。
-
-## 改动
-
-- `Sources/TapgoAICoding/Views/ChatView.swift`：composerAddMenuRow 单行化 + 行序 + focusable + 面板高度估算
-- `Sources/TapgoCore/ConversationPresentation.swift`：activityTitle 失败后缀
-- `Sources/TapgoAICoding/Views/SidebarComponents.swift`：failed 角标 accessibilityLabel
-- `Sources/TapgoTests/ConversationPresentationTests.swift`：断言同步
-- `AppBuilder/*`：bump 0.5.200
-
-## 测试
-
-`swift run TapgoTests` 全量回归 + App 构建启动验证 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.200/Tapgo-AICoding-0.5.200.zip" length="12264978" type="application/octet-stream" sparkle:edSignature="Bp5IPisNm3hxyNyVQEaEjz3W+pxgSfoHvVoqvJ99FBX1bSa1x9loopoju3YDrlpqNppAAb7pR5fMGjTUVQ4rDA=="/>
         </item>
     </channel>
 </rss>
