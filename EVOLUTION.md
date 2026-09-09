@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.209 — fix(ui): 命令折叠行文案对齐 Codex 实机（运行了命令）
+**Date**: 2026-09-09
+**Tag**: v0.5.209
+**Test status**: 全量回归 3119 通过 + 三机安装
+**Changed**:
+- ConversationPresentation：命令折叠标题 完成态「运行了命令」/ 运行态「运行命令 · 进行中」。
+
+**Why**: 对照 Codex 桌面端实机会话区截图。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.208 — revert: 回滚 0.5.207 对 ZCode 基准的偏离，回归 Codex 真实基准
 **Date**: 2026-09-09
 **Tag**: v0.5.208

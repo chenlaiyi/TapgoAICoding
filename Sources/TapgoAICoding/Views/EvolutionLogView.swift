@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.209", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.209",
+                    summary: "命令折叠行文案对齐 Codex 实机（运行了命令）。",
+                    changes: [
+                        "完成态「运行了命令」、运行态「运行命令 · 进行中」、失败「· 失败」。"
+                    ],
+                    why: "对照 Codex 桌面端实机会话区截图。"
+                    ,next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.208", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.208",
                     summary: "回滚 0.5.207 对 ZCode 基准的偏离。",
                     changes: [

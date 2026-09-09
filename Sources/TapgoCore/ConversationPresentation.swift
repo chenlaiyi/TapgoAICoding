@@ -8,19 +8,21 @@ public enum ConversationPresentation {
 
     public static func activityTitle(_ activity: TurnActivityRollup, running: Bool) -> String {
         let display = TurnPresentation.activityDisplay(for: activity, turnIsRunning: running)
-        let title: String
+        // v0.5.209: 命令折叠行对齐 Codex 实机 —— 完成态「运行了命令」、
+        // 运行态「运行命令 · 进行中」；其余类别维持名词式标题。
+        let base: String
         switch display.kind {
-        case .reasoning: title = "思考过程"
-        case .search: title = "查阅资料"
-        case .read: title = "读取内容"
-        case .edit: title = "修改文件"
-        case .command: title = "执行命令"
-        case .tool: title = "使用工具"
-        case .compaction: title = "整理上下文"
+        case .reasoning: base = "思考过程"
+        case .search: base = "查阅资料"
+        case .read: base = "读取内容"
+        case .edit: base = "修改文件"
+        case .command: base = running && display.isRunning ? "运行命令" : "运行了命令"
+        case .tool: base = "使用工具"
+        case .compaction: base = "整理上下文"
         }
         let count = activity.events.count > 1 ? " · \(activity.events.count) 项" : ""
         let state = display.isFailure ? " · 失败" : (running && display.isRunning ? " · 进行中" : "")
-        return title + count + state
+        return base + count + state
     }
 
     public static func workTitle(status: Turn.Status, duration: TimeInterval?) -> String {
