@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.223 — fix(ui): 完成回合工作时长文案对齐 Codex 实机（用时）
+**Date**: 2026-09-10
+**Tag**: v0.5.223
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- ConversationPresentation.workTitle：完成态有效时长前缀「已处理」→「用时」。
+
+**Why**: 对照 Codex 实机截图。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.222 — fix(ui): 通用工具活动完成态对齐 Codex 实机（已使用）
 **Date**: 2026-09-10
 **Tag**: v0.5.222
