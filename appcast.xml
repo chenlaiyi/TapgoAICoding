@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.207</title>
+            <pubDate>Wed, 09 Sep 2026 22:36:33 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.207</link>
+            <sparkle:version>0.5.207</sparkle:version>
+            <sparkle:shortVersionString>0.5.207</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.207
+
+## Composer 底栏对齐 ZCode 参考（电脑操作 / 权限 chip）
+
+- **电脑操作 chip 带文字标签**：`💻 电脑操作 ●`（图标+文字+状态点），此前为纯图标看不出含义。
+- **电脑操作 chip 恒显**：不再被 welcome/新任务态排除——ZCode 参考在新建任务态也显示。
+- **权限 chip 带下拉指示**：`🛡 完全访问 ▾`。
+
+## 测试
+
+构建 + 实机截图验证（左簇：+ 完全访问▾ 电脑操作●；右簇：额度环 模型名 发送）+ 全量回归 3119 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.207/Tapgo-AICoding-0.5.207.zip" length="12267612" type="application/octet-stream" sparkle:edSignature="RBZYRtXjd/ohrllocVQ61nEBW8jr/dJ7vKxtJme9t+VctbzTwHYaDn8jkbVA4gbBT4/5iNta6bKitCpCqJkOAw=="/>
+        </item>
+        <item>
             <title>0.5.206</title>
             <pubDate>Wed, 09 Sep 2026 21:23:53 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.206</link>
@@ -45,27 +67,6 @@
 构建 + 实机验证 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.205/Tapgo-AICoding-0.5.205.zip" length="12266176" type="application/octet-stream" sparkle:edSignature="bC6L4jD65rHPBugjxkFlVAsnB9x3PSGNRuoCq4HK6dDxzUe2K+4/trcxW6TkNnOJkyQHiWsKBSL2E7pAsv9OAQ=="/>
-        </item>
-        <item>
-            <title>0.5.204</title>
-            <pubDate>Wed, 09 Sep 2026 20:29:15 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.204</link>
-            <sparkle:version>0.5.204</sparkle:version>
-            <sparkle:shortVersionString>0.5.204</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.204
-
-## 额度环位置调整：贴近模型名
-
-- Composer 底栏的模型额度环从左侧「完全访问」旁移到**右侧模型名左侧**，形成「额度环 → 模型名 → 发送」的右簇布局。
-- 其余行为不变：welcome/自进化态恒显、hover/点击弹套餐余额明细。
-
-## 测试
-
-构建 + 实机截图验证（额度环紧贴 GLM-5.3-Flash）+ 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.204/Tapgo-AICoding-0.5.204.zip" length="12263668" type="application/octet-stream" sparkle:edSignature="TLb1FZAJuwdtttQTah4P+SPnyVT/s+y57A14Zxb7RnQS+QvmU0uGMA3OWWTAM5SaJIOWISvz4fZE5A9KcufCDw=="/>
         </item>
     </channel>
 </rss>
