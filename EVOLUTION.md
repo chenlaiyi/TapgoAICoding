@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.202 — fix(ui): composer 底栏模型 chip / 发送按钮对齐 Codex
+**Date**: 2026-09-09
+**Tag**: v0.5.202
+**Test status**: 全量回归 + 三机安装
+**Changed**:
+- 模型 chip：裸模型名（剥品牌前缀）+ 空格分隔力度，去「·」与 chevron。
+- 发送按钮禁用态透明度 0.32→0.55。
+
+**Why**: 对照真实 Codex 底栏「GLM-5.3-Flash 高」纯文本与常亮发送按钮。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.201 — fix(ui): + 菜单改为 composer 正上方同宽 banner
 **Date**: 2026-09-09
 **Tag**: v0.5.201

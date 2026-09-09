@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.202", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.202",
+                    summary: "composer 底栏模型 chip / 发送按钮对齐 Codex。",
+                    changes: [
+                        "模型 chip：裸模型名 + 空格分隔力度，去品牌前缀与 chevron。",
+                        "发送按钮禁用态透明度 0.32→0.55。"
+                    ],
+                    why: "对照真实 Codex 底栏纯文本模型显示与常亮发送按钮。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.201", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.201",
                     summary: "+ 菜单改为 composer 正上方同宽 banner。",
                     changes: [

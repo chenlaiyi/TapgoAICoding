@@ -1673,17 +1673,17 @@ struct ComposerView: View {
                         }
                     } label: {
                         HStack(spacing: 4) {
-                            Text(store.modelDisplayName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                            // v0.5.202: Codex 对齐 — 裸模型名 + 空格分隔力度
+                            // （无品牌前缀、无 chevron、无「·」分隔符）。
+                            Text(modelChipName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             if isRunning {
                                 ProgressView().controlSize(.mini)
                             }
-                            if !effortLabel.isEmpty {
-                                Text("· \(effortLabel)")
+                            if !effortLabel.isEmpty, effortLabel != "默认" {
+                                Text(effortLabel)
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                                     .foregroundStyle(.secondary)
                             }
-                            Image(systemName: "chevron.down")
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                         }
                         .foregroundStyle(DSHTheme.labelDim)
                         .padding(.horizontal, 3).padding(.vertical, 3)
@@ -1715,7 +1715,7 @@ struct ComposerView: View {
                             .background(DSHTheme.composerAction, in: Circle())
                     }
                     .buttonStyle(.plain)
-                    .opacity(canSend ? 1 : 0.32)
+                    .opacity(canSend ? 1 : 0.55)
                     .disabled(canSend == false)
                     .help(isRunning ? "发送（排队）(⌘↩)" : "发送 (⌘↩)")
                     .accessibilityLabel(L10n.sendButton)
@@ -2829,6 +2829,16 @@ struct ComposerView: View {
     private static func isImageFile(_ url: URL) -> Bool {
         let ext = url.pathExtension.lowercased()
         return ["png", "jpg", "jpeg", "gif", "webp", "heic"].contains(ext)
+    }
+
+    /// v0.5.202: composer 底栏模型 chip 显示裸模型名（剥已知品牌前缀），
+    /// 对齐 Codex 桌面端「GLM-5.3-Flash 高」式纯文本。注册表数据不动。
+    private var modelChipName: String {
+        let name = store.modelDisplayName
+        for prefix in ["智谱 ", "MiniMax ", "DeepSeek ", "OpenAI ", "Anthropic ", "Google "] {
+            if name.hasPrefix(prefix) { return String(name.dropFirst(prefix.count)) }
+        }
+        return name
     }
 
     /// Compact reasoning-effort label shown beside the model chip.
