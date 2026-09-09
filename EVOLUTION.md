@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.216 — fix(ui): 搜索活动动词对齐 Codex 实机（按工具名派生）
+**Date**: 2026-09-10
+**Tag**: v0.5.216
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation：search 类动词按工具名派生（search→搜索 / find|grep|glob→查找 / query→查询）。
+- TurnPresentationTests / ThreadSummaryTests：修正 3 个历史遗留测试断言。
+
+**Why**: 对照 Codex 实机截图 4「查找设备页面验收窗口」。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.215 — fix(ui): 工具活动行标签对齐 Codex 实机（去「工具 · 」前缀）
 **Date**: 2026-09-10
 **Tag**: v0.5.215

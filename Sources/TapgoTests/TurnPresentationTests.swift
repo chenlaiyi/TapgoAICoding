@@ -179,17 +179,17 @@ func runTurnPresentationTests(_ t: TestRunner) {
     // v0.5.211: 图像文件阅读对齐 Codex 「查看图像」标签。
     var pngTitle = ""
     for block in TurnPresentation.compactBlocks([.toolCall(ToolCall(id: "i1", name: "view_image", arguments: #"{"path": "/tmp/p.png"}"#, status: .succeeded))]) {
-        if case .activity(let a) = block { pngTitle = ConversationPresentation.activityTitle(a, running: false) }
+        if case .activity(let a) = block { pngTitle = TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text }
     }
     t.expect(pngTitle.contains("查看图像"), "png image read maps to 查看图像")
     var jpgTitle = ""
     for block in TurnPresentation.compactBlocks([.toolCall(ToolCall(id: "i2", name: "read_file", arguments: #"{"path": "/tmp/photo.jpg"}"#, status: .succeeded))]) {
-        if case .activity(let a) = block { jpgTitle = ConversationPresentation.activityTitle(a, running: false) }
+        if case .activity(let a) = block { jpgTitle = TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text }
     }
     t.expect(jpgTitle.contains("查看图像"), "jpg read also maps to 查看图像")
     var mdTitle = ""
     for block in TurnPresentation.compactBlocks([.toolCall(ToolCall(id: "t1", name: "read_file", arguments: #"{"path": "/tmp/note.md"}"#, status: .succeeded))]) {
-        if case .activity(let a) = block { mdTitle = ConversationPresentation.activityTitle(a, running: false) }
+        if case .activity(let a) = block { mdTitle = TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text }
     }
     t.expect(mdTitle.contains("读取"), "md read still maps to 读取")
     t.expect(!mdTitle.contains("查看图像"), "non-image read never shows 查看图像")

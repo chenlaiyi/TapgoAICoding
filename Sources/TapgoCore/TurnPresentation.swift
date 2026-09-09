@@ -415,7 +415,15 @@ public enum TurnPresentation {
         var label: String
         var icon: String
         if ["search", "grep", "query", "find", "glob"].contains(where: name.contains) {
-            kind = .search; label = "查询"; icon = "magnifyingglass"
+            // v0.5.216: 对齐 Codex 实机（截图 4「查找设备页面验收窗口」）
+            // —— 动词按工具名派生（search→搜索 / find|grep|glob→查找 /
+            // query→查询），不再统一静态「查询」。
+            let verb: String = name.contains("search")
+                ? "搜索"
+                : (name.contains("find") || name.contains("grep") || name.contains("glob"))
+                    ? "查找"
+                    : "查询"
+            kind = .search; label = verb; icon = "magnifyingglass"
         } else if ["list", "ls"].contains(where: name.contains) {
             kind = .search; label = "查询"; icon = "list.bullet"
         } else if ["read", "open", "view", "get"].contains(where: name.contains) {

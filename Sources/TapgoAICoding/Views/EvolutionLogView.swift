@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.216", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.216",
+                    summary: "搜索活动动词对齐 Codex 实机（按工具名派生）。",
+                    changes: [
+                        "search→搜索 / find|grep|glob→查找 / query→查询。",
+                        "修正 3 个历史遗留测试断言。"
+                    ],
+                    why: "对照 Codex 实机截图 4「查找设备页面验收窗口」。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.215", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.215",
                     summary: "工具活动行标签对齐 Codex 实机（去「工具 · 」前缀）。",
                     changes: [
