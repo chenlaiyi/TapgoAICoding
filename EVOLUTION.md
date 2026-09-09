@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.204 — fix(ui): 额度环移到模型名旁
+**Date**: 2026-09-09
+**Tag**: v0.5.204
+**Test status**: 构建 + 实机截图 + 三机安装
+**Changed**:
+- ChatView：contextMeterChip 从左侧簇移到右侧模型名左侧。
+
+**Why**: 用户指定额度环贴近模型名。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.203 — fix(ui): welcome/自进化态恢复显示模型额度环
 **Date**: 2026-09-09
 **Tag**: v0.5.203

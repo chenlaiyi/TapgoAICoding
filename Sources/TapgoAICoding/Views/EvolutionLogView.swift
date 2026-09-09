@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.204", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.204",
+                    summary: "额度环移到模型名旁。",
+                    changes: [
+                        "额度环从左侧「完全访问」旁移到右侧模型名左侧。"
+                    ],
+                    why: "用户指定额度环贴近模型名。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.203", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.203",
                     summary: "welcome/自进化态恢复显示模型额度环。",
                     changes: [

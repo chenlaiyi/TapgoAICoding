@@ -1620,10 +1620,9 @@ struct ComposerView: View {
                     // 用户已经可以从 + 菜单的"计划模式"项开启 Plan mode。
 
                     // v0.5.203: 模型额度环不再排除 welcome/自进化指令态 ——
-                    // 额度数据来自全局 rateLimits，与是否已有会话无关；
-                    // Codex 桌面端底栏控件在任何输入器状态下都稳定可见。
+                    // 额度数据来自全局 rateLimits，与是否已有会话无关。
+                    // v0.5.204: 额度环移到右侧贴近模型名。
                     if !isWelcome, computerUseShowInComposer { computerControlChip }
-                    contextMeterChip
 
                     Spacer()
 
@@ -1654,6 +1653,9 @@ struct ComposerView: View {
                         .help("清空输入和附件 (⌘⌫)")
                         .accessibilityLabel("清空输入和附件")
                     }
+
+                    // v0.5.204: 额度环贴模型名（右侧簇首位）。
+                    contextMeterChip
 
                     Menu {
                         // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
