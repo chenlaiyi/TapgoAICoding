@@ -3,6 +3,29 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.217</title>
+            <pubDate>Thu, 10 Sep 2026 05:20:43 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.217</link>
+            <sparkle:version>0.5.217</sparkle:version>
+            <sparkle:shortVersionString>0.5.217</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.217
+
+## 文件编辑活动行对齐 Codex 实机（完成态过去式 + 差异统计）
+
+- Codex 实机截图 1：完成态显示「已创建 /path +220 -0」，过去式 + 内联 +N/-M 差异统计。
+- 之前 Tapgo 完成态用现时式（新建/编辑/删除），不带差异行数。
+- 现在 `.edit` 活动行：active 用现时式「新建 / 编辑 / 删除」、completed 改过去式「已创建 / 已编辑 / 已删除」+ ` +{adds} -{dels}` 差异统计（解析 unified diff）。
+- 失败态 completed 加 `· 执行失败` 后缀。
+
+## 测试
+
+全量回归 3125 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.217/Tapgo-AICoding-0.5.217.zip" length="12275505" type="application/octet-stream" sparkle:edSignature="xEKWzWcv4ArrWOdM/kC8T9xnbQTjjwuzO407jCcFXCk3Ou56ZDWriPKG9QZUdu9UlhLVie4eRdpZ0S+habL7DQ=="/>
+        </item>
+        <item>
             <title>0.5.216</title>
             <pubDate>Thu, 10 Sep 2026 05:08:52 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.216</link>
@@ -45,27 +68,6 @@
 全量回归 3122 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.215/Tapgo-AICoding-0.5.215.zip" length="12272363" type="application/octet-stream" sparkle:edSignature="RNru3MUp62JzThXqUikAc52cEQqR0G1XzfZGe+79F6AjvxE1thMffapoquHBvw5RGSfEyoA7J+J6MbfxY5sFBg=="/>
-        </item>
-        <item>
-            <title>0.5.214</title>
-            <pubDate>Thu, 10 Sep 2026 04:42:20 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.214</link>
-            <sparkle:version>0.5.214</sparkle:version>
-            <sparkle:shortVersionString>0.5.214</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.214
-
-## 活动命令行前缀对齐 Codex 实机（正在执行 → 正在运行）
-
-- Codex 桌面端实机会话：命令活动行使用「正在运行 <cmd>」（截图实证），不是「正在执行」。
-- Tapgo 活动命令前缀更新为「正在运行 <cmd>」；完成态「终端 <cmd> · 执行失败 / 终端 <cmd>」保持不变（v0.5.199 已对齐「终端」前缀）。
-
-## 测试
-
-全量回归 3122 通过 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.214/Tapgo-AICoding-0.5.214.zip" length="12272523" type="application/octet-stream" sparkle:edSignature="jBlEKk71nHsDXQifAP4LjLSXZTYJZI1kV3HSYE28X2ttgymKJ0n+mKGOo1YYhiQvNMP7HWR+8458/50208CMBA=="/>
         </item>
     </channel>
 </rss>
