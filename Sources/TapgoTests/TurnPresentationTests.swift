@@ -181,16 +181,16 @@ func runTurnPresentationTests(_ t: TestRunner) {
     for block in TurnPresentation.compactBlocks([.toolCall(ToolCall(id: "i1", name: "view_image", arguments: #"{"path": "/tmp/p.png"}"#, status: .succeeded))]) {
         if case .activity(let a) = block { pngTitle = ConversationPresentation.activityTitle(a, running: false) }
     }
-    t.expect(pngTitle.contains("查看图像"), true, "png image read maps to 查看图像")
+    t.expect(pngTitle.contains("查看图像"), "png image read maps to 查看图像")
     var jpgTitle = ""
     for block in TurnPresentation.compactBlocks([.toolCall(ToolCall(id: "i2", name: "read_file", arguments: #"{"path": "/tmp/photo.jpg"}"#, status: .succeeded))]) {
         if case .activity(let a) = block { jpgTitle = ConversationPresentation.activityTitle(a, running: false) }
     }
-    t.expect(jpgTitle.contains("查看图像"), true, "jpg read also maps to 查看图像")
+    t.expect(jpgTitle.contains("查看图像"), "jpg read also maps to 查看图像")
     var mdTitle = ""
     for block in TurnPresentation.compactBlocks([.toolCall(ToolCall(id: "t1", name: "read_file", arguments: #"{"path": "/tmp/note.md"}"#, status: .succeeded))]) {
         if case .activity(let a) = block { mdTitle = ConversationPresentation.activityTitle(a, running: false) }
     }
-    t.expect(mdTitle.contains("读取"), true, "md read still maps to 读取")
-    t.expect(mdTitle.contains("查看图像"), false, "non-image read never shows 查看图像")
+    t.expect(mdTitle.contains("读取"), "md read still maps to 读取")
+    t.expect(!mdTitle.contains("查看图像"), "non-image read never shows 查看图像")
 }
