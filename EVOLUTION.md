@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.218 — fix(ui): 搜索活动完成态对齐 Codex 实机（过去式）
+**Date**: 2026-09-10
+**Tag**: v0.5.218
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation.toolSemantic：.search 完成态用「已」+ 派生动词（已查找 / 已搜索 / 已查询）。
+
+**Why**: 对照 Codex 实机 search 完成态格式。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.217 — fix(ui): 文件编辑活动行对齐 Codex 实机（完成态过去式 + 差异统计）
 **Date**: 2026-09-10
 **Tag**: v0.5.217

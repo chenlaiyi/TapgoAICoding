@@ -464,11 +464,24 @@ public enum TurnPresentation {
             let detail = argsSnippet(call.arguments)
             base = detail.isEmpty ? label : "\(label) · \(detail)"
         }
+        // v0.5.218: 对齐 Codex 实机 —— search 活动完成态用过去式（已查找 / 已搜索
+        // / 已查询）而不是沿用现时式标签。
+        let completedBase: String = {
+            guard kind == .search, !running, !label.isEmpty else { return base }
+            let past: String
+            switch label {
+            case "搜索": past = "已搜索"
+            case "查找": past = "已查找"
+            case "查询": past = "已查询"
+            default: past = "已" + label
+            }
+            return past + base.dropFirst(label.count)
+        }()
         return semantic(
             key: "tool:" + name,
             kind: kind,
             activeText: base,
-            completedText: failed ? base + " · 执行失败" : base,
+            completedText: failed ? completedBase + " · 执行失败" : completedBase,
             continuationText: base,
             icon: icon,
             running: running,
