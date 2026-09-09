@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.228 — test: 补 v0.5.214 命令活动态回归测试
+**Date**: 2026-09-10
+**Tag**: v0.5.228
+**Test status**: 全量回归 3143 通过 + 三机安装
+**Changed**:
+- TurnPresentationTests: .command 活动态文案含「正在运行 cmd」断言。
+
+**Why**: 防止 v0.5.214 改动被无意回退。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.227 — test: 补 v0.5.220 压缩图标回归测试
 **Date**: 2026-09-10
 **Tag**: v0.5.227
