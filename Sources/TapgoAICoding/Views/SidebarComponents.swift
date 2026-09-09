@@ -60,7 +60,7 @@ struct SidebarTaskLabel: View {
                 switch status {
                 case .running: Image(systemName: "circle.lefthalf.filled").accessibilityLabel("进行中")
                 case .awaitingApproval: Image(systemName: "hand.raised.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("待批准")
-                case .failed: Image(systemName: "exclamationmark.circle.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("未完成")
+                case .failed: Image(systemName: "exclamationmark.circle.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("失败")
                 default: Text(date).monospacedDigit()
                 }
             }

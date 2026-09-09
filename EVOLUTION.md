@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.200 — fix(ui): + 菜单单行紧凑布局对齐 Codex + 失败语义修正
+**Date**: 2026-09-09
+**Tag**: v0.5.200
+**Test status**: swift run TapgoTests + 构建/启动/三机安装验证
+**Changed**:
+- `ChatView.swift`：+ 菜单行改单行紧凑布局（标题+内联副标题），行序对齐 Codex（文件→附加→目标→计划→录制），focusable(false) 抑制焦点蓝框，面板高度按行数自适应。
+- `ConversationPresentation.swift`：命令折叠行「· 未完成」改「· 失败」（已跑完但失败的命令，语义对齐 Codex Failed）。
+- `SidebarComponents.swift`：failed 角标 accessibilityLabel 同步改「失败」。
+
+**Why**: 对照 Codex 真机截图，我们的双行大卡片、行序、首行焦点蓝框都不一致；「未完成」文案让用户误以为命令还在跑。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.199 — feat(terminal): Command execution 输出支持 ANSI 颜色解析
 **Date**: 2026-09-09
 **Tag**: v0.5.199

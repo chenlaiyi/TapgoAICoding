@@ -150,7 +150,10 @@ func runDesktopZCodeDesign(_ t: TestRunner) {
              && fileChangeView.contains("selectedReviewPath == nil ? \"审核\" : \"收起\"")
              && fileChangeView.contains("DiffView(change: file)"),
              "desktop-design: 文件结果卡默认收起并提供真实差异审核")
-    t.expect(chat.contains(".background(DSHTheme.brandPrimary, in: Circle())")
+    // v0.5.200: 发送按钮背景自 a5117ee（对齐 Codex v0.5.110）起使用
+    // composerAction/composerActionText，不再是 brandPrimary——奇偶校验
+    // 断言同步到当前对齐基准。
+    t.expect(chat.contains(".background(DSHTheme.composerAction, in: Circle())")
              && chat.contains("currentPermission.id == PermissionChoice.full.id")
              && chat.contains("minHeight: 38"),
              "desktop-design: composer 使用紧凑输入高度、圆形主动作与纯文本权限状态")

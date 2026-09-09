@@ -23,7 +23,7 @@ func runConversationPresentationTests(_ t: TestRunner) {
         if case .activity(let activity) = block {
             let title = ConversationPresentation.activityTitle(activity, running: true)
             t.expect(!title.contains(secret), "conversation: collapsed activity never exposes raw detail")
-            if activity.latest.id == "cmd" { t.expect(title.contains("未完成"), "conversation: failed activity remains distinguishable") }
+            if activity.latest.id == "cmd" { t.expect(title.contains("失败"), "conversation: failed activity remains distinguishable") }
         }
     }
     t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: nil), "已处理", "conversation: missing duration never invents zero seconds")

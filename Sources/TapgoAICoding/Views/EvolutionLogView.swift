@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.200", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.200",
+                    summary: "+ 菜单单行紧凑布局对齐 Codex + 失败语义修正。",
+                    changes: [
+                        "+ 菜单行改单行紧凑布局，行序对齐 Codex：文件→附加→目标→计划→录制。",
+                        "目标/计划模式用内联副标题表达状态，无副标题行只留标题。",
+                        "消息流命令折叠行「· 未完成」改「· 失败」，侧栏角标同步。"
+                    ],
+                    why: "对照 Codex 真机截图对齐；「未完成」让用户误以为命令还在跑。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.199", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.199",
                     summary: "Command execution 输出支持 ANSI 颜色解析。",
                     changes: [

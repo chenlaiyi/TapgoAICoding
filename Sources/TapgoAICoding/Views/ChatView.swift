@@ -1296,6 +1296,12 @@ struct ComposerView: View {
         return "puzzlepiece.extension"
     }
 
+    /// v0.5.200: 面板高度按行数估算（compact 单行 ~30pt/行），插件数随目录变化。
+    private var addPanelHeight: CGFloat {
+        let pluginCount = pluginCatalogEntries.isEmpty ? Self.addMenuPlugins.count : pluginCatalogEntries.count
+        return min(480, 34 + 5 * 30 + 10 + 30 + CGFloat(pluginCount) * 30 + 10)
+    }
+
     /// v0.5.199: + 菜单用 PopoverPanel（NSViewControllerRepresentable 包 NSPopover + contentSize）
     /// 实现撑满 composer 宽度的 push-out 卡片，对齐 Codex 桌面端。
     /// SwiftUI Menu 在 macOS 26.5 SDK 渲染成小弹窗（~130pt 宽），不够撑满宽度。
@@ -1311,7 +1317,8 @@ struct ComposerView: View {
         .help("添加")
         .accessibilityLabel("添加（文件/附件/插件/目标/计划）")
         .background(
-            PopoverPanel(isPresented: $showAddPanel, contentSize: NSSize(width: contentWidth, height: 480)) {
+            PopoverPanel(isPresented: $showAddPanel,
+                         contentSize: NSSize(width: contentWidth, height: addPanelHeight)) {
                 composerAddPanel
                     .frame(width: contentWidth)
             }
@@ -1327,18 +1334,19 @@ struct ComposerView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
-            Button {
-                planningMode.toggle()
-                showAddPanel = false
-            } label: {
-                composerAddMenuRow(
-                    icon: planningMode ? "checkmark.circle.fill" : "lightbulb",
-                    title: planningMode ? "计划模式（已开启）" : "计划模式",
-                    detail: planningMode
-                        ? "下一条消息会让 Codex 先出方案不执行工具"
-                        : "启用计划模式：下一条消息只给方案不执行工具")
+            // v0.5.200: 行序对齐 Codex 桌面端：文件和文件夹 → 附加 → 目标 →
+            // 计划模式 → 录制技能。文件/附加/录制不显示副标题，目标/计划模式
+            // 用内联副标题表达状态。focusable(false) 抑制首行系统焦点蓝框。
+            ForEach(Self.addMenuItems.filter { $0.id != "record" }) { item in
+                Button {
+                    runAddMenuAction(item.action)
+                    showAddPanel = false
+                } label: {
+                    composerAddMenuRow(icon: item.icon, title: item.title, detail: "")
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
             }
-            .buttonStyle(.plain)
             Button {
                 runAddMenuAction(.setGoal)
                 showAddPanel = false
@@ -1347,20 +1355,35 @@ struct ComposerView: View {
                 let hasGoal = !goalText.isEmpty
                 composerAddMenuRow(
                     icon: hasGoal ? "target.fill" : "target",
-                    title: hasGoal ? "目标（已设置）" : "目标",
+                    title: "目标",
                     detail: hasGoal
                         ? "当前目标：" + goalText.prefix(40) + (goalText.count > 40 ? "…" : "")
                         : "设置要持续追求的目标")
             }
             .buttonStyle(.plain)
-            ForEach(Self.addMenuItems) { item in
+            .focusable(false)
+            Button {
+                planningMode.toggle()
+                showAddPanel = false
+            } label: {
+                composerAddMenuRow(
+                    icon: planningMode ? "checkmark.circle.fill" : "lightbulb",
+                    title: "计划模式",
+                    detail: planningMode
+                        ? "已开启：下一条消息只给方案不执行工具"
+                        : "开启计划模式")
+            }
+            .buttonStyle(.plain)
+            .focusable(false)
+            ForEach(Self.addMenuItems.filter { $0.id == "record" }) { item in
                 Button {
                     runAddMenuAction(item.action)
                     showAddPanel = false
                 } label: {
-                    composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
+                    composerAddMenuRow(icon: item.icon, title: item.title, detail: "")
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
             }
             Divider().padding(.horizontal, 8)
             Text("插件")
@@ -1382,6 +1405,7 @@ struct ComposerView: View {
                             detail: item.summary.isEmpty ? "Codex 官方插件" : item.summary)
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                 }
             } else {
                 ForEach(Self.addMenuPlugins) { item in
@@ -1392,6 +1416,7 @@ struct ComposerView: View {
                         composerAddMenuRow(icon: item.icon, title: item.title, detail: item.detail)
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                 }
             }
         }
@@ -1401,27 +1426,29 @@ struct ComposerView: View {
         .shadow(color: DSHTheme.cardShadow, radius: 12, x: 0, y: -2)
     }
 
-    /// Codex desktop parity: + 菜单里每个命令的"图标 + 标题 + 描述"双行
-    /// 行内布局。`Label` 默认只一行，这里换成 HStack+VStack 让菜单项在
-    /// 视觉上和截图一致（描述字体小、secondary 颜色）。
+    /// v0.5.200: Codex desktop parity — 单行紧凑行：图标 + 标题 + 同行内联
+    /// 副标题（caption secondary，超长截断）。没有副标题的行只显示标题，
+    /// 与 Codex 桌面端 + 菜单一致（文件和文件夹 / 附加 / 录制技能无副标题）。
     @ViewBuilder
     private func composerAddMenuRow(icon: String, title: String, detail: String) -> some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 9) {
             Image(systemName: icon)
                 .frame(width: 16, alignment: .center)
                 .foregroundStyle(.primary)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.primary)
+            Text(title)
+                .font(AppFont.scaled(.body, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: true, vertical: false)
+            if !detail.isEmpty {
                 Text(detail)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 5)
     }
 
     private func runAddMenuAction(_ action: AddMenuAction) {

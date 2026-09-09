@@ -19,7 +19,7 @@ public enum ConversationPresentation {
         case .compaction: title = "整理上下文"
         }
         let count = activity.events.count > 1 ? " · \(activity.events.count) 项" : ""
-        let state = display.isFailure ? " · 未完成" : (running && display.isRunning ? " · 进行中" : "")
+        let state = display.isFailure ? " · 失败" : (running && display.isRunning ? " · 进行中" : "")
         return title + count + state
     }
 
