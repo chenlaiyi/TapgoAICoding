@@ -3,16 +3,21 @@ import Foundation
 /// Formats a wall-clock duration into a short, human-readable string
 /// used by the trajectory timeline and chat captions.
 public enum DurationFormatter {
-    /// `5` → "5s", `65` → "1m 05s", `3600` → "1h 00m", `3725` → "1h 02m".
+    /// v0.5.210: 对齐 Codex 实机 — 中文单位 + 数字与单位间空格，无零填充。
+    /// `5` → "5 秒", `65` → "1 分 5 秒", `3600` → "1 小时",
+    /// `3725` → "1 小时 2 分 5 秒".
     public static func string(seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
-        if total < 0 { return "0s" }
-        if total < 60 { return "\(total)s" }
+        if total < 0 { return "0 秒" }
+        if total < 60 { return "\(total) 秒" }
         let m = total / 60
         let s = total % 60
-        if m < 60 { return String(format: "%dm %02ds", m, s) }
+        if m < 60 { return "\(m) 分 \(s) 秒" }
         let h = m / 60
         let mm = m % 60
-        return String(format: "%dh %02dm", h, mm)
+        if mm == 0 && s == 0 { return "\(h) 小时" }
+        if mm == 0 { return "\(h) 小时 \(s) 秒" }
+        if s == 0 { return "\(h) 小时 \(mm) 分" }
+        return "\(h) 小时 \(mm) 分 \(s) 秒"
     }
 }

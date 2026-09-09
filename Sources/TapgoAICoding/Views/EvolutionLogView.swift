@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.210", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.210",
+                    summary: "时长格式对齐 Codex 实机（中文 + 空格）。",
+                    changes: [
+                        "DurationFormatter：5 秒 / 1 分 5 秒 / 1 小时 2 分 5 秒；中间零值省略。"
+                    ],
+                    why: "对照 Codex 实机会话时长写法。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.209", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.209",
                     summary: "命令折叠行文案对齐 Codex 实机（运行了命令）。",
                     changes: [
