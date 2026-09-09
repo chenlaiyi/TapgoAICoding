@@ -374,8 +374,8 @@ public enum TurnPresentation {
             key: "command",
             kind: .command,
             activeText: "正在运行 " + command,
-            completedText: failed ? "终端 " + command + " · 执行失败" : "终端 " + command,
-            continuationText: "终端 " + command,
+            completedText: failed ? "已运行 " + command + " · 执行失败" : "已运行 " + command,
+            continuationText: "已运行 " + command,
             icon: "terminal",
             running: running,
             failed: failed

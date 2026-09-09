@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.219 — fix(ui): 命令活动行完成态对齐 Codex 实机（终端 → 已运行）
+**Date**: 2026-09-10
+**Tag**: v0.5.219
+**Test status**: 全量回归 3125 通过 + 三机安装
+**Changed**:
+- TurnPresentation.commandSemantic：完成态「终端 cmd」→「已运行 cmd」，与 file edit / search 过去式风格一致。
+
+**Why**: 对照 Codex 实机截图 1「已运行 git status ...」。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.218 — fix(ui): 搜索活动完成态对齐 Codex 实机（过去式）
 **Date**: 2026-09-10
 **Tag**: v0.5.218

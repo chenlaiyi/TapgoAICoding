@@ -37,7 +37,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     }
     if case .activity(let commandRow) = blocks[2] {
         let display = TurnPresentation.activityDisplay(for: commandRow, turnIsRunning: false)
-        t.expectEqual(display.text, "终端 head SettingsView.swift", "terminal row shows the concrete command")
+        t.expectEqual(display.text, "已运行 head SettingsView.swift", "terminal row shows the concrete command")
     } else {
         t.expect(false, "third block is command")
     }
@@ -93,7 +93,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     ])
     if case .activity(let failedRow) = failedBlocks[0] {
         let display = TurnPresentation.activityDisplay(for: failedRow, turnIsRunning: false)
-        t.expect(display.text.contains("终端 git status --short"), "failed terminal row still shows the command")
+        t.expect(display.text.contains("已运行 git status --short"), "failed terminal row still shows the command")
         t.expect(display.text.contains("执行失败"), "failed terminal row carries the failure suffix")
         t.expect(display.isFailure, "failed row is marked as failure")
     } else {
@@ -166,7 +166,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     }
     if case .activity(let commandRollup) = interruptedReasoning[1] {
         let display = TurnPresentation.activityDisplay(for: commandRollup, turnIsRunning: false)
-        t.expect(display.text.contains("终端 rg foo"), "commandExecution between reasonings stays its own row")
+        t.expect(display.text.contains("已运行 rg foo"), "commandExecution between reasonings stays its own row")
     } else {
         t.expect(false, "second block is the commandExecution rollup")
     }
