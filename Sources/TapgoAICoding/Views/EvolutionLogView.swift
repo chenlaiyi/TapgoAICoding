@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.208", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.208",
+                    summary: "回滚 0.5.207 对 ZCode 基准的偏离。",
+                    changes: [
+                        "权限 chip 去掉 ▾；电脑操作 chip 恢复图标级且不在新任务态出现。",
+                        "基准声明：对齐唯一基准 = Codex 桌面端真实界面。"
+                    ],
+                    why: "0.5.207 误用 ZCode 存档参考图，偏离了 Codex 基准。"
+                    ,next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.207", date: "2026-09-09", commit: "见源码提交", tag: "v0.5.207",
                     summary: "底栏电脑操作/权限 chip 对齐 ZCode 参考。",
                     changes: [

@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.208 — revert: 回滚 0.5.207 对 ZCode 基准的偏离，回归 Codex 真实基准
+**Date**: 2026-09-09
+**Tag**: v0.5.208
+**Test status**: 全量回归 + 实机截图对照 + 三机安装
+**Changed**:
+- 权限 chip 去掉 ▾（Codex 无）。
+- 「电脑操作」chip 恢复图标级 + 不在新任务态出现（Codex 底栏无此控件）。
+- 基准声明：对齐唯一基准 = Codex 桌面端真实界面；artifacts/zcode-desktop-reference 为历史存档不作为基准。
+
+**Why**: 用户指出 0.5.207 误用 ZCode 存档参考图，偏离 Codex 基准。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.207 — fix(ui): 底栏电脑操作/权限 chip 对齐 ZCode 参考
 **Date**: 2026-09-09
 **Tag**: v0.5.207
