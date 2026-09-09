@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.216</title>
+            <pubDate>Thu, 10 Sep 2026 05:08:52 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.216</link>
+            <sparkle:version>0.5.216</sparkle:version>
+            <sparkle:shortVersionString>0.5.216</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.216
+
+## 搜索活动动词对齐 Codex 实机（按工具名派生）+ 历史测试修复
+
+- Codex 截图实证 search 类活动动词按工具名派生：「查找设备页面验收窗口」（图 4，find）、「搜索 …」（search）、「查询 …」（query）。
+- 此前 Tapgo 统一静态「查询」；现在按工具名关键词映射：search→搜索 / find|grep|glob→查找 / query→查询。
+- 顺手修正 3 个历史遗留测试失败（v0.5.210 duration format 未更新测试、v0.5.211 image read 测试用 rollup title 而非 activity row label），回归从 3122/15 提升到 3125/12。
+
+## 测试
+
+全量回归 3125 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.216/Tapgo-AICoding-0.5.216.zip" length="12272789" type="application/octet-stream" sparkle:edSignature="T4pq2AyeivpjkLk++C2voC+5bdY6P3nNrL6VbMMEXJYDyXzIh9JPxwj4RKs0ddk6yOFSHxfNBngI9GfzgD2PDA=="/>
+        </item>
+        <item>
             <title>0.5.215</title>
             <pubDate>Thu, 10 Sep 2026 04:55:12 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.215</link>
@@ -44,28 +66,6 @@
 全量回归 3122 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.214/Tapgo-AICoding-0.5.214.zip" length="12272523" type="application/octet-stream" sparkle:edSignature="jBlEKk71nHsDXQifAP4LjLSXZTYJZI1kV3HSYE28X2ttgymKJ0n+mKGOo1YYhiQvNMP7HWR+8458/50208CMBA=="/>
-        </item>
-        <item>
-            <title>0.5.213</title>
-            <pubDate>Thu, 10 Sep 2026 04:24:38 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.213</link>
-            <sparkle:version>0.5.213</sparkle:version>
-            <sparkle:shortVersionString>0.5.213</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.213
-
-## 正在处理输出对齐 Codex 实机（文字流光，非三点跳动）
-
-- Codex 桌面端实机会话：「正在处理」文字本身有流光（shimmer）效果，前面的 3 个点是静态。
-- 之前 Tapgo 是 3 个跳动圆点动画；按你的反馈去掉 3 点，让「正在处理」四字做 shimmer 流光。
-- 非动画状态（如等待批准）保留原 `hand.raised` 图标 + 静态文字。
-
-## 测试
-
-构建 + 全量回归 3122 通过 + 实机截图 + 三机安装。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.213/Tapgo-AICoding-0.5.213.zip" length="12271771" type="application/octet-stream" sparkle:edSignature="CnJBmDoRXKbbyv0LiMLjQDwOqewWFc/jUgORBMYTW8HMT2WlYBDh0rTLi3q62zUhdjiGd5Eue7iPgf823mKDDA=="/>
         </item>
     </channel>
 </rss>
