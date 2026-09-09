@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.202</title>
+            <pubDate>Wed, 09 Sep 2026 09:28:13 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.202</link>
+            <sparkle:version>0.5.202</sparkle:version>
+            <sparkle:shortVersionString>0.5.202</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.202
+
+## Composer 底栏对齐 Codex 桌面端
+
+- 模型控件改为 Codex 式纯文本：**裸模型名 + 空格分隔思考力度**（如「GLM-5.3-Flash 高」）——去掉品牌前缀（智谱/MiniMax/DeepSeek 等）、「·」分隔符与下拉 chevron（点击弹出的模型菜单保留）。
+- 发送按钮空输入禁用态透明度 0.32 → 0.55：Codex 空输入时按钮依然清晰可见。
+
+## 测试
+
+全量回归 + 构建/启动 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.202/Tapgo-AICoding-0.5.202.zip" length="12262295" type="application/octet-stream" sparkle:edSignature="urq1vHaGGBsr6KB+vJpybR4ecE/gn4MEHxdmjmqD0qPiVIQz2+UJ9M5SmIyOGhzHq+jwshUpcsEG4ANnawZVCw=="/>
+        </item>
+        <item>
             <title>0.5.201</title>
             <pubDate>Wed, 09 Sep 2026 09:13:57 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.201</link>
@@ -63,46 +84,6 @@
 `swift run TapgoTests` 全量回归 + App 构建启动验证 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.200/Tapgo-AICoding-0.5.200.zip" length="12264978" type="application/octet-stream" sparkle:edSignature="Bp5IPisNm3hxyNyVQEaEjz3W+pxgSfoHvVoqvJ99FBX1bSa1x9loopoju3YDrlpqNppAAb7pR5fMGjTUVQ4rDA=="/>
-        </item>
-        <item>
-            <title>0.5.199</title>
-            <pubDate>Wed, 09 Sep 2026 07:42:37 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.199</link>
-            <sparkle:version>0.5.199</sparkle:version>
-            <sparkle:shortVersionString>0.5.199</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.199
-
-## Command execution 输出对齐 Codex 桌面端：支持 ANSI 颜色解析 + + 菜单视觉调整
-
-### ANSI 颜色解析
-
-`CommandExecutionView` 的 stdout/stderr 之前用纯色 Text（绿/红），command output 自带的 ANSI 颜色码（`\x1b[31m`、`\x1b[1;32m` 等）会显示成乱码。v0.5.199 新增 `ANSIParser`（在 `TapgoCore`）解析 ANSI escape sequence，让 `git diff` 红绿、`ls` 蓝目录、`cargo` 编译错误高亮、`swift build` 警告色等正常显示。
-
-### + 菜单视觉调整
-
-`+` 菜单从 SwiftUI Menu 改为 PopoverPanel（NSPopover + NSHostingController，TapgoCore 新增），撑满 composer 宽度的 push-out 卡片，对齐 Codex 桌面端 input-area panel 视觉。SwiftUI Menu 在 macOS 26.5 SDK 渲染成 ~130pt 小弹窗，撑不满宽度。
-
-## 改动
-
-- `Sources/TapgoCore/ANSIParser.swift`（新增）：SGR 颜色码解析
-  - 8-color: 30-37 / 90-97
-  - 256-color: 38;5;N
-  - truecolor: 38;2;R;G;B
-  - reset (0) / bold (1) / unbold (22)
-  - 把 raw 字符串拆成 `[(text, fg color, bold)]` segments
-- `Sources/TapgoAICoding/Views/CommandExecutionView.swift`:
-  - `ansiLinesView(_:fallback:)` helper：按 segments 用 Text + ConcatenatedText 拼接
-  - stdout/stderr 段渲染替换之前的纯色 Text
-- `Sources/TapgoCore/PopoverPanel.swift`（新增）：NSViewControllerRepresentable 包 NSPopover，手动 contentSize
-- `Sources/TapgoAICoding/Views/ChatView.swift`：composer + 菜单改用 PopoverPanel 撑满宽度
-
-## 测试
-
-未跑（纯 UI 改动不影响逻辑；ANSI parser 行为容易在终端实跑验证）。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.199/Tapgo-AICoding-0.5.199.zip" length="12263799" type="application/octet-stream" sparkle:edSignature="qPfnYxt+eN8PHbI+CRwToWVDJTsrkgo2H63ew14bIBEVNABK0+tf1kzGUAdGzF8CFYFjznCxFJEdgfAZz1sEDA=="/>
         </item>
     </channel>
 </rss>
