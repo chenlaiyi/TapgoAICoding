@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.221</title>
+            <pubDate>Thu, 10 Sep 2026 06:01:54 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.221</link>
+            <sparkle:version>0.5.221</sparkle:version>
+            <sparkle:shortVersionString>0.5.221</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.221
+
+## 源码同步 v0.5.220 的编译修复（SendableClosureCaptures）
+
+- v0.5.220 期间修复 Swift 6 release build 的 `SendableClosureCaptures` 错误（search 完成态过去式逻辑里的闭包捕获），确保了发布构建可过。
+- 该修复让 v0.5.220 发布产物可正常编译，但没有 commit 到源码。本版仅把该修复纳入源码 + bump 版本号，保持源码与发布产物一致。
+- 没有用户可见行为变化（v0.5.220 已包含此修复的产物）。
+
+## 测试
+
+全量回归 3125 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.221/Tapgo-AICoding-0.5.221.zip" length="12277795" type="application/octet-stream" sparkle:edSignature="wcaVPxeedwLqY3aVyY+gCGJaYWLeNgrpwbOJzRMvkhBykYne79XWv891O5qQq9D+VsAZUgAj4jB548b4NnI4Dw=="/>
+        </item>
+        <item>
             <title>0.5.220</title>
             <pubDate>Thu, 10 Sep 2026 05:54:16 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.220</link>
@@ -44,27 +66,6 @@
 全量回归 3125 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.219/Tapgo-AICoding-0.5.219.zip" length="12276445" type="application/octet-stream" sparkle:edSignature="DVBuIV056wEBcHJK5CFfbdIp0DYoT/dSBGTJITloduealh5rn8BOHWkuVD/hw5LxSsKZZ+WRWSE+8bTr49HkBg=="/>
-        </item>
-        <item>
-            <title>0.5.218</title>
-            <pubDate>Thu, 10 Sep 2026 05:30:57 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.218</link>
-            <sparkle:version>0.5.218</sparkle:version>
-            <sparkle:shortVersionString>0.5.218</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.218
-
-## 搜索活动完成态对齐 Codex 实机（过去式）
-
-- Codex 实机截图：search 类活动完成态用过去式（已查找 / 已搜索 / 已查询），而非沿用现时式动词。
-- 之前 v0.5.216 引入了按工具名派生的 search 动词（查找/搜索/查询），本次让完成态前缀「已」+ 同动词，对齐一致风格。
-
-## 测试
-
-全量回归 3125 通过 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.218/Tapgo-AICoding-0.5.218.zip" length="12276820" type="application/octet-stream" sparkle:edSignature="l0tqvF0an8MCaF4Uo1EUyp44j0LFgU0bXrVZLsYw6qnRpPxnqN/8XTVNAzIJE13uhjOg/sToRJL38RXHpDhBAw=="/>
         </item>
     </channel>
 </rss>
