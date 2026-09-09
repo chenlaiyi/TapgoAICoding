@@ -3,6 +3,27 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.214</title>
+            <pubDate>Thu, 10 Sep 2026 04:42:20 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.214</link>
+            <sparkle:version>0.5.214</sparkle:version>
+            <sparkle:shortVersionString>0.5.214</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.214
+
+## 活动命令行前缀对齐 Codex 实机（正在执行 → 正在运行）
+
+- Codex 桌面端实机会话：命令活动行使用「正在运行 <cmd>」（截图实证），不是「正在执行」。
+- Tapgo 活动命令前缀更新为「正在运行 <cmd>」；完成态「终端 <cmd> · 执行失败 / 终端 <cmd>」保持不变（v0.5.199 已对齐「终端」前缀）。
+
+## 测试
+
+全量回归 3122 通过 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.214/Tapgo-AICoding-0.5.214.zip" length="12272523" type="application/octet-stream" sparkle:edSignature="jBlEKk71nHsDXQifAP4LjLSXZTYJZI1kV3HSYE28X2ttgymKJ0n+mKGOo1YYhiQvNMP7HWR+8458/50208CMBA=="/>
+        </item>
+        <item>
             <title>0.5.213</title>
             <pubDate>Thu, 10 Sep 2026 04:24:38 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.213</link>
@@ -45,28 +66,6 @@
 全量回归 3122 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.212/Tapgo-AICoding-0.5.212.zip" length="12267789" type="application/octet-stream" sparkle:edSignature="KTLNTPaqN65D49pn1wx4cKRWf82ZHxEFLyNfcVRRaiugzVidtSnGvKG+zHn1bIVvGGisDiDqC5xY1gaVYT4BDw=="/>
-        </item>
-        <item>
-            <title>0.5.211</title>
-            <pubDate>Thu, 10 Sep 2026 01:33:48 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.211</link>
-            <sparkle:version>0.5.211</sparkle:version>
-            <sparkle:shortVersionString>0.5.211</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.211
-
-## 图像文件阅读对齐 Codex 实机（查看图像）
-
-- 之前 `.read` 工具调用对所有文件统一显示「读取」。Codex 在用户截图里对图像文件专门显示「已查看 N 张图像」。
-- 现在工具调用解析到图像扩展（png/jpg/jpeg/gif/webp/heic/bmp）的文件路径时，显示「查看图像」+ photo 图标；其他文件仍按原状显示「读取」。
-- 应用于所有读类工具（read_file / view / get / open 等）。
-
-## 测试
-
-构建 OK + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.211/Tapgo-AICoding-0.5.211.zip" length="12267865" type="application/octet-stream" sparkle:edSignature="y0PU6BHh/tkEdFBMNOcEfz3tVFnKFQsCYxQP8Xw5AGT7aEUruzPjHTD5vXY23Y+COs8Z7fyfyWHHhiD6QXBWDg=="/>
         </item>
     </channel>
 </rss>
