@@ -208,28 +208,6 @@ private struct ConversationWorkDisclosure: View {
 }
 
 /// v0.5.195: 内联 3 跳动 dots（用于 ConversationWorkDisclosure 标题旁表明正在 running）。
-private struct StreamingDotsInline: View {
-    @State private var pulse = false
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .frame(width: 4, height: 4)
-                    .foregroundStyle(DSHTheme.labelDim)
-                    .opacity(pulse ? 1.0 : 0.3)
-                    .animation(
-                        .easeInOut(duration: 0.6)
-                        .repeatForever(autoreverses: true)
-                        .delay(Double(i) * 0.2),
-                        value: pulse
-                    )
-            }
-        }
-        .frame(width: 14, alignment: .leading)
-        .accessibilityHidden(true)
-        .onAppear { pulse = true }
-    }
-}
 
 private struct ConversationActivityRow: View {
     let activity: TurnActivityRollup

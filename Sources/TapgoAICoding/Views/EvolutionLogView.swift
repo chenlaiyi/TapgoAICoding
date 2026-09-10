@@ -252,6 +252,15 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.232", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.232",
+                    summary: "移除未使用的 StreamingDotsInline（死代码清理）。",
+                    changes: [
+                        "移除 ConversationResponseView 中无引用的 StreamingDotsInline。"
+                    ],
+                    why: "代码清洁。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.231", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.231",
                     summary: "新任务态显示电脑操作 chip。",
                     changes: [

@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.232 — chore: 移除未使用的 StreamingDotsInline（死代码清理）
+**Date**: 2026-09-10
+**Tag**: v0.5.232
+**Test status**: 构建 + 三机安装
+**Changed**:
+- ConversationResponseView：移除无引用的 StreamingDotsInline struct。
+
+**Why**: v0.5.213/224 改用 ShimmerText 后 StreamingDotsInline 不再被引用。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.231 — fix(ui): 新任务态显示电脑操作 chip
 **Date**: 2026-09-10
 **Tag**: v0.5.231
