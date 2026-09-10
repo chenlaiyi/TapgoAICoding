@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.232 — fix(build): helper 签名 + 测试修正
+**Date**: 2026-09-10
+**Tag**: v0.5.232
+**Test status**: 全量回归 3145 通过 + 三机安装
+**Changed**:
+- build-app.sh / TapgoConfig.swift：嵌套 helper 显式签名（防 Launch failed）。
+- ConversationPresentationTests：workTitle 断言同步。
+
+**Why**: 用户反馈电脑控制授权反复出错。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.234 — fix(ui): 折叠行标题显示命令内容（对齐 Codex 实机）
 **Date**: 2026-09-10
 **Tag**: v0.5.234

@@ -913,6 +913,12 @@ enum TapgoConfig {
             } else {
                 try fm.moveItem(at: staging, to: target)
             }
+            // v0.5.231: 复制后重签（ditto/copy 不保留代码签名）
+            let signProc = Process()
+            signProc.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            signProc.arguments = ["--force", "--deep", "--sign", "-", target.path]
+            try? signProc.run()
+            signProc.waitUntilExit()
             return target
         } catch {
             log("computerUseHelperAppURL: 独立 Helper 安装失败：\(error.localizedDescription)")

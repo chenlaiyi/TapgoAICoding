@@ -279,6 +279,15 @@ struct EvolutionLogView: View {
                     next: "继续对齐 Codex 桌面端其他细节。"
                 ),
                 EvolutionEntry(
+                    version: "v0.5.232", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.232",
+                    summary: "helper 签名修复 + 测试修正。",
+                    changes: [
+                        "build-app.sh / TapgoConfig：嵌套 helper 显式签名。"
+                    ],
+                    why: "防止电脑控制 Launch failed 复发。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.231", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.231",
                     summary: "新任务态显示电脑操作 chip。",
                     changes: [
