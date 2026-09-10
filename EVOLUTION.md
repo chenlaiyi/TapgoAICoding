@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.242 — feat(ui): 任务行 hover 操作按钮对齐 ZCode
+**Date**: 2026-09-11
+**Tag**: v0.5.242
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `SidebarComponents.swift`/`SidebarView.swift`:任务行 hover 时右侧状态指示簇与时间整体隐藏,显示「置顶/取消置顶」「删除会话」操作按钮(接 togglePinned 与确认删除);对齐 ZCode 行 JSX 的 De 条件块(hover 显操作/隐状态)。
+
+**Why**: ZCode 任务行的常用操作在 hover 直达;我们此前全藏右键菜单。「已置顶/最近任务」分节经核对属时间线视图,项目分组侧栏不改。
+**Next**: 分组功能(自建分组/颜色)为功能级大改,待定优先级。
+
 ## v0.5.241 — feat(ui): 任务行时间四段与状态指示对齐 ZCode 源码实据
 **Date**: 2026-09-11
 **Tag**: v0.5.241

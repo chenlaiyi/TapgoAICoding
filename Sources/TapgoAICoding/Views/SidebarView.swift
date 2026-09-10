@@ -711,7 +711,11 @@ struct SidebarView: View {
         SidebarTaskLabel(title: t.title, date: relativeDate(for: t.updatedAt),
                          threadId: t.id,
                          status: t.turns.last?.status, pinned: t.isPinned,
-                         selected: store.activeThreadId == t.id, indented: indented)
+                         selected: store.activeThreadId == t.id, indented: indented,
+                         // v0.5.242: hover 操作按钮(ZCode 对齐)——置顶/删除;
+                         // 删除走既有确认弹窗,不直接删。
+                         onPin: { store.togglePinned(t.id) },
+                         onDelete: { confirmingDelete = t })
     }
 
     /// v0.5.241: ZCode 源码实据(og() 函数)—— 四段相对时间:

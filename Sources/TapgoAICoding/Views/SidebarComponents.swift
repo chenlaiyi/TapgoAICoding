@@ -47,48 +47,84 @@ struct SidebarTaskLabel: View {
     var pinned = false
     var selected = false
     var indented = true
+    // v0.5.242: ZCode 实据 —— hover/focus 时右侧状态簇(含时间)整体隐藏,
+    // 显示操作按钮簇(移到顶部/关闭);我们对应「置顶/删除」两个能力。
+    var onPin: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     @State private var hovering = false
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
+    private var showActions: Bool { hovering && (onPin != nil || onDelete != nil) }
     var body: some View {
         HStack(spacing: 6) {
-            // v0.5.241: ZCode 源码实据(rbe()/行 JSX)—— 状态指示都在标题左侧:
-            // running=旋转 spinner(size-3.5 灰),failed=红点(size-1.5);
-            // 蓝点是「未读」标记(我们无未读功能,不用)。右侧时间始终保留。
-            switch status {
-            case .running:
-                ProgressView()
-                    .controlSize(.mini)
-                    .frame(width: 12, height: 12)
-                    .accessibilityLabel("进行中")
-            case .failed:
-                Circle().fill(Color.red).frame(width: 6, height: 6)
-                    .accessibilityLabel("失败")
-            default:
-                EmptyView()
+            if !showActions {
+                // v0.5.241: ZCode 源码实据(rbe()/行 JSX)—— 状态指示在标题左侧:
+                // running=旋转 spinner(size-3.5 灰),failed=红点(size-1.5);
+                // 蓝点是「未读」标记(我们无未读功能,不用)。
+                switch status {
+                case .running:
+                    ProgressView()
+                        .controlSize(.mini)
+                        .frame(width: 12, height: 12)
+                        .accessibilityLabel("进行中")
+                case .failed:
+                    Circle().fill(Color.red).frame(width: 6, height: 6)
+                        .accessibilityLabel("失败")
+                default:
+                    EmptyView()
+                }
             }
             Text(title).font(.system(size: 13 * scale.multiplier)).lineLimit(1).truncationMode(.tail)
             if pinned {
                 Image(systemName: "pin.fill").font(.system(size: 9)).foregroundStyle(DSHTheme.labelTertiary)
             }
             Spacer(minLength: 2)
-            if status == .awaitingApproval {
-                // ZCode permissionTag:绿色小徽章「等待确认」,与右侧时间并存。
-                Text("等待确认")
-                    .font(.system(size: 10 * scale.multiplier, weight: .medium))
-                    .foregroundStyle(Color.green)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.green.opacity(0.14), in: RoundedRectangle(cornerRadius: 4))
-                    .accessibilityLabel("待批准")
+            if showActions {
+                HStack(spacing: 2) {
+                    if let onPin {
+                        Button(action: onPin) {
+                            Image(systemName: pinned ? "pin.slash" : "pin")
+                                .font(.system(size: 11))
+                                .foregroundStyle(DSHTheme.labelDim)
+                                .frame(width: 18, height: 18)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(pinned ? "取消置顶" : "置顶")
+                        .accessibilityLabel(pinned ? "取消置顶" : "置顶")
+                    }
+                    if let onDelete {
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 11))
+                                .foregroundStyle(DSHTheme.labelDim)
+                                .frame(width: 18, height: 18)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("删除会话")
+                        .accessibilityLabel("删除会话")
+                    }
+                }
+            } else {
+                if status == .awaitingApproval {
+                    // ZCode permissionTag:绿色小徽章「等待确认」,与右侧时间并存。
+                    Text("等待确认")
+                        .font(.system(size: 10 * scale.multiplier, weight: .medium))
+                        .foregroundStyle(Color.green)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.14), in: RoundedRectangle(cornerRadius: 4))
+                        .accessibilityLabel("待批准")
+                }
+                Text(date)
+                    .monospacedDigit()
+                    .font(.system(size: 10 * scale.multiplier))
+                    .foregroundStyle(DSHTheme.labelTertiary)
+                    // v0.5.241: 不设固定宽——「N小时」三字在 32pt 里会被挤成两行。
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.trailing, 2)
             }
-            Text(date)
-                .monospacedDigit()
-                .font(.system(size: 10 * scale.multiplier))
-                .foregroundStyle(DSHTheme.labelTertiary)
-                // v0.5.241: 不设固定宽——「N小时」三字在 32pt 里会被挤成两行。
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.trailing, 2)
         }
         .padding(.leading, indented ? SidebarMetrics.childInset : SidebarMetrics.rowInset)
         .padding(.trailing, SidebarMetrics.rowInset)

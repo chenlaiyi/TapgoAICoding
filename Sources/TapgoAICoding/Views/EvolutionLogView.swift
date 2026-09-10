@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.242", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.242",
+                    summary: "任务行 hover 操作按钮对齐 ZCode(hover 显按钮/隐状态簇)。",
+                    changes: [
+                        "任务行 hover 时:右侧状态指示簇(spinner/红点/徽章)与时间整体隐藏,显示操作按钮——对齐 ZCode De 条件块(Oe?null)。",
+                        "按钮为「置顶/取消置顶」(pin/pin.slash)与「删除会话」(trash),接既有 togglePinned 与确认删除弹窗;ZCode 的「文件树」按钮我们无对应功能,跳过。",
+                        "「已置顶/最近任务」分节经核对属 ZCode 时间线组织视图,项目分组侧栏无此形态,不改。"
+                    ],
+                    why: "hover 操作按钮是 ZCode 任务行的核心交互(此前我们的行操作全藏在右键菜单),补齐后常用操作一步可达。",
+                    next: "分组功能(自建分组/颜色)为功能级大改,待定优先级。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.241", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.241",
                     summary: "任务行时间四段与状态指示对齐 ZCode 源码实据。",
                     changes: [
