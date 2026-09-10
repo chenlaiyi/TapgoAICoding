@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.240</title>
+            <pubDate>Fri, 11 Sep 2026 01:58:56 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.240</link>
+            <sparkle:version>0.5.240</sparkle:version>
+            <sparkle:shortVersionString>0.5.240</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.240
+
+## 欢迎页对齐 ZCode 源码实据
+
+- 标题改为六段时段问候语（边界与文案逐字对齐 ZCode 源码）：早上好呀，新的一天开始啦 / 上午好呀，有什么想让我帮忙的吗 / 中午好呀，要不要先休息一下 / 下午好呀，接下来交给我吧 / 晚上好呀，今天辛苦啦 / 夜深啦，别忘了照顾好自己哦。
+- 副行改为「开始在 {项目} 项目新建任务」，项目名可点击切换（旧版大标题「我们应该在 X 中做些什么?」废弃）。
+- 建议按钮从四张大卡网格改为 32pt 小胶囊横排（水平滚动），内容对齐 ZCode 真实建议：「检查近 7 天的 commit」「制作一份 PDF」（各带完整 prompt）。
+
+实据来源：ZCode.app 应用包渲染层源码（时段函数 / 建议按钮 DOM 结构 / i18n 表），非截图推断。
+
+## 测试
+
+- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
+- 本机真实界面回归：欢迎页新形态（问候语 + 副行 + 胶囊按钮）实机截图验证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.240/Tapgo-AICoding-0.5.240.zip" length="12292945" type="application/octet-stream" sparkle:edSignature="NcUebWS1bTBa8bHxI0yAyJyclDhqsjuRZrpK2UHJpt5CONdHSjmuStrq5BfxiUmNdX/DjqjFNsjXt3r2ZwyXDQ=="/>
+        </item>
+        <item>
             <title>0.5.239</title>
             <pubDate>Fri, 11 Sep 2026 01:36:29 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.239</link>
@@ -47,29 +72,6 @@
 - 本机真实界面回归：气泡渲染（短消息贴右、描边消失、圆角加大）实机截图验证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.238/Tapgo-AICoding-0.5.238.zip" length="12295032" type="application/octet-stream" sparkle:edSignature="zaipmp7K81aDYldL0XjE1F5goBCY66FgYl1AnUpJj07Hb0NPesiC8PQAvGJokNJgeNkCttWw300In5jPu7b4Aw=="/>
-        </item>
-        <item>
-            <title>0.5.237</title>
-            <pubDate>Fri, 11 Sep 2026 00:49:11 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.237</link>
-            <sparkle:version>0.5.237</sparkle:version>
-            <sparkle:shortVersionString>0.5.237</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.237
-
-## composer 动作按钮与 placeholder 对齐 Codex 实机
-
-- 发送/停止合并为单颗圆形动作按钮：空闲 = ↑ 发送，运行中 = ■ 停止（中断当前回合，排队消息保留）；运行中继续排队走 ⌘↩ / 回车，与 Codex 桌面端交互一致。
-- 输入框 placeholder 对齐 Codex 2026-09-10 实机：「随意输入」（自进化会话保持「向自进化下达本轮指令…」覆盖）。
-- 模型区移除运行中 mini spinner——Codex 模型区是静态文本，运行态由动作按钮形态表达。
-
-## 测试
-
-- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
-- 本机真实界面回归：底栏单按钮两态 + placeholder 实机截图验证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.237/Tapgo-AICoding-0.5.237.zip" length="12296055" type="application/octet-stream" sparkle:edSignature="FTNosbkhU2NaOHAiRRiCHydR77shFtCo42g3zd3Tm1f43a9T67mVh+pnkLC49LzGZxXvilmh8XxP0hdt0sqYAQ=="/>
         </item>
     </channel>
 </rss>
