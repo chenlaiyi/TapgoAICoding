@@ -3,6 +3,32 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.243</title>
+            <pubDate>Fri, 11 Sep 2026 03:05:24 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.243</link>
+            <sparkle:version>0.5.243</sparkle:version>
+            <sparkle:shortVersionString>0.5.243</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.243
+
+## 会话内回合摘要与思考行对齐 ZCode 源码实据
+
+- 回合摘要用词对齐 ZCode：完成 =「已工作 {时长}」，进行中 =「工作中 {时长}」，中断 =「已停止」；移除「· N 步」步数段（ZCode 无此段）。
+- 思考行标签：「思考过程」→「思考」（进行中的「正在思考」保持不变）。
+- 时长单位统一：「X 分钟」→「X 分」，全 App 生效（回合摘要 / 轨迹 / 历史）。
+- 「调整方向」文案保持不变（以你提供的实机截图为准；ZCode 新版源码已改用「引导」，差异已记录在 EVOLUTION）。
+
+实据来源：ZCode.app 应用包渲染层 i18n 表（chat.history.* / chat.reasoning.* / chat.summaryPanel.duration）。
+
+## 测试
+
+- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
+- 同步更新了时长格式与摘要文案的测试断言。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.243/Tapgo-AICoding-0.5.243.zip" length="12302786" type="application/octet-stream" sparkle:edSignature="es/K8QI99+GTSWjkLnN+gJoG92w8fRJtl1R/GzzfTSzhl9ebaW3UVPVyElTTSwBjJk6qDyrjXdu/AJDwNd4aBA=="/>
+        </item>
+        <item>
             <title>0.5.242</title>
             <pubDate>Fri, 11 Sep 2026 02:38:48 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.242</link>
@@ -54,31 +80,6 @@
 - 本机真实界面回归：侧栏时间四段（刚刚/N分）与状态指示实机截图验证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.241/Tapgo-AICoding-0.5.241.zip" length="12296037" type="application/octet-stream" sparkle:edSignature="4/ZJ3jHPgVrgxmwjmHcWBx+JuTyTORJzo3OW8n/v2FU51LJYtM8maYymVItaVY4pP3dJmwsNgFkzC3tjV+EDBg=="/>
-        </item>
-        <item>
-            <title>0.5.240</title>
-            <pubDate>Fri, 11 Sep 2026 01:58:56 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.240</link>
-            <sparkle:version>0.5.240</sparkle:version>
-            <sparkle:shortVersionString>0.5.240</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.240
-
-## 欢迎页对齐 ZCode 源码实据
-
-- 标题改为六段时段问候语（边界与文案逐字对齐 ZCode 源码）：早上好呀，新的一天开始啦 / 上午好呀，有什么想让我帮忙的吗 / 中午好呀，要不要先休息一下 / 下午好呀，接下来交给我吧 / 晚上好呀，今天辛苦啦 / 夜深啦，别忘了照顾好自己哦。
-- 副行改为「开始在 {项目} 项目新建任务」，项目名可点击切换（旧版大标题「我们应该在 X 中做些什么?」废弃）。
-- 建议按钮从四张大卡网格改为 32pt 小胶囊横排（水平滚动），内容对齐 ZCode 真实建议：「检查近 7 天的 commit」「制作一份 PDF」（各带完整 prompt）。
-
-实据来源：ZCode.app 应用包渲染层源码（时段函数 / 建议按钮 DOM 结构 / i18n 表），非截图推断。
-
-## 测试
-
-- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
-- 本机真实界面回归：欢迎页新形态（问候语 + 副行 + 胶囊按钮）实机截图验证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.240/Tapgo-AICoding-0.5.240.zip" length="12292945" type="application/octet-stream" sparkle:edSignature="NcUebWS1bTBa8bHxI0yAyJyclDhqsjuRZrpK2UHJpt5CONdHSjmuStrq5BfxiUmNdX/DjqjFNsjXt3r2ZwyXDQ=="/>
         </item>
     </channel>
 </rss>
