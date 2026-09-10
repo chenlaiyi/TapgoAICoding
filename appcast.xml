@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.245</title>
+            <pubDate>Fri, 11 Sep 2026 06:35:22 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.245</link>
+            <sparkle:version>0.5.245</sparkle:version>
+            <sparkle:shortVersionString>0.5.245</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.245
+
+## 工具聚合分组:连续命令折叠成「终端 · N 个命令」
+
+- 同一回合里连续多个命令折叠成一行「**终端 · N 个命令**」，头部带 chevron，**默认收起**，点 > 展开看到每条命令及结果。
+- 头部状态后缀：进行中显示「· 进行中」，含失败命令时显示「· 失败」，其余不显示。
+- 展开后按时间顺序列出：每条命令的状态图标（succeeded 绿 ✓、failed 红 ✗、running 蓝播放、awaitingApproval 虚线圈、denied 手形）+ 命令等宽文本 + 失败时附 stderr 前 240 字摘要。
+- 单条命令不折叠，仍走单行 activity 形态以避免样式退化。
+- 文件改动批次沿用既有 `fileBatch` 形态不变（ZCode changesGroup 的语义已覆盖）。
+
+实据来源：ZCode.app 应用包源码（executeGroup JSX）+ 你提供的折叠/展开实机截图。
+
+## 测试
+
+- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.245/Tapgo-AICoding-0.5.245.zip" length="12320867" type="application/octet-stream" sparkle:edSignature="IZNTB5/ibkR1aBVhMUBKi2W8io9/YuV+YnWL74FniRkt+edokBlaMng09+stmLZK/PLmEd8qbabHUJAZ6EZmCw=="/>
+        </item>
+        <item>
             <title>0.5.244</title>
             <pubDate>Fri, 11 Sep 2026 03:21:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.244</link>
@@ -51,32 +76,6 @@
 - 同步更新了时长格式与摘要文案的测试断言。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.243/Tapgo-AICoding-0.5.243.zip" length="12302786" type="application/octet-stream" sparkle:edSignature="es/K8QI99+GTSWjkLnN+gJoG92w8fRJtl1R/GzzfTSzhl9ebaW3UVPVyElTTSwBjJk6qDyrjXdu/AJDwNd4aBA=="/>
-        </item>
-        <item>
-            <title>0.5.242</title>
-            <pubDate>Fri, 11 Sep 2026 02:38:48 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.242</link>
-            <sparkle:version>0.5.242</sparkle:version>
-            <sparkle:shortVersionString>0.5.242</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.242
-
-## 任务行 hover 操作按钮对齐 ZCode
-
-- 侧栏任务行悬停时，右侧的状态指示（spinner/红点/徽章）与时间整体隐藏，显示两个操作按钮：**置顶/取消置顶** 与 **删除会话**——与 ZCode 任务行「hover 显操作、隐状态」的交互一致。
-- 删除走既有的确认弹窗，不会直接删除；置顶即时生效（图钉图标随之切换）。
-- 右键菜单的全部操作（复制/重命名/打开目录/附件等）保持不变。
-- 「已置顶/最近任务」分节经核对属于 ZCode 的时间线组织视图，项目分组侧栏无此形态，维持现状。
-
-实据来源：ZCode.app 应用包渲染层源码（任务行 JSX 的 hover 条件块与操作簇）。
-
-## 测试
-
-- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
-- 本机真实界面回归：默认态（无按钮、行选择正常）实机截图验证；hover 态为指针交互，以静态审查 + 构建验证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.242/Tapgo-AICoding-0.5.242.zip" length="12302181" type="application/octet-stream" sparkle:edSignature="gPuLhmRk/IV0lEwmEqvI8H/Q6Htl0fLb9i6SGkZB8nWO6OoUT7D77U1Yt/PteiyLU5vvJ+E9EVjYwL9TmF8tDg=="/>
         </item>
     </channel>
 </rss>
