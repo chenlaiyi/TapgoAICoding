@@ -246,8 +246,18 @@ struct SidebarView: View {
     private enum SidebarViewMode: String, CaseIterable, Identifiable {
         case groups
         case projects
+        // v0.5.246: 时间线视图——置顶置顶一节 + 「最近任务」按更新时间一节。
+        // 与 ZCode 侧栏 projects/conversations 分节结构对齐,只是语义按
+        // 我们 store 现有 isPinned/updatedAt 字段自然分。
+        case timeline
         var id: String { rawValue }
-        var title: String { self == .groups ? "所有任务" : "按项目分组" }
+        var title: String {
+            switch self {
+            case .groups: return "所有任务"
+            case .projects: return "按项目分组"
+            case .timeline: return "时间线"
+            }
+        }
     }
 
     // MARK: - Search
@@ -318,6 +328,8 @@ struct SidebarView: View {
                     }
                     .contextMenu { contextMenu(for: thread) }
                 }
+            } else if sidebarViewMode == .timeline {
+                timelineSections
             } else {
                 ForEach(grouped.filter { $0.project != nil }, id: \.id) { group in
                     threadSection(for: group)
@@ -345,6 +357,48 @@ struct SidebarView: View {
             .padding(.bottom, 10)
         }
         .background(DSHTheme.sidebarBg)
+    }
+
+    // MARK: - v0.5.246 时间线视图
+
+    /// 「已置顶」+「最近任务」两个分节。置顶置顶单列一节(无项目缩进),
+    /// 其余按 updatedAt 排,沿用既有线程行(`threadRow`)。
+    @ViewBuilder
+    private var timelineSections: some View {
+        let pinned = flattenedThreads.filter { $0.isPinned }
+        let recent = flattenedThreads.filter { !$0.isPinned }
+        // pinned 节(仅当有置顶)
+        if !pinned.isEmpty {
+            sidebarSectionHeading("已置顶", actionIcon: "plus") { showNewTask() }
+            ForEach(pinned) { thread in
+                timelineRow(thread)
+            }
+        }
+        // 最近任务节
+        if !recent.isEmpty {
+            sidebarSectionHeading("最近任务", actionIcon: "plus") { showNewTask() }
+            ForEach(recent) { thread in
+                timelineRow(thread)
+            }
+        } else if pinned.isEmpty {
+            // 既无置顶又无最近(理论上不该发生——空状态在 threadList 已处理)
+            emptyState
+        }
+    }
+
+    @ViewBuilder
+    private func timelineRow(_ thread: TapgoCore.Thread) -> some View {
+        Button {
+            store.selectThread(thread.id)
+        } label: {
+            threadRow(thread, indented: false)
+        }
+        .buttonStyle(.plain)
+        .onTapGesture(count: 2) {
+            renamingThreadId = thread.id
+            renameDraft = thread.title
+        }
+        .contextMenu { contextMenu(for: thread) }
     }
 
     private func sidebarSectionHeading(_ title: String, actionIcon: String, action: @escaping () -> Void) -> some View {

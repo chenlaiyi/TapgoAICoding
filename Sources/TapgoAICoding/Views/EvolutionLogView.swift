@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.246", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.246",
+                    summary: "时间线组织视图:侧栏新增「已置顶 / 最近任务」分节模式。",
+                    changes: [
+                        "SidebarViewMode 新增 .timeline 模式(与原 groups/projects 并列);菜单文本为「时间线」,本地持久化 @AppStorage。",
+                        "timelineSections 把 flattenedThreads 拆为「已置顶」(isPinned=true)与「最近任务」(其余)两节,复用既有 sidebarSectionHeading 与 threadRow,默认按 updatedAt 倒序。",
+                        "未做:ZCode 的 sectionOrder 拖拽重排与展开状态持久化(设计成本高于本轮范围),功能完整边界停在「可看、可切、可置顶/取消置顶」。"
+                    ],
+                    why: "按你 1 号候选优先级,落地时间线视图;置顶与最近两类会话是用户日常切换最频繁的对象,单独成节降低切换成本。",
+                    next: "分组功能(2 号)/steer 文案(3 号)待你定夺。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.245", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.245",
                     summary: "工具聚合分组:连续命令折叠成「终端 · N 个命令」一行,默认收起点击展开。",
                     changes: [

@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.246 — feat(ui): 时间线组织视图(已置顶 / 最近任务分节)
+**Date**: 2026-09-11
+**Tag**: v0.5.246
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `SidebarView.swift`:`SidebarViewMode` 新增 `.timeline`;`timelineSections` 把置顶会话单列「已置顶」节,其余为「最近任务」节;复用 `sidebarSectionHeading` 与 `threadRow`;沿用 `@AppStorage` 持久化用户选择。
+
+**Why**: 你 1 号候选;置顶与最近是日常切换最频繁的对象,单独成节。
+**Next**: 分组功能(2)/steer 文案(3)待定。
+
 ## v0.5.245 — feat(ui): 工具聚合分组:连续命令折叠成「终端 · N 个命令」一行
 **Date**: 2026-09-11
 **Tag**: v0.5.245
