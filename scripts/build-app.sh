@@ -256,6 +256,13 @@ if command -v codesign >/dev/null 2>&1; then
   fi
   # v0.5.231: 显式签嵌套 helper（--deep 不可靠覆盖 Resources/ 下的 .app）
   codesign --force --deep --sign - "$HELPER_APP_DIR" 2>&1 | sed 's/^/    helper: /'
+  # v0.5.236: helper 的这次重签会破坏外层 bundle 的密封（sealed resource
+  # invalid），v0.5.235 起本机 ad-hoc 修复路径的发布因此中断。最后对整体再
+  # deep 重签一次再校验——与手工修复步骤一致；Developer ID 路径不受影响。
+  if [[ "$SIGNING_IDENTITY" == "-" || -z "$MAIN_TEAM" || "$MAIN_TEAM" == "not set" \
+        || "$MAIN_TEAM" != "$SPARKLE_BIN_TEAM" ]]; then
+    codesign --force --deep --sign - "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+  fi
   codesign --verify --deep --strict "$APP_BUNDLE_DIR"
   # v0.5.228: 刷新 Launch Services 注册（修复嵌套 helper 签名后 Launchd job spawn failed）
   LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"

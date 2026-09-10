@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.237", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.237",
+                    summary: "composer 动作按钮与 placeholder 对齐 Codex 实机。",
+                    changes: [
+                        "发送/停止合并为单颗圆形动作按钮:空闲=↑发送,运行中=■停止(中断当前回合,排队消息保留);运行中排队走 ⌘↩/回车,与 Codex 交互一致。",
+                        "placeholder 对齐 2026-09-10 Codex 实机:「随意输入」(自进化会话保持独立覆盖)。",
+                        "模型 chip 移除运行中 mini spinner —— Codex 模型区是静态文本,运行态由动作按钮形态表达。"
+                    ],
+                    why: "旧底栏是「蓝色停止圆 + 发送圆」两颗并存,与 Codex 单按钮形态切换不一致。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.236", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.236",
                     summary: "输入框上方目标与排队对齐 Codex 实机。",
                     changes: [

@@ -1676,10 +1676,9 @@ struct ComposerView: View {
                         HStack(spacing: 4) {
                             // v0.5.202: Codex 对齐 — 裸模型名 + 空格分隔力度
                             // （无品牌前缀、无 chevron、无「·」分隔符）。
+                            // v0.5.237: 移除运行中 mini spinner —— Codex 模型区
+                            // 是静态文本,运行态由动作按钮形态表达。
                             Text(modelChipName).font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                            if isRunning {
-                                ProgressView().controlSize(.mini)
-                            }
                             if !effortLabel.isEmpty, effortLabel != "默认" {
                                 Text(effortLabel)
                                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
@@ -1694,32 +1693,23 @@ struct ComposerView: View {
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
 
-                    if isRunning {
-                        Button(action: { store.cancelActiveTurn() }) {
-                            Image(systemName: "stop.fill")
-                                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                                .frame(width: 28, height: 28)
-                                .foregroundStyle(.white)
-                                // v0.5.144 修：brandPrimary 是「主前景色」不是品牌蓝，
-                                // dark 模式下近白 → stop 按钮变成白色圆。改用 brand 蓝。
-                                .background(DSHTheme.brand, in: Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("中断当前任务（排队消息会被保留）")
-                        .accessibilityLabel("中断当前任务")
-                    }
-                    Button(action: send) {
-                        Image(systemName: "arrow.up")
+                    // v0.5.237: Codex 对齐 —— 单颗圆形动作按钮,形态随运行态切换:
+                    // 空闲=发送(↑),运行中=停止(■,中断当前回合,排队消息保留)。
+                    // 运行中继续排队走 ⌘↩ / 回车,与 Codex 交互一致。
+                    Button {
+                        if isRunning { store.cancelActiveTurn() } else { send() }
+                    } label: {
+                        Image(systemName: isRunning ? "stop.fill" : "arrow.up")
                             .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                             .frame(width: 28, height: 28)
                             .foregroundStyle(DSHTheme.composerActionText)
                             .background(DSHTheme.composerAction, in: Circle())
                     }
                     .buttonStyle(.plain)
-                    .opacity(canSend ? 1 : 0.55)
-                    .disabled(canSend == false)
-                    .help(isRunning ? "发送（排队）(⌘↩)" : "发送 (⌘↩)")
-                    .accessibilityLabel(L10n.sendButton)
+                    .opacity((canSend || isRunning) ? 1 : 0.55)
+                    .disabled(!isRunning && canSend == false)
+                    .help(isRunning ? "中断当前任务（排队消息会被保留）" : "发送 (⌘↩)")
+                    .accessibilityLabel(isRunning ? "中断当前任务" : L10n.sendButton)
                 }
             }
             .padding(12)
@@ -2918,17 +2908,15 @@ struct ComposerView: View {
         }
     }
 
-    /// Composer placeholder — Codex 桌面端对齐。Codex 桌面端 placeholder
-    /// 是 "添加文件等内容 @ 人/项目" 提示 composer 可以做什么。
-    /// TapgoAICoding 不支持 @ 人/@ 项目但支持 @ 插件（v0.5.147），
-    /// 所以 hint 改 "发消息 / 添加文件 / @ 插件"，更贴近实际能力。
-    /// 自进化会话必须显式覆盖——否则仍按 activeProject 显示「给 OctTapgo
-    /// 发条任务…」，用户会误以为没切进自进化、把指令发去项目会话。
+    /// Composer placeholder — Codex 桌面端对齐。2026-09-10 实机截图:
+    /// 会话内 placeholder 是「随意输入」,沿用为全局默认。
+    /// 自进化会话必须显式覆盖——否则用户会误以为没切进自进化、
+    /// 把指令发去项目会话。
     private var composerPlaceholder: String {
         if activeThread?.isEvolution == true {
             return "向自进化下达本轮指令…"
         }
-        return "发消息 / 添加文件 / @ 插件"
+        return "随意输入"
     }
 
     /// The active thread's current goal text (drives the 目标 chip highlight).

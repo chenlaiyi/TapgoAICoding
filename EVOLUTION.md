@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.237 — feat(ui): composer 动作按钮与 placeholder 对齐 Codex 实机
+**Date**: 2026-09-11
+**Tag**: v0.5.237
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `ChatView.swift`:发送/停止合并为单颗圆形动作按钮(空闲=↑ 发送,运行中=■ 停止/中断;运行中排队走 ⌘↩/回车,与 Codex 一致);placeholder 改「随意输入」(2026-09-10 Codex 实机截图);模型 chip 移除运行中 mini spinner。
+
+**Why**: 旧底栏「蓝色停止圆 + 发送圆」两颗并存,与 Codex 单按钮形态切换不一致;placeholder 文案过时。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.236 — feat(ui): 输入框上方目标与排队对齐 Codex 实机
 **Date**: 2026-09-10
 **Tag**: v0.5.236
