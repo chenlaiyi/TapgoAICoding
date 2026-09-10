@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.240 — feat(ui): 欢迎页对齐 ZCode 源码实据(问候语+胶囊建议按钮)
+**Date**: 2026-09-11
+**Tag**: v0.5.240
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `CodexWelcomeView.swift` 重写:标题改六段时段问候语(ZCode DQe() 边界 5/9/12/14/18/23 与文案逐字对齐);副行「开始在 {项目} 项目新建任务」项目名可点选;四张大卡网格改 32pt 小胶囊横排(h-8/rounded-lg/px-3 水平滚动),内容为 ZCode 真实建议卡「检查近 7 天的 commit」「制作一份 PDF」。
+
+**Why**: ZCode 前台激活被拒,转从其 app.asar 渲染层源码拿到欢迎页第一手实现(DQe()/data-v4-draft-suggested-prompts/i18n 表),发现旧欢迎页形态已过时。
+**Next**: 项目行折叠箭头、分组/项目 pills 等区域继续核对。
+
 ## v0.5.239 — feat(ui): 侧边栏会话列表对齐 ZCode 实机
 **Date**: 2026-09-11
 **Tag**: v0.5.239

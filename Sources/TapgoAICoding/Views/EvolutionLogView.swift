@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.240", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.240",
+                    summary: "欢迎页对齐 ZCode 源码实据(问候语+胶囊建议按钮)。",
+                    changes: [
+                        "标题改六段时段问候语(边界 5/9/12/14/18/23 点,文案逐字对齐 ZCode):「早上好呀，新的一天开始啦」「夜深啦，别忘了照顾好自己哦」等。",
+                        "副行改「开始在 {项目} 项目新建任务」,项目名可点选(旧版大标题「我们应该在 X 中做些什么?」废弃)。",
+                        "四张大卡网格(106pt 高)改为 32pt 小胶囊横排(h-8/rounded-lg/px-3,水平滚动);内容换 ZCode 真实卡:「检查近 7 天的 commit」「制作一份 PDF」。",
+                        "实据来源:ZCode.app app.asar 渲染层源码(DQe() 时段函数 + data-v4-draft-suggested-prompts 结构 + i18n 表),非截图推断。"
+                    ],
+                    why: "前台激活 ZCode 被拒后,从其应用包源码拿到欢迎页第一手实现,发现旧欢迎页(基于早期参照)形态已过时。",
+                    next: "继续对齐其他区域(项目行折叠箭头、分组/项目 pills 等)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.239", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.239",
                     summary: "侧边栏会话列表对齐 ZCode 实机(参照已获取)。",
                     changes: [

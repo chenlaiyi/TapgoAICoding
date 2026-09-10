@@ -1,8 +1,10 @@
 import SwiftUI
 import TapgoCore
 
-/// The supplied Codex reference: one calm heading, four editable task starters,
-/// and generous open space above the bottom-anchored composer.
+/// ZCode 桌面端对齐(2026-09-11,实据来源:ZCode.app app.asar 渲染层源码):
+/// 欢迎页 = 时段问候语标题(六段,边界 5/9/12/14/18/23 点)+「开始在 X 项目
+/// 新建任务」副行(项目名可点选)+ 小胶囊建议按钮横排(h-8 / rounded-lg / px-3),
+/// 不再是图标 + 大标题 + 四张大卡网格。
 struct CodexWelcomeView: View {
     @EnvironmentObject var workspace: WorkspaceStore
     @Environment(\.tapgoFontScale) private var fontScale: AppFontScale
@@ -12,24 +14,18 @@ struct CodexWelcomeView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 28) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 40, weight: .ultraLight))
-                        .foregroundStyle(DSHTheme.labelTertiary)
-                        .accessibilityHidden(true)
-                    heading
-                        .font(.system(size: 27 * fontScale.multiplier, weight: .regular))
+                VStack(spacing: 18) {
+                    Text(Self.greetingText(for: Date()))
+                        .font(.system(size: 24 * fontScale.multiplier, weight: .medium))
                         .foregroundStyle(DSHTheme.label)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: geometry.size.width >= 650 ? 4 : 2), spacing: 10) {
-                        ForEach(Starter.allCases) { starter in
-                            StarterCard(starter: starter) {
-                                NotificationCenter.default.post(name: .tapgoInsertStarter, object: starter.prompt)
-                            }
-                        }
-                    }
-                    .padding(.top, 6)
+                    projectLine
+                        .font(.system(size: 14 * fontScale.multiplier))
+                        .foregroundStyle(DSHTheme.labelDim)
+                        .multilineTextAlignment(.center)
+                    suggestedPromptChips
+                        .padding(.top, 10)
                 }
                 .frame(maxWidth: contentWidth)
                 .padding(.horizontal, 28)
@@ -40,12 +36,25 @@ struct CodexWelcomeView: View {
         }
     }
 
+    // MARK: - 时段问候语(ZCode DQe() 的六段边界与文案)
+    static func greetingText(for date: Date = Date()) -> String {
+        let hour = Calendar.current.component(.hour, from: date)
+        switch hour {
+        case 5..<9: return "早上好呀，新的一天开始啦"
+        case 9..<12: return "上午好呀，有什么想让我帮忙的吗"
+        case 12..<14: return "中午好呀，要不要先休息一下"
+        case 14..<18: return "下午好呀，接下来交给我吧"
+        case 18..<23: return "晚上好呀，今天辛苦啦"
+        default: return "夜深啦，别忘了照顾好自己哦"
+        }
+    }
+
+    // MARK: - 项目副行(项目名可点击切换)
     @ViewBuilder
-    private var heading: some View {
+    private var projectLine: some View {
         if let project = workspace.state.activeProject {
             Button { choosingProject = true } label: {
-                (Text("我们应该在 ") + Text(project.displayName).underline(color: DSHTheme.labelTertiary) + Text(" 中做些什么？"))
-                    .font(.system(size: 27 * fontScale.multiplier, weight: .regular))
+                (Text("开始在 ") + Text(project.displayName).underline(color: DSHTheme.labelTertiary) + Text(" 项目新建任务"))
                     .lineLimit(2)
             }
             .buttonStyle(.plain)
@@ -57,77 +66,64 @@ struct CodexWelcomeView: View {
             }
             .accessibilityLabel("在 \(project.displayName) 中开始新任务，点击切换项目")
         } else {
-            Text("我们应该做些什么？")
+            Text("开始对话")
         }
     }
 
-    enum Starter: String, CaseIterable, Identifiable {
-        case explore, build, review, fix
+    // MARK: - 建议按钮(ZCode data-v4-draft-suggested-prompts:h-8 胶囊横排)
+    private var suggestedPromptChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(SuggestedPrompt.allCases) { prompt in
+                    SuggestedPromptChip(prompt: prompt) {
+                        NotificationCenter.default.post(name: .tapgoInsertStarter, object: prompt.prompt)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: contentWidth)
+    }
+
+    enum SuggestedPrompt: String, CaseIterable, Identifiable {
+        case recentCommits, createPdf
         var id: String { rawValue }
-        var title: String {
+        var label: String {
             switch self {
-            case .explore: return "探索并理解代码"
-            case .build: return "构建新功能、应用或工具"
-            case .review: return "审查代码并提出修改建议"
-            case .fix: return "修复问题和失败"
-            }
-        }
-        var icon: String {
-            switch self {
-            case .explore: return "binoculars"
-            case .build: return "hammer"
-            case .review: return "arrow.triangle.2.circlepath"
-            case .fix: return "ladybug"
-            }
-        }
-        var color: Color {
-            switch self {
-            case .explore: return .blue
-            case .build: return .purple
-            case .review: return .green
-            case .fix: return .orange
+            case .recentCommits: return "检查近 7 天的 commit"
+            case .createPdf: return "制作一份 PDF"
             }
         }
         var prompt: String {
             switch self {
-            case .explore: return "请探索当前项目的代码，说明整体结构、关键模块与运行方式。"
-            case .build: return "请帮我在当前项目中构建一个新功能："
-            case .review: return "请审查当前项目的改动，指出具体问题、影响与修改建议。"
-            case .fix: return "请帮我定位并修复这个问题："
+            case .recentCommits: return "检查当前工作区近 7 天的 Git commit，概括主要改动并指出潜在风险。"
+            case .createPdf: return "根据当前工作区内容制作一份 PDF 文档。"
             }
         }
     }
 
-    private struct StarterCard: View {
-        let starter: Starter
+    private struct SuggestedPromptChip: View {
+        let prompt: SuggestedPrompt
         let action: () -> Void
         @State private var hovering = false
         @Environment(\.tapgoFontScale) private var fontScale: AppFontScale
 
         var body: some View {
             Button(action: action) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Image(systemName: starter.icon)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(starter.color)
-                    Spacer(minLength: 0)
-                    Text(starter.title)
-                        .font(.system(size: 13 * fontScale.multiplier, weight: .medium))
-                        .foregroundStyle(DSHTheme.label)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, minHeight: 106 * max(1, fontScale.multiplier), maxHeight: 106 * max(1, fontScale.multiplier))
-                .background(hovering ? DSHTheme.welcomeHover : Color.clear, in: RoundedRectangle(cornerRadius: 18))
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(hovering ? DSHTheme.borderStrong : DSHTheme.welcomeBorder, lineWidth: 1))
-                .contentShape(RoundedRectangle(cornerRadius: 18))
+                Text(prompt.label)
+                    .font(.system(size: 12 * fontScale.multiplier))
+                    .foregroundStyle(DSHTheme.label)
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32 * max(1, fontScale.multiplier))
+                    .background(hovering ? DSHTheme.welcomeHover : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(hovering ? DSHTheme.borderStrong : DSHTheme.welcomeBorder, lineWidth: 1))
+                    .contentShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
             .onHover { hovering = $0 }
-            .help("填入任务草稿，编辑后发送")
-            .accessibilityLabel(starter.title)
+            .help(prompt.prompt)
+            .accessibilityLabel(prompt.label)
             .accessibilityHint("填入输入框，不会自动发送")
         }
     }
