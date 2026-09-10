@@ -1506,6 +1506,9 @@ struct ComposerView: View {
     @State private var pendingDraftProjectID: String?
     @State private var choosingWelcomeProject = false
     @State private var choosingPermission = false
+    /// v0.5.248 欢迎态顶栏三段 chip:welcomeProjectBar 用,异步探测当前 git 分支名。
+    /// 只在 welcome(isWelcome=true)时填充与刷新,避免常规态无谓的 git 调用。
+    @State private var welcomeGitBranch: String? = nil
     /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
         "builtin:\(TapgoModel.minimaxM3.rawValue)"
@@ -1832,6 +1835,12 @@ struct ComposerView: View {
             if !(preserveDraftOnProjectChange && newID == pendingDraftProjectID) { text = "" }
             preserveDraftOnProjectChange = false
         }
+        // v0.5.248: 欢迎态三段 chip 中第三段(分支)需要异步探测,跟随项目变化重跑。
+        // isWelcome=false 时也跑但结果不显示,welcomeGitBranch 始终是最新的,避免
+        // 切回 welcome 时还要再等一次 git 调用。
+        .task(id: workspace.state.activeProjectId) {
+            welcomeGitBranch = SessionStore.detectGitBranch(for: workspace.state.activeProject)
+        }
         .onChange(of: store.activeThreadId) { _, _ in
             showTurnProgressDetails = false
         }
@@ -2009,33 +2018,61 @@ struct ComposerView: View {
     }
 
     private var welcomeProjectBar: some View {
-        Button { choosingWelcomeProject = true } label: {
-            HStack(spacing: 7) {
-                Image(systemName: workspace.state.activeProject?.isRemote == true ? "globe" : "folder")
-                Text(workspace.state.activeProject?.displayName ?? "选择项目")
+        let project = workspace.state.activeProject
+        let isRemote = project?.isRemote == true
+        let displayName = project?.displayName ?? "选择项目"
+        return HStack(spacing: 14) {
+            // 段 1:项目 chip(可点击切项目,与原行为一致)
+            Button { choosingWelcomeProject = true } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isRemote ? "globe" : "folder")
+                    Text(displayName)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Image(systemName: "chevron.down").font(.system(size: 9))
+                }
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $choosingWelcomeProject) {
+                WelcomeProjectPicker { id in
+                    choosingWelcomeProject = false
+                    chooseNewTaskProject(id)
+                }
+            }
+            .help(project?.displayPath ?? "选择新任务的工作目录")
+            .accessibilityLabel("新任务项目：\(displayName)")
+
+            // 段 2:环境 chip(本地 / 远程)。本轮只读,后续若需要切远程再扩展 popover。
+            HStack(spacing: 6) {
+                Image(systemName: isRemote ? "network" : "laptopcomputer")
+                Text(isRemote ? "远程" : "本地")
                     .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.down").font(.system(size: 9))
             }
-            .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-            .foregroundStyle(DSHTheme.labelDim)
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 22)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 16))
-            .contentShape(RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-        .popover(isPresented: $choosingWelcomeProject) {
-            WelcomeProjectPicker { id in
-                choosingWelcomeProject = false
-                chooseNewTaskProject(id)
+            .accessibilityLabel(isRemote ? "运行环境：远程" : "运行环境：本地")
+
+            // 段 3:分支 chip(只读)。git 探测失败时不显示具体分支名,留空。
+            if let branch = welcomeGitBranch, !branch.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.branch")
+                    Text(branch)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .accessibilityLabel("当前 Git 分支：\(branch)")
             }
+
+            Spacer(minLength: 0)
         }
-        .help(workspace.state.activeProject?.displayPath ?? "选择新任务的工作目录")
-        .accessibilityLabel("新任务项目：\(workspace.state.activeProject?.displayName ?? "未选择")")
+        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+        .foregroundStyle(DSHTheme.labelDim)
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal, 12)
     }
 

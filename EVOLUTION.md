@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.248 — feat(ui): 欢迎态顶栏三段 chip(项目 + 本地/远程 + git 分支)
+**Date**: 2026-09-11
+**Tag**: v0.5.248
+**Test status**: 待回归
+**Changed**:
+- `ChatView.swift`:ComposerView 新增 `@State welcomeGitBranch` 与 `.task(id: workspace.state.activeProjectId)`,复用 `SessionStore.detectGitBranch(for:)` 探测当前项目 git 分支名(本地项目才探测,远程为 nil)。`welcomeProjectBar` 改写:HStack(spacing: 14) 把项目 chip(folder/globe + displayName + chevron)、环境 chip(laptopcomputer/network + 本地/远程)、分支 chip(arrow.triangle.branch + main)三段并列在同一浅色圆角矩形背景内。
+- 项目 chip 保留原 popover 切项目行为;环境 chip 与分支 chip 本轮只读,分支 chip 在探测为空时整段隐藏。
+- 版本号 0.5.247 → 0.5.248(Info.plist + project.yml + makeHistory + 本日志四源同步)。
+
+**Why**: 接续 v0.5.247 欢迎页对齐:上半部分 logo + 标题 + 4 张建议卡已对齐,底部输入框顶栏还需把单段项目 chip 扩成「项目 + 环境 + 分支」三段,匹配 Codex Desktop 实机截图与 ZCode asar 渲染层实据。
+**Next**: 功能级:分支 chip 是否需要点击切分支(底层走 git checkout / worktree);环境 chip 是否需要点击切远程项目。等用户截图定优先级。
+
 ## v0.5.247 — feat(ui): 新对话欢迎页对齐 Codex Desktop(logo + 标题 + 4 张建议卡)
 **Date**: 2026-09-11
 **Tag**: v0.5.247

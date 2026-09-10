@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.248", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.248",
+                    summary: "欢迎态顶栏三段 chip:项目 + 本地/远程 + git 分支。",
+                    changes: [
+                        "ComposerView.welcomeProjectBar 改写:HStack(spacing: 14) 把项目 chip、环境 chip(laptopcomputer/network → 本地/远程)、分支 chip(arrow.triangle.branch + main)三段并列在同一浅色圆角矩形背景内,与 Codex Desktop 实机截图一致。",
+                        "ComposerView 加 @State welcomeGitBranch 与 .task(id: activeProjectId),复用 SessionStore.detectGitBranch(for:) 探测 git 分支名(本地项目才探测,远程直接 nil);分支 chip 在探测为空时整段隐藏,不显示占位文案。",
+                        "项目 chip 仍是可点选切项目(原 popover 行为保留);环境 chip 与分支 chip 本轮只读,后续如需切换远程/切换分支再扩展 popover。",
+                        "App 版本号 0.5.247 → 0.5.248(MARKETING_VERSION + Info.plist + makeHistory + EVOLUTION.md 四源同步)。"
+                    ],
+                    why: "接续 v0.5.247 欢迎页对齐:上半部分 logo + 标题 + 4 张建议卡已对齐,底部输入框顶栏还需把单段项目 chip 扩成「项目 + 环境 + 分支」三段,匹配 Codex Desktop 实机截图与 ZCode asar 渲染层实据。",
+                    next: "功能级:分支 chip 是否需要点击切分支(底层走 git checkout / worktree);环境 chip 是否需要点击切远程项目。等用户截图定优先级。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.247", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.247",
                     summary: "新对话欢迎页对齐 Codex Desktop:logo + 标题 + 4 张建议卡。",
                     changes: [
