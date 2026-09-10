@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.241 — feat(ui): 任务行时间四段与状态指示对齐 ZCode 源码实据
+**Date**: 2026-09-11
+**Tag**: v0.5.241
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `SidebarView.swift`:相对时间改 og() 精确四段(刚刚/N分/N小时/N天,废弃今天/昨天)。
+- `SidebarComponents.swift`:running=标题左侧旋转 spinner;failed=左侧红点+时间保留;awaitingApproval=右侧绿色「等待确认」徽章(permissionTag)+时间并存。修正 0.5.239 蓝点语义误判(蓝点=未读,非运行中)。
+
+**Why**: asar 通道拿到任务行组件(og()/rbe()/行 JSX/permissionTag)的精确实现。
+**Next**: hover 隐藏状态簇需先补行内操作按钮;项目组行箭头经核对已一致。
+
 ## v0.5.240 — feat(ui): 欢迎页对齐 ZCode 源码实据(问候语+胶囊建议按钮)
 **Date**: 2026-09-11
 **Tag**: v0.5.240

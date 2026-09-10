@@ -714,13 +714,16 @@ struct SidebarView: View {
                          selected: store.activeThreadId == t.id, indented: indented)
     }
 
+    /// v0.5.241: ZCode 源码实据(og() 函数)—— 四段相对时间:
+    /// <1 分钟=刚刚,<60 分钟=N分,<24 小时=N小时,>=24 小时=N天。
+    /// 没有「今天/昨天」段(0.5.239 的写法与 ZCode 不符,已修正)。
     private func relativeDate(for date: Date) -> String {
-        if Calendar.current.isDateInToday(date) { return "今天" }
-        if Calendar.current.isDateInYesterday(date) { return "昨天" }
-        // v0.5.239: ZCode 实机(2026-09-11)对齐 —— 全相对时间,再久也是「N天」,
-        // 不再落回「M/d」绝对日期(ZCode 83 天前仍显示「83天」)。
-        let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-        return "\(max(1, days))天"
+        let minutes = Int(Date().timeIntervalSince(date) / 60)
+        if minutes < 1 { return "刚刚" }
+        if minutes < 60 { return "\(minutes)分" }
+        let hours = minutes / 60
+        if hours < 24 { return "\(hours)小时" }
+        return "\(hours / 24)天"
     }
 
     private func copyToPasteboard(_ s: String) {

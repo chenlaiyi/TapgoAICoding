@@ -252,6 +252,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.241", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.241",
+                    summary: "任务行时间四段与状态指示对齐 ZCode 源码实据。",
+                    changes: [
+                        "相对时间改 ZCode og() 精确四段:<1分=刚刚、<60分=N分、<24小时=N小时、>=24小时=N天;废弃「今天/昨天」段。",
+                        "运行中:标题左侧旋转 spinner(ZCode loading 态是 animate-spin,非蓝点)——修正 0.5.239 把蓝点给 running 的误判,蓝点在 ZCode 里是「未读」(unreadAt)标记。",
+                        "失败:左侧红点(size-1.5 bg-destructive 对应)+ 右侧时间保留,不再用右侧感叹号图标。",
+                        "等待确认:右侧绿色小徽章「等待确认」(permissionTag,bg-success/14)+ 时间并存,替代手形图标。",
+                        "项目组行箭头:hover 显隐交互经核对与 ZCode 分节头一致(opacity-0→hover 100),无需改动。"
+                    ],
+                    why: "asar 通道继续核对任务行组件,拿到 og()/rbe()/permissionTag 的精确实现,修正 0.5.239 的蓝点语义误判。",
+                    next: "hover 隐藏状态簇(为操作按钮让位)需先补行内操作按钮;继续对齐其他区域。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.240", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.240",
                     summary: "欢迎页对齐 ZCode 源码实据(问候语+胶囊建议按钮)。",
                     changes: [

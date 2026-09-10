@@ -51,27 +51,44 @@ struct SidebarTaskLabel: View {
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
     var body: some View {
         HStack(spacing: 6) {
-            // v0.5.239: ZCode 实机(2026-09-11)对齐 —— 运行中用标题左侧蓝点,
-            // 右侧时间保留(ZCode 的运行会话蓝点+时间并存,日期不再被状态图标顶掉)。
-            if status == .running {
-                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
+            // v0.5.241: ZCode 源码实据(rbe()/行 JSX)—— 状态指示都在标题左侧:
+            // running=旋转 spinner(size-3.5 灰),failed=红点(size-1.5);
+            // 蓝点是「未读」标记(我们无未读功能,不用)。右侧时间始终保留。
+            switch status {
+            case .running:
+                ProgressView()
+                    .controlSize(.mini)
+                    .frame(width: 12, height: 12)
+                    .accessibilityLabel("进行中")
+            case .failed:
+                Circle().fill(Color.red).frame(width: 6, height: 6)
+                    .accessibilityLabel("失败")
+            default:
+                EmptyView()
             }
             Text(title).font(.system(size: 13 * scale.multiplier)).lineLimit(1).truncationMode(.tail)
             if pinned {
                 Image(systemName: "pin.fill").font(.system(size: 9)).foregroundStyle(DSHTheme.labelTertiary)
             }
             Spacer(minLength: 2)
-            Group {
-                switch status {
-                case .running: Text(date).monospacedDigit()
-                case .awaitingApproval: Image(systemName: "hand.raised.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("待批准")
-                case .failed: Image(systemName: "exclamationmark.circle.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("失败")
-                default: Text(date).monospacedDigit()
-                }
+            if status == .awaitingApproval {
+                // ZCode permissionTag:绿色小徽章「等待确认」,与右侧时间并存。
+                Text("等待确认")
+                    .font(.system(size: 10 * scale.multiplier, weight: .medium))
+                    .foregroundStyle(Color.green)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.green.opacity(0.14), in: RoundedRectangle(cornerRadius: 4))
+                    .accessibilityLabel("待批准")
             }
-            .font(.system(size: 10 * scale.multiplier))
-            .foregroundStyle(DSHTheme.labelTertiary)
-            .frame(width: 32 * scale.multiplier, alignment: .trailing)
+            Text(date)
+                .monospacedDigit()
+                .font(.system(size: 10 * scale.multiplier))
+                .foregroundStyle(DSHTheme.labelTertiary)
+                // v0.5.241: 不设固定宽——「N小时」三字在 32pt 里会被挤成两行。
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.trailing, 2)
         }
         .padding(.leading, indented ? SidebarMetrics.childInset : SidebarMetrics.rowInset)
         .padding(.trailing, SidebarMetrics.rowInset)
