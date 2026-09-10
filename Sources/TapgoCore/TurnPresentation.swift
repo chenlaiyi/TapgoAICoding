@@ -244,7 +244,8 @@ public enum TurnPresentation {
             }
             return TurnActivityDisplay(
                 kind: .reasoning,
-                text: "思考过程 · \(totalChars) 字符",
+                // v0.5.243: ZCode 对齐(chat.reasoning.thought)——「思考」。
+                text: "思考 · \(totalChars) 字符",
                 systemImage: "brain",
                 isRunning: false,
                 isFailure: false,

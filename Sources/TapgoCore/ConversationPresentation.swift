@@ -9,11 +9,12 @@ public enum ConversationPresentation {
     public static func activityTitle(_ activity: TurnActivityRollup, running: Bool) -> String {
         let display = TurnPresentation.activityDisplay(for: activity, turnIsRunning: running)
         // v0.5.234: 对齐 Codex 实机 —— 行为行标题直接用 display.text（含命令
-        // 内容 / 文件路径），不是纯标签。reasoning 保持「思考过程」（摘要由
-        // 摘要面板展示）。
+        // 内容 / 文件路径），不是纯标签。
+        // v0.5.243: reasoning 标签对齐 ZCode 源码(chat.reasoning.thought)——「思考」,
+        // 不再叫「思考过程」。
         let base: String
         if display.kind == .reasoning {
-            base = "思考过程"
+            base = "思考"
         } else if display.text.isEmpty {
             switch display.kind {
             case .search: base = "查阅资料"
@@ -33,14 +34,19 @@ public enum ConversationPresentation {
     }
 
     public static func workTitle(status: Turn.Status, duration: TimeInterval?) -> String {
+        // v0.5.243: 对齐 ZCode 源码(chat.history.*)——进行中「工作中 {duration}」
+        // (workingFor)、完成「已工作 {duration}」(workedFor)、中断「已停止」(stopped);
+        // ZCode 无「· N 步」步数段。
         switch status {
-        case .pending, .running: return "正在处理"
+        case .pending, .running:
+            guard let duration, duration.isFinite, duration >= 1, duration < Double(Int.max / 2) else { return "工作中" }
+            return "工作中 " + DurationFormatter.string(seconds: duration)
         case .awaitingApproval: return "等待确认"
         case .failed: return "处理未完成"
-        case .interrupted: return "处理已中断"
+        case .interrupted: return "已停止"
         case .completed:
-            guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "已处理" }
-            return "已处理 " + DurationFormatter.string(seconds: duration)
+            guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "已工作" }
+            return "已工作 " + DurationFormatter.string(seconds: duration)
         }
     }
 

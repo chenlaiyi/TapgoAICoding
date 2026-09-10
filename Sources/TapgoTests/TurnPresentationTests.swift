@@ -127,7 +127,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expectEqual(reasoning.text, "思考", "a plain reasoning read shows the quiet label")
     t.expectEqual(reasoning.summaryText, "分析中\nInvestigating editor refresh", "single reasoning still carries summary text for expansion")
 
-    // 多段连续 reasoning 合并为一个 rollup，渲染成 "思考过程 · N 字符"。
+    // 多段连续 reasoning 合并为一个 rollup，渲染成 "思考 · N 字符"。
     let multiReasoning = TurnPresentation.compactBlocks([
         .userMessage(id: "u", text: "修复"),
         .reasoning(id: "r1", text: "先看 SettingsView 的字体逻辑"),
@@ -138,7 +138,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expectEqual(multiReasoning.count, 3, "user + grouped reasoning + assistant = 3 blocks")
     if case .activity(let rollup) = multiReasoning[1] {
         let display = TurnPresentation.activityDisplay(for: rollup, turnIsRunning: false)
-        t.expect(display.text.contains("思考过程"), "folded reasoning shows 思考过程 label")
+        t.expect(display.text.contains("思考"), "folded reasoning shows 思考 label")
         t.expect(display.text.contains("字符"), "folded reasoning carries character count")
         t.expectNotNil(display.summaryText, "folded reasoning exposes joined text")
         if let joined = display.summaryText {
@@ -232,7 +232,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
 
     // v0.5.223: 完成回合工作时长文案「用时」（对齐 Codex 实机）。
     t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65),
-                  "已处理 1 分钟 5 秒", "completed with valid duration uses 用时")
+                  "已工作 1 分 5 秒", "completed with valid duration uses 用时")
 
     // v0.5.222: `.tool` 默认 fallback 完成态对齐 Codex 实机「已使用 <name>」。
     var toolCompletedBase: String {

@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.243 — feat(ui): 会话内回合摘要/思考行/时长单位对齐 ZCode 源码实据
+**Date**: 2026-09-11
+**Tag**: v0.5.243
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `ConversationPresentation.swift`:回合摘要改「已工作 {时长}」「工作中 {时长}」「已停止」(chat.history.workedFor/workingFor/stopped),废弃「· N 步」步数段;思考行标签「思考过程」→「思考」(chat.reasoning.thought)。
+- `DurationFormatter.swift`:单位「X 分钟」→「X 分」(chat.summaryPanel.duration),全 App 生效;同步 DurationFormatterTests/ConversationPresentationTests/TurnPresentationTests 断言。
+- steer 文案保持「调整方向」(用户截图背书;ZCode 新版源码用「引导」,差异已记录)。
+
+**Why**: asar 通道核对会话内深水区,拿到 chat.history.*/chat.reasoning.* 精确文案。
+**Next**: 工具聚合分组(Explore/Terminal/Changes)与 changeSummary 撤销卡为功能级,待定。
+
 ## v0.5.242 — feat(ui): 任务行 hover 操作按钮对齐 ZCode
 **Date**: 2026-09-11
 **Tag**: v0.5.242

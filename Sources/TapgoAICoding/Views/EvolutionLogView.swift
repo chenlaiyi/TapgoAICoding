@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.243", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.243",
+                    summary: "会话内回合摘要/思考行/时长单位对齐 ZCode 源码实据。",
+                    changes: [
+                        "回合摘要:完成「已工作 {时长}」(workedFor)、进行中「工作中 {时长}」(workingFor)、中断「已停止」(stopped);废弃「已处理/正在处理/处理已中断」与「· N 步」步数段(ZCode 无)。",
+                        "思考行标签:「思考过程」→「思考」(chat.reasoning.thought);进行中「正在思考」本已一致保留。",
+                        "时长单位:「X 分钟」→「X 分」(chat.summaryPanel.duration 单位表),全 App 生效(回合摘要/轨迹/历史)。",
+                        "steer 文案保持「调整方向」(用户截图背书);ZCode 新版源码用「引导」,差异已记录。"
+                    ],
+                    why: "asar 通道继续核对会话内深水区,拿到 chat.history.*/chat.reasoning.* 的精确文案。",
+                    next: "工具聚合分组(Explore/Terminal/Changes)与 changeSummary 撤销卡为功能级,待定。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.242", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.242",
                     summary: "任务行 hover 操作按钮对齐 ZCode(hover 显按钮/隐状态簇)。",
                     changes: [

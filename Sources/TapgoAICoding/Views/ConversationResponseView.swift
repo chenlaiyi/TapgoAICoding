@@ -31,7 +31,7 @@ struct ConversationResponseView<Notices: View>: View {
                 }
             }
             if running && (!showWorkProcess || work.isEmpty || !presentation.messages.isEmpty) {
-                ConversationWorkingIndicator(title: presentation.messages.isEmpty ? "正在处理" : "正在生成回复")
+                ConversationWorkingIndicator(title: presentation.messages.isEmpty ? "工作中" : "正在生成回复")
             } else if turn.status == .awaitingApproval && presentation.notices.isEmpty {
                 ConversationWorkingIndicator(title: "等待确认", animated: false)
             }
@@ -158,9 +158,9 @@ private struct ConversationWorkDisclosure: View {
     private var expanded: Bool { expansionOverride ?? defaultExpanded }
     private var blockCount: Int { TurnPresentation.compactBlocks(items).count }
     private var headerTitle: String {
-        let base = ConversationPresentation.workTitle(status: status, duration: duration)
-        guard blockCount > 0 else { return base }
-        return "\(base) · \(blockCount) 步"
+        // v0.5.243: ZCode 摘要无「· N 步」步数段(chat.history.workedFor/workingFor
+        // 只有 {duration}),直接用 workTitle。
+        ConversationPresentation.workTitle(status: status, duration: duration)
     }
 
     var body: some View {
