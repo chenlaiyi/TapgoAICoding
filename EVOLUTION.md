@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.230 — fix(ui): 问号输入修复 + 去除过程 3 点改文字流光
+**Date**: 2026-09-10
+**Tag**: v0.5.230
+**Test status**: 全量回归 3125 通过 + 实机截图 + 三机安装
+**Changed**:
+- App.swift：文本编辑器 focus 时 ⇧?（半角问号）不再被全局快捷键拦截，正常输入。
+- ConversationResponseView.ConversationWorkDisclosure：去掉 3 跳动 dots，标题「正在处理」改 ShimmerText 流光。
+
+**Why**: 用户反馈问号无法输入、3 点还在。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.230 — test: .search 活动行文案对齐 Codex 实机
 **Date**: 2026-09-10
 **Tag**: v0.5.230

@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.230", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.230",
+                    summary: "问号输入修复 + 过程标题流光。",
+                    changes: [
+                        "⇧? 在编辑器 focus 时不拦截，正常输入半角问号。",
+                        "ConversationWorkDisclosure 去 3 点，标题改 ShimmerText 流光。"
+                    ],
+                    why: "用户反馈。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.228", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.228",
                     summary: "补 v0.5.214 命令活动态回归测试。",
                     changes: [

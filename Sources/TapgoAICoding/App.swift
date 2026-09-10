@@ -298,6 +298,13 @@ private func installGlobalHotkeyMonitor() {
             if MainActor.assumeIsolated({ PaletteState.isOpen }) {
                 return event
             }
+            // v0.5.224: 文本编辑器 focus 时 "?" 不拦截（让用户正常输入半角问号）。
+            // ⇧? 的快捷键监听器此前无差别消费 Shift+/，导致 composer 无法输入半角问号。
+            if event.keyCode == 44,
+               event.modifierFlags.contains(.shift),
+               NSApp.keyWindow?.firstResponder is NSTextView {
+                return event
+            }
             NotificationCenter.default.post(name: name, object: nil)
             return nil  // 消费事件
         }

@@ -115,7 +115,7 @@ struct ConversationWorkingIndicator: View {
 }
 
 /// v0.5.213: 文字流光（Codex 风格的「正在处理」shimmer）。
-private struct ShimmerText: View {
+struct ShimmerText: View {
     let text: String
     let fontSize: CGFloat
     /// 0...1 loop, 控制高亮带在文字宽度内的位置（-0.3 ... 1.3 偏移以进入/离开）。
@@ -164,11 +164,13 @@ private struct ConversationWorkDisclosure: View {
         VStack(alignment: .leading, spacing: 14) {
             Button { expansionOverride = expanded ? false : true } label: {
                 HStack(spacing: 7) {
-                    // v0.5.195: running 时标题旁加 3 跳动 dots 表明正在跑（替换 progress spinner，风格与其他位置统一）。
+                    // v0.5.224: 对齐 Codex 实机 —— 去掉 3 跳动 dots，
+                    // 「正在处理」文字改 shimmer 流光（用户反馈）。
                     if active {
-                        StreamingDotsInline()
+                        ShimmerText(text: headerTitle, fontSize: 13 * scale.multiplier)
+                    } else {
+                        Text(headerTitle)
                     }
-                    Text(headerTitle)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 10))
                 }
                 .font(.system(size: 13 * scale.multiplier))
