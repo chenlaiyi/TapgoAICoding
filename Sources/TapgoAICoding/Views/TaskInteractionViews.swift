@@ -81,119 +81,176 @@ struct TaskPlanSteps: View {
     }
 }
 
-/// Goal actions stay explicit, while long requirements can be read in place.
-struct TaskGoalCard: View {
-    let goal: String
-    let status: String?
-    let elapsed: String
-    var hasStarted = true
-    var canStart = true
+/// Codex 桌面端对齐(2026-09-10 实机截图):输入框上方的活动带是**一张**
+/// 浅表面卡——排队行在上,目标行最下、最贴近 composer。每行单行内联,
+/// 动作靠右;角标按钮可把整条活动带折叠成一行摘要,让位给 composer。
+struct TaskActivityStrip<Rows: View>: View {
+    var queueCount: Int
+    var error: String?
+    var goal: String?
+    var goalStatus: String?
+    var goalHasStarted = true
+    var goalCanStart = true
+    var goalElapsed: String
     var onPause: () -> Void
     var onStart: () -> Void
-    var onEdit: () -> Void
-    var onRemove: () -> Void
-    @State private var expanded = false
-    @Environment(\.tapgoFontScale) private var scale: AppFontScale
-    private var running: Bool { status == "running" }
-    private var title: String { running ? "进行中" : (status == "completed" ? "已完成" : (hasStarted ? "已暂停" : "待开始")) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "scope").foregroundStyle(DSHTheme.labelDim)
-                Text("目标").fontWeight(.medium)
-                Text(title).foregroundStyle(DSHTheme.labelDim)
-                Spacer(minLength: 6)
-                Text(elapsed).monospacedDigit().foregroundStyle(DSHTheme.labelTertiary)
-                Button(action: running ? onPause : onStart) {
-                    Label(running ? "暂停" : (hasStarted ? "继续" : "开始"), systemImage: running ? "pause" : "play")
-                }
-                .buttonStyle(.plain)
-                .disabled(!running && !canStart)
-                .help(running ? "暂停目标并中断当前执行" : "将目标发送给助手继续执行")
-                Menu {
-                    Button("编辑目标…", action: onEdit).disabled(running)
-                    Button("移除目标", action: onRemove).disabled(running)
-                } label: { Image(systemName: "ellipsis").frame(width: 22, height: 22) }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .accessibilityLabel("目标操作")
-            }
-            .font(AppFont.scaled(.callout, multiplier: scale.multiplier))
-            if expanded {
-                TaskBoundedContent(maxHeight: 180) {
-                    Text(goal)
-                        .font(AppFont.scaled(.callout, multiplier: scale.multiplier))
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                Button("收起目标", systemImage: "chevron.up") { expanded = false }
-                    .buttonStyle(.plain)
-                    .font(AppFont.scaled(.caption, multiplier: scale.multiplier))
-                    .foregroundStyle(DSHTheme.labelDim)
-            } else {
-                Button { expanded = true } label: {
-                    HStack(alignment: .top, spacing: 8) {
-                        Text(goal)
-                            .font(AppFont.scaled(.callout, multiplier: scale.multiplier))
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10)).foregroundStyle(DSHTheme.labelDim)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("展开目标：\(goal)")
-            }
-        }
-        .padding(12)
-        .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(DSHTheme.border, lineWidth: 0.5))
-    }
-}
-
-/// Shared queue shell keeps collapse and overflow behavior identical in every state.
-struct TaskQueueCard<Rows: View>: View {
-    let count: Int
-    var error: String?
+    var onEditGoal: () -> Void
+    var onRemoveGoal: () -> Void
     @ViewBuilder var rows: () -> Rows
-    @State private var expanded = true
+
+    @State private var collapsed = false
+    @State private var goalExpanded = false
+    // macOS 14 兼容:symbolEffect(.rotate) 要 macOS 15,手动转。
+    @State private var spinAngle: Double = 0
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
+
+    private var running: Bool { goalStatus == "running" }
+    private var goalTitle: String {
+        guard goal != nil else { return "排队消息" }
+        if running { return "进行中的目标" }
+        if goalStatus == "completed" { return "已完成的目标" }
+        return goalHasStarted ? "已暂停的目标" : "待开始的目标"
+    }
+    private var summary: String {
+        switch (queueCount > 0, goal != nil) {
+        case (true, true): return "排队 \(queueCount) 条 · \(goalTitle)"
+        case (true, false): return "排队 \(queueCount) 条"
+        default: return goalTitle
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button { expanded.toggle() } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "text.line.first.and.arrowtriangle.forward")
-                    Text("待发送 · \(count) 条")
-                    Spacer()
-                    Image(systemName: expanded ? "chevron.down" : "chevron.up").font(.system(size: 9))
+            if collapsed {
+                summaryRow
+            } else {
+                if queueCount > 0 { rows() }
+                if queueCount > 0 && goal != nil {
+                    Divider().padding(.horizontal, 12)
                 }
-                .font(AppFont.scaled(.caption, multiplier: scale.multiplier))
-                .foregroundStyle(DSHTheme.labelDim)
-                .padding(.horizontal, 12).padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(expanded ? "已展开" : "已折叠")
-            if expanded {
-                ScrollView { rows() }
-                    .frame(height: min(CGFloat(count) * 54 * scale.multiplier, 190))
+                if let goal { goalRow(goal) }
             }
             if let error {
+                Divider().padding(.horizontal, 12)
                 Label(error, systemImage: "exclamationmark.circle")
                     .font(AppFont.scaled(.caption, multiplier: scale.multiplier))
                     .foregroundStyle(DSHTheme.warn)
-                    .padding(12)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
             }
         }
-        .padding(.bottom, 25)
-        .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(DSHTheme.border, lineWidth: 0.5))
+        .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(DSHTheme.border, lineWidth: 0.5))
         .accessibilityIdentifier("queued-message-card")
+    }
+
+    /// 目标行:转圈图标 + 状态标题 + 内联截断的目标文本 + 计时 + 移除/暂停/折叠。
+    @ViewBuilder
+    private func goalRow(_ goal: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13))
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .rotationEffect(.degrees(spinAngle))
+                    .onChange(of: running) { _, isRunning in
+                        if isRunning {
+                            withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { spinAngle = 360 }
+                        } else {
+                            var tx = Transaction()
+                            tx.disablesAnimations = true
+                            withTransaction(tx) { spinAngle = 0 }
+                        }
+                    }
+                    .onAppear {
+                        if running {
+                            withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { spinAngle = 360 }
+                        }
+                    }
+                    .accessibilityHidden(true)
+                Text(goalTitle)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                Text(goal)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(DSHTheme.labelDim)
+                    .contentShape(Rectangle())
+                    .onTapGesture { withAnimation(.easeInOut(duration: 0.15)) { goalExpanded = true } }
+                    .accessibilityLabel("目标:\(goal),点按展开全文")
+                Spacer(minLength: 8)
+                Text(goalElapsed)
+                    .monospacedDigit()
+                    .foregroundStyle(DSHTheme.labelTertiary)
+                // Codex 实机顺序:计时 → 垃圾桶 → 圆圈暂停/开始 → 折叠角标。
+                stripButton("trash", "移除目标", action: onRemoveGoal)
+                    .disabled(running)
+                stripButton(running ? "pause.circle" : "play.circle",
+                            running ? "暂停目标并中断当前执行" : "将目标发送给助手继续执行",
+                            action: running ? onPause : onStart)
+                    .disabled(!running && !goalCanStart)
+                stripButton("arrow.down.right.and.arrow.up.left", "折叠目标与排队") {
+                    withAnimation(.easeInOut(duration: 0.15)) { collapsed = true }
+                }
+            }
+            .font(AppFont.scaled(.subheadline, multiplier: scale.multiplier))
+            .padding(.horizontal, 12).padding(.vertical, 9)
+            .contentShape(Rectangle())
+            .contextMenu {
+                Button("编辑目标…", action: onEditGoal).disabled(running)
+                Button("移除目标", action: onRemoveGoal).disabled(running)
+            }
+            if goalExpanded {
+                Divider().padding(.horizontal, 12)
+                TaskBoundedContent(maxHeight: 180) {
+                    Text(goal)
+                        .font(AppFont.scaled(.callout, multiplier: scale.multiplier))
+                        .foregroundStyle(DSHTheme.label)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .onTapGesture { withAnimation(.easeInOut(duration: 0.15)) { goalExpanded = false } }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    /// 折叠后的摘要行:一条可点回的小字,保留计数与计时。
+    private var summaryRow: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { collapsed = false }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 11))
+                Text(summary).lineLimit(1)
+                Spacer(minLength: 8)
+                if goal != nil {
+                    Text(goalElapsed).monospacedDigit()
+                }
+            }
+            .font(AppFont.scaled(.caption, multiplier: scale.multiplier))
+            .foregroundStyle(DSHTheme.labelDim)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("展开活动带:\(summary)")
+        .accessibilityValue("已折叠")
+    }
+
+    private func stripButton(_ icon: String, _ help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundStyle(DSHTheme.labelDim)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
 

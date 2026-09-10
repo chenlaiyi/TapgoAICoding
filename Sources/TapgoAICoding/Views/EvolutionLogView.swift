@@ -252,6 +252,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.236", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.236",
+                    summary: "输入框上方目标与排队对齐 Codex 实机。",
+                    changes: [
+                        "排队行与目标行合并为一张活动带卡(TaskActivityStrip):排队在上、目标行最下贴近输入框。",
+                        "目标行单行内联:转圈图标 + 粗体「进行中的目标」+ 截断目标文本 + 计时,右侧垃圾桶/暂停/折叠角标。",
+                        "计时格式对齐 Codex:「11h 39m 48s」(单位间带空格,小时位也显示秒)。",
+                        "排队行对齐:text.append 头图 + 纯文本迷你预览缩略图 + 单行文本 + 「⤷ 调整方向」带文字按钮 + 垃圾桶 + ⋯ 菜单(编辑/清空)。",
+                        "移除「待发送 · N 条」折叠头与 -25 叠压 hack;新增活动带整条折叠为摘要行。"
+                    ],
+                    why: "旧目标卡(标题行+两行文本)与排队卡(独立折叠头)与 Codex 实机差异大,用户要求按截图对齐。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.235", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.235",
                     summary: "版本号整理。",
                     changes: [

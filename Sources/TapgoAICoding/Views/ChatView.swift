@@ -1561,18 +1561,14 @@ struct ComposerView: View {
                 )
             }
 
-            goalCard
-
             turnProgressBadge
 
-            // Queue sits directly above the composer as an independent rounded
-            // panel — matching Codex: queue card is 90% of the composer card
-            // width, same surface, same radius, separated by a small gap.
-            // spacing -25 让 composer 顶部向下压住队列卡片约 25pt，
-            // 形成清晰的「输入框浮在排队卡片上方」层次。
-            VStack(spacing: isWelcome ? -12 : (store.activeQueue.isEmpty ? 0 : -25)) {
+            // Codex 桌面端(2026-09-10 实机):排队行 + 目标行同处一张活动带卡,
+            // 直接贴在 composer 上方;composer 卡更宽(活动带两侧各收 12pt),
+            // 两卡之间只留一个小间隙,不做叠压。
+            VStack(spacing: isWelcome ? -12 : 6) {
                 if isWelcome { welcomeProjectBar }
-                queueStatusBar
+                activityStrip
 
                 // Codex Desktop keeps text and controls inside one quiet card.
                 VStack(spacing: 10) {
@@ -2337,20 +2333,33 @@ struct ComposerView: View {
         return hasText || hasImage
     }
 
-    /// Codex-style queue attached directly above the composer. The queue is a
-    /// single quiet surface: rows update in place, keep one-line previews, and
-    /// leave the primary actions aligned at the trailing edge.
-    /// 队列卡片自适应高度：顶部小标题 22pt + VStack spacing 6 + 行 41pt/行 + 6pt 底部 padding，封顶 240pt 后内部滚动。
+    /// Codex 桌面端对齐(2026-09-10 实机截图):排队行与目标行同处一张活动带,
+    /// 排队在上、目标行最下贴近 composer;有排队或目标任一即显示。
     @ViewBuilder
-    private var queueStatusBar: some View {
-        if !store.activeQueue.isEmpty {
-            TaskQueueCard(count: store.activeQueue.count, error: store.activeQueueActionError) {
-                VStack(spacing: 0) {
-                    ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
-                        queueRow(q, index: index)
-                        if index < store.activeQueue.count - 1 { Divider().padding(.horizontal, 12) }
+    private var activityStrip: some View {
+        if !store.activeQueue.isEmpty || !(activeThreadGoal ?? "").isEmpty {
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                TaskActivityStrip(
+                    queueCount: store.activeQueue.count,
+                    error: store.activeQueueActionError,
+                    goal: activeThreadGoal,
+                    goalStatus: activeThread?.goalStatus,
+                    goalHasStarted: (activeThread?.goalWorkedSeconds ?? 0) > 0 || activeThread?.goalResumedAt != nil,
+                    goalCanStart: !store.isRunning && store.setupError == nil,
+                    goalElapsed: activeThread.map { goalElapsedText(store.goalElapsedSeconds($0)) } ?? "",
+                    onPause: { store.pauseGoal() },
+                    onStart: { store.startGoal() },
+                    onEditGoal: { editingGoalItem = GoalEditItem(text: activeThreadGoal ?? "") },
+                    onRemoveGoal: { store.setActiveThreadGoal(nil) }
+                ) {
+                    VStack(spacing: 0) {
+                        ForEach(Array(store.activeQueue.enumerated()), id: \.element.id) { index, q in
+                            queueRow(q, index: index)
+                            if index < store.activeQueue.count - 1 { Divider().padding(.horizontal, 12) }
+                        }
                     }
                 }
+                .id(activeThread?.id)
             }
             .frame(maxWidth: contentWidth - 24)
             .frame(maxWidth: .infinity)
@@ -2369,18 +2378,22 @@ struct ComposerView: View {
         let isDropTop = dropTarget?.id == q.id && dropTarget?.half == .top
         let isDropBottom = dropTarget?.id == q.id && dropTarget?.half == .bottom
         HStack(spacing: 8) {
-            Image(systemName: "arrow.turn.down.right")
-                .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                .foregroundStyle(DSHTheme.brand.opacity(0.45))
+            // Codex 排队行头图:text.append(文本行 + 追加箭头)。
+            Image(systemName: "text.append")
+                .font(.system(size: 12))
+                .foregroundStyle(DSHTheme.labelTertiary)
                 .frame(width: 18)
 
             if let firstImage = q.images.first {
                 queueThumbnail(for: firstImage, count: q.images.count)
+            } else {
+                // Codex 纯文本排队消息也带一枚圆角迷你预览缩略图。
+                textPreviewThumbnail
             }
 
             Text(q.text.isEmpty ? "(图片附件)" : q.text)
                 .font(AppFont.scaled(.subheadline, multiplier: appFontScale.multiplier))
-                .lineLimit(2)
+                .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
 
@@ -2395,9 +2408,8 @@ struct ComposerView: View {
                         Text("调整中")
                     }
                 } else {
-                    Label("调整方向", systemImage: "arrow.turn.up.right")
-                        .labelStyle(.iconOnly)
-                        .frame(width: 22, height: 22)
+                    // Codex 实机:「⤷ 调整方向」是带文字的内联按钮,非纯图标。
+                    Label("调整方向", systemImage: "arrow.turn.down.right")
                 }
             }
             .buttonStyle(.borderless)
@@ -2408,21 +2420,10 @@ struct ComposerView: View {
             .accessibilityLabel(adjusting ? "正在调整方向" : "立即调整方向")
 
             Button {
-                editingQueued = q
-            } label: {
-                Image(systemName: "pencil")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22, height: 22)
-            }
-            .buttonStyle(.borderless)
-            .disabled(adjusting)
-            .help("编辑这条排队消息的文本")
-            .accessibilityLabel("编辑排队消息")
-
-            Button {
                 store.removeQueued(q.id)
             } label: {
                 Image(systemName: "trash")
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .frame(width: 22, height: 22)
             }
@@ -2430,10 +2431,36 @@ struct ComposerView: View {
             .disabled(adjusting)
             .help("删除这条排队消息")
             .accessibilityLabel("删除排队消息")
+
+            Menu {
+                Button {
+                    editingQueued = q
+                } label: {
+                    Label("编辑消息", systemImage: "pencil")
+                }
+                .disabled(adjusting)
+
+                Button {
+                    store.clearQueue()
+                } label: {
+                    Label("清空排队消息", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+                .disabled(adjusting)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .disabled(adjusting)
+            .help("更多操作")
+            .accessibilityLabel("排队消息更多操作")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .frame(minHeight: 44)
+        .frame(minHeight: 40)
         .contentShape(Rectangle())
         .overlay(alignment: .top) {
             if isDropTop {
@@ -2475,7 +2502,7 @@ struct ComposerView: View {
                 dropTarget = nil
                 return false
             }
-            let frameHeight: CGFloat = 52
+            let frameHeight: CGFloat = 40
             let half = location.y < frameHeight / 2 ? DropHalf.top : .bottom
             let targetIndex = half == .top ? index : index + 1
             store.moveQueued(draggedId, to: targetIndex)
@@ -2492,6 +2519,25 @@ struct ComposerView: View {
             }
         }
         .accessibilityIdentifier("queued-message-row-\(q.id)")
+    }
+
+    /// Codex 纯文本排队消息的迷你预览缩略图:圆角小方框内两三条虚线,
+    /// 表示「这是一条文字消息」;实机截图(2026-09-10)里文本行同样带缩略图。
+    private var textPreviewThumbnail: some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .stroke(DSHTheme.border, lineWidth: 1)
+            .background(DSHTheme.surface, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .frame(width: 28, height: 28)
+            .overlay(
+                VStack(alignment: .leading, spacing: 3) {
+                    Capsule().fill(DSHTheme.labelTertiary.opacity(0.7)).frame(width: 14, height: 2)
+                    Capsule().fill(DSHTheme.labelTertiary.opacity(0.5)).frame(width: 18, height: 2)
+                    Capsule().fill(DSHTheme.labelTertiary.opacity(0.35)).frame(width: 10, height: 2)
+                }
+                .padding(5),
+                alignment: .leading
+            )
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -2891,34 +2937,14 @@ struct ComposerView: View {
         return store.liveThreads.first(where: { $0.id == id })?.goal
     }
 
-    /// Goal card rendered just above the input box (not at the top of the
-    /// conversation): 进行中 / 已设目标 + goal text + live elapsed time +
-    /// clear. Status is dynamic — "进行中" only while the agent is actually
-    /// running.
-    @ViewBuilder
-    private var goalCard: some View {
-        if let thread = activeThread, let goal = thread.goal, !goal.isEmpty {
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                TaskGoalCard(goal: goal, status: thread.goalStatus,
-                             elapsed: goalElapsedText(store.goalElapsedSeconds(thread)),
-                             hasStarted: thread.goalWorkedSeconds > 0 || thread.goalResumedAt != nil,
-                             canStart: !store.isRunning && store.setupError == nil,
-                             onPause: { store.pauseGoal() }, onStart: { store.startGoal() },
-                             onEdit: { editingGoalItem = GoalEditItem(text: goal) },
-                             onRemove: { store.setActiveThreadGoal(nil) })
-                    .id(thread.id)
-            }
-            .frame(maxWidth: contentWidth - 24)
-            .frame(maxWidth: .infinity)
-        }
-    }
-
-    /// Compact elapsed time ("1h20m", "2m05s", "45s") for the goal card.
+    /// Codex 实机计时格式(2026-09-10 截图):「11h 39m 48s」——单位间带空格,
+    /// 小时位也始终显示秒,与目标行内联计时一致。
     private func goalElapsedText(_ interval: TimeInterval) -> String {
         let s = Int(interval)
-        if s >= 3600 { return "\(s / 3600)h\(String(format: "%02dm", (s % 3600) / 60))" }
-        if s >= 60 { return "\(s / 60)m\(s % 60)s" }
-        return "\(s)s"
+        let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
+        if h > 0 { return "\(h)h \(m)m \(sec)s" }
+        if m > 0 { return "\(m)m \(sec)s" }
+        return "\(sec)s"
     }
 
     private var composerContextPercent: Int? {
