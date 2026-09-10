@@ -255,6 +255,11 @@ if command -v codesign >/dev/null 2>&1; then
       "$HELPER_APP_DIR" 2>&1 | sed 's/^/    /' || true
   fi
   codesign --verify --deep --strict "$APP_BUNDLE_DIR"
+  # v0.5.228: 刷新 Launch Services 注册（修复嵌套 helper 签名后 Launchd job spawn failed）
+  LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+  if [[ -x "$LSREG" ]]; then
+    "$LSREG" -f "$APP_BUNDLE_DIR" 2>/dev/null || true
+  fi
 else
   echo "WARN: codesign not found; Gatekeeper will require right-click → Open"
 fi
