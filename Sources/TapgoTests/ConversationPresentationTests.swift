@@ -30,7 +30,7 @@ func runConversationPresentationTests(_ t: TestRunner) {
     for duration in [Double.infinity, .nan, .greatestFiniteMagnitude, -1] {
         t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: duration), "已处理", "conversation: invalid duration is safe")
     }
-    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65), "用时 1 分 5 秒", "conversation: completed work duration")
+    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65), "已处理 1 分钟 5 秒", "conversation: completed work duration")
     t.expectEqual(ConversationPresentation.workTitle(status: .failed, duration: 65), "处理未完成", "conversation: failure is not success")
     var live = Turn(id: "live", userInput: "", items: [.assistantMessage(id: "a", text: "流式回复")], status: .running, startedAt: Date())
     live.assistantPhases = ["a": " final "]

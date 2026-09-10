@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.233 — fix(ui): 完成回合时长 + 单位对齐 Codex 实机
+**Date**: 2026-09-10
+**Tag**: v0.5.233
+**Test status**: 全量回归 3144 通过 + 三机安装
+**Changed**:
+- workTitle: 完成态前缀回滚为「已处理」（v0.5.223 改「用时」是误判）。
+- DurationFormatter: 分 → 分钟。
+
+**Why**: 对照 Codex 实机截图。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.232 — chore: 移除未使用的 StreamingDotsInline（死代码清理）
 **Date**: 2026-09-10
 **Tag**: v0.5.232

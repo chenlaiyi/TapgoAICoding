@@ -34,7 +34,7 @@ public enum ConversationPresentation {
         case .interrupted: return "处理已中断"
         case .completed:
             guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "已处理" }
-            return "用时 " + DurationFormatter.string(seconds: duration)
+            return "已处理 " + DurationFormatter.string(seconds: duration)
         }
     }
 
