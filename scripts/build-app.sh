@@ -247,6 +247,12 @@ if command -v codesign >/dev/null 2>&1; then
       codesign --remove-signature "$COMPONENT" 2>/dev/null || true
     done
     codesign --force --deep --sign - "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+  else
+    # Developer ID 路径也需要显式签嵌套 helper（--deep 有时覆盖不到）。
+    codesign --force --deep --sign "$SIGNING_IDENTITY" \
+      --entitlements "$ENTITLEMENTS_SRC" \
+      --options runtime \
+      "$HELPER_APP_DIR" 2>&1 | sed 's/^/    /' || true
   fi
   codesign --verify --deep --strict "$APP_BUNDLE_DIR"
 else

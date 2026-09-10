@@ -252,6 +252,16 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.231", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.231",
+                    summary: "新任务态显示电脑操作 chip。",
+                    changes: [
+                        "computerControlChip 移除 !isWelcome 排除，任何状态恒显。",
+                        "build-app.sh 嵌套 helper 显式独立签名。"
+                    ],
+                    why: "新任务态看不到电脑操作图标和状态。",
+                    next: "继续对齐 Codex 桌面端其他细节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.230", date: "2026-09-10", commit: "见源码提交", tag: "v0.5.230",
                     summary: "问号输入修复 + 过程标题流光。",
                     changes: [

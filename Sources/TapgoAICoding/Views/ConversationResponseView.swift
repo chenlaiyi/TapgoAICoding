@@ -21,7 +21,7 @@ struct ConversationResponseView<Notices: View>: View {
                     TaskPlanCard(progress: progress, status: turn.status)
                 }
                 if !work.isEmpty {
-                    ConversationWorkDisclosure(items: work, status: turn.status, duration: turn.duration)
+                    ConversationWorkDisclosure(items: work, status: turn.status, duration: turn.duration, defaultExpanded: showWorkProcess)
                 }
             }
             notices()
@@ -147,12 +147,15 @@ private struct ConversationWorkDisclosure: View {
     let items: [TurnItem]
     let status: Turn.Status
     let duration: TimeInterval?
+    /// `showWorkProcess` 设置为 true 时默认展开，且 turn 结束后不强制收回。
+    var defaultExpanded: Bool = false
     @State private var expansionOverride: Bool?
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
     private var active: Bool { status == .pending || status == .running || status == .awaitingApproval }
-    // v0.5.195: 默认收起（之前 `?? active` 让 running 时强制展开，6 步同屏展开视觉乱）。
-    // 用户点 chevron 后用 expansionOverride 维持状态；onChange 在 turn 结束时清掉 override（用户已读完可重新收）。
-    private var expanded: Bool { expansionOverride ?? false }
+    // v0.5.226: 默认收起（`?? false`），但 `showWorkProcess` 打开时 `?? true` 默认展开。
+    // 用户点 chevron 后用 expansionOverride 维持状态；onChange 在 turn 结束时只在
+    // `defaultExpanded == false`（即设置关闭）时才清 override，避免"开着设置但过程被收回"。
+    private var expanded: Bool { expansionOverride ?? defaultExpanded }
     private var blockCount: Int { TurnPresentation.compactBlocks(items).count }
     private var headerTitle: String {
         let base = ConversationPresentation.workTitle(status: status, duration: duration)
@@ -199,7 +202,7 @@ private struct ConversationWorkDisclosure: View {
             }
         }
         .onChange(of: active) { _, value in
-            if !value { expansionOverride = nil }
+            if !value && !defaultExpanded { expansionOverride = nil }
         }
     }
 }

@@ -1624,7 +1624,7 @@ struct ComposerView: View {
                     // v0.5.204: 额度环移到右侧贴近模型名。
                     // v0.5.208: 回滚 0.5.207 —— Codex 桌面端底栏没有
                     // 「电脑操作」，该 Tapgo 自有能力保持图标级次要呈现。
-                    if !isWelcome, computerUseShowInComposer { computerControlChip }
+                    if computerUseShowInComposer { computerControlChip }
 
                     Spacer()
 

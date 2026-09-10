@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.231 — fix(ui): 新任务态显示电脑操作 chip
+**Date**: 2026-09-10
+**Tag**: v0.5.231
+**Test status**: 全量回归 3143 通过 + 三机安装
+**Changed**:
+- ChatView：computerControlChip 移除 !isWelcome 排除，任何状态恒显。
+- build-app.sh：嵌套 helper 显式独立签名。
+
+**Why**: 用户反馈新任务态看不到电脑操作图标和状态。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.230 — fix(ui): 问号输入修复 + 去除过程 3 点改文字流光
 **Date**: 2026-09-10
 **Tag**: v0.5.230
