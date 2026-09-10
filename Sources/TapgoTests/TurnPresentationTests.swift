@@ -295,4 +295,29 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expect(cmdActive.contains("正在运行 "), "command active contains 正在运行")
     t.expect(cmdActive.contains("swift build"), "command active keeps command body")
 
+    // v0.5.216: .search 活动态按工具名派生动词（find→查找）。
+    var searchFindActive: String {
+        let ev: [TurnItem] = [.toolCall(ToolCall(id: "s1", name: "find", arguments: "", status: .running))]
+        for block in TurnPresentation.compactBlocks(ev) {
+            if case .activity(let a) = block {
+                return TurnPresentation.activityDisplay(for: a, turnIsRunning: true).text
+            }
+        }
+        return ""
+    }
+    // v0.5.230: .search 现时式标签对齐 Codex 实机 —— args 为空时只显示动词「查找」。
+    t.expectEqual(searchFindActive, "查找", ".search active label is 查找 (no args) — Codex-aligned")
+
+    // v0.5.215: .tool 默认 fallback 标签「使用 <name>」对齐 Codex 实机。
+    let toolDefaultLabel: String = {
+        let ev: [TurnItem] = [.toolCall(ToolCall(id: "t1", name: "browser_check", arguments: "", status: .succeeded))]
+        for block in TurnPresentation.compactBlocks(ev) {
+            if case .activity(let a) = block {
+                return TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text
+            }
+        }
+        return ""
+    }()
+    t.expect(toolDefaultLabel.hasPrefix("已使用 "), ".tool default completed label is 已使用 prefix")
+    t.expect(toolDefaultLabel.contains("browser_check"), ".tool default label contains tool name")
 }
