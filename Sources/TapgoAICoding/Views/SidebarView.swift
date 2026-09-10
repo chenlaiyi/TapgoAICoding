@@ -717,11 +717,10 @@ struct SidebarView: View {
     private func relativeDate(for date: Date) -> String {
         if Calendar.current.isDateInToday(date) { return "今天" }
         if Calendar.current.isDateInYesterday(date) { return "昨天" }
+        // v0.5.239: ZCode 实机(2026-09-11)对齐 —— 全相对时间,再久也是「N天」,
+        // 不再落回「M/d」绝对日期(ZCode 83 天前仍显示「83天」)。
         let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-        if days < 7 { return "\(max(1, days))天" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M/d"
-        return formatter.string(from: date)
+        return "\(max(1, days))天"
     }
 
     private func copyToPasteboard(_ s: String) {

@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.239 — feat(ui): 侧边栏会话列表对齐 ZCode 实机
+**Date**: 2026-09-11
+**Tag**: v0.5.239
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `SidebarComponents.swift`:运行中会话改为标题左侧 6pt accent 蓝点 + 右侧时间保留(旧版 `circle.lefthalf.filled` 图标会顶掉日期);`SidebarView.swift`:相对时间全相对化(今天/昨天/N天,不再落回「M/d」)。
+
+**Why**: 首次拿到 ZCode(dev.zcode.app,即长期对齐的「Codex 桌面端」参照)会话列表实机截图,逐项核对出两处差异;行高 32pt、导航行结构核对一致。
+**Next**: 欢迎页建议卡待 ZCode 前台可交互后核对。
+
 ## v0.5.238 — feat(ui): 用户消息气泡对齐 Codex 桌面端
 **Date**: 2026-09-11
 **Tag**: v0.5.238

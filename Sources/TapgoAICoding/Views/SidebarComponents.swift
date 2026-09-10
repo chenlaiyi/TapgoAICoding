@@ -51,6 +51,11 @@ struct SidebarTaskLabel: View {
     @Environment(\.tapgoFontScale) private var scale: AppFontScale
     var body: some View {
         HStack(spacing: 6) {
+            // v0.5.239: ZCode 实机(2026-09-11)对齐 —— 运行中用标题左侧蓝点,
+            // 右侧时间保留(ZCode 的运行会话蓝点+时间并存,日期不再被状态图标顶掉)。
+            if status == .running {
+                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
+            }
             Text(title).font(.system(size: 13 * scale.multiplier)).lineLimit(1).truncationMode(.tail)
             if pinned {
                 Image(systemName: "pin.fill").font(.system(size: 9)).foregroundStyle(DSHTheme.labelTertiary)
@@ -58,7 +63,7 @@ struct SidebarTaskLabel: View {
             Spacer(minLength: 2)
             Group {
                 switch status {
-                case .running: Image(systemName: "circle.lefthalf.filled").accessibilityLabel("进行中")
+                case .running: Text(date).monospacedDigit()
                 case .awaitingApproval: Image(systemName: "hand.raised.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("待批准")
                 case .failed: Image(systemName: "exclamationmark.circle.fill").foregroundStyle(DSHTheme.warn).accessibilityLabel("失败")
                 default: Text(date).monospacedDigit()

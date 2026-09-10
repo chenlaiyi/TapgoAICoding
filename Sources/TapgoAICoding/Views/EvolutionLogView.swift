@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.239", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.239",
+                    summary: "侧边栏会话列表对齐 ZCode 实机(参照已获取)。",
+                    changes: [
+                        "运行中会话:标题左侧蓝点(6pt accent),右侧时间保留——旧版状态图标会顶掉日期。",
+                        "相对时间全相对化:今天/昨天/N天,7 天以上不再落回「M/d」绝对日期(ZCode 83 天仍显示「83天」)。",
+                        "行高 32pt 与 ZCode 一致,导航行结构一致(本次核对确认无需改)。"
+                    ],
+                    why: "首次拿到 ZCode(dev.zcode.app)会话列表实机参照,逐项核对后修两处差异。",
+                    next: "欢迎页建议卡需 ZCode 前台可交互后再核对;继续对齐其他区域。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.238", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.238",
                     summary: "用户消息气泡对齐 Codex 桌面端。",
                     changes: [
