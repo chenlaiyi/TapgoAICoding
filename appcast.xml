@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.241</title>
+            <pubDate>Fri, 11 Sep 2026 02:23:03 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.241</link>
+            <sparkle:version>0.5.241</sparkle:version>
+            <sparkle:shortVersionString>0.5.241</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.241
+
+## 任务行时间四段与状态指示对齐 ZCode 源码实据
+
+- 相对时间改为 ZCode 精确四段：<1 分钟=刚刚、<60 分钟=N分、<24 小时=N小时、≥24 小时=N天（废弃「今天/昨天」段）。
+- 运行中的会话：标题左侧显示旋转 spinner（ZCode 的 loading 态）——修正上一版把蓝点误用于运行中的问题，蓝点在 ZCode 里是「未读」标记。
+- 失败的会话：标题左侧红点，右侧时间保留（不再用感叹号图标顶掉时间）。
+- 等待确认的会话：右侧显示绿色小徽章「等待确认」，与时间并存（对应 ZCode permissionTag）。
+- 项目组行折叠箭头的 hover 显隐经核对已与 ZCode 分节头一致，无需改动。
+
+实据来源：ZCode.app 应用包渲染层源码（og() 时间函数 / rbe() 状态函数 / 任务行 JSX）。
+
+## 测试
+
+- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
+- 本机真实界面回归：侧栏时间四段（刚刚/N分）与状态指示实机截图验证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.241/Tapgo-AICoding-0.5.241.zip" length="12296037" type="application/octet-stream" sparkle:edSignature="4/ZJ3jHPgVrgxmwjmHcWBx+JuTyTORJzo3OW8n/v2FU51LJYtM8maYymVItaVY4pP3dJmwsNgFkzC3tjV+EDBg=="/>
+        </item>
+        <item>
             <title>0.5.240</title>
             <pubDate>Fri, 11 Sep 2026 01:58:56 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.240</link>
@@ -49,29 +76,6 @@
 - 本机真实界面回归：侧栏时间格式与蓝点渲染实机截图验证。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.239/Tapgo-AICoding-0.5.239.zip" length="12295335" type="application/octet-stream" sparkle:edSignature="UpuEONlY0WWSqNe8e8u0c0IQuoZTbqF+c93ZghZa/zWwF8szOakvpgvoSsMz824DoyGiaC0Kyg0Gw1OThur1Cg=="/>
-        </item>
-        <item>
-            <title>0.5.238</title>
-            <pubDate>Fri, 11 Sep 2026 01:18:40 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.238</link>
-            <sparkle:version>0.5.238</sparkle:version>
-            <sparkle:shortVersionString>0.5.238</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.238
-
-## 用户消息气泡对齐 Codex 桌面端
-
-- 用户消息气泡去掉 0.5pt 描边——Codex 桌面端是无描边的安静色块（flat）。
-- 气泡圆角 14 → 18，形态更柔和。
-- 图片占位 chip（「图片 (N)」）同步去描边 + 大圆角。
-
-## 测试
-
-- 全量回归 3145 通过（12 个失败均为存量远端集成环境问题，与本改动无关）。
-- 本机真实界面回归：气泡渲染（短消息贴右、描边消失、圆角加大）实机截图验证。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.238/Tapgo-AICoding-0.5.238.zip" length="12295032" type="application/octet-stream" sparkle:edSignature="zaipmp7K81aDYldL0XjE1F5goBCY66FgYl1AnUpJj07Hb0NPesiC8PQAvGJokNJgeNkCttWw300In5jPu7b4Aw=="/>
         </item>
     </channel>
 </rss>
