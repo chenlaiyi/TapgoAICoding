@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.236</title>
+            <pubDate>Fri, 11 Sep 2026 00:21:54 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.236</link>
+            <sparkle:version>0.5.236</sparkle:version>
+            <sparkle:shortVersionString>0.5.236</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.236
+
+## 输入框上方目标与排队对齐 Codex 实机
+
+- 排队行与目标行合并为一张活动带卡（TaskActivityStrip）：排队在上、目标行最下贴近输入框；中间细分隔线。
+- 目标行单行内联：转圈图标（运行时自转）+ 粗体「进行中的目标」+ 截断目标文本（点按展开全文）+ 计时；右侧垃圾桶 / 圆圈暂停 / 折叠角标（顺序与 Codex 实机一致）。
+- 排队行对齐 Codex：text.append 头图 + 纯文本迷你预览缩略图 + 单行文本 + 「⤷ 调整方向」带文字按钮 + 垃圾桶 + ⋯ 菜单（编辑 / 清空）。
+- 计时格式对齐 Codex 实机：「11h 39m 48s」（单位间带空格，小时位也显示秒）。
+- 移除「待发送 · N 条」折叠头与 composer 叠压 hack；活动带可整体折叠为一行摘要。
+- build-app.sh：修复 ad-hoc 修复路径下嵌套 helper 重签破坏外层密封导致发布中断的问题（v0.5.235 起 appcast 停更的根因）。
+
+## 测试
+
+- 全量回归 3144 通过（13 个失败为存量远端集成环境问题，与本改动无关）。
+- 本机真实界面回归：排队行 / 目标行（待开始、进行中、已暂停三态）/ 计时格式实机截图验证通过。
+- 本机 + JKmacmini 安装回读 0.5.236（fafamacmini 即本机）。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.236/Tapgo-AICoding-0.5.236.zip" length="12303355" type="application/octet-stream" sparkle:edSignature="KnVgK4Be1LMbZ/YAkjdGsFp9ZxMxcgFWttyi5Vjc8ELaNip5B7yrJ4Ce/XDaoOXwdP7wdxdn/Vp4YRgXSNwHCQ=="/>
+        </item>
+        <item>
             <title>0.5.234</title>
             <pubDate>Thu, 10 Sep 2026 20:46:14 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.234</link>
@@ -46,28 +73,6 @@
 全量回归 3144 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.233/Tapgo-AICoding-0.5.233.zip" length="12277195" type="application/octet-stream" sparkle:edSignature="xE8QOj9RpJkc9E1DCu7zMZf4k2X2ARU8+2cdC6ceHGHB7GdkV/9TRy7ng9Hog6wb2eUSmpZaxKEz7mJTtFjMDA=="/>
-        </item>
-        <item>
-            <title>0.5.232</title>
-            <pubDate>Thu, 10 Sep 2026 09:35:01 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.232</link>
-            <sparkle:version>0.5.232</sparkle:version>
-            <sparkle:shortVersionString>0.5.232</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.232
-
-## 清理：移除未使用的 StreamingDotsInline
-
-- v0.5.213 移除了 ConversationWorkingIndicator 的 3 点动画
-- v0.5.224 移除了 ConversationWorkDisclosure 的 3 点动画
-- 本版清理已无引用的 `StreamingDotsInline` struct（死代码）
-
-## 测试
-
-构建 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.232/Tapgo-AICoding-0.5.232.zip" length="12276920" type="application/octet-stream" sparkle:edSignature="mxJ5x4STNvoE5fvTuoOD0muACL5E/tixqeak+l2zEiYI1BedBww4MOup+QRE6F8YMM1OInXKNw0SQBQLswPWDg=="/>
         </item>
     </channel>
 </rss>
