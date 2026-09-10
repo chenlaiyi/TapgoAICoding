@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.244", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.244",
+                    summary: "变更卡收起态样式与聚合行单位对齐 ZCode 源码实据。",
+                    changes: [
+                        "变更卡收起态:标题 font-medium 亮色(原灰色 secondary)、行高提至约 40pt(ZCode h-10)、±数字 tabular-nums。",
+                        "聚合行数量单位按类型:「· N 个命令 / N 个文件 / N 次检索」,不再统一「· N 项」(ZCode executeGroup/changesGroup/explore 单位制)。",
+                        "变更卡的撤销/重新应用按钮与 ZCode 撤销卡(rewindDialog/checkpoint)为功能级,涉及基建,本轮不做。"
+                    ],
+                    why: "asar 通道核对 changeSummary 卡收起态 JSX 与组行单位制,纯样式项直接对齐。",
+                    next: "功能级大项(分组/时间线/撤销卡/steer 文案)待用户定夺优先级。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.243", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.243",
                     summary: "会话内回合摘要/思考行/时长单位对齐 ZCode 源码实据。",
                     changes: [

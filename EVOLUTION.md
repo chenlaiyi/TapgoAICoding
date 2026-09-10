@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.244 — feat(ui): 变更卡收起态样式与聚合行单位对齐 ZCode 源码实据
+**Date**: 2026-09-11
+**Tag**: v0.5.244
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `FileChangeView.swift`:变更卡收起态标题 font-medium 亮色、行高约 40pt、±数字 tabular-nums(ZCode changeSummary 收起态 JSX)。
+- `ConversationPresentation.swift`:聚合行数量单位按类型(· N 个命令/N 个文件/N 次检索),废弃统一「· N 项」。
+
+**Why**: asar 通道核对 changeSummary 卡与组行单位制;撤销/重新应用按钮为功能级待定。
+**Next**: 分组/时间线/撤销卡/steer 文案等功能级大项待用户定夺优先级。
+
 ## v0.5.243 — feat(ui): 会话内回合摘要/思考行/时长单位对齐 ZCode 源码实据
 **Date**: 2026-09-11
 **Tag**: v0.5.243

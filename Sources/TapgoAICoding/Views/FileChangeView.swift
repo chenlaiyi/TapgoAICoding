@@ -200,21 +200,27 @@ struct FileChangeSummaryBar: View {
                 Image(systemName: "chevron.right")
                     .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                // v0.5.244: ZCode 变更卡收起态实据——标题 font-medium 亮色、
+                // 行高 40pt(h-10)、± 数字 tabular-nums。
                 Text("\(count) 个文件已更改")
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DSHTheme.messageText)
                 if additions > 0 {
                     Text("+\(additions)")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .monospacedDigit()
                         .foregroundStyle(.green)
                 }
                 if deletions > 0 {
                     Text("-\(deletions)")
                         .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .monospacedDigit()
                         .foregroundStyle(.red)
                 }
                 Spacer(minLength: 0)
             }
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

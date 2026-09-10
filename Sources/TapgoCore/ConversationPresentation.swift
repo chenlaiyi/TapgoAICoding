@@ -28,9 +28,20 @@ public enum ConversationPresentation {
         } else {
             base = display.text
         }
-        let count = activity.events.count > 1 ? " · \(activity.events.count) 项" : ""
+        let count = activity.events.count > 1 ? " · \(activity.events.count) \(Self.rollupUnit(for: display.kind))" : ""
         let state = display.isFailure ? " · 失败" : (running && display.isRunning ? " · 进行中" : "")
         return base + count + state
+    }
+
+    /// v0.5.244: 聚合数量单位对齐 ZCode 组行(executeGroup=N 个命令、
+    /// changesGroup=N 个文件、explore=N 次检索),不再统一用「项」。
+    private static func rollupUnit(for kind: TurnActivityDisplay.Kind) -> String {
+        switch kind {
+        case .command: return "个命令"
+        case .edit: return "个文件"
+        case .search: return "次检索"
+        default: return "项"
+        }
     }
 
     public static func workTitle(status: Turn.Status, duration: TimeInterval?) -> String {
