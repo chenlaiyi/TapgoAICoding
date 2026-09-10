@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.247", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.247",
+                    summary: "新对话欢迎页对齐 Codex Desktop:logo + 标题 + 4 张建议卡。",
+                    changes: [
+                        "CodexWelcomeView 顶部居中八角形 Codex Logo(Canvas 自绘,1.4pt 描边),标题改为「你想让我们在 <项目> 中构建什么?」并把项目名作为下划线虚线按钮,可点选切项目;移除旧 ZCode 时段问候语 + 项目副行 + 胶囊横排形态。",
+                        "SuggestedPrompt 扩到 4 个 case(explore / build / review / fix),对应 sparke.magnifyingglass / hammer.fill / arrow.triangle.2.circlepath / life.preserver,hierarchical 着色沿用 brandBlueAccent / 新增 brandPurpleAccent / success / warn。",
+                        "DSHTheme 新增 brandPurpleAccent (#A855F7) 用于「构建新功能」卡图标。点击建议卡仍走 tapgoInsertStarter 通知,沿用现有「填草稿、不发送」语义。",
+                        "App 版本号 0.5.246 → 0.5.247(MARKETING_VERSION + Info.plist + makeHistory + EVOLUTION.md 四点同步)。"
+                    ],
+                    why: "按你 2026-09-11 截屏要求,把欢迎页改成 Codex Desktop 实机样式:logo + 标题 + 4 张建议卡;旧 ZCode 时段问候与胶囊横排不再符合实机。",
+                    next: "Codex 桌面端底部输入框「lijixiu | 本地 | main」三段 chip(项目 + 环境 + 分支)与本轮 composerProjectBar 形态差异(圆角、内嵌图标)待功能级验证后落地。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.246", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.246",
                     summary: "时间线组织视图:侧栏新增「已置顶 / 最近任务」分节模式。",
                     changes: [

@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.247 — feat(ui): 新对话欢迎页对齐 Codex Desktop(logo + 标题 + 4 张建议卡)
+**Date**: 2026-09-11
+**Tag**: v0.5.247
+**Test status**: 待回归
+**Changed**:
+- `CodexWelcomeView.swift`:顶部居中八角形 Codex Logo(Canvas 自绘,1.4pt 描边)+ 标题改为「你想让我们在 <项目> 中构建什么?」(项目名 `underline(pattern: .dot)` 下划线虚线,可点选切项目)+ 4 张建议卡横排,移除旧 ZCode 时段问候语 + 项目副行 + 胶囊横排形态。
+- `CodexWelcomeView.SuggestedPrompt` 扩到 4 个 case(explore / build / review / fix),图标分别为 `sparkle.magnifyingglass` / `hammer.fill` / `arrow.triangle.2.circlepath` / `life.preserver`,hierarchical 着色沿用 `DSHTheme.brandBlueAccent` / 新增 `brandPurpleAccent` / `success` / `warn`。
+- `DSHTheme.swift`:新增 `brandPurpleAccent = #A855F7`(Tailwind violet-500)。
+- 版本号 0.5.246 → 0.5.247(`AppBuilder/project.yml` MARKETING_VERSION + `AppBuilder/Info.plist` CFBundleShortVersionString/CFBundleVersion + `EvolutionLogView.makeHistory` + 本日志四源同步)。
+
+**Why**: 按你 2026-09-11 截屏要求,把欢迎页对齐 Codex Desktop 实机样式;旧 ZCode 时段问候与胶囊横排与新版桌面端形态不再一致。
+**Next**: 底部输入框「lijixiu | 本地 | main」三段 chip 与 `welcomeProjectBar` 形态差异(项目 + 环境 + 分支展示)等功能级改动待验证后定优先级。
+
 ## v0.5.246 — feat(ui): 时间线组织视图(已置顶 / 最近任务分节)
 **Date**: 2026-09-11
 **Tag**: v0.5.246

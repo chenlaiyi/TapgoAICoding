@@ -22,6 +22,10 @@ enum DSHTheme {
     /// releasing.
     static let brandBlueAccent = Color(hex: 0x4099FF)
 
+    /// Codex Desktop 新对话欢迎页(2026-09-11 实据截图):"构建新功能"卡片
+    /// 图标用紫色 hierarchical 渲染。值取 Tailwind violet-500(`#A855F7`)。
+    static let brandPurpleAccent = Color(hex: 0xA855F7)
+
     /// Inverse-contrast primary fill (DSH `button-primary-fill`): near-black
     /// in light, near-white in dark.
     static let brandPrimary = Color.dynamic(lightHex: 0x0F1115, darkHex: 0xF9FAFB)
