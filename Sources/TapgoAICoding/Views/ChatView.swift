@@ -999,6 +999,10 @@ struct ChatView: View {
             } else {
                 FileEditBatchView(files: files)
             }
+        // v0.5.245: ZCode executeGroup —— 连续命令折叠成「终端 · N 个命令」一行。
+        case .commandGroup(let cmds):
+            CommandGroupView(commands: cmds,
+                             turnIsRunning: turn.status == .running)
         }
     }
 

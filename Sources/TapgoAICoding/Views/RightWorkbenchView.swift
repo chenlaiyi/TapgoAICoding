@@ -624,6 +624,10 @@ private struct WorkbenchAuxiliaryConversation: View {
                             FileChangeRowView(change: file)
                         }
                     }
+                // v0.5.245: 终端分组(同 ChatView,共用 CommandGroupView)。
+                case .commandGroup(let cmds):
+                    CommandGroupView(commands: cmds,
+                                     turnIsRunning: turn.status == .running)
                 }
             }
             if turn.status == .running {

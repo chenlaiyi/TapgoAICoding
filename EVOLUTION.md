@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.245 — feat(ui): 工具聚合分组:连续命令折叠成「终端 · N 个命令」一行
+**Date**: 2026-09-11
+**Tag**: v0.5.245
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `TurnPresentation.swift`:`TurnPresentationBlock` 新增 `.commandGroup([CommandExecution])`,`compactBlocks` 把连续 commandExecution 折叠(>1 时);N=1 仍走单行 activity。
+- `FileChangeView.swift` 新增 `CommandGroupView`:头部 chevron + 「终端 · N 个命令」+ 状态后缀(进行中/失败),展开按顺序列出每条命令的图标、命令文本与失败 stderr 摘要。
+- `ChatView.swift` / `RightWorkbenchView.swift` 接入新 case;文件批次沿用既有 fileBatch 形态不变。
+
+**Why**: 按你截图要求与 ZCode 源码实据,把同一回合连续命令折叠成一行;文件批次 fileBatch 已覆盖 changesGroup 语义,本轮不重复造。
+**Next**: 时间线组织视图/分组功能/steer 文案等候选待你定夺。
+
 ## v0.5.244 — feat(ui): 变更卡收起态样式与聚合行单位对齐 ZCode 源码实据
 **Date**: 2026-09-11
 **Tag**: v0.5.244

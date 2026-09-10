@@ -7,6 +7,9 @@ public enum TurnPresentationBlock: Identifiable, Hashable {
     case item(TurnItem)
     case activity(TurnActivityRollup)
     case fileBatch([FileChange])
+    // v0.5.245: ZCode executeGroup —— 连续命令折叠成一行;文件批次沿用
+    // fileBatch 形态(changesGroup 已被 fileBatch 覆盖)。
+    case commandGroup([CommandExecution])
 
     public var id: String {
         switch self {
@@ -16,6 +19,8 @@ public enum TurnPresentationBlock: Identifiable, Hashable {
             return activity.id
         case .fileBatch(let files):
             return "batch-" + (files.first?.id ?? "file")
+        case .commandGroup(let cmds):
+            return "cmdgrp-" + (cmds.first?.id ?? "cmd")
         }
     }
 }
@@ -105,6 +110,8 @@ public enum TurnPresentation {
         var blocks: [TurnPresentationBlock] = []
         var searchGroup: TurnActivityRollup?
         var reasoningGroup: TurnActivityRollup?
+        // v0.5.245: ZCode executeGroup —— 连续命令折叠成一行。
+        var commandGroup: [CommandExecution] = []
         var files: [FileChange] = []
 
         func flushSearches() {
@@ -128,6 +135,18 @@ public enum TurnPresentation {
             files = []
         }
 
+        // v0.5.245: 终端分组 flush;N=1 不折叠以避免样式退化(走单行 activity)。
+        func flushCommands() {
+            if commandGroup.count > 1 {
+                blocks.append(.commandGroup(commandGroup))
+            } else {
+                for cmd in commandGroup {
+                    blocks.append(.activity(TurnActivityRollup(firstItem: .commandExecution(cmd))))
+                }
+            }
+            commandGroup = []
+        }
+
         for item in items where !item.isAppGeneratedProgress
             && !item.isPlanSnapshot
             && !item.isTurnDiffSnapshot
@@ -136,11 +155,13 @@ public enum TurnPresentation {
             case .fileChange(let file):
                 flushReasoning()
                 flushSearches()
+                flushCommands()
                 files.append(file)
 
             case .toolCall(let call):
                 flushReasoning()
                 flushFiles()
+                flushCommands()
                 if Self.isSearchToolCall(.toolCall(call)) {
                     if searchGroup == nil {
                         searchGroup = TurnActivityRollup(firstItem: item)
@@ -157,22 +178,24 @@ public enum TurnPresentation {
                 // 完整正文，避免一次回合里出现 5–10 行灰色 "思考中"。
                 flushSearches()
                 flushFiles()
+                flushCommands()
                 if reasoningGroup == nil {
                     reasoningGroup = TurnActivityRollup(firstItem: item)
                 } else {
                     reasoningGroup?.append(item)
                 }
 
-            case .commandExecution:
+            case .commandExecution(let cmd):
                 flushReasoning()
                 flushSearches()
                 flushFiles()
-                blocks.append(.activity(TurnActivityRollup(firstItem: item)))
+                commandGroup.append(cmd)
 
             default:
                 flushReasoning()
                 flushSearches()
                 flushFiles()
+                flushCommands()
                 blocks.append(.item(item))
             }
         }
@@ -180,6 +203,7 @@ public enum TurnPresentation {
         flushReasoning()
         flushSearches()
         flushFiles()
+        flushCommands()
         return blocks
     }
 

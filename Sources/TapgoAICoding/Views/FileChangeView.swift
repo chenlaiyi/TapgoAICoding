@@ -711,3 +711,105 @@ private struct PreviewWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView { controller.webView }
     func updateNSView(_ nsView: WKWebView, context: Context) {}
 }
+
+// MARK: - v0.5.245: ZCode 工具聚合分组(终端/更改)
+
+/// 终端分组:ZCode executeGroup — 连续多个 commandExecution 折叠成一行
+/// 「终端 · N 个命令」,展开后按时间顺序列出每条命令及其结果。
+struct CommandGroupView: View {
+    let commands: [CommandExecution]
+    let turnIsRunning: Bool
+    @State private var expanded = false
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+
+    private var headerLabel: String {
+        // ZCode 命令标签是「终端」;沿用 v0.5.244 数量单位格式(N 个命令)。
+        "终端 · \(commands.count) 个命令"
+    }
+
+    private var headerState: String {
+        if turnIsRunning { return " · 进行中" }
+        if commands.contains(where: { $0.status == .failed || $0.status == .denied }) {
+            return " · 失败"
+        }
+        return ""
+    }
+
+    private var leadingIcon: String { turnIsRunning ? "play.fill" : "terminal" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    Image(systemName: leadingIcon)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                    Text(headerLabel + headerState)
+                        .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if expanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(commands) { cmd in
+                        CommandGroupRow(command: cmd, turnIsRunning: turnIsRunning)
+                    }
+                }
+                .padding(.top, 6)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(headerLabel)\(headerState)")
+        .accessibilityHint(expanded ? "折叠命令列表" : "展开命令列表")
+    }
+}
+
+private struct CommandGroupRow: View {
+    let command: CommandExecution
+    let turnIsRunning: Bool
+    @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
+    private var statusIcon: String {
+        switch command.status {
+        case .pending, .awaitingApproval: return "circle.dashed"
+        case .running: return "play.fill"
+        case .succeeded: return "checkmark.circle.fill"
+        case .failed: return "exclamationmark.circle.fill"
+        case .denied: return "hand.raised.fill"
+        }
+    }
+    private var statusColor: Color {
+        switch command.status {
+        case .succeeded: return .green
+        case .failed, .denied: return .red
+        default: return .secondary
+        }
+    }
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: statusIcon)
+                .foregroundStyle(statusColor)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(command.command)
+                    .font(.system(size: 12 * appFontScale.multiplier, design: .monospaced))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.primary)
+                if command.status == .failed, !command.stderr.isEmpty {
+                    Text(command.stderr.prefix(240))
+                        .font(.system(size: 11 * appFontScale.multiplier, design: .monospaced))
+                        .foregroundStyle(.red)
+                        .lineLimit(3)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, 22)
+    }
+}

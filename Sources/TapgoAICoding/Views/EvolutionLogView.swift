@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.245", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.245",
+                    summary: "工具聚合分组:连续命令折叠成「终端 · N 个命令」一行,默认收起点击展开。",
+                    changes: [
+                        "TurnPresentationBlock 新增 .commandGroup([CommandExecution]),compactBlocks 把连续 commandExecution 折叠(>1 时);N=1 仍走单行 activity 形态以避免样式退化。",
+                        "ChatView 与 RightWorkbenchView 接入 CommandGroupView:头部 chevron + 「终端 · N 个命令」+ 状态后缀(进行中/失败),展开后按顺序列出每条命令的图标、命令文本与失败 stderr 摘要。",
+                        "文件批次保持 fileBatch 形态不另开 fileGroup(ZCode changesGroup 的语义在 fileBatch 已覆盖);若需独立分组可下一版再加。"
+                    ],
+                    why: "按用户截图与 ZCode 源码实据,把同一回合里连续命令折叠成一行是会话视图最直观的减噪项;文件批次已存在 fileBatch 不重复实现。",
+                    next: "时间线组织视图/分组功能/steer 文案等候选待用户继续定夺。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.244", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.244",
                     summary: "变更卡收起态样式与聚合行单位对齐 ZCode 源码实据。",
                     changes: [
