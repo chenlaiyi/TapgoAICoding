@@ -412,8 +412,7 @@ private struct EmptyAttachmentPlaceholder: View {
             .foregroundStyle(DSHTheme.label)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(DSHTheme.conversationUserBg, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(DSHTheme.border, lineWidth: 0.5))
+            .background(DSHTheme.conversationUserBg, in: RoundedRectangle(cornerRadius: 18))
         }
         .buttonStyle(.plain)
         .help("点击查看大图")

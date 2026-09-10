@@ -309,9 +309,11 @@ struct ConversationUserMessageLabel: View {
             .font(.system(size: 15 * scale.multiplier))
             .lineSpacing(4)
             .foregroundStyle(DSHTheme.label)
+            // v0.5.238: Codex 对齐 —— 用户气泡是无描边的安静色块(flat),圆角加大。
+            // 注意不要在 Text 上加 frame(maxWidth:) 限宽:flexible frame 会把提议
+            // 宽度传给贪心的 Text,短消息也会被撑成通栏色块(实测 0.5.238 开发中)。
             .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(DSHTheme.conversationUserBg, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(DSHTheme.border, lineWidth: 0.5))
+            .background(DSHTheme.conversationUserBg, in: RoundedRectangle(cornerRadius: 18))
             .textSelection(.enabled)
     }
 }

@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.238", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.238",
+                    summary: "用户消息气泡对齐 Codex 桌面端。",
+                    changes: [
+                        "用户气泡去 0.5pt 描边 —— Codex 是无描边的安静色块(flat)。",
+                        "圆角 14 → 18,与 Codex 色块的柔和形态一致。",
+                        "图片占位 chip 同步去描边+大圆角。"
+                    ],
+                    why: "Codex 桌面端用户消息是 flat 限宽气泡,旧样式描边+通栏显得更重。",
+                    next: "欢迎页建议卡与侧边栏行密度待拿到新 Codex 实机截图后继续核对。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.237", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.237",
                     summary: "composer 动作按钮与 placeholder 对齐 Codex 实机。",
                     changes: [

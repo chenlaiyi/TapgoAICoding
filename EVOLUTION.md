@@ -1,4 +1,14 @@
 # Evolution Log
+## v0.5.238 — feat(ui): 用户消息气泡对齐 Codex 桌面端
+**Date**: 2026-09-11
+**Tag**: v0.5.238
+**Test status**: 全量回归 3145 通过(12 失败均为存量远端集成环境问题)
+**Changed**:
+- `ConversationResponseView.swift` / `MessageRow.swift`:用户气泡去 0.5pt 描边(flat)、圆角 14→18;图片占位 chip 同步去描边+大圆角。
+
+**Why**: Codex 桌面端用户消息是无描边的安静色块;旧样式描边视觉偏重。曾尝试限宽 560 折行,实测 flexible frame 会把提议宽度传给贪心的 Text,短消息也被撑成通栏色块,已回退并留注释。
+**Next**: 欢迎页建议卡与侧边栏行密度需新 Codex 实机截图才能继续核对。
+
 ## v0.5.237 — feat(ui): composer 动作按钮与 placeholder 对齐 Codex 实机
 **Date**: 2026-09-11
 **Tag**: v0.5.237
