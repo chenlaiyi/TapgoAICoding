@@ -3,6 +3,28 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.232</title>
+            <pubDate>Thu, 10 Sep 2026 09:35:01 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.232</link>
+            <sparkle:version>0.5.232</sparkle:version>
+            <sparkle:shortVersionString>0.5.232</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.232
+
+## 清理：移除未使用的 StreamingDotsInline
+
+- v0.5.213 移除了 ConversationWorkingIndicator 的 3 点动画
+- v0.5.224 移除了 ConversationWorkDisclosure 的 3 点动画
+- 本版清理已无引用的 `StreamingDotsInline` struct（死代码）
+
+## 测试
+
+构建 + 三机安装回读。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.232/Tapgo-AICoding-0.5.232.zip" length="12276920" type="application/octet-stream" sparkle:edSignature="mxJ5x4STNvoE5fvTuoOD0muACL5E/tixqeak+l2zEiYI1BedBww4MOup+QRE6F8YMM1OInXKNw0SQBQLswPWDg=="/>
+        </item>
+        <item>
             <title>0.5.231</title>
             <pubDate>Thu, 10 Sep 2026 09:02:47 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.231</link>
@@ -46,27 +68,6 @@
 全量回归 3143 通过 + 三机安装回读。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.228/Tapgo-AICoding-0.5.228.zip" length="12277972" type="application/octet-stream" sparkle:edSignature="unNPkssNUdCXVbZ4JUw43hc9FI7fBSYoF7MgJdYbFxw/N/bwBUBErQhIPcNCSlQpNV+wlUZcSo18PdFHcTIrAA=="/>
-        </item>
-        <item>
-            <title>0.5.227</title>
-            <pubDate>Thu, 10 Sep 2026 07:25:51 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.227</link>
-            <sparkle:version>0.5.227</sparkle:version>
-            <sparkle:shortVersionString>0.5.227</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.227
-
-## 补 v0.5.220 压缩图标回归测试
-
-- 新增 `TurnPresentationTests`：`.compaction` 活动图标 `arrow.triangle.2.circlepath`（对齐 Codex 实机截图 1）。
-- 防止 v0.5.220 改动被无意回退。
-
-## 测试
-
-全量回归 3140 通过 + 三机安装回读。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.227/Tapgo-AICoding-0.5.227.zip" length="12278166" type="application/octet-stream" sparkle:edSignature="uCerp3kj8CHTQf+jAp07nXJLwKd8RaUo8SYVLLVANSvP8Mo+2cWPD+UP847LfhyjBh49vcr9l1vSnWuoiHIHBg=="/>
         </item>
     </channel>
 </rss>
