@@ -1,4 +1,15 @@
 # Evolution Log
+## v0.5.234 — fix(ui): 折叠行标题显示命令内容（对齐 Codex 实机）
+**Date**: 2026-09-10
+**Tag**: v0.5.234
+**Test status**: 全量回归 3145 通过 + 三机安装
+**Changed**:
+- activityTitle: 行为行标题用 display.text（含命令/文件路径），reasoning 保持「思考过程」。
+- 隐私测试同步：折叠行允许显示命令内容。
+
+**Why**: 用户反馈折叠行重复显示「运行了命令」而不显示具体命令。
+**Next**: 继续对齐 Codex 桌面端其他细节。
+
 ## v0.5.233 — fix(ui): 完成回合时长 + 单位对齐 Codex 实机
 **Date**: 2026-09-10
 **Tag**: v0.5.233

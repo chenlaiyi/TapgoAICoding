@@ -232,7 +232,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
 
     // v0.5.223: 完成回合工作时长文案「用时」（对齐 Codex 实机）。
     t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65),
-                  "用时 1 分 5 秒", "completed with valid duration uses 用时")
+                  "已处理 1 分钟 5 秒", "completed with valid duration uses 用时")
 
     // v0.5.222: `.tool` 默认 fallback 完成态对齐 Codex 实机「已使用 <name>」。
     var toolCompletedBase: String {

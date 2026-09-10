@@ -22,7 +22,8 @@ func runConversationPresentationTests(_ t: TestRunner) {
     for block in TurnPresentation.compactBlocks(events) {
         if case .activity(let activity) = block {
             let title = ConversationPresentation.activityTitle(activity, running: true)
-            t.expect(!title.contains(secret), "conversation: collapsed activity never exposes raw detail")
+            // v0.5.234: 对齐 Codex 实机 —— 折叠行显示命令内容（不是纯标签），不再隐藏细节。
+            t.expect(!title.isEmpty, "conversation: collapsed activity has a title")
             if activity.latest.id == "cmd" { t.expect(title.contains("失败"), "conversation: failed activity remains distinguishable") }
         }
     }

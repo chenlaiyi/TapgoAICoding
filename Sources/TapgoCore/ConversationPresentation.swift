@@ -8,18 +8,24 @@ public enum ConversationPresentation {
 
     public static func activityTitle(_ activity: TurnActivityRollup, running: Bool) -> String {
         let display = TurnPresentation.activityDisplay(for: activity, turnIsRunning: running)
-        // v0.5.209: 命令折叠行对齐 Codex 实机 —— 完成态「运行了命令」、
-        // 运行态「运行命令 · 进行中」；其余类别维持名词式标题。
+        // v0.5.234: 对齐 Codex 实机 —— 行为行标题直接用 display.text（含命令
+        // 内容 / 文件路径），不是纯标签。reasoning 保持「思考过程」（摘要由
+        // 摘要面板展示）。
         let base: String
-        switch display.kind {
-        case .reasoning: base = "思考过程"
-        case .search: base = "查阅资料"
-        case .read: base = "读取内容"
-        case .edit: base = "修改文件"
-        case .command: base = running && display.isRunning ? "运行命令" : "运行了命令"
-        // v0.5.215: 与 TurnPresentation 保持一致 —— 工具行标签去「工具」前缀。
-        case .tool: base = "使用"
-        case .compaction: base = "整理上下文"
+        if display.kind == .reasoning {
+            base = "思考过程"
+        } else if display.text.isEmpty {
+            switch display.kind {
+            case .search: base = "查阅资料"
+            case .read: base = "读取内容"
+            case .edit: base = "修改文件"
+            case .command: base = running ? "运行命令" : "运行了命令"
+            case .tool: base = "使用"
+            case .compaction: base = "整理上下文"
+            default: base = "处理中"
+            }
+        } else {
+            base = display.text
         }
         let count = activity.events.count > 1 ? " · \(activity.events.count) 项" : ""
         let state = display.isFailure ? " · 失败" : (running && display.isRunning ? " · 进行中" : "")
