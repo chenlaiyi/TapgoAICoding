@@ -73,7 +73,7 @@ fi
 
 "$SPARKLE_BIN/generate_appcast" \
   --account com.tapgo.aicoding \
-  "${KEY_FILE_OPT[@]}" \
+  ${KEY_FILE_OPT[@]+"${KEY_FILE_OPT[@]}"} \
   --download-url-prefix "$DOWNLOAD_PREFIX" \
   --link "https://github.com/chenlaiyi/TapgoAICoding/releases/tag/$TAG" \
   --embed-release-notes \
