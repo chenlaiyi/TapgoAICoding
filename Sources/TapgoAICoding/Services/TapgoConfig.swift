@@ -454,13 +454,19 @@ enum TapgoConfig {
     }
 
     /// Web Remote 只需要展示与选择模型，不得把端点或 API Key 暴露给浏览器。
-    struct SelectableModelOption: Equatable {
+    /// v0.5.251: composer 模型菜单也走本结构；providerID + modelID 组合唯一。
+    struct SelectableModelOption: Equatable, Identifiable {
         let providerID: String
         let providerName: String
         let modelID: String
         let modelName: String
         let configured: Bool
         let selected: Bool
+
+        var id: String { providerID + "/" + modelID }
+
+        /// 菜单展示名：品牌 + 模型名，与 resolveSelected().displayName 同构。
+        var menuTitle: String { providerName + " " + modelName }
     }
 
     /// 自定义模型注册表文件（0600）。

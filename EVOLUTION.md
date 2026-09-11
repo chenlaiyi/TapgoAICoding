@@ -1,5 +1,17 @@
 # Evolution Log
-## v0.5.250 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击
+## v0.5.251 — fix(model): 模型切换菜单与设置页同源,V4.1 改名即时同步
+**Date**: 2026-09-11
+**Tag**: v0.5.251
+**Test status**: 待回归
+**Changed**:
+- `ChatView.swift`:composer 模型菜单数据源从 `allModels()`(TapgoModel 硬编码 + 旧 model-registry)切到 `selectableModelOptions()`(ProviderRegistry 真相源),与模型设置页/手机端/`/model` 命令同源;设置页把 DeepSeek 模型改成 `deepseek-v4.1-*` 后菜单同步,未配置 Key 的项禁用。
+- `TapgoConfig.swift`:`SelectableModelOption` 新增 `Identifiable id`(providerID + modelID 唯一)与 `menuTitle`(品牌 + 模型名)。
+- `AppBuilder/ComputerUseHelper-Info.plist`:0.5.246 → 0.5.251,修复 AppUpdate 两个既有版本对齐失败;版本号 0.5.250 → 0.5.251(四源同步)。
+
+**Why**: 你反馈模型设置里 DeepSeek 都配置为 V4.1,但模型切换菜单还是 V4;根因是 v0.5.53 引入 ProviderRegistry 后 composer 菜单漏切数据源。
+**Next**: 内置 TapgoModel 目录与 `allModels()` 遗留调用方(SettingsView 删除路径/极旧回退)待统一收敛。
+
+## v0.5.250 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击
 **Date**: 2026-09-11
 **Tag**: v0.5.250
 **Test status**: 待回归

@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.251", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.251",
+                    summary: "模型切换菜单与设置页同源(ProviderRegistry);DeepSeek V4.1 改名后菜单即时同步。",
+                    changes: [
+                        "修复:composer 模型菜单数据源从旧 allModels()(TapgoModel 硬编码 V4 + 旧 model-registry)切到 selectableModelOptions()(ProviderRegistry 真相源),与模型设置页/手机端/`/model` 命令同源——设置页把 DeepSeek 模型改成 deepseek-v4.1-* 后,菜单不再显示旧 V4 条目。",
+                        "SelectableModelOption 新增 Identifiable id(providerID + modelID 组合唯一)与 menuTitle(品牌 + 模型名,与底栏 chip 同构);未配置 API Key 的模型项在菜单中禁用。",
+                        "顺带修复 AppUpdate 测试:ComputerUseHelper-Info.plist 0.5.246 → 0.5.251,与最新 tag 对齐;App 版本号 0.5.250 → 0.5.251(四源同步)。",
+                        "测试基线:3143 passed / 14 failed 全部为既有环境失败(SSH 假 IP 超时、auth.json 缺失跳过、Helper 版本未对齐——后者本轮已修)。"
+                    ],
+                    why: "你反馈模型设置里 DeepSeek 都配置为 V4.1,但模型切换菜单还是 V4;根因是 v0.5.53 引入 ProviderRegistry 后 composer 菜单漏切数据源,仍读旧硬编码目录。",
+                    next: "内置 TapgoModel 目录与 allModels() 的遗留调用方(SettingsView 删除路径/极旧回退)待后续统一收敛。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.250", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.250",
                     summary: "额度环恢复欢迎态显示;环境/分支 chip 可点击(选项目/切分支)。",
                     changes: [

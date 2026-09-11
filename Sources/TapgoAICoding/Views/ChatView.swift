@@ -1675,18 +1675,23 @@ struct ComposerView: View {
                         // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
                         // 点开即选、对新建会话生效。端点/上下文信息看圆环弹窗，
                         // 思考深度在「运行设置」，新建会话有 ⌘N。
-                        ForEach(TapgoConfig.allModels()) { m in
+                        // v0.5.251: 数据源从旧 allModels()（TapgoModel 硬编码）
+                        // 切到 selectableModelOptions()（ProviderRegistry 真相源），
+                        // 与模型设置页 / 手机端同源 —— 设置页改名 V4.1 后菜单同步。
+                        ForEach(TapgoConfig.selectableModelOptions()) { option in
                             Button {
-                                TapgoConfig.setSelectedModel(id: m.id)
-                                selectedModelRaw = m.id
+                                TapgoConfig.selectProviderModel(
+                                    providerID: option.providerID,
+                                    modelID: option.modelID)
                                 store.refreshRateLimits()
                             } label: {
-                                if m.id == selectedModelID {
-                                    Label(m.displayName, systemImage: "checkmark")
+                                if option.selected {
+                                    Label(option.menuTitle, systemImage: "checkmark")
                                 } else {
-                                    Text(m.displayName)
+                                    Text(option.menuTitle)
                                 }
                             }
+                            .disabled(!option.configured)
                         }
                     } label: {
                         HStack(spacing: 4) {
