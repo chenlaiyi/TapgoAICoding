@@ -11,7 +11,7 @@
 **Why**: 你反馈模型设置里 DeepSeek 都配置为 V4.1,但模型切换菜单还是 V4;根因是 v0.5.53 引入 ProviderRegistry 后 composer 菜单漏切数据源。
 **Next**: 内置 TapgoModel 目录与 `allModels()` 遗留调用方(SettingsView 删除路径/极旧回退)待统一收敛。
 
-## v0.5.250 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击
+## v0.5.250 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击
 **Date**: 2026-09-11
 **Tag**: v0.5.250
 **Test status**: 待回归
