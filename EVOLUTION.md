@@ -1,4 +1,16 @@
 # Evolution Log
+## v0.5.249 — feat(ui): 欢迎态底栏对齐 Codex 实机(隐藏电脑控制 chip 与额度环)
+**Date**: 2026-09-11
+**Tag**: v0.5.249
+**Test status**: 待回归
+**Changed**:
+- `ChatView.swift`:ComposerView 底栏电脑控制 chip 条件改为 `!isWelcome && computerUseShowInComposer` —— 欢迎态底栏只剩 `+ 完全访问 … 模型 ↑`,与 2026-09-11 Codex 实机截图一致;会话内继续按用户设置显示。
+- `ChatView.swift`:额度环 `contextMeterChip` 加 `!isWelcome` 条件 —— Codex 实机截图右下只有模型名与发送钮;会话内继续显示,额度数据仍走全局 rateLimits 不受影响。
+- 版本号 0.5.248 → 0.5.249(四源同步)。
+
+**Why**: 截图证据(欢迎态底栏仅 + 完全访问/模型/发送)优先于 v0.5.203(额度环全状态)与 v0.5.208(电脑控制全状态)的旧约定;欢迎页纯净、会话内功能不丢。
+**Next**: 项目 chip ▼ 是否去掉待定;分支/环境 chip 点击交互仍待定优先级。
+
 ## v0.5.248 — feat(ui): 欢迎态顶栏三段 chip(项目 + 本地/远程 + git 分支)
 **Date**: 2026-09-11
 **Tag**: v0.5.248

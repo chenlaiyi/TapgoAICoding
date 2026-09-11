@@ -1627,7 +1627,10 @@ struct ComposerView: View {
                     // v0.5.204: 额度环移到右侧贴近模型名。
                     // v0.5.208: 回滚 0.5.207 —— Codex 桌面端底栏没有
                     // 「电脑操作」，该 Tapgo 自有能力保持图标级次要呈现。
-                    if computerUseShowInComposer { computerControlChip }
+                    // v0.5.249: 再按 2026-09-11 Codex 实机截图收紧 —— 欢迎态
+                    // 底栏只有 `+ 完全访问 … 模型 ↑`,电脑控制 chip 在 welcome
+                    // 隐藏(会话内仍按设置显示),截图证据优先于旧的全状态显示约定。
+                    if !isWelcome && computerUseShowInComposer { computerControlChip }
 
                     Spacer()
 
@@ -1660,7 +1663,9 @@ struct ComposerView: View {
                     }
 
                     // v0.5.204: 额度环贴模型名（右侧簇首位）。
-                    contextMeterChip
+                    // v0.5.249: welcome 态隐藏额度环 —— Codex 实机截图右下
+                    // 只有模型名与发送钮,无额度指示;会话内继续显示。
+                    if !isWelcome { contextMeterChip }
 
                     Menu {
                         // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），

@@ -252,6 +252,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.249", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.249",
+                    summary: "欢迎态底栏对齐 Codex 实机:隐藏电脑控制 chip 与额度环。",
+                    changes: [
+                        "ComposerView 底栏:电脑控制 chip 条件改为 !isWelcome && computerUseShowInComposer —— 欢迎态底栏只剩 + 完全访问 … 模型 ↑,与 2026-09-11 Codex 实机截图一致;会话内(非 welcome)继续按用户设置显示电脑控制。",
+                        "ComposerView 底栏:额度环 contextMeterChip 加 !isWelcome 条件 —— Codex 实机截图右下只有模型名与发送钮,无额度指示;会话内继续显示额度环(额度数据仍走全局 rateLimits,不受影响)。",
+                        "接续 v0.5.248 三段 chip 后的剩余可见差异清理;项目 chip 的 ▼ 提示保留(可用性优先,原版无箭头但无法表达可点击)。",
+                        "App 版本号 0.5.248 → 0.5.249(MARKETING_VERSION + Info.plist + makeHistory + EVOLUTION.md 四源同步)。"
+                    ],
+                    why: "你要求继续对齐 Codex 实机截图;截图证据(欢迎态底栏仅 + 完全访问/模型/发送)优先于 v0.5.203(额度环全状态)与 v0.5.208(电脑控制全状态)的旧约定,会话内功能不丢。",
+                    next: "项目 chip ▼ 是否去掉待定;分支/环境 chip 点击交互(切分支/切远程)仍待你截图定优先级。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.248", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.248",
                     summary: "欢迎态顶栏三段 chip:项目 + 本地/远程 + git 分支。",
                     changes: [
