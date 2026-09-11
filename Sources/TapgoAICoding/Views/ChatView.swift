@@ -1509,6 +1509,10 @@ struct ComposerView: View {
     /// v0.5.248 欢迎态顶栏三段 chip:welcomeProjectBar 用,异步探测当前 git 分支名。
     /// 只在 welcome(isWelcome=true)时填充与刷新,避免常规态无谓的 git 调用。
     @State private var welcomeGitBranch: String? = nil
+    /// v0.5.250 分支 chip 可点击:本地分支列表、popover 开关与 checkout 失败提示。
+    @State private var welcomeBranches: [String] = []
+    @State private var choosingBranch = false
+    @State private var branchSwitchError: String? = nil
     /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
         "builtin:\(TapgoModel.minimaxM3.rawValue)"
@@ -1663,9 +1667,9 @@ struct ComposerView: View {
                     }
 
                     // v0.5.204: 额度环贴模型名（右侧簇首位）。
-                    // v0.5.249: welcome 态隐藏额度环 —— Codex 实机截图右下
-                    // 只有模型名与发送钮,无额度指示;会话内继续显示。
-                    if !isWelcome { contextMeterChip }
+                    // v0.5.250: 恢复 v0.5.203 全状态显示 —— 用户明确要求
+                    // 新任务(欢迎)对话也要看到额度圈,截图纯净度让位于功能。
+                    contextMeterChip
 
                     Menu {
                         // v0.5.41: 弹窗只保留模型列表（品牌 + 模型名，勾选当前），
@@ -1839,12 +1843,6 @@ struct ComposerView: View {
             // Navigating the sidebar to another conversation still clears it.
             if !(preserveDraftOnProjectChange && newID == pendingDraftProjectID) { text = "" }
             preserveDraftOnProjectChange = false
-        }
-        // v0.5.248: 欢迎态三段 chip 中第三段(分支)需要异步探测,跟随项目变化重跑。
-        // isWelcome=false 时也跑但结果不显示,welcomeGitBranch 始终是最新的,避免
-        // 切回 welcome 时还要再等一次 git 调用。
-        .task(id: workspace.state.activeProjectId) {
-            welcomeGitBranch = SessionStore.detectGitBranch(for: workspace.state.activeProject)
         }
         .onChange(of: store.activeThreadId) { _, _ in
             showTurnProgressDetails = false
@@ -2049,23 +2047,51 @@ struct ComposerView: View {
             .help(project?.displayPath ?? "选择新任务的工作目录")
             .accessibilityLabel("新任务项目：\(displayName)")
 
-            // 段 2:环境 chip(本地 / 远程)。本轮只读,后续若需要切远程再扩展 popover。
-            HStack(spacing: 6) {
-                Image(systemName: isRemote ? "network" : "laptopcomputer")
-                Text(isRemote ? "远程" : "本地")
-                    .lineLimit(1)
-            }
-            .accessibilityLabel(isRemote ? "运行环境：远程" : "运行环境：本地")
-
-            // 段 3:分支 chip(只读)。git 探测失败时不显示具体分支名,留空。
-            if let branch = welcomeGitBranch, !branch.isEmpty {
+            // 段 2:环境 chip(本地 / 远程)。本地/远程是项目属性,切换本质是
+            // 换项目 → 复用 WelcomeProjectPicker,可在同一弹层里选本地或远程项目。
+            Button { choosingWelcomeProject = true } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "arrow.triangle.branch")
-                    Text(branch)
+                    Image(systemName: isRemote ? "network" : "laptopcomputer")
+                    Text(isRemote ? "远程" : "本地")
                         .lineLimit(1)
-                        .truncationMode(.tail)
                 }
-                .accessibilityLabel("当前 Git 分支：\(branch)")
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(isRemote ? "当前为远程项目,点击切换项目/环境" : "当前为本地项目,点击切换项目/环境")
+            .accessibilityLabel(isRemote ? "运行环境：远程,点击切换项目" : "运行环境：本地,点击切换项目")
+
+            // 段 3:分支 chip(可点击切分支;git 探测失败或远程项目时整段隐藏)。
+            if let branch = welcomeGitBranch, !branch.isEmpty {
+                Button {
+                    if let root = workspace.state.activeProject?.worktreeRoot {
+                        welcomeBranches = WelcomeGit.listBranches(root: root)
+                    }
+                    choosingBranch = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.branch")
+                        Text(branch)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Image(systemName: "chevron.down").font(.system(size: 9))
+                    }
+                    .padding(.horizontal, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $choosingBranch) {
+                    WelcomeBranchPicker(
+                        branches: welcomeBranches,
+                        current: branch
+                    ) { picked in
+                        choosingBranch = false
+                        switchBranch(picked)
+                    }
+                }
+                .help("点击切换本地分支")
+                .accessibilityLabel("当前 Git 分支：\(branch),点击切换")
             }
 
             Spacer(minLength: 0)
@@ -2079,7 +2105,40 @@ struct ComposerView: View {
         .background(DSHTheme.composerProjectSurface, in: RoundedRectangle(cornerRadius: 16))
         .contentShape(RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal, 12)
+        // v0.5.250: task/alert 挂在本 bar(仅欢迎态渲染),避免 ComposerView
+        // 主体修饰链过长导致 type-check 超时;切换项目时 task 重探分支。
+        .task(id: workspace.state.activeProjectId) { refreshWelcomeGitBranch() }
+        .alert("切换分支失败", isPresented: branchErrorBinding) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(branchSwitchError ?? branchErrorFallback)
+        }
     }
+
+    /// v0.5.250: 重探当前项目 git 分支,刷新分支 chip 文案。
+    private func refreshWelcomeGitBranch() {
+        welcomeGitBranch = SessionStore.detectGitBranch(for: workspace.state.activeProject)
+    }
+
+    /// v0.5.250: 欢迎态分支切换。checkout 失败(如未提交改动冲突)弹窗回显
+    /// git stderr 首行;成功后重探当前分支刷新 chip。
+    private func switchBranch(_ branch: String) {
+        guard let project = workspace.state.activeProject, !project.isRemote else { return }
+        if let error = WelcomeGit.checkout(branch: branch, root: project.worktreeRoot) {
+            branchSwitchError = error
+            return
+        }
+        welcomeGitBranch = SessionStore.detectGitBranch(for: project)
+    }
+
+    /// v0.5.250: 拆出 Binding/兜底文案,避免 body 修饰链过长导致 type-check 超时。
+    private var branchErrorBinding: Binding<Bool> {
+        Binding(
+            get: { branchSwitchError != nil },
+            set: { if !$0 { branchSwitchError = nil } }
+        )
+    }
+    private var branchErrorFallback: String { "git checkout 未成功,请检查工作区状态。" }
 
     private func chooseNewTaskProject(_ id: String?) {
         preserveDraftOnProjectChange = true
@@ -3288,5 +3347,98 @@ struct PlanModeBanner: View {
               ? "Plan mode 常驻（点击关闭）：所有消息都会让 Codex 先出方案不执行工具"
               : "Plan mode（点击关闭）：下一条消息会让 Codex 先出方案不执行工具")
         .accessibilityLabel(isPersistent ? "关闭 Plan mode（常驻）" : "关闭 Plan mode")
+    }
+}
+
+
+/// v0.5.250: 欢迎态分支 chip 的切换弹层——列出本地分支,当前分支打勾,
+/// 点击即 checkout(由调用方执行,这里只负责展示与回传选择)。
+struct WelcomeBranchPicker: View {
+    let branches: [String]
+    let current: String
+    var onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("切换分支").font(.headline).padding(.horizontal, 8)
+            if branches.isEmpty {
+                Text("未找到本地分支")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+            } else {
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(branches, id: \.self) { branch in
+                            row(branch)
+                        }
+                    }
+                }
+                .frame(height: min(280, CGFloat(branches.count) * 34))
+            }
+        }
+        .padding(12)
+        .frame(width: 300)
+    }
+
+    private func row(_ branch: String) -> some View {
+        Button {
+            onSelect(branch)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.triangle.branch").frame(width: 16)
+                Text(branch).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 8)
+                if branch == current { Image(systemName: "checkmark") }
+            }
+            .font(.system(size: 13))
+            .padding(.horizontal, 8)
+            .frame(height: 32)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// v0.5.250: 欢迎态分支 chip 的 git 封装(只读列分支 + checkout),
+/// 同步执行、不抛异常,失败以 stderr 首行返回。
+enum WelcomeGit {
+    static func listBranches(root: URL) -> [String] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "git", "-C", root.path,
+            "for-each-ref", "refs/heads", "--format=%(refname:short)",
+        ]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do { try process.run() } catch { return [] }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return [] }
+        return String(data: data, encoding: .utf8)?
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty } ?? []
+    }
+
+    /// 返回 nil 表示成功,否则返回错误摘要(git stderr 首行)。
+    static func checkout(branch: String, root: URL) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["git", "-C", root.path, "checkout", branch]
+        let errPipe = Pipe()
+        process.standardOutput = Pipe()
+        process.standardError = errPipe
+        do { try process.run() } catch { return error.localizedDescription }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            let data = errPipe.fileHandleForReading.readDataToEndOfFile()
+            let message = String(data: data, encoding: .utf8) ?? ""
+            let firstLine = message.split(separator: "\n").first.map(String.init)
+            return firstLine ?? "git checkout 未成功,请检查工作区状态。"
+        }
+        return nil
     }
 }

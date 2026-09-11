@@ -252,6 +252,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.250", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.250",
+                    summary: "额度环恢复欢迎态显示;环境/分支 chip 可点击(选项目/切分支)。",
+                    changes: [
+                        "额度环恢复 v0.5.203 全状态显示:去掉 v0.5.249 的 !isWelcome 条件,新任务(欢迎)对话重新可见额度圈——你明确要求,截图纯净度让位于功能;电脑控制 chip 在欢迎态维持隐藏不变。",
+                        "welcomeProjectBar 环境 chip(本地/远程)改为可点击:本地/远程是项目属性,切换本质是换项目,复用 WelcomeProjectPicker 在同一弹层选本地或远程项目。",
+                        "welcomeProjectBar 分支 chip 改为可点击:点击弹出 WelcomeBranchPicker(git for-each-ref 列本地分支,当前分支打勾),选中后 WelcomeGit.checkout 执行 git checkout,失败弹窗回显 git stderr 首行(如未提交改动冲突),成功重探分支刷新 chip;远程项目分支 chip 依旧隐藏。",
+                        "新增 WelcomeBranchPicker 弹层组件与 WelcomeGit git 封装(listBranches/checkout,同步执行不抛异常);.task/.alert 从 ComposerView 主体长链挪到 welcomeProjectBar 自身链(仅欢迎态渲染),修复 Swift type-check 超时。",
+                        "App 版本号 0.5.249 → 0.5.250(MARKETING_VERSION + Info.plist + makeHistory + EVOLUTION.md 四源同步)。"
+                    ],
+                    why: "你反馈两点:新任务对话额度圈不见了(要求恢复),本地/分支 chip 无法点击(要求可交互);本轮把两者都补齐,分支切换带失败回显保底。",
+                    next: "分支 chip 是否需要列出远程分支/创建新分支待定;环境 chip 与项目 chip 现在打开同一弹层,是否要拆分独立交互待你反馈。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.249", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.249",
                     summary: "欢迎态底栏对齐 Codex 实机:隐藏电脑控制 chip 与额度环。",
                     changes: [

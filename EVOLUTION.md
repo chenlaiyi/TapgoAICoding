@@ -1,4 +1,17 @@
 # Evolution Log
+## v0.5.250 — fix(ui): 额度环恢复欢迎态显示 + 环境/分支 chip 可点击
+**Date**: 2026-09-11
+**Tag**: v0.5.250
+**Test status**: 待回归
+**Changed**:
+- `ChatView.swift`:额度环去掉 v0.5.249 的 `!isWelcome` 条件,恢复 v0.5.203 全状态显示——新任务(欢迎)对话重新可见额度圈;电脑控制 chip 欢迎态维持隐藏不变。
+- `ChatView.swift`:环境 chip(本地/远程)改为可点击,复用 `WelcomeProjectPicker`(本地/远程是项目属性,切换即换项目);分支 chip 改为可点击,弹 `WelcomeBranchPicker` 列本地分支(git for-each-ref,当前打勾),选中即 `WelcomeGit.checkout`,失败弹窗回显 git stderr 首行,成功重探分支刷新。
+- 新增 `WelcomeBranchPicker` 组件与 `WelcomeGit` 封装;`.task`/`.alert` 从 ComposerView 主体长链挪到 `welcomeProjectBar` 自身链,修复 type-check 超时。
+- 版本号 0.5.249 → 0.5.250(四源同步)。
+
+**Why**: 你反馈两点——新任务对话额度圈不见了(要求恢复),本地/分支 chip 无法点击(要求可交互)。
+**Next**: 分支 chip 是否列远程分支/建新分支待定;环境 chip 与项目 chip 同弹层是否拆分待反馈。
+
 ## v0.5.249 — feat(ui): 欢迎态底栏对齐 Codex 实机(隐藏电脑控制 chip 与额度环)
 **Date**: 2026-09-11
 **Tag**: v0.5.249
