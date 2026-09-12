@@ -116,6 +116,15 @@
           </header>
           <div class="mobile-home-scroll">
             <div class="notice-card"><span class="notice-dot"></span><span>移动端可查看任务进度并继续对话。电脑操作需要 Mac 端保持在线。</span></div>
+            <div class="evolution-card" id="evolutionCard" hidden>
+              <div class="evolution-head">
+                <span class="evolution-title">自进化</span>
+                <span class="evolution-phase" id="evolutionPhase"></span>
+              </div>
+              <div class="evolution-progress"><span id="evolutionBar"></span></div>
+              <div class="evolution-meta" id="evolutionMeta"></div>
+              <div class="evolution-next" id="evolutionNext"></div>
+            </div>
             <div class="mobile-section-heading">
               <div>
                 <div class="mobile-section-title">当前设备上的工作区和任务</div>
@@ -333,6 +342,27 @@
     return state.snapshot?.projects?.find((project) => project.id === projectId)?.name || "未分类";
   }
 
+  function renderEvolution(snapshot) {
+    const card = $("evolutionCard");
+    if (!card) return;
+    const evo = snapshot.evolution;
+    if (!evo) { card.hidden = true; return; }
+    card.hidden = false;
+    card.dataset.status = evo.status || "";
+    const labels = { preflight: "核对仓库", record: "版本记录", tests: "全量回归", build: "构建 App", commit: "提交", push: "推送", release: "发布", deploy: "三机部署", done: "完成", failed: "失败", stopped: "已停止" };
+    const phase = evo.phase ? (evo.phaseCount ? `${evo.phaseIndex}/${evo.phaseCount} ` : "") + (labels[evo.phase] || evo.phase) : "空闲";
+    $("evolutionPhase").textContent = phase;
+    const pct = evo.phaseCount ? Math.min(100, Math.round((evo.phaseIndex / evo.phaseCount) * 100)) : 0;
+    $("evolutionBar").style.width = pct + "%";
+    const meta = [];
+    if (evo.version) meta.push("v" + evo.version);
+    if (evo.benchmarkScore != null) meta.push("benchmark " + evo.benchmarkScore + "/100");
+    if (evo.modelEvalBestScore != null) meta.push("model " + Math.round(evo.modelEvalBestScore) + "/100");
+    if (evo.backlogOpen) meta.push("backlog " + evo.backlogOpen);
+    $("evolutionMeta").textContent = meta.join(" · ");
+    $("evolutionNext").textContent = evo.backlogTop ? "下一项：" + evo.backlogTop : "";
+  }
+
   function renderWorkspaces() {
     const snapshot = state.snapshot;
     if (!snapshot) return;
@@ -458,6 +488,7 @@
     }
     setConnection("online", "已连接 · " + (snapshot.hostname || "Mac"));
     renderWorkspaces();
+    renderEvolution(snapshot);
     renderConversation();
     refreshPermissionButton();
   }

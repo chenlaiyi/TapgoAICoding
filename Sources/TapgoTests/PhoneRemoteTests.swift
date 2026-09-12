@@ -292,6 +292,12 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                                             configured: false, selected: false),
                                       ],
                                       attachedCount: 2,
+                                      evolution: PhoneRemote.EvolutionStatus(
+                                          version: "0.5.280", phase: "tests", phaseIndex: 3, phaseCount: 9,
+                                          status: "running", message: "— 3000 passed —",
+                                          benchmarkScore: 100, modelEvalBestScore: 88,
+                                          backlogOpen: 2, backlogTop: "EVO-026 草稿 check 建议",
+                                          updatedAt: "2026-09-12T12:00:00Z"),
                                       now: now)
     t.expectEqual(snap.rev, 7, "snapshot: rev 透传")
     t.expectEqual(snap.hostname, "Chenlaiyi", "snapshot: hostname 透传")
@@ -313,11 +319,38 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(snap.projects.first?.threadCount, 1, "snapshot: 项目会话计数")
     t.expectEqual(snap.projects.first?.name, "A项目", "snapshot: 项目名透传")
     t.expectEqual(snap.activeProjectId, "pA", "snapshot: activeProjectId 透传")
+    // 自进化状态加载: 进度 + benchmark + model eval + backlog 汇总
+    let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-evolution-phone-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    let stateDir = tmp.appendingPathComponent("state", isDirectory: true)
+    let rootDir = tmp.appendingPathComponent("repo", isDirectory: true)
+    try? FileManager.default.createDirectory(at: stateDir.appendingPathComponent("evolution"), withIntermediateDirectories: true)
+    try? FileManager.default.createDirectory(at: rootDir.appendingPathComponent("evolution"), withIntermediateDirectories: true)
+    try? "{\"schemaVersion\":1,\"version\":\"0.5.280\",\"phase\":\"tests\",\"phaseIndex\":3,\"phaseCount\":9,\"status\":\"running\",\"updatedAt\":\"2026-09-12T12:00:00Z\"}".write(
+        to: stateDir.appendingPathComponent("evolution_progress.json"), atomically: true, encoding: .utf8)
+    try? "{\"score\":100}\n".write(to: stateDir.appendingPathComponent("evolution_benchmark_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "{\"score\":70}\n{\"score\":88}\n".write(to: stateDir.appendingPathComponent("model_eval_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "# Backlog\n## P0\n- [ ] **EVO-026 草稿 check**：生成建议\n".write(
+        to: rootDir.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
+    let loaded = PhoneRemote.loadEvolutionStatus(stateDirectory: stateDir, projectRoot: rootDir)
+    t.expectEqual(loaded?.phase, "tests", "evolution-status: phase")
+    t.expectEqual(loaded?.benchmarkScore, 100, "evolution-status: benchmark")
+    t.expectEqual(loaded?.modelEvalBestScore, 88, "evolution-status: model eval best")
+    t.expectEqual(loaded?.backlogOpen, 1, "evolution-status: backlog open")
+    t.expectEqual(loaded?.backlogTop?.contains("EVO-026") ?? false, true, "evolution-status: backlog top")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
     t.expectEqual(snap.models.count, 2, "snapshot: 模型白名单透传")
     t.expectEqual(snap.models.first?.selected, true, "snapshot: 当前模型标记")
     t.expectEqual(snap.models.last?.configured, false, "snapshot: 仅暴露已配置布尔值")
     t.expectEqual(snap.attachedCount, 2, "snapshot: attachedCount 透传")
+    t.expectEqual(snap.evolution?.version, "0.5.280", "snapshot: evolution version")
+    t.expectEqual(snap.evolution?.phase, "tests", "snapshot: evolution phase")
+    t.expectEqual(snap.evolution?.phaseIndex, 3, "snapshot: evolution phase index")
+    t.expectEqual(snap.evolution?.benchmarkScore, 100, "snapshot: benchmark score")
+    t.expectEqual(snap.evolution?.modelEvalBestScore, 88, "snapshot: model eval score")
+    t.expectEqual(snap.evolution?.backlogOpen, 2, "snapshot: backlog open")
+    t.expectEqual(snap.evolution?.backlogTop, "EVO-026 草稿 check 建议", "snapshot: backlog top")
 
     let cwdMatched = Thread(id: "th-cwd", title: "旧项目会话", createdAt: now,
                             updatedAt: now, cwd: "/tmp/a/subdir", turns: [])
@@ -530,6 +563,14 @@ func runPhoneRemoteAccessModes(_ t: TestRunner) {
 func runPhoneRemotePage(_ t: TestRunner) {
     let token = PhoneRemote.makeToken()
     let html = PhoneRemote.pageHTML(token: token)
+    let repoRoot = FileManager.default.currentDirectoryPath
+    let appJS = (try? String(contentsOfFile: repoRoot + "/Sources/TapgoCore/Resources/PhoneRemote/app.js", encoding: .utf8)) ?? ""
+    let appCSS = (try? String(contentsOfFile: repoRoot + "/Sources/TapgoCore/Resources/PhoneRemote/app.css", encoding: .utf8)) ?? ""
+    t.expect(appJS.contains("evolutionCard"), "page: app.js 含自进化卡片")
+    t.expect(appJS.contains("renderEvolution"), "page: app.js 渲染自进化状态")
+    t.expect(appJS.contains("backlogTop"), "page: app.js 渲染 backlog 下一项")
+    t.expect(appCSS.contains(".evolution-card"), "page: app.css 含自进化卡片样式")
+
 
     // H5 页面拆为骨架 + 静态资源；v0.5.96 全面重构 app.css 的移动端布局。
     // pageHTML() 只剩 32 行模板 + token + version 占位符 + 引导加载脚本。

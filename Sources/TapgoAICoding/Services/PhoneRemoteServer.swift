@@ -408,7 +408,16 @@ final class PhoneRemoteController: ObservableObject {
                                                   attachedCount: store.attachedImages.count,
                                                   permissions: PhoneRemote.PermissionStatus(
                                                       sandbox: TapgoConfig.sandboxMode.rawValue,
-                                                      approval: TapgoConfig.approvalPolicy.rawValue))
+                                                      approval: TapgoConfig.approvalPolicy.rawValue),
+                                                  evolution: {
+                                                      let home = FileManager.default.homeDirectoryForCurrentUser
+                                                      let stateDir = home.appendingPathComponent(
+                                                          "Library/Application Support/Tapgo AICoding/state",
+                                                          isDirectory: true)
+                                                      let root = EvolutionWorkspace.locateProjectRoot(home: home)
+                                                      return PhoneRemote.loadEvolutionStatus(
+                                                          stateDirectory: stateDir, projectRoot: root)
+                                                  }())
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
         case .success(.send(let text)):
             lastPollAt = Date()

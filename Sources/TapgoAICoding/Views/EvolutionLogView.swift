@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.280", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.280",
+                    summary: "手机端自进化状态:快照暴露进度/benchmark/模型评测/backlog,H5 新增自进化卡片。",
+                    changes: [
+                        "PhoneRemote.StateSnapshot 新增 evolution: version/phase/phaseIndex/phaseCount/status/message/benchmarkScore/modelEvalBestScore/backlogOpen/backlogTop/updatedAt。",
+                        "新增 PhoneRemote.loadEvolutionStatus:读取 evolution_progress.json、benchmark/model_eval JSONL、BACKLOG.md 顶部未完成项,纯函数可测。",
+                        "PhoneRemoteServer 构建状态时注入自进化摘要;H5 app.js 新增自进化卡片(进度条 + benchmark + model eval + backlog 下一项),app.css 补主题样式。",
+                        "PhoneRemote 回归扩到快照 46 项 + H5 65 项,覆盖 loader、卡片与样式存在性。",
+                        "EVO-025 完成;下一项 EVO-026 草稿 check 建议。"
+                    ],
+                    why: "自进化状态此前只在 Mac App 内可见,手机端看不到进度/评测/backlog;EVO-025 把它接入 PhoneRemote 快照与 H5。",
+                    next: "EVO-026 为 drafts.json 自动生成候选最小复现命令模板,仍人工确认。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.279", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.279",
                     summary: "多 runner A/B:同一任务集对比通过率/耗时/成本,候选退化即失败。",
                     changes: [

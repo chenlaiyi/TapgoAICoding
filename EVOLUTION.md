@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.280 — feat(evolution): 手机端自进化状态
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.280`)_
+**Tag**: v0.5.280
+**Test status**: — 3288 passed, 0 failed —
+**Changed**:
+- 快照暴露自进化摘要并新增 H5 卡片
+- PhoneRemote 快照与 H5 回归扩充
+
+PhoneRemote 快照与 H5 显示版本/进度/benchmark/模型评测/backlog
+**Why**: 自进化状态只在 Mac App 内可见,手机端看不到进度/评测/backlog
+**Next**: EVO-026 草稿 check 建议: 为 `drafts.json` 自动生成候选最小复现命令模板，仍人工确认
+
+
 ## v0.5.279 — feat(evolution): 多 runner A/B 对比
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.279`)_

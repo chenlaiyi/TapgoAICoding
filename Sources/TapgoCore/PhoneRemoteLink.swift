@@ -690,6 +690,44 @@ public enum PhoneRemote {
         /// v0.5.101: 当前 Mac 端权限档位, 手机端 composer 下拉高亮用。
         /// rawValue 与 `TapgoConfig.SandboxMode` / `ApprovalPolicy` 对齐。
         public var permissions: PermissionStatus?
+        /// 自进化运行态摘要（进度/benchmark/模型评测/backlog）。
+        public var evolution: EvolutionStatus?
+    }
+
+    /// 手机端展示的自进化状态摘要；只含可公开的状态，不含凭据。
+    public struct EvolutionStatus: Codable, Equatable {
+        public var version: String?
+        public var phase: String?
+        public var phaseIndex: Int
+        public var phaseCount: Int
+        public var status: String?
+        public var message: String?
+        public var benchmarkScore: Int?
+        public var modelEvalBestScore: Double?
+        public var backlogOpen: Int
+        public var backlogTop: String?
+        public var updatedAt: String?
+
+        public init(
+            version: String? = nil, phase: String? = nil,
+            phaseIndex: Int = 0, phaseCount: Int = 0,
+            status: String? = nil, message: String? = nil,
+            benchmarkScore: Int? = nil, modelEvalBestScore: Double? = nil,
+            backlogOpen: Int = 0, backlogTop: String? = nil,
+            updatedAt: String? = nil
+        ) {
+            self.version = version
+            self.phase = phase
+            self.phaseIndex = phaseIndex
+            self.phaseCount = phaseCount
+            self.status = status
+            self.message = message
+            self.benchmarkScore = benchmarkScore
+            self.modelEvalBestScore = modelEvalBestScore
+            self.backlogOpen = backlogOpen
+            self.backlogTop = backlogTop
+            self.updatedAt = updatedAt
+        }
     }
 
     /// v0.5.101: H5 composer 权限下拉所需的当前档位原始值.
@@ -716,6 +754,7 @@ public enum PhoneRemote {
                                   models: [ModelOption] = [],
                                   attachedCount: Int = 0,
                                   permissions: PermissionStatus? = nil,
+                                  evolution: EvolutionStatus? = nil,
                                   now: Date = Date()) -> StateSnapshot {
         let projectIDs = Set(projects.map(\.id))
         let projectPaths = projects
@@ -807,7 +846,60 @@ public enum PhoneRemote {
                              attachedCount: attachedCount,
                              projects: projectInfos,
                              activeProjectId: resolvedActiveProjectID,
-                             permissions: permissions)
+                             permissions: permissions,
+                             evolution: evolution)
+    }
+
+    /// 读取自进化运行态并组装手机端摘要。纯文件读取，可在测试中注入目录。
+    public static func loadEvolutionStatus(stateDirectory: URL, projectRoot: URL?) -> EvolutionStatus? {
+        let progress = EvolutionProgress.load(stateDirectory: stateDirectory)
+        let benchmarkScore = lastNumericValue(
+            in: stateDirectory.appendingPathComponent("evolution_benchmark_history.jsonl"), key: "score")
+        let modelEvalBest = bestNumericValue(
+            in: stateDirectory.appendingPathComponent("model_eval_history.jsonl"), key: "score")
+        var backlogOpen = 0
+        var backlogTop: String?
+        if let root = projectRoot {
+            let backlogURL = root.appendingPathComponent(EvolutionBacklog.relativePath)
+            if let text = try? String(contentsOf: backlogURL, encoding: .utf8) {
+                let items = EvolutionBacklog.parse(text)
+                backlogOpen = items.filter { !$0.done }.count
+                backlogTop = items.first { !$0.done }?.promptLine
+            }
+        }
+        guard progress != nil || benchmarkScore != nil || modelEvalBest != nil || backlogTop != nil else {
+            return nil
+        }
+        return EvolutionStatus(
+            version: progress?.version,
+            phase: progress?.phase,
+            phaseIndex: progress?.phaseIndex ?? 0,
+            phaseCount: progress?.phaseCount ?? 0,
+            status: progress?.status,
+            message: progress?.message,
+            benchmarkScore: benchmarkScore.map { Int($0) },
+            modelEvalBestScore: modelEvalBest,
+            backlogOpen: backlogOpen,
+            backlogTop: backlogTop,
+            updatedAt: progress?.updatedAt
+        )
+    }
+
+    private static func jsonLines(in url: URL) -> [[String: Any]] {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return text.components(separatedBy: .newlines).compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }
+    }
+
+    private static func lastNumericValue(in url: URL, key: String) -> Double? {
+        jsonLines(in: url).last?[key] as? Double
+    }
+
+    private static func bestNumericValue(in url: URL, key: String) -> Double? {
+        jsonLines(in: url).compactMap { $0[key] as? Double }.max()
     }
 
     public static func stateJSON(_ snapshot: StateSnapshot) -> Data {

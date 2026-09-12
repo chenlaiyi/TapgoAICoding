@@ -1,0 +1,16 @@
+{
+  "version": "0.5.280",
+  "tag": "v0.5.280",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 手机端自进化状态",
+  "changes": [
+    "快照暴露自进化摘要并新增 H5 卡片",
+    "PhoneRemote 快照与 H5 回归扩充"
+  ],
+  "details": "PhoneRemote 快照与 H5 显示版本/进度/benchmark/模型评测/backlog",
+  "why": "自进化状态只在 Mac App 内可见,手机端看不到进度/评测/backlog",
+  "next": "EVO-026 草稿 check 建议: 为 `drafts.json` 自动生成候选最小复现命令模板，仍人工确认",
+  "testStatus": "— 3288 passed, 0 failed —",
+  "commitSha": null
+}
