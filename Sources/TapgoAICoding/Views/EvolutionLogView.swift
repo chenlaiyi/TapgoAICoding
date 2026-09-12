@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.261", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.261",
+                    summary: "backlog 驱动选点:Python/Swift 双解析,面板显示下一项,prompt 与 nextActions 自动注入。",
+                    changes: [
+                        "新增 scripts/evolution-backlog.py:list/top/validate 三个子命令,解析 P0-P2 段、[ ]/[x] 状态与全/半角冒号详情;5 项 shell 回归接入 run-all.sh。",
+                        "新增 TapgoCore.EvolutionBacklog 纯 Swift 解析模型:parse/topOpen(in:)/topOpen(projectRoot:),与 Python 工具同源格式;9 项 Swift 回归覆盖优先级段、已完成跳过、文件加载与 prompt 注入。",
+                        "EvolutionWorkspace.kickoffPrompt 新增 topBacklogItem 参数:把 evolution/BACKLOG.md 顶部未完成项写进第 2 步选点指令;文件缺失时回退原有日志/代码选点逻辑。",
+                        "EvolutionPanel 每轮渲染读取项目根 backlog,横幅显示「下一项 EVO-xxx」,点击「开始自进化」时把该项随 prompt 一起发送。",
+                        "evolve.sh 默认 nextActions 改为解析 backlog 顶部未完成项(--next 仍可显式覆盖);失败注入 S4 验证记录里的 next 确实来自 backlog。",
+                        "evolution/BACKLOG.md 标记 EVO-005 完成;当前顶部为 EVO-006(分支/worktree 隔离)。"
+                    ],
+                    why: "此前 kickoff prompt 与 state.nextActions 都让 agent 自己从日志里猜下一步,BACKLOG.md 只是文档,没有进入真实执行链路。本轮把 backlog 变成脚本、UI、prompt、state 四处共用的选点真源。",
+                    next: "EVO-006:每轮在 codex/evolution-vX.Y.Z 分支隔离执行,main 只做 fast-forward;worktree 隔离与 EVO-008 三机部署闭环随后接入。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.260", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.260",
                     summary: "历史日志去重 + 迭代指标:262 个 Mac 版本节全局唯一,状态历史可计算成功率与周期。",
                     changes: [

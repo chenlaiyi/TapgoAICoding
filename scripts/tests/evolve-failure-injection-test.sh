@@ -36,6 +36,13 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/evolution-lib.sh" "$dir/scripts/evolution-lib.sh"
   cp "$SOURCE_ROOT/scripts/evolution-records.py" "$dir/scripts/evolution-records.py"
   cp "$SOURCE_ROOT/scripts/tapgo-repo-slug.sh" "$dir/scripts/tapgo-repo-slug.sh"
+  cp "$SOURCE_ROOT/scripts/evolution-backlog.py" "$dir/scripts/evolution-backlog.py"
+  chmod +x "$dir/scripts/evolution-backlog.py"
+  cat > "$dir/evolution/BACKLOG.md" <<'MD'
+# Backlog
+## P0
+- [ ] **EVO-999 test backlog item**: next from backlog
+MD
   chmod +x "$dir/scripts/evolve.sh" "$dir/scripts/evolution-records.py"
   cat > "$dir/AppBuilder/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -135,11 +142,12 @@ assert_no_file "$R3/evolution/versions/v0.5.2.json" "s3 record removed"
 R4="$BASE/s4"; make_repo "$R4"
 run_evolve "$R4" "$BASE/s4-state" "$BASE/s4.log" --paths scripts \
   --why "s4 rationale" --change "change one" --change "change two" \
-  patch "s4 message" "s4 details" --next "s4 next"
+  patch "s4 message" "s4 details"
 assert_eq "$(git -C "$R4" rev-list --count HEAD)" 2 "s4 committed"
 assert_eq "$(git -C "$R4" tag --list v0.5.2)" v0.5.2 "s4 tagged"
 assert_json "$R4/evolution/versions/v0.5.2.json" 'd["why"]' "s4 why stored"
 assert_json "$R4/evolution/versions/v0.5.2.json" 'len(d["changes"])' "s4 changes stored"
+assert_json "$R4/evolution/versions/v0.5.2.json" '"EVO-999" in d["next"]' "s4 next resolved from backlog"
 assert_json "$BASE/s4-state/evolution_state.json" 'd["status"]' "s4 state status"
 assert_grep "$R4/EVOLUTION.md" "## v0.5.2 — s4 message" "s4 rendered log"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R4/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s4 built app version"

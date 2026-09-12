@@ -67,12 +67,21 @@ public enum EvolutionWorkspace {
     /// 进入自进化会话后「开始自进化」按钮发出的第一条指令。内容对齐
     /// AGENTS.md 的开发约定：先核对仓库状态，再自主选改进点，实现后
     /// 跑全量核心回归，最后按五层分开报告并对齐版本同步点。
-    public static func kickoffPrompt(projectName: String = "Tapgo AICoding") -> String {
-        """
+    public static func kickoffPrompt(
+        projectName: String = "Tapgo AICoding",
+        topBacklogItem: EvolutionBacklogItem? = nil
+    ) -> String {
+        let backlogInstruction: String
+        if let item = topBacklogItem {
+            backlogInstruction = "2. 选定改进点：优先从 evolution/BACKLOG.md 顶部未完成项开始——\(item.promptLine)。若在代码中发现更高价值真实问题，说明理由后可替换；否则不要偏离 backlog 顺序。先给出 2–4 行计划。"
+        } else {
+            backlogInstruction = "2. 选定改进点：先读 evolution/BACKLOG.md，从最高优先级未完成项开始；若文件不存在，再从 EVOLUTION.md 各条目的 Next、evolution_state.json 的 nextActions、以及你自己在代码里发现的真实问题中，选定 1 个本回合能完整闭环的改进（修复或小特性），先给出 2–4 行计划。"
+        }
+        return """
         【自进化指令】你是 \(projectName) 的自进化开发代理。本会话是自进化专属会话，独立于其它对话，工作目录就是 \(projectName) 项目根。请独立完成一轮自进化开发：
 
         1. 背景核对：读 AGENTS.md（开发约定）、AGENT_MEMORY.md（长期记忆快照）、EVOLUTION.md 最新 3 条版本记录；执行 git fetch origin 并报告本地工作树、main 与 origin/main 的差异，存在未提交改动时先说明再决定是否继续。
-        2. 选定改进点：从 EVOLUTION.md 各条目的 Next、evolution_state.json 的 nextActions、以及你自己在代码里发现的真实问题中，选定 1 个本回合能完整闭环的改进（修复或小特性），先给出 2–4 行计划。
+        \(backlogInstruction)
         3. 实现：修改源码并保持既有代码风格；不引入新依赖。
         4. 验证：跑全量核心回归 `swift run TapgoTests`（默认跳过远程集成段），报告通过/失败的具体数字；涉及界面时另行说明需真机回归的范围。
         5. 收尾：把版本同步点全部对齐（project.yml、Info.plist、EVOLUTION.md、EvolutionLogView.swift 的 makeHistory()、git tag），给出建议版本号与 commit 信息，等我确认后再提交推送。

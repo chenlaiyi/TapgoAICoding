@@ -1,0 +1,16 @@
+{
+  "version": "0.5.261",
+  "tag": "v0.5.261",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): backlog 驱动选点",
+  "changes": [
+    "Python/Swift 双解析 backlog 并注入 prompt/面板/nextActions",
+    "evolve.sh 默认 next 从 backlog 顶部解析"
+  ],
+  "details": "BACKLOG.md 成为脚本、UI、prompt、state 四处的选点真源",
+  "why": "kickoff prompt 与 nextActions 此前让 agent 自行猜测下一步,BACKLOG.md 未进入真实执行链路",
+  "next": "EVO-006 分支/worktree 隔离: 每轮在 `codex/evolution-vX.Y.Z` 工作树执行；publish 走 PR 或至少远端 fast-forward 校验",
+  "testStatus": "— 3168 passed, 0 failed —",
+  "commitSha": null
+}

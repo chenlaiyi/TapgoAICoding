@@ -42,6 +42,7 @@ TESTS_SCRIPT="${EVOLVE_TESTS_SCRIPT:-$ROOT/scripts/tests/run-all.sh}"
 BUILD_SCRIPT="${EVOLVE_BUILD_SCRIPT:-$ROOT/scripts/build-app.sh}"
 RELEASE_SCRIPT="${EVOLVE_RELEASE_SCRIPT:-$ROOT/scripts/create-github-release-artifacts.sh}"
 RECORDS_TOOL="${EVOLVE_RECORDS_TOOL:-$ROOT/scripts/evolution-records.py}"
+BACKLOG_TOOL="${EVOLVE_BACKLOG_TOOL:-$ROOT/scripts/evolution-backlog.py}"
 
 # ---------- Args ----------
 MODE="local"
@@ -237,7 +238,8 @@ PY
 fi
 
 # ---------- 3. Create structured record + prepend rendered EVOLUTION.md ----------
-RESOLVED_NEXT="${NEXT_ACTION:-see state file evolution_state.json}"
+RESOLVED_NEXT="${NEXT_ACTION:-$(python3 "$BACKLOG_TOOL" top 2>/dev/null || true)}"
+RESOLVED_NEXT="${RESOLVED_NEXT:-see state file evolution_state.json}"
 CHANGE_ARGS=()
 for change in "${CHANGES[@]+"${CHANGES[@]}"}"; do
   CHANGE_ARGS+=(--change "$change")

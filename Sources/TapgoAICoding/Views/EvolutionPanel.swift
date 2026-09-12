@@ -21,6 +21,12 @@ struct EvolutionPanel: View {
         thread.turns.last?.status == .running || thread.turns.last?.status == .awaitingApproval
     }
 
+    /// 从项目根的 evolution/BACKLOG.md 读取顶部未完成项。
+    private var topBacklog: TapgoCore.EvolutionBacklogItem? {
+        guard let cwd = thread.cwd else { return nil }
+        return TapgoCore.EvolutionBacklog.topOpen(projectRoot: URL(fileURLWithPath: cwd))
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             ZStack {
@@ -47,7 +53,7 @@ struct EvolutionPanel: View {
             }
             .controlSize(.small)
             Button {
-                store.sendUserMessage(EvolutionWorkspace.kickoffPrompt())
+                store.sendUserMessage(EvolutionWorkspace.kickoffPrompt(topBacklogItem: topBacklog))
             } label: {
                 Label(isRunning ? "自进化执行中…" : "开始自进化",
                       systemImage: isRunning ? "gearshape.2" : "play.fill")
@@ -68,6 +74,7 @@ struct EvolutionPanel: View {
         let cwd = thread.cwd.map { " · \(URL(fileURLWithPath: $0).lastPathComponent)" } ?? ""
         let count = thread.turns.count
         let rounds = count == 0 ? "尚未开始" : "已 \(count) 轮"
-        return "独立对话、独立开发\(cwd) · \(rounds)"
+        let next = topBacklog.map { " · 下一项 \($0.id)" } ?? ""
+        return "独立对话、独立开发\(cwd) · \(rounds)\(next)"
     }
 }

@@ -377,6 +377,9 @@ struct TapgoTestMain {
         await runIfInScope(runner, "Thread: evolution mode + workspace") {
             runThreadEvolutionMode(runner)
         }
+        await runIfInScope(runner, "Evolution: backlog parsing + prompt injection") {
+            runEvolutionBacklog(runner)
+        }
         await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
             runModelCatalog(runner)
         }
