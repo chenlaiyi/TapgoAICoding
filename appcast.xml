@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.307</title>
+            <pubDate>Sun, 13 Sep 2026 03:19:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.307</link>
+            <sparkle:version>0.5.307</sparkle:version>
+            <sparkle:shortVersionString>0.5.307</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.307
+
+test(evolution): 维护任务真实触发与告警链路
+
+## 变更
+
+- 真实触发：launchd 任务此前从未执行过（runs=0），用 launchctl kickstart 跑了一次真实月度维护——runs=1、last exit code=0、状态历史新增 drill=v0.5.306 passed + archive=passed（7s），launchd 日志完整落盘。
+- 告警链路补测：维护回归新增默认 osascript 分支（用假 osascript 记录 argv），断言 display notification 的标题与原因内容（含中文与路径）转义正确——此前只有 EVOLVE_MAINTENANCE_NOTIFY 被覆盖。
+- 过程中修掉测试自身缺陷：假 osascript 曾写成文件而非目录（PATH 注入失效，那次失败用例发了真实通知）、chmod 作用在目录上。
+- 实发验证：用真实 osascript 发出一条测试通知（exit 0），确认通知中心链路在本机可用。
+- 维护测试 47→51 项；README 补「手动触发一次维护并验证三处证据」的操作步骤。
+
+launchd 真跑一次 + osascript 分支补回归
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.307/Tapgo-AICoding-0.5.307.zip" length="12733988" type="application/octet-stream" sparkle:edSignature="KU/3pAQkU33PzDYxw+kP0l1aVgZlI2acvAMa8aPj31dNavQFiohC5C6qwmVie3b+x485fHVv53MyICyZy2aaAQ=="/>
+        </item>
+        <item>
             <title>0.5.306</title>
             <pubDate>Sun, 13 Sep 2026 03:05:46 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.306</link>
@@ -56,34 +84,6 @@ feat(evolution): 手机端指标补齐
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.305/Tapgo-AICoding-0.5.305.zip" length="12732970" type="application/octet-stream" sparkle:edSignature="8FaxOxDyGtif1wR8wbAtldehJkr8RSaKsuHlgcwug+dvlSrZQuh1Odc5c7Y70lfzTE5WlqyEhBVhO1z19RMeBA=="/>
-        </item>
-        <item>
-            <title>0.5.304</title>
-            <pubDate>Sun, 13 Sep 2026 02:38:37 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.304</link>
-            <sparkle:version>0.5.304</sparkle:version>
-            <sparkle:shortVersionString>0.5.304</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.304
-
-test(evolution): canary 提升演练
-
-## 变更
-
-- 新增 scripts/tests/canary-promote-test.sh：fixture 仓库 + 裸 origin + 假 gh/deploy，真跑 canary-promote.sh 的 9 组场景共 31 项断言。
-- 覆盖：参数缺失(2)/缺 canary appcast(3)/正常提升（appcast 入仓并推送 + gh release edit --draft=false + deploy --exclude canary）/重复提升不产生多余提交仍部署。
-- 关键安全属性：推送失败(4)与 draft 提升失败(5)都会中止且不部署其余机器；其余机器部署失败报 6；Release 不存在或没有 gh 时只提示并继续。
-- 顺带修掉硬编码：canary-promote 之前写死 git push origin，现在与 evolve.sh/sync-upstream.sh 一致走 tapgo_upstream_remote（EVOLVE_CANARY_REMOTE 可覆盖）。
-- 新增 EVOLVE_CANARY_{REPO_ROOT,GH,DEPLOY_SCRIPT} 注入点；测试接进 run-all 与 benchmark。另加内容行引号守卫（makeHistory 内容行必须恰好 2 个引号）。
-
-真跑推 appcast/解除 draft/部署其余机器并分级失败
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.304/Tapgo-AICoding-0.5.304.zip" length="12701568" type="application/octet-stream" sparkle:edSignature="jCeNNrGsfsSwW19uyCmskzYIUT9BkduPza2waMseZGSyzrzjEbfH1lLuQHudg+6wCt63lQQ/vmANN4oivuUxDg=="/>
         </item>
     </channel>
 </rss>
