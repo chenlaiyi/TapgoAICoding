@@ -19,6 +19,9 @@
 # Environment preflight (EVO-034): 版本号确定后立刻检查工具链/SDK/磁盘/远端/
 #   gh 认证/三机 SSH/tag 冲突,失败以 12 退出且不改任何文件;EVOLVE_SKIP_PREFLIGHT=1
 #   可跳过,EVOLVE_PREFLIGHT_SKIP_SSH=1 只跳过三机连通性。
+# Remote lock (EVO-037): 跨机锁带 started 元数据，超过 EVOLVE_LOCK_TTL_SECONDS
+#   （默认 4h）的陈旧锁会被下一次 acquire 自动回收；--break-remote-lock 走
+#   reclaim（force-with-lease 覆盖），用于显式抢占仍在运行的锁。
 # Runtime state schema (EVO-035): 预检后立即补齐/校验 state json/jsonl 的
 #   schemaVersion,发现未来版本以 13 退出;EVOLVE_SKIP_SCHEMA_CHECK=1 可跳过。
 #
@@ -697,13 +700,13 @@ write_progress "preflight" 1 "running" "branch=${BRANCH}"
 if [[ "$MODE" == "publish" && -z "$DRY_RUN" ]]; then
   if ! REMOTE_LOCK_SHA="$("$REMOTE_LOCK_SCRIPT" acquire --remote "$UPSTREAM_REMOTE")"; then
     if [[ "$BREAK_REMOTE_LOCK" == "1" ]]; then
-      echo "==> Breaking remote evolution lock (explicit --break-remote-lock)" >&2
-      git push "$UPSTREAM_REMOTE" :refs/heads/evolution-lock >/dev/null 2>&1 || true
-      REMOTE_LOCK_SHA="$("$REMOTE_LOCK_SCRIPT" acquire --remote "$UPSTREAM_REMOTE")" || {
-        echo "ERROR: could not acquire remote lock after break." >&2; exit 9; }
+      echo "==> Reclaiming remote evolution lock (explicit --break-remote-lock)" >&2
+      REMOTE_LOCK_SHA="$("$REMOTE_LOCK_SCRIPT" reclaim --remote "$UPSTREAM_REMOTE")" || {
+        echo "ERROR: could not reclaim remote lock after break." >&2; exit 9; }
     else
       echo "ERROR: another Mac holds the remote evolution lock." >&2
-      echo "       Wait for it to finish, or rerun with --break-remote-lock only if it is stale." >&2
+      echo "       Stale locks (older than EVOLVE_LOCK_TTL_SECONDS, default 4h) are reclaimed" >&2
+      echo "       automatically; use --break-remote-lock only to force-take a live lock." >&2
       exit 9
     fi
   fi

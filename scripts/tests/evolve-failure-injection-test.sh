@@ -530,5 +530,18 @@ EVOLVE_RUN_TOKENS=4321 EVOLVE_RUN_COST_USD=1.25 \
 assert_json "$BASE/s28-state/evolution_state.json" 'd["tokens"] == 4321' "s28 tokens recorded"
 assert_json "$BASE/s28-state/evolution_state.json" 'abs(d["costUSD"] - 1.25) < 1e-9' "s28 cost recorded"
 
+# ---------- S29: 陈旧远端锁（超过 TTL）被自动回收，发布照常完成 ----------
+R29="$BASE/s29"; make_repo "$R29"
+git -C "$R29" init -q --bare "$BASE/s29-origin.git"
+git -C "$R29" remote add origin "$BASE/s29-origin.git"
+git -C "$R29" push -q -u origin main --tags
+STALE29="$(EVOLVE_LOCK_STARTED_OVERRIDE="$(( $(date +%s) - 20000 ))" EVOLVE_LOCK_REPO_ROOT="$R29" \
+  "$R29/scripts/evolution-remote-lock.sh" acquire --remote origin)"
+[[ -n "$STALE29" ]] || bad "s29 stale lock setup"
+run_evolve "$R29" "$BASE/s29-state" "$BASE/s29.log" --publish --paths scripts patch "s29" "s29" --next n
+assert_json "$BASE/s29-state/evolution_state.json" 'd["status"] == "published"' "s29 published after stale lock auto-reclaim"
+assert_grep "$BASE/s29.log" "STALE RECLAIMED" "s29 auto-reclaim surfaced"
+assert_eq "$(git -C "$BASE/s29-origin.git" branch --list evolution-lock | wc -l | tr -d ' ')" 0 "s29 lock released after run"
+
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

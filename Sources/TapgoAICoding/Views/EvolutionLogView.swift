@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.293", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.293",
+                    summary: "远端锁 TTL:陈旧锁自动回收,reclaim 走 force-with-lease 显式抢占。",
+                    changes: [
+                        "evolution-remote-lock.sh 重构:抽 make_lock_commit/push_lock_lease/report_held,新增 --ttl(默认 EVOLVE_LOCK_TTL_SECONDS=14400)。",
+                        "acquire 遇到 started 超过 TTL 的锁会打印 REMOTE LOCK STALE RECLAIMED 并自动接管;元数据读不出 started(例如手推 ref)时只报 HELD 且明确 auto-reclaim disabled,绝不自动接管。",
+                        "新增 reclaim 子命令:force-with-lease 覆盖当前锁,供 evolve.sh --break-remote-lock 使用(不再先删 ref 再抢,消除竞态窗口)。",
+                        "status 增加 ttlSeconds/ageSeconds/remainingSeconds/stale 输出;--ttl 非整数直接拒绝(exit 2)。",
+                        "回归:锁测试从 4 项扩到 15 项(新鲜锁拒绝/陈旧自动回收/无元数据保护/显式 reclaim/参数校验),失败注入扩到 138 项(新增 S29 端到端陈旧锁自动回收后完成发布)。"
+                    ],
+                    why: "此前锁只能靠人记得 -break-remote-lock 才能从崩溃的机器手里拿回来:机器断电后整个自进化闭环会被一把死锁彻底堵住。EVO-037 让陈旧锁自愈,同时用元数据缺失保护避免误抢活锁。",
+                    next: "EVO-041 自进化成本归属:App 把当前会话 token/成本传给 evolve.sh,让单轮成本指标有真实数据。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.292", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.292",
                     summary: "度量扩展:周期 P95/max、失败后 MTTR、单轮时长与可选 token/成本。",
                     changes: [
