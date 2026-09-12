@@ -1,5 +1,21 @@
 # Evolution Log
 
+## v0.5.312 — fix(evolution): H5/App 字段契约
+**Date**: 2026-09-13
+**Commit**: _(see `git log -1 v0.5.312`)_
+**Tag**: v0.5.312
+**Test status**: — 3478 passed, 0 failed —
+**Changed**:
+- 新增 Evolution: H5 field contract 测试：用 EvolutionStatus 真实序列化出 evolution JSON，再与 app.js 真实读取的键双向对照——H5 读的顶层键必须存在、序列化里未被读取的键必须在白名单内、嵌套对象按「点号路径 ↔ app.js 表达式」逐条对照、关键值必须真的过河。
+- 修复手机端漏斗行静默失能：app.js 原读扁平键（f.draftsOpen/f.registeredTotal），而 FeedbackFunnelSnapshot 序列化的是文件形状，条件永不成立导致「反馈漏斗」行恒隐藏；改为读 funnel.drafts.total / funnel.registered.total / funnel.registered.shipped / funnel.conversion.registeredToShipped，与 Swift 序列化及 state/feedback_funnel.json 格式统一，并保留缺字段兜底。
+- 同步 PhoneRemote 页面断言到新契约（registeredToShippedRate → fConversion.registeredToShipped），避免旧字符串断言在形状统一后误报。
+- .gitignore 忽略 .playwright-cli/（H5 实测产生的临时调试产物），避免脏树预检把发布挡在门外。
+
+手机端反馈漏斗行恢复显示
+**Why**: App 与 H5 是同一份状态的两个消费面：Swift 侧改名或改形状，H5 只是少显示一块，不报错也不崩。这类静默失能只能靠「真实序列化 ↔ 真实读取」的对照测试兜住。
+**Next**: EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+
+
 ## v0.5.311 — test(evolution): 双实现指标一致性
 **Date**: 2026-09-13
 **Commit**: _(see `git log -1 v0.5.311`)_

@@ -401,10 +401,13 @@
     const funnel = $("evolutionFunnel");
     if (funnel) {
       const f = evo.funnel;
-      if (f && (f.registeredTotal > 0 || f.draftsTotal > 0)) {
+      const fDrafts = f && f.drafts ? f.drafts : {};
+      const fRegistered = f && f.registered ? f.registered : {};
+      const fConversion = f && f.conversion ? f.conversion : {};
+      if (f && ((fRegistered.total || 0) > 0 || (fDrafts.total || 0) > 0)) {
         const pct = (v) => (v == null ? "n/a" : Math.round(v * 100) + "%");
         funnel.hidden = false;
-        funnel.textContent = `反馈漏斗：drafts ${f.draftsOpen || 0}/${f.draftsTotal || 0} · 注册 ${f.registeredTotal || 0} · 发布 ${f.shippedTotal || 0} · 转化 ${pct(f.registeredToShippedRate)}`;
+        funnel.textContent = `反馈漏斗：drafts ${fDrafts.open || 0}/${fDrafts.total || 0} · 注册 ${fRegistered.total || 0} · 发布 ${fRegistered.shipped || 0} · 转化 ${pct(fConversion.registeredToShipped)}`;
       } else {
         funnel.hidden = true;
       }

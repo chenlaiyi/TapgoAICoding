@@ -78,6 +78,7 @@ let allSections: [String] = [
     "Evolution: progress protocol",
     "Evolution: cost attribution",
     "Evolution: python/swift metrics consistency",
+    "Evolution: H5 field contract",
     "TapgoModel: catalog & provider mapping",
     "GLMQuota: quota/limit 解析与映射",
     "DeepSeekQuota: balance 解析与映射",
@@ -396,6 +397,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Evolution: python/swift metrics consistency") {
             runEvolutionMetricsConsistency(runner)
+        }
+        await runIfInScope(runner, "Evolution: H5 field contract") {
+            runEvolutionH5Contract(runner)
         }
         await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
             runModelCatalog(runner)

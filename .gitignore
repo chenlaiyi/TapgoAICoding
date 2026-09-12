@@ -28,3 +28,4 @@ node_modules/
 scripts/fidelity/
 appcast.xml.bak
 .sparkle/
+.playwright-cli/

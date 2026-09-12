@@ -616,7 +616,7 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(appJS.contains("maintenanceRuns"), "page: app.js 渲染月度维护结果")
     t.expect(appCSS.contains(".evolution-maintenance"), "page: app.css 含月度维护样式")
     t.expect(appJS.contains("evolutionFunnel"), "page: app.js 含反馈漏斗行")
-    t.expect(appJS.contains("registeredToShippedRate"), "page: app.js 渲染漏斗转化率")
+    t.expect(appJS.contains("fConversion.registeredToShipped"), "page: app.js 渲染漏斗转化率")
     t.expect(appCSS.contains(".evolution-funnel"), "page: app.css 含漏斗样式")
     t.expect(appJS.contains("evolutionMetrics"), "page: app.js 含指标摘要行")
     t.expect(appJS.contains("p95CycleSeconds"), "page: app.js 渲染周期 P95")

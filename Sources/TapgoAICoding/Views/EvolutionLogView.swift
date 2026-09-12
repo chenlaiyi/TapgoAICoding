@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.312", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.312",
+                    summary: "H5/App 字段契约测试:抓出手机端漏斗行永远不显示的扁平/嵌套错配。",
+                    changes: [
+                        "新增 Evolution: H5 field contract 测试:构造带全部字段的 EvolutionStatus → 用 PhoneRemote.stateJSON 真实序列化 → 与 app.js 真实读取的键双向对照。",
+                        "首个发现:app.js 读 f.draftsOpen/f.registeredTotal 等扁平键,而 FeedbackFunnelSnapshot 序列化的是文件形状(funnel.drafts.total / funnel.registered.shipped / funnel.conversion.registeredToShipped)——两边对不上,手机端「反馈漏斗」行因条件不成立而永远隐藏。",
+                        "修复:app.js 改读嵌套形状(与 Swift 序列化、与 state/feedback_funnel.json 文件格式统一),并保留缺字段不崩的兜底。",
+                        "测试双向断言:①app.js 读取的顶层键必须都在序列化结果里(缺失即列出);②序列化里未被 H5 读取的键必须在白名单内(改名导致的废弃字段不会静默通过);③嵌套对象按「点号路径 ↔ app.js 表达式」逐条对照;④关键值真的过河(p95/转化率/backlog/本机漂移标记)。",
+                        "浏览器实测(playwright):当前运行的是 0.5.299 进程,下发的是旧 app.js,漏斗行确认为空——修复要等本机重启才生效;发布后会用端口转发在远端(新版本)复验渲染。"
+                    ],
+                    why: "App 与 H5 是同一份状态的两个消费面:Swift 侧改名或改形状,H5 只是少显示一块,不报错也不崩。这类静默失能只能靠「真实序列化 ↔ 真实读取」的对照测试兜住。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.311", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.311",
                     summary: "双实现指标一致性测试:当场抓出 canary_failed 只在一侧计入失败。",
                     changes: [
