@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.300</title>
+            <pubDate>Sun, 13 Sep 2026 01:43:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.300</link>
+            <sparkle:version>0.5.300</sparkle:version>
+            <sparkle:shortVersionString>0.5.300</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.300
+
+feat(evolution): 本机 App 漂移留痕
+
+## 变更
+
+- evolution-ui-assert.sh 新增 --print-running-version：沿用同一套探针（进程/token/端口/API），只打印正在运行的 App 版本后退出，供流水线留痕。
+- evolve.sh 新增 probe_local_app_version：发布与续跑两条路径都探测本机运行版本，写进 state 的 localApp{installed,running,stale}，落后时 WARN 并提示 ./scripts/restart-and-resume.sh。
+- state schema 升到 v5（新增 localApp），schema 漂移守卫继续保证写入方与注册表一致。
+- evolution-metrics.py 新增 local app 一行（running/installed/stale）与三个 JSON 字段。
+- 测试：ui-assert +4、失败注入扩到 151 项（S33 漂移 WARN+留痕、S34 一致时不告警）、metrics 断言 24 项。
+
+记录正在运行的本机 App 版本，落后时告警并提示重启
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.300/Tapgo-AICoding-0.5.300.zip" length="12698160" type="application/octet-stream" sparkle:edSignature="oh0g5kDhIQBcsdZSHluHc66NpvilkWw0YrKqVahlb2uHQiRJKJVZuG4lJIsUYIth5JvJGZhnjLE49G0JbYTHDQ=="/>
+        </item>
+        <item>
             <title>0.5.299</title>
             <pubDate>Sun, 13 Sep 2026 01:28:37 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.299</link>
@@ -55,34 +83,6 @@ fix(evolution): state schema 版本漂移
 EVO-042 反馈漏斗接入看板: 把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.298/Tapgo-AICoding-0.5.298.zip" length="12660883" type="application/octet-stream" sparkle:edSignature="FrkUMWls96FL1MVS37kymI7h2TOXmy06IrI7eanEZTfsO5c1/hr8dMSb82uMTdpOnQPYNng7wuZXL8QBAngmBA=="/>
-        </item>
-        <item>
-            <title>0.5.297</title>
-            <pubDate>Sun, 13 Sep 2026 01:02:36 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.297</link>
-            <sparkle:version>0.5.297</sparkle:version>
-            <sparkle:shortVersionString>0.5.297</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.297
-
-feat(evolution): 成本归属
-
-## 变更
-
-- 新增 TapgoCore.EvolutionCostSnapshot：state/evolution_cost.json 的写入/读取契约（原子写、缺失或非法 JSON 返回 nil），只记能核实的累计 token，不估算美元金额。
-- SessionStore 在自进化线程（evolutionMode 或 evo- 前缀）收到 turnCompleted/tokenUsageUpdated 时写入累计 usageTotal：同一值不重写、5 秒内且增量不足 1000 跳过，写失败不影响会话主流程。
-- evolve.sh 新增 resolve_run_cost：EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 优先（source=env）→ 否则读 App 快照并与上次发布记录 tokens 相减得到本轮增量（source=app-snapshot-delta）→ 都没有就留空不编造；日志打印 Run cost source 便于审计。
-- state schema 升到 v4：新增 costSource 字段说明 tokens/costUSD 来自哪条路径。
-- 测试：Swift 新增 14 项成本契约断言，失败注入扩到 145 项（快照增量归因、快照未更新不归因、env 优先）。
-
-App 写自进化会话 token 快照，evolve.sh 取增量并标注来源
-
-## Next
-
-EVO-042 反馈漏斗接入看板: 把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.297/Tapgo-AICoding-0.5.297.zip" length="12660376" type="application/octet-stream" sparkle:edSignature="1L5zPvxnT3XAj9IZUi15RdiBq46w8R6N32+n2iiF9Cmj2vc8Qfv7xNrrt0iNnxlHV2mrCBakPfWzMP9r32xZBw=="/>
         </item>
     </channel>
 </rss>
