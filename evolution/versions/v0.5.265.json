@@ -1,0 +1,16 @@
+{
+  "version": "0.5.265",
+  "tag": "v0.5.265",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 日志页指标看板",
+  "changes": [
+    "新增 Swift 指标模型并接入日志页顶部看板",
+    "补 metrics section 注册与 14 项断言"
+  ],
+  "details": "成功率/失败/周期趋势/backlog 进入 EvolutionLogView,与 CLI 指标同源",
+  "why": "指标只在命令行可见,App 内看不到自进化健康度;成功率与周期趋势无法被用户直接感知",
+  "next": "EVO-010 测试 flaky 追踪: 记录失败用例名与重跑结果，区分环境失败与真实回归",
+  "testStatus": "— 3194 passed, 0 failed —",
+  "commitSha": null
+}

@@ -73,6 +73,8 @@ let allSections: [String] = [
     "e2e: remote turn with `false` (exit code propagation)",
     "Thread: auto-title from first user message",
     "Thread: evolution mode + workspace",
+    "Evolution: backlog parsing + prompt injection",
+    "Evolution: metrics aggregation",
     "TapgoModel: catalog & provider mapping",
     "GLMQuota: quota/limit 解析与映射",
     "DeepSeekQuota: balance 解析与映射",
@@ -379,6 +381,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Evolution: backlog parsing + prompt injection") {
             runEvolutionBacklog(runner)
+        }
+        await runIfInScope(runner, "Evolution: metrics aggregation") {
+            runEvolutionMetrics(runner)
         }
         await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
             runModelCatalog(runner)

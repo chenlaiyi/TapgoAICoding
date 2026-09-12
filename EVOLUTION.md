@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.265 — feat(evolution): 日志页指标看板
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.265`)_
+**Tag**: v0.5.265
+**Test status**: — 3194 passed, 0 failed —
+**Changed**:
+- 新增 Swift 指标模型并接入日志页顶部看板
+- 补 metrics section 注册与 14 项断言
+
+成功率/失败/周期趋势/backlog 进入 EvolutionLogView,与 CLI 指标同源
+**Why**: 指标只在命令行可见,App 内看不到自进化健康度;成功率与周期趋势无法被用户直接感知
+**Next**: EVO-010 测试 flaky 追踪: 记录失败用例名与重跑结果，区分环境失败与真实回归
+
+
 ## v0.5.264 — feat(evolution): 发布健康门禁与三机闭环
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.264`)_

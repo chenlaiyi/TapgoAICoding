@@ -15,7 +15,7 @@
 
 - [x] **EVO-007 发布前健康门禁**：Bundle 版本/结构/签名 6 项检查，失败停在 commit 前并回滚（v0.5.264）
 - [x] **EVO-008 三机部署纳入闭环**：publish 成功后自动 `deploy-fleet.sh` 并回读版本/PID，失败写 `health_failed`（v0.5.264）
-- [ ] **EVO-009 迭代指标看板**：成功率、flaky、回滚次数、周期趋势接入 `EvolutionLogView`
+- [x] **EVO-009 迭代指标看板**：成功率、失败/回滚、周期趋势与 backlog 接入 `EvolutionLogView`（v0.5.265）
 - [ ] **EVO-010 测试 flaky 追踪**：记录失败用例名与重跑结果，区分环境失败与真实回归
 
 ## P2 — 体验与安全

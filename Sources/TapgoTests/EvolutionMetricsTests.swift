@@ -1,0 +1,53 @@
+import Foundation
+import TapgoCore
+
+@MainActor
+func runEvolutionMetrics(_ t: TestRunner) {
+    let records = [
+        TapgoCore.EvolutionRecordEntry(version: "0.5.1", date: "2026-09-01", testStatus: "— 100 passed, 0 failed —"),
+        TapgoCore.EvolutionRecordEntry(version: "0.5.2", date: "2026-09-02", testStatus: "— 200 passed, 0 failed —"),
+        TapgoCore.EvolutionRecordEntry(version: "0.5.3", date: "2026-09-03", testStatus: "— 300 passed, 0 failed —")
+    ]
+    let history = [
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.1", status: "published", builtAt: "2026-09-01T00:00:00Z", testStatus: "— 100 passed, 0 failed —"),
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.2", status: "committed", builtAt: "2026-09-02T00:00:00Z", testStatus: "— 200 passed, 0 failed —"),
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.2", status: "release_failed", builtAt: "2026-09-02T01:00:00Z", testStatus: "— 200 passed, 0 failed —"),
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.3", status: "published", builtAt: "2026-09-03T01:00:00Z", testStatus: "— 300 passed, 0 failed —")
+    ]
+    let backlog = "- [x] done\n- [ ] open\n"
+    let snapshot = TapgoCore.EvolutionMetrics.compute(records: records, history: history, backlogText: backlog)
+    t.expectEqual(snapshot.recordCount, 3, "metrics: record count")
+    t.expectEqual(snapshot.iterationCount, 3, "metrics: unique versions")
+    t.expectEqual(snapshot.publishedCount, 2, "metrics: published count")
+    t.expectEqual(snapshot.failedCount, 1, "metrics: failed count")
+    t.expectEqual(snapshot.successRate.map { abs($0 - 2.0 / 3.0) < 0.0001 } ?? false, true,
+                  "metrics: success rate")
+    t.expectEqual(snapshot.testPassedTotal, 600, "metrics: test passed total")
+    t.expectEqual(snapshot.cycleDurations.count, 1, "metrics: cycle duration count")
+    t.expectEqual(snapshot.medianCycleSeconds.map { abs($0 - 176400) < 1 } ?? false, true,
+                  "metrics: median cycle")
+    t.expectEqual(snapshot.openBacklog, 1, "metrics: open backlog")
+    t.expectEqual(snapshot.doneBacklog, 1, "metrics: done backlog")
+
+    let parsedHistory = TapgoCore.EvolutionMetrics.parseHistory(
+        "{\"version\":\"0.5.1\",\"status\":\"published\",\"builtAt\":\"2026-09-01T00:00:00Z\"}\nnot-json\n"
+    )
+    t.expectEqual(parsedHistory.count, 1, "metrics: JSONL parser skips invalid lines")
+
+    let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("tapgo-metrics-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    let versions = tmp.appendingPathComponent("evolution/versions", isDirectory: true)
+    let state = tmp.appendingPathComponent("state", isDirectory: true)
+    try? FileManager.default.createDirectory(at: versions, withIntermediateDirectories: true)
+    try? FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+    try? "{\"version\":\"0.5.1\",\"date\":\"2026-09-01\",\"testStatus\":\"— 50 passed, 0 failed —\"}".write(
+        to: versions.appendingPathComponent("v0.5.1.json"), atomically: true, encoding: .utf8)
+    try? "{\"version\":\"0.5.1\",\"status\":\"published\",\"builtAt\":\"2026-09-01T00:00:00Z\",\"testStatus\":\"— 50 passed, 0 failed —\"}\n".write(
+        to: state.appendingPathComponent("evolution_state_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "- [ ] load test\n".write(to: tmp.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
+    let loaded = TapgoCore.EvolutionMetrics.load(projectRoot: tmp, stateDirectory: state)
+    t.expectEqual(loaded.recordCount, 1, "metrics: load record count")
+    t.expectEqual(loaded.publishedCount, 1, "metrics: load published")
+    t.expectEqual(loaded.openBacklog, 1, "metrics: load backlog")
+}

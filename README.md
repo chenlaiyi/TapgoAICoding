@@ -321,6 +321,7 @@ TapgoAICoding/
 - `evolution_state.json` 记录 `committed / local_built / published / push_failed / release_failed` 分阶段状态，可据此续跑或排障。
 - Shell 回归：`./scripts/tests/run-all.sh`（lib + records + metrics + 失败注入矩阵，已接入 evolve.sh 测试阶段）。
 - 迭代指标：`./scripts/evolution-metrics.py`（成功率、失败、周期、测试量、backlog 开闭）；JSON 输出加 `--json`。
+- App 内看板：「自进化日志」顶部展示成功率、迭代/失败数、中位周期、backlog 与最近 10 次周期迷你趋势。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

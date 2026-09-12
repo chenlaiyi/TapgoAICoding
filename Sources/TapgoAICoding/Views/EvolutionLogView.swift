@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 import TapgoCore
 
 /// "自进化日志"弹窗。
@@ -17,6 +18,7 @@ struct EvolutionLogView: View {
     @State private var liveState: EvolutionState? = nil
     @State private var loadError: String? = nil
     @State private var hasLoaded = false
+    @State private var metrics: TapgoCore.EvolutionMetricsSnapshot? = nil
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     /// 历史日志条目。最新在最上。
@@ -36,6 +38,10 @@ struct EvolutionLogView: View {
             header
             Divider()
             currentVersionBar
+            if let metrics, metrics.hasData {
+                Divider()
+                metricsBar(metrics)
+            }
             Divider()
             picker
             Divider()
@@ -77,6 +83,7 @@ struct EvolutionLogView: View {
     /// 默认展开最新一条，其余收起——用户看到的是"当前 + 可下钻的历史"。
     private func initialExpansion() {
         loadLiveState()
+        loadMetrics()
         guard expandedVersions.isEmpty, let latest = history.first?.version else { return }
         expandedVersions = [latest]
     }
@@ -154,6 +161,80 @@ struct EvolutionLogView: View {
 
     private var latest: EvolutionEntry {
         history.first ?? EvolutionLogView.placeholderEntry
+    }
+
+    // MARK: - Runtime metrics
+
+    private func loadMetrics() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        guard let root = TapgoCore.EvolutionWorkspace.locateProjectRoot(home: home) else { return }
+        let stateDir = home.appendingPathComponent("Library/Application Support/Tapgo AICoding/state", isDirectory: true)
+        metrics = TapgoCore.EvolutionMetrics.load(projectRoot: root, stateDirectory: stateDir)
+    }
+
+    private func metricsBar(_ m: TapgoCore.EvolutionMetricsSnapshot) -> some View {
+        HStack(alignment: .center, spacing: 16) {
+            metricStat("成功率", metricRateText(m))
+            metricStat("迭代", "\(m.iterationCount)")
+            metricStat("失败", "\(m.failedCount)")
+            metricStat("中位周期", metricCycleText(m))
+            metricStat("Backlog", "\(m.openBacklog) open / \(m.doneBacklog) done")
+            Spacer(minLength: 8)
+            cycleTrend(m.cycleDurations)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(DSHTheme.bgLayer1)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("自进化指标：成功率\(metricRateText(m))，迭代\(m.iterationCount)次，失败\(m.failedCount)次，中位周期\(metricCycleText(m))，backlog \(m.openBacklog) 项未完成")
+    }
+
+    private func metricStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label)
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+            Text(value)
+                .font(.system(.caption, design: .monospaced).weight(.semibold))
+                .foregroundStyle(DSHTheme.brand)
+        }
+    }
+
+    private func metricRateText(_ m: TapgoCore.EvolutionMetricsSnapshot) -> String {
+        guard let rate = m.successRate else { return "—" }
+        return String(format: "%.0f%%", rate * 100)
+    }
+
+    private func metricCycleText(_ m: TapgoCore.EvolutionMetricsSnapshot) -> String {
+        guard let seconds = m.medianCycleSeconds else { return "—" }
+        if seconds >= 3600 { return String(format: "%.1fh", seconds / 3600) }
+        return String(format: "%.0fm", seconds / 60)
+    }
+
+    @ViewBuilder
+    private func cycleTrend(_ durations: [Double]) -> some View {
+        let recent = Array(durations.suffix(10))
+        let peak = max(recent.max() ?? 1, 1)
+        VStack(alignment: .trailing, spacing: 2) {
+            if recent.isEmpty {
+                Text("—")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .frame(height: 22, alignment: .bottom)
+            } else {
+                HStack(alignment: .bottom, spacing: 2) {
+                    ForEach(Array(recent.enumerated()), id: \.offset) { _, duration in
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(DSHTheme.brand.opacity(0.55))
+                            .frame(width: 4, height: max(3, 20 * duration / peak))
+                    }
+                }
+                .frame(height: 22, alignment: .bottom)
+            }
+            Text("周期趋势")
+                .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                .foregroundStyle(.tertiary)
+        }
     }
 
     // MARK: - Tab picker
@@ -251,6 +332,19 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
+                EvolutionEntry(
+                    version: "v0.5.265", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.265",
+                    summary: "指标看板:成功率/失败/周期趋势/backlog 接入日志页,Swift 与 CLI 同源计算。",
+                    changes: [
+                        "新增 TapgoCore.EvolutionMetrics:读取结构化记录 + evolution_state_history.jsonl + BACKLOG.md,计算迭代数、published/failed、成功率、中位周期、周期序列、测试总量与 backlog 开闭。",
+                        "EvolutionLogView 顶部新增指标条:成功率、迭代、失败、中位周期、backlog,以及最近 10 次周期迷你柱状趋势;无运行态数据时优雅隐藏。",
+                        "新增 EvolutionMetricsTests 14 项断言,覆盖计数、成功率、中位周期、测试量、JSONL 容错与目录加载。",
+                        "补齐 TestMain allSections 注册:backlog 与 metrics 两个新 section 可通过 --list/--filter 独立运行。",
+                        "Swift 指标字段与 scripts/evolution-metrics.py 对齐,App 与 CLI 使用同一份记录与状态历史数据源。"
+                    ],
+                    why: "此前指标只在命令行可见,App 内看不到自进化健康度;成功率、失败与周期趋势无法被用户直接感知。EVO-009 把运行态指标带进 EvolutionLogView。",
+                    next: "EVO-010 测试 flaky 追踪:记录失败用例名与重跑结果,区分环境失败与真实回归。"
+                ),
                 EvolutionEntry(
                     version: "v0.5.264", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.264",
                     summary: "发布健康门禁:Bundle 六项检查 + 发布后三机自动部署/PID 回读,失败进入 health_failed。",
