@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.306", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.306",
+                    summary: "修复指标摘要契约:生产侧补嵌套 localApp,并加跨语言契约断言。",
+                    changes: [
+                        "真机发现:evolution-metrics 只写扁平键 localAppRunning/Installed/Stale,而 App 的 EvolutionMetricsSummary 读嵌套 localApp.* —— 手写的 Swift fixture 恰好是嵌套形状,于是单测全绿、真实产物却读不出本机漂移。",
+                        "生产侧同时输出嵌套 localApp{installed,running,stale}(脚本用扁平键,App 用嵌套),两边同源。",
+                        "读取侧改嵌套优先、扁平兜底,老快照不会因此失效。",
+                        "metrics 回归新增跨语言契约断言:真实 --out 产物必须含 p95CycleSeconds/mttrMedianSeconds/mttrSamples/runDurationMedianSeconds/runTokensTotal/runCostUSDTotal 与嵌套 localApp.stale。",
+                        "真机端到端复验:把真实摘要放到 jkmacmini 的 state 后,其 /api/state 的 evolution.metricsSummary 返回 12 个键(p95=1158.7/mttr=855/runDuration=500/stale=true),验证完即清理该临时文件。"
+                    ],
+                    why: "这是「测试用自己的 fixture 而不是生产者的真实输出」导致的盲区:两边形状不一致却没人发现。契约断言把生产者输出直接钉住,以后形状漂移会立刻失败。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮候选:真实触发一次月度维护任务并验证通知路径。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.305", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.305",
                     summary: "手机端指标补齐:周期 p95/MTTR/单轮时长成本/本机落后 一行显示。",
                     changes: [

@@ -76,9 +76,9 @@ public struct EvolutionMetricsSummary: Codable, Equatable {
             runDurationP95Seconds: object["runDurationP95Seconds"] as? Double,
             runTokensTotal: object["runTokensTotal"] as? Int,
             runCostUSDTotal: object["runCostUSDTotal"] as? Double,
-            localAppRunning: localApp?["running"] as? String,
-            localAppInstalled: localApp?["installed"] as? String,
-            localAppStale: localApp?["stale"] as? Bool
+            localAppRunning: (localApp?["running"] as? String) ?? (object["localAppRunning"] as? String),
+            localAppInstalled: (localApp?["installed"] as? String) ?? (object["localAppInstalled"] as? String),
+            localAppStale: (localApp?["stale"] as? Bool) ?? (object["localAppStale"] as? Bool)
         )
     }
 

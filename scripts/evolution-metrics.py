@@ -287,6 +287,13 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "localAppInstalled": (latest_entry.get("localApp") or {}).get("installed"),
         "localAppRunning": (latest_entry.get("localApp") or {}).get("running"),
         "localAppStale": (latest_entry.get("localApp") or {}).get("stale"),
+        # EVO-047：App 侧读的是嵌套形状（EvolutionMetricsSummary.localApp.*）；
+        # 扁平键保留给命令行/脚本兼容，两边同源。
+        "localApp": {
+            "installed": (latest_entry.get("localApp") or {}).get("installed"),
+            "running": (latest_entry.get("localApp") or {}).get("running"),
+            "stale": (latest_entry.get("localApp") or {}).get("stale"),
+        },
         "maintenanceRuns": len(maintenance_runs),
         "lastMaintenanceStatus": maintenance_runs[-1].get("status") if maintenance_runs else None,
         "lastMaintenanceAt": maintenance_runs[-1].get("ranAt") if maintenance_runs else None,

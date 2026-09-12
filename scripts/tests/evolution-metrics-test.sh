@@ -78,5 +78,10 @@ snap = json.loads(summary.read_text(encoding="utf-8"))
 assert snap["p95CycleSeconds"] == m["p95CycleSeconds"], snap
 assert snap["runDurationMedianSeconds"] == m["runDurationMedianSeconds"], snap
 assert snap["latestRecord"]["version"] == "0.5.2", snap   # 记录真源是 evolution/versions/*.json
+# 跨语言契约：App(EvolutionMetricsSummary) 读这些键，产物必须提供
+for key in ("p95CycleSeconds", "mttrMedianSeconds", "mttrSamples", "runDurationMedianSeconds",
+            "runTokensTotal", "runCostUSDTotal"):
+    assert key in snap, (key, sorted(snap))
+assert "localApp" in snap and snap["localApp"]["stale"] is True, snap.get("localApp")
 print("evolution-metrics assertions: 27 passed, 0 failed")
 PY
