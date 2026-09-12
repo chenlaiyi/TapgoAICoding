@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.305</title>
+            <pubDate>Sun, 13 Sep 2026 02:53:13 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.305</link>
+            <sparkle:version>0.5.305</sparkle:version>
+            <sparkle:shortVersionString>0.5.305</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.305
+
+feat(evolution): 手机端指标补齐
+
+## 变更
+
+- evolution-metrics.py 新增 --out（原子写 JSON 摘要）与 --quiet；evolve.sh 每轮收尾把它和反馈漏斗快照一起刷新（refresh_snapshots），失败只 WARN。
+- 新增 TapgoCore.EvolutionMetricsSummary：宽容解析 state/evolution_metrics_summary.json，口径仍以 Python 指标工具为唯一真源。
+- PhoneRemote.EvolutionStatus 增加 metricsSummary；H5 自进化卡片新增一行「周期 p95 · MTTR · 单轮 · tokens · 成本」，本机 App 落后时额外提示并把整行标黄。
+- 测试：metrics 断言扩到 27 项（--out 原子写与内容），PhoneRemote 快照 58→64、H5 页面 74→78。
+
+周期 p95/MTTR/单轮成本/本机落后进入手机卡片
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.305/Tapgo-AICoding-0.5.305.zip" length="12732970" type="application/octet-stream" sparkle:edSignature="8FaxOxDyGtif1wR8wbAtldehJkr8RSaKsuHlgcwug+dvlSrZQuh1Odc5c7Y70lfzTE5WlqyEhBVhO1z19RMeBA=="/>
+        </item>
+        <item>
             <title>0.5.304</title>
             <pubDate>Sun, 13 Sep 2026 02:38:37 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.304</link>
@@ -58,34 +85,6 @@ fix(evolution): 部署参数经 ssh 拼接失真
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.303/Tapgo-AICoding-0.5.303.zip" length="12701194" type="application/octet-stream" sparkle:edSignature="aShvjrth3osJa21lcdTqhQB3tBBk+al5FG3SFXYNwHOLVJN1cSEMtkG7ur1d0hknt7EYxcGx8ubBK7U0PVHlBA=="/>
-        </item>
-        <item>
-            <title>0.5.302</title>
-            <pubDate>Sun, 13 Sep 2026 02:11:47 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.302</link>
-            <sparkle:version>0.5.302</sparkle:version>
-            <sparkle:shortVersionString>0.5.302</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.302
-
-test(evolution): 部署端到端演练
-
-## 变更
-
-- 新增 scripts/tests/deploy-fleet-test.sh：合成 .app + fake ssh/scp 在本机执行远端 heredoc，覆盖 dry-run 三机、本地安装/回读、本地重启+界面断言、远端安装+回读、断言经 ssh 管道、跳过开关、目标过滤，共 32 项断言。
-- 修复 deploy-fleet 缺陷 1：install_remote 由 if ! 调用时 bash 关闭 errexit，scp/ssh 安装失败被后续步骤掩盖并打印假的 verified；现在每步显式判状态并返回 1。
-- 修复缺陷 2：目标全部被过滤掉时 TARGETS 为空数组，bash 3.2 + set -u 下直接 unbound 崩溃；改为 ${TARGETS[@]+...} 惯用法。
-- 修复缺陷 3：远端安装未确保目标父目录存在（真实 /Applications 存在所以从未暴露），现在 mkdir -p 目标目录。
-- deploy-fleet 暴露 EVOLVE_FLEET_* 注入点（APP/LOCAL_DEST/REMOTE_APP/SSH/SCP/RESTART_SCRIPT/UI_ASSERT_SCRIPT/RESTART_WAIT/TARGETS_OVERRIDE/OPEN/PGREP），真实环境全部走默认值。
-
-真跑 deploy-fleet 并修掉三个真实缺陷
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.302/Tapgo-AICoding-0.5.302.zip" length="12700578" type="application/octet-stream" sparkle:edSignature="0jXJWqZhIQwg3NMgHmn2m8No1lc//7wc/3vg3PSFHm7rjWjIXdoh4xihqZVekrY62uyGI4MaFZ6swsqamK5MDg=="/>
         </item>
     </channel>
 </rss>
