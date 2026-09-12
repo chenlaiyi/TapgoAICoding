@@ -7,6 +7,9 @@ struct EvolutionDiffSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     @State private var summary = "加载中…"
+    @State private var rangeText = ""
+    @State private var commitText = ""
+    @State private var statText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,11 +32,17 @@ struct EvolutionDiffSheet: View {
             .padding(.vertical, 10)
             Divider()
             ScrollView([.vertical, .horizontal]) {
-                Text(summary)
+                VStack(alignment: .leading, spacing: 10) {
+                    if !rangeText.isEmpty {
+                        EvolutionDiffSummaryCard(range: rangeText, commit: commitText, stat: statText)
+                    }
+                    Text(summary)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
+                }
+                .padding(12)
             }
         }
         .frame(width: 760, height: 560)
@@ -46,10 +55,13 @@ struct EvolutionDiffSheet: View {
         var parts: [String] = []
         if !current.isEmpty {
             let previous = git(["describe", "--tags", "--abbrev=0", "\(current)^"]).trimmingCharacters(in: .whitespacesAndNewlines)
-            parts.append("范围: \(previous.isEmpty ? current : previous)..\(current)")
+            rangeText = "范围: \(previous.isEmpty ? current : previous)..\(current)"
+            commitText = git(["log", "-1", "--format=%h %s", current]).trimmingCharacters(in: .whitespacesAndNewlines)
+            statText = git(["diff", "--stat", previous.isEmpty ? current : "\(previous)..\(current)"]).trimmingCharacters(in: .whitespacesAndNewlines)
+            parts.append(rangeText)
             parts.append("")
-            parts.append(git(["log", "-1", "--format=%h %s", current]))
-            parts.append(git(["diff", "--stat", previous.isEmpty ? current : "\(previous)..\(current)"]))
+            parts.append(commitText)
+            parts.append(statText)
             parts.append(git(["diff", "--name-status", previous.isEmpty ? current : "\(previous)..\(current)"]))
         } else {
             parts.append("范围: 工作树")

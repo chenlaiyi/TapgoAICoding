@@ -47,6 +47,24 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let openBacklog: Int
     public let doneBacklog: Int
 
+    public init(
+        recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
+        successRate: Double?, medianCycleSeconds: Double?, cycleDurations: [Double],
+        testPassedTotal: Int, testVersionCount: Int, openBacklog: Int, doneBacklog: Int
+    ) {
+        self.recordCount = recordCount
+        self.iterationCount = iterationCount
+        self.publishedCount = publishedCount
+        self.failedCount = failedCount
+        self.successRate = successRate
+        self.medianCycleSeconds = medianCycleSeconds
+        self.cycleDurations = cycleDurations
+        self.testPassedTotal = testPassedTotal
+        self.testVersionCount = testVersionCount
+        self.openBacklog = openBacklog
+        self.doneBacklog = doneBacklog
+    }
+
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
 
     public static let empty = EvolutionMetricsSnapshot(

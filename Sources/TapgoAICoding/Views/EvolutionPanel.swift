@@ -106,39 +106,7 @@ struct EvolutionPanel: View {
     }
 
     private func progressRow(_ progress: TapgoCore.EvolutionProgress) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 8) {
-                ProgressView(value: progress.progressFraction)
-                    .progressViewStyle(.linear)
-                    .tint(progressTint(progress))
-                    .frame(maxWidth: 220)
-                Text("\(progress.phaseIndex)/\(progress.phaseCount) \(progress.phaseLabel)")
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
-                    .foregroundStyle(progressTint(progress))
-                if progress.isStale {
-                    Text("可能已中断")
-                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                        .foregroundStyle(.orange)
-                }
-                Spacer()
-                if isRunning || progress.isActive {
-                    Button {
-                        requestStop()
-                    } label: {
-                        Label("停止", systemImage: "stop.fill")
-                    }
-                    .controlSize(.mini)
-                    .tint(.red)
-                    .help("请求停止本轮自进化；脚本会在阶段边界回滚未提交改动")
-                }
-            }
-            if let message = progress.message, !message.isEmpty {
-                Text(message)
-                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
+        EvolutionProgressStrip(progress: progress, isRunning: isRunning, onStop: requestStop)
     }
 
     private func progressTint(_ progress: TapgoCore.EvolutionProgress) -> Color {

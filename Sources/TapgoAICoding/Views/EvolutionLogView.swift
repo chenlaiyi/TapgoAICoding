@@ -173,20 +173,12 @@ struct EvolutionLogView: View {
     }
 
     private func metricsBar(_ m: TapgoCore.EvolutionMetricsSnapshot) -> some View {
-        HStack(alignment: .center, spacing: 16) {
-            metricStat("成功率", metricRateText(m))
-            metricStat("迭代", "\(m.iterationCount)")
-            metricStat("失败", "\(m.failedCount)")
-            metricStat("中位周期", metricCycleText(m))
-            metricStat("Backlog", "\(m.openBacklog) open / \(m.doneBacklog) done")
-            Spacer(minLength: 8)
-            cycleTrend(m.cycleDurations)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(DSHTheme.bgLayer1)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("自进化指标：成功率\(metricRateText(m))，迭代\(m.iterationCount)次，失败\(m.failedCount)次，中位周期\(metricCycleText(m))，backlog \(m.openBacklog) 项未完成")
+        EvolutionMetricsStrip(metrics: m)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(DSHTheme.bgLayer1)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("自进化指标：成功率\(metricRateText(m))，迭代\(m.iterationCount)次，失败\(m.failedCount)次，中位周期\(metricCycleText(m))，backlog \(m.openBacklog) 项未完成")
     }
 
     private func metricStat(_ label: String, _ value: String) -> some View {
@@ -332,6 +324,19 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
+                EvolutionEntry(
+                    version: "v0.5.272", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.272",
+                    summary: "真实 UI 回归自动化:进度/指标/diff 组件离屏渲染 PNG 并自动断言。",
+                    changes: [
+                        "新增 EvolutionViews.swift:EvolutionProgressStrip / EvolutionMetricsStrip / EvolutionDiffSummaryCard;自进化面板、日志页、diff sheet 与预览 fixture 共用同一份视图代码。",
+                        "新增 scripts/ui/EvolutionPreview.swift + scripts/preview-evolution-ui.sh:ImageRenderer 离屏渲染 900x600@2x PNG,不启动第二个 App、不重启当前会话。",
+                        "新增 evolution-ui-snapshot-test.sh(3 断言)并接入 run-all;preview 脚本纳入受保护路径。",
+                        "EvolutionMetricsSnapshot 增加 public init,支持离屏 fixture 构建;首次真实渲染已人工复核进度条/停止按钮/指标趋势/diff 摘要布局正常。",
+                        "EVO-016 完成;下一项 EVO-017 指标趋势看板。"
+                    ],
+                    why: "进度、指标与 diff UI 此前只能靠重启 App 人工检查,而重启会中断当前会话;EVO-016 用离屏渲染在独立进程外验证真实组件渲染,并可接入每次发布门禁。",
+                    next: "EVO-017 指标趋势看板:flaky、健康检查、失败原因与周期趋势做成可钻取的图表。"
+                ),
                 EvolutionEntry(
                     version: "v0.5.271", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.271",
                     summary: "clean-checkout worktree 验证:发布前从 tag 独立构建,确保 tag 自包含。",

@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.272 — feat(evolution): UI 离屏回归自动化
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.272`)_
+**Tag**: v0.5.272
+**Test status**: — 3232 passed, 0 failed —
+**Changed**:
+- 抽出可复用组件并新增离屏渲染 UI 回归
+- 快照断言接入 run-all,preview 纳入受保护路径
+
+进度/指标/diff 组件离屏渲染 PNG 并自动断言,不重启当前会话
+**Why**: 进度/指标/diff UI 只能靠重启 App 人工检查,而重启会中断当前会话
+**Next**: EVO-017 指标趋势看板: 把 flaky、健康检查、失败原因与周期趋势做成可钻取的图表
+
+
 ## v0.5.271 — feat(evolution): worktree clean-checkout 验证
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.271`)_
