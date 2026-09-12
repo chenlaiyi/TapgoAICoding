@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.314</title>
+            <pubDate>Sun, 13 Sep 2026 07:05:53 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.314</link>
+            <sparkle:version>0.5.314</sparkle:version>
+            <sparkle:shortVersionString>0.5.314</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.314
+
+feat(evolution): 本机版本漂移可老化可查询
+
+## 变更
+
+- 新增 scripts/evolution-drift.py（EVO-055）作为漂移真源：releasesBehind（结构化记录里 running < v <= installed 的条数，running 早于最早记录时给 null 而非偏小的错数）、firstSeenAt 跨轮继承、seenRuns 按 run-id 去重（一轮内多次写 state 只算一次）、remediation 与一行可读文案。
+- evolve.sh 接入：write_state 计算并写进 state.localApp.drift（installed/running/stale 保持原位，派生元数据收在 drift 子对象；此时当前版本记录已落盘，计数才准）；漂移时把重启命令作为第一条 nextActions；总结行升级为「运行 x / 已安装 y（落后 N 个版本，自 … 起，已累计 K 轮）」。helper 不可用时回退旧形状，发布流程不会因它中断。
+- 新增 check 子命令：python3 scripts/evolution-drift.py check 一行查询，退出码表达（漂移 1 / 一致 0 / state 不可读 2）；旧 state 形状（无 drift 块）降级成通用提示行而不是误判为已对齐。
+- 新增 scripts/tests/evolution-drift-test.sh 27 项断言（一致/落后、计数、记录不覆盖时 null、跨轮继承、同 run-id 去重、无进程降级、旧形状降级、state 不可读退出 2）；失败注入新增 S36 覆盖 evolve.sh → state 的集成（漂移元数据、待办动作、WARN），全套 169 项；两者接入 run-all.sh。
+- 边界：漂移元数据是只读计算，不重启任何进程——重启会终止当前会话，收敛动作仍由操作者执行；本轮保证的是它不会被忘记、有年龄、可被下一轮自动捞起。
+
+漂移从一次性 WARN 变成跨轮延续的待办
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.314/Tapgo-AICoding-0.5.314.zip" length="12738403" type="application/octet-stream" sparkle:edSignature="sc3FAc54AbfOwhnVKVVtAPYbud5WWxSu6c3yInHzWQM5lf8a5XxWnnnaatOfWXaSXWCgto0+IO+uPGkJ68N7Cg=="/>
+        </item>
+        <item>
             <title>0.5.313</title>
             <pubDate>Sun, 13 Sep 2026 05:01:29 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.313</link>
@@ -55,33 +83,6 @@ fix(evolution): H5/App 字段契约
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.312/Tapgo-AICoding-0.5.312.zip" length="12737368" type="application/octet-stream" sparkle:edSignature="EcRDA8CEEm9L2VAchOzOuiuDeDZnp3g6pQPlgQLpNTdCutPKTM8hOng2F4U2vHtjn1+IlhSKRWg0XotD3IMvDQ=="/>
-        </item>
-        <item>
-            <title>0.5.311</title>
-            <pubDate>Sun, 13 Sep 2026 04:26:48 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.311</link>
-            <sparkle:version>0.5.311</sparkle:version>
-            <sparkle:shortVersionString>0.5.311</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.311
-
-test(evolution): 双实现指标一致性
-
-## 变更
-
-- 新增 Evolution: python/swift metrics consistency 测试：同一份 fixture（含 canary_failed 与一次失败后恢复）同时跑 evolution-metrics.py 与 TapgoCore.EvolutionMetrics.load，比对 16 个关键指标。
-- 首个发现：Python 的 FAILED 集合缺 canary_failed，而 Swift failedStatuses 有它——canary 失败时 CLI 与 App 会给出不同的失败数与成功率。已把两侧对齐（状态机确实会写 canary_failed）。
-- 比对项：iterations/published/failed/successRate、中位与 P95 周期、MTTR（中位/样本数/未恢复）、单轮时长/token/成本、回滚演练数、维护数、backlog 开/关。
-- 这类分叉此前无任何测试能发现：两边各自有单测，但都用自造 fixture，从没对过同一份输入（上一轮扁平键/嵌套键的契约 bug 同源）。
-
-同一 fixture 交叉比对 Python/Swift 指标并修分叉
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.311/Tapgo-AICoding-0.5.311.zip" length="12736482" type="application/octet-stream" sparkle:edSignature="98PvjphW2ntKhB9R8k2Ox8MkBaru1JvZeK0wsF/4UYL/BJuMknrZn1Fv5zzcm94OgdU0eJx42FTn3dQnOYEDCw=="/>
         </item>
     </channel>
 </rss>
