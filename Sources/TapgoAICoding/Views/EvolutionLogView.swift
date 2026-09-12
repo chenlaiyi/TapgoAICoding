@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.309", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.309",
+                    summary: "canary 全链路演练:真实 promote + 真实 deploy-fleet 拼进 evolve 灰度阶段。",
+                    changes: [
+                        "失败注入矩阵新增 S35:用真实 canary-promote.sh 与真实 deploy-fleet.sh(fake ssh/scp 在本机执行远端 heredoc)跑 evolve.sh --publish --canary,而不是像 S16/S17c 那样用 stub。",
+                        "验证链路:evolve 灰度阶段 deploy --only fakehost 安装到假远端 → release stub 按真实契约暂存 dist/<tag>/appcast.xml → canary-promote 拷 appcast 入仓/提交/推送 origin → gh release edit --draft=false → deploy --exclude fakehost 部署其余机器 → 状态 published 且 canary=fakehost。",
+                        "harness 增强:run_evolve 允许调用方覆盖 EVOLVE_DEPLOY_SCRIPT/EVOLVE_CANARY_PROMOTE_SCRIPT(S35 用它接真实脚本);release stub 在 TAPGO_CANARY=1 时复刻真实脚本的 appcast staging 契约。",
+                        "断言含:origin main 前进 3 个提交(iteration+appcast)、灰度与其余机器都拿到 0.5.2、gh undraft 被调用、UI 断言经真实 deploy-fleet 的 ssh 管道下发、日志无 ERROR。",
+                        "失败注入矩阵 151→162 项。"
+                    ],
+                    why: "canary 是「出错概率最低但代价最高」的路径——它平时不用,真要用时才发现契约对不上就太晚了;上一轮 deploy-fleet 演练已经证明 stub 覆盖会掩盖真实缺陷。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题(候选:维护任务的失败告警在 launchd 环境下真触发一次)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.308", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.308",
                     summary: "月度维护验证可重建:演练额外做一次 clean-checkout 重编译。",
                     changes: [

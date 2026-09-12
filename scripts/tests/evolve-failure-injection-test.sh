@@ -42,9 +42,14 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/evolution-remote-lock.sh" "$dir/scripts/evolution-remote-lock.sh"
   cp "$SOURCE_ROOT/scripts/evolution-schema.py" "$dir/scripts/evolution-schema.py"
   cp "$SOURCE_ROOT/scripts/evolution-deps.sh" "$dir/scripts/evolution-deps.sh"
+  cp "$SOURCE_ROOT/scripts/deploy-fleet.sh" "$dir/scripts/deploy-fleet-real.sh"
+  cp "$SOURCE_ROOT/scripts/canary-promote.sh" "$dir/scripts/canary-promote-real.sh"
+  cp "$SOURCE_ROOT/scripts/fleet-hosts.sh" "$dir/scripts/fleet-hosts.sh"
+  cp "$SOURCE_ROOT/scripts/evolution-ui-assert.sh" "$dir/scripts/evolution-ui-assert.sh"
   cp "$SOURCE_ROOT/evolution/protected-paths.json" "$dir/evolution/protected-paths.json"
   chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py" "$dir/scripts/evolution-remote-lock.sh"
   chmod +x "$dir/scripts/evolution-schema.py"
+  chmod +x "$dir/scripts/deploy-fleet-real.sh" "$dir/scripts/canary-promote-real.sh" "$dir/scripts/evolution-ui-assert.sh"
   cat > "$dir/evolution/BACKLOG.md" <<'MD'
 # Backlog
 ## P0
@@ -101,6 +106,15 @@ FAKE
 #!/usr/bin/env bash
 set -euo pipefail
 echo "fake release: $*"
+# 真实脚本在 canary 模式下把 appcast 暂存到 dist/<tag>/（不发布），
+# canary-promote 依赖这个产物——这里忠实复刻该契约。
+if [[ "${TAPGO_CANARY:-0}" == "1" ]]; then
+  ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+  VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT/AppBuilder/Info.plist")"
+  mkdir -p "$ROOT/AppBuilder/dist/v$VERSION"
+  printf '<appcast version="%s" rev="canary" />\n' "$VERSION" > "$ROOT/AppBuilder/dist/v$VERSION/appcast.xml"
+  echo "fake release: CANARY staged dist/v$VERSION/appcast.xml"
+fi
 exit "${FAKE_RELEASE_RC:-0}"
 FAKE
   cat > "$dir/scripts/health-check.sh" <<'FAKE'
@@ -164,13 +178,13 @@ run_evolve() {
     export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
     export EVOLVE_PROTECT_TOOL="$repo/scripts/evolution-protect.py"
     export EVOLVE_REMOTE_LOCK_SCRIPT="$repo/scripts/evolution-remote-lock.sh"
-    export EVOLVE_CANARY_PROMOTE_SCRIPT="$repo/scripts/canary-promote.sh"
+    export EVOLVE_CANARY_PROMOTE_SCRIPT="${EVOLVE_CANARY_PROMOTE_SCRIPT:-$repo/scripts/canary-promote.sh}"
     export EVOLVE_TEST_DEPLOY_LOG="$state/deploy.log"
     export EVOLVE_WORKTREE_VERIFY_SCRIPT="$repo/scripts/worktree-verify.sh"
     export EVOLVE_BENCHMARK_TOOL="$repo/scripts/evolution-benchmark.py"
     export EVOLVE_BENCHMARK_HISTORY="$state/evolution_benchmark_history.jsonl"
     export EVOLVE_TEST_HISTORY="$state/test_run_history.jsonl"
-    export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
+    export EVOLVE_DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$repo/scripts/deploy-fleet.sh}"
     export EVOLVE_STATE_DIR="$state"
     # 环境预检默认关闭（由 evolution-preflight-test.sh 专测）；
     # 需要覆盖时显式传 EVOLVE_SKIP_PREFLIGHT=0 + EVOLVE_PREFLIGHT_SCRIPT。
@@ -602,6 +616,79 @@ EVOLVE_UI_ASSERT_SCRIPT="$BASE/s34-ui.sh" \
   run_evolve "$R34" "$BASE/s34-state" "$BASE/s34.log" --paths scripts patch "s34" "s34" --next n
 assert_json "$BASE/s34-state/evolution_state.json" 'd["localApp"]["stale"] is False' "s34 marks fresh local app"
 assert_not_grep "$BASE/s34.log" "不一致" "s34 no drift warning"
+
+# ---------- S35: canary 全链路（真实 canary-promote + 真实 deploy-fleet）----------
+# 此前 canary 只有 stub 覆盖：这里把真实的 canary-promote.sh 与 deploy-fleet.sh
+# 接进 evolve.sh 的 canary 阶段，验证「灰度单机 → 发布 appcast → 解除 draft → 其余机器」。
+R35="$BASE/s35"; make_repo "$R35"
+git -C "$R35" init -q --bare "$BASE/s35-origin.git"
+git -C "$R35" remote add origin "$BASE/s35-origin.git"
+git -C "$R35" push -q -u origin main --tags
+
+S35="$BASE/s35-fleet"; mkdir -p "$S35/bin"
+cat > "$S35/bin/ssh" <<'F35'
+#!/usr/bin/env bash
+args=()
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    -o) shift 2 ;;
+    bash) shift; [[ "${1:-}" == "-s" ]] && shift; [[ "${1:-}" == "--" ]] && shift; args=("$@"); break ;;
+    *) shift ;;
+  esac
+done
+f="$(mktemp)"; cat > "$f"
+{ echo "=== ssh stdin ==="; cat "$f"; } >> "$S35_SSH_LOG"
+bash -c "bash -s -- ${args[*]-}" < "$f"
+F35
+cat > "$S35/bin/scp" <<'F35'
+#!/usr/bin/env bash
+src=""; dest=""; skip=0
+for a in "$@"; do
+  if [[ "$skip" -eq 1 ]]; then skip=0; continue; fi
+  case "$a" in -q) continue ;; -o|-P|-i) skip=1; continue ;;
+    *) if [[ -z "$src" ]]; then src="$a"; elif [[ -z "$dest" ]]; then dest="$a"; fi ;; esac
+done
+mkdir -p "$(dirname "${dest##*:}")"; cp "$src" "${dest##*:}"
+F35
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$S35/bin/open"
+printf '%s\n' '#!/usr/bin/env bash' 'echo 4242' > "$S35/bin/pgrep"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$S35/bin/codesign"
+printf '%s\n' '#!/usr/bin/env bash' 'echo "UI-ASSERT-STUB OK $*"' 'exit 0' > "$S35/ui-ok.sh"
+cat > "$S35/gh" <<'F35'
+#!/usr/bin/env bash
+echo "gh $*" >> "$S35_GH_LOG"
+exit 0
+F35
+chmod +x "$S35/bin/"* "$S35/ui-ok.sh" "$S35/gh"
+: > "$S35/ssh.log"; : > "$S35/gh.log"
+
+PATH="$S35/bin:$PATH" \
+EVOLVE_DEPLOY_SCRIPT="$R35/scripts/deploy-fleet-real.sh" \
+EVOLVE_CANARY_PROMOTE_SCRIPT="$R35/scripts/canary-promote-real.sh" \
+EVOLVE_CANARY_REPO_ROOT="$R35" EVOLVE_CANARY_REMOTE=origin EVOLVE_CANARY_GH="$S35/gh" \
+EVOLVE_CANARY_DEPLOY_SCRIPT="$R35/scripts/deploy-fleet-real.sh" \
+EVOLVE_FLEET_APP="$R35/Tapgo AICoding.app" \
+EVOLVE_FLEET_LOCAL_DEST="$S35/local/Tapgo AICoding.app" \
+EVOLVE_FLEET_REMOTE_APP="$S35/remote.app" \
+EVOLVE_FLEET_SSH="$S35/bin/ssh" EVOLVE_FLEET_SCP="$S35/bin/scp" \
+EVOLVE_FLEET_OPEN="$S35/bin/open" EVOLVE_FLEET_PGREP="$S35/bin/pgrep" \
+EVOLVE_FLEET_UI_ASSERT_SCRIPT="$S35/ui-ok.sh" EVOLVE_FLEET_RESTART_WAIT=0 \
+EVOLVE_FLEET_TARGETS_OVERRIDE="fakehost:$S35/repo" \
+S35_SSH_LOG="$S35/ssh.log" S35_GH_LOG="$S35/gh.log" \
+  run_evolve "$R35" "$BASE/s35-state" "$BASE/s35.log" --publish --canary --canary-host fakehost \
+    --paths scripts patch "s35" "s35" --next n
+
+assert_json "$BASE/s35-state/evolution_state.json" 'd["status"] == "published"' "s35 canary publish reaches published"
+assert_json "$BASE/s35-state/evolution_state.json" 'd["canary"] == "fakehost"' "s35 records canary host"
+assert_grep "$BASE/s35.log" "CANARY PROMOTED v0.5.2 canary=fakehost" "s35 promote banner printed"
+assert_grep "$S35/gh.log" "release edit v0.5.2 --draft=false" "s35 gh undraft called"
+assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$S35/remote.app/Contents/Info.plist")" 0.5.2 "s35 canary host got the build (real deploy-fleet)"
+assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$S35/local/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s35 remaining hosts deployed (real deploy-fleet --exclude)"
+assert_grep "$S35/ssh.log" "UI-ASSERT-STUB OK" "s35 UI assert piped through real deploy-fleet"
+assert_eq "$(git -C "$R35" rev-list --count origin/main)" 3 "s35 origin main advanced (iteration + appcast)"
+[[ -f "$R35/appcast.xml" ]] && ok || bad "s35 appcast published to repo root"
+assert_grep "$BASE/s35.log" "CANARY staged" "s35 release stub staged canary appcast"
+assert_not_grep "$BASE/s35.log" "ERROR:" "s35 no errors in log"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]
