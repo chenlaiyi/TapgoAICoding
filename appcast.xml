@@ -3,6 +3,35 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.303</title>
+            <pubDate>Sun, 13 Sep 2026 02:25:50 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.303</link>
+            <sparkle:version>0.5.303</sparkle:version>
+            <sparkle:shortVersionString>0.5.303</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.303
+
+fix(evolution): 部署参数经 ssh 拼接失真
+
+## 变更
+
+- 改用非空哨兵：本地传 "${REMOTE_APP_OVERRIDE:--}"，远端 "APP=${4:--}" 且 - 映射回 /Applications/Tapgo AICoding.app（默认路径留在远端脚本内，不再经 ssh 传递）。
+- 远端新增守卫：APP 必须以 .app 结尾、WAIT 必须是整数，配置失真立刻报错而不是装到莫名其妙的位置。
+- EVOLVE_FLEET_REMOTE_APP 含空格直接在本地拒绝并说明原因（ssh 会重新分词）。
+- 演练升级：fake ssh 忠实模拟参数拼接，新增哨兵静态断言、非 .app 路径拒绝、ssh 参数留痕；测试 32→42 项。
+- 安全护栏：演练在临时目录外直接拒绝运行，并断言所有安装目标都在 TMP 内（测试曾尝试写真实 /Applications，现已不可能）。
+- 真机复验：v0.5.302 补跑部署 → 两台远端 PID 正常且 UI ASSERT OK。
+
+哨兵值 + 远端守卫，真机部署恢复正常
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.303/Tapgo-AICoding-0.5.303.zip" length="12701194" type="application/octet-stream" sparkle:edSignature="aShvjrth3osJa21lcdTqhQB3tBBk+al5FG3SFXYNwHOLVJN1cSEMtkG7ur1d0hknt7EYxcGx8ubBK7U0PVHlBA=="/>
+        </item>
+        <item>
             <title>0.5.302</title>
             <pubDate>Sun, 13 Sep 2026 02:11:47 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.302</link>
@@ -57,34 +86,6 @@ feat(evolution): UI 快照基线比对
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.301/Tapgo-AICoding-0.5.301.zip" length="12699049" type="application/octet-stream" sparkle:edSignature="TjtK9OekoEJVxKMrAjYZ7OgxpCkM9v3bc98xuD15NgVkjfCLOLlAltrzStLBIblvUNrBY/Ho0y7g49nDT4m9CQ=="/>
-        </item>
-        <item>
-            <title>0.5.300</title>
-            <pubDate>Sun, 13 Sep 2026 01:43:37 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.300</link>
-            <sparkle:version>0.5.300</sparkle:version>
-            <sparkle:shortVersionString>0.5.300</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.300
-
-feat(evolution): 本机 App 漂移留痕
-
-## 变更
-
-- evolution-ui-assert.sh 新增 --print-running-version：沿用同一套探针（进程/token/端口/API），只打印正在运行的 App 版本后退出，供流水线留痕。
-- evolve.sh 新增 probe_local_app_version：发布与续跑两条路径都探测本机运行版本，写进 state 的 localApp{installed,running,stale}，落后时 WARN 并提示 ./scripts/restart-and-resume.sh。
-- state schema 升到 v5（新增 localApp），schema 漂移守卫继续保证写入方与注册表一致。
-- evolution-metrics.py 新增 local app 一行（running/installed/stale）与三个 JSON 字段。
-- 测试：ui-assert +4、失败注入扩到 151 项（S33 漂移 WARN+留痕、S34 一致时不告警）、metrics 断言 24 项。
-
-记录正在运行的本机 App 版本，落后时告警并提示重启
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.300/Tapgo-AICoding-0.5.300.zip" length="12698160" type="application/octet-stream" sparkle:edSignature="oh0g5kDhIQBcsdZSHluHc66NpvilkWw0YrKqVahlb2uHQiRJKJVZuG4lJIsUYIth5JvJGZhnjLE49G0JbYTHDQ=="/>
         </item>
     </channel>
 </rss>
