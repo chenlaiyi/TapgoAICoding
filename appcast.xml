@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.264</title>
+            <pubDate>Sat, 12 Sep 2026 19:07:53 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.264</link>
+            <sparkle:version>0.5.264</sparkle:version>
+            <sparkle:shortVersionString>0.5.264</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.264
+
+feat(evolution): 发布健康门禁与三机闭环
+
+## 变更
+
+- 新增 6 项 Bundle 健康检查并作为提交前门禁
+- 发布成功后自动三机部署并回读 PID,失败写 health_failed
+
+构建后健康检查阻断坏包;发布后自动部署三机并回读版本/PID
+
+## Next
+
+EVO-009 迭代指标看板: 成功率、flaky、回滚次数、周期趋势接入 `EvolutionLogView`
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.264/Tapgo-AICoding-0.5.264.zip" length="12400225" type="application/octet-stream" sparkle:edSignature="ER6ieFSMEoIiNfEAkTdRGLQv/dOvdLokW36ebdewhG2wmsBLBnYJfCYKwsTHEFkT5B3RSQ1qWvUvmxgsDmBtCw=="/>
+        </item>
+        <item>
             <title>0.5.263</title>
             <pubDate>Sat, 12 Sep 2026 19:02:31 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.263</link>
@@ -50,31 +75,6 @@ fix(evolution): state 选点与 backlog 同源
 EVO-006 分支/worktree 隔离: 每轮在 `codex/evolution-vX.Y.Z` 工作树执行；publish 走 PR 或至少远端 fast-forward 校验
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.262/Tapgo-AICoding-0.5.262.zip" length="12399282" type="application/octet-stream" sparkle:edSignature="1A0QGg7v9XpN4WVeP9HKgVe7qckNtfZ6kgte+iGNRFWqRhRMsTaoHRSiJTWeFu50/TuAfrcZ9EhpSbnizWTIDQ=="/>
-        </item>
-        <item>
-            <title>0.5.261</title>
-            <pubDate>Sat, 12 Sep 2026 18:54:19 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.261</link>
-            <sparkle:version>0.5.261</sparkle:version>
-            <sparkle:shortVersionString>0.5.261</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.261
-
-feat(evolution): backlog 驱动选点
-
-## 变更
-
-- Python/Swift 双解析 backlog 并注入 prompt/面板/nextActions
-- evolve.sh 默认 next 从 backlog 顶部解析
-
-BACKLOG.md 成为脚本、UI、prompt、state 四处的选点真源
-
-## Next
-
-EVO-006 分支/worktree 隔离: 每轮在 `codex/evolution-vX.Y.Z` 工作树执行；publish 走 PR 或至少远端 fast-forward 校验
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.261/Tapgo-AICoding-0.5.261.zip" length="12398739" type="application/octet-stream" sparkle:edSignature="pc8qxoLgWFc6uZ9zCYn5BXpHlxBfSvgSoJmtRjr24t4yJcahZAsIrBL9Ar9sm38arXpZWWqybweDSc38gOTnAg=="/>
         </item>
     </channel>
 </rss>
