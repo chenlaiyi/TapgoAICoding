@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.253 — fix(ui): 对话渲染二次对齐 Codex(过程消息还原正文 / 摘要文案与格式 / 实时计时)
+**Date**: 2026-09-12
+**Tag**: v0.5.253
+**Test status**: 待回归
+**Changed**:
+- `ConversationResponseView.swift`:`ConversationWorkAssistantRow` 重写 —— 回合内的助手过程消息不再压成 12pt 单行截断 + 折叠箭头 + 背景框,改为 15pt 完整 Markdown 正文(对齐 Codex 实机)。
+- `ConversationPresentation.swift`:`workTitle` 纠正文案对应 —— 进行中「已处理 {时长}」、完成「用时 {时长}」(v0.5.252 把两者写反了)。
+- `DurationFormatter.swift`:数字与单位去空格(「2分钟 22秒」),对齐 Codex。
+- `ConversationResponseView.swift`:`ConversationWorkDisclosure` 新增 `startedAt`,`TimelineView` 每秒重算进行中时长(对齐 Codex 跳秒)。
+- 同步 4 个测试文件的断言。
+- 版本号 0.5.252 → 0.5.253(四源同步)。
+
+**Why**: 你指出对话渲染与 Codex 仍相差巨大;逐项放大比对后定位到两个根因 —— 过程消息被压成灰行截断(观感主因)、摘要文案对应关系与格式写错。
+**Next**: 摘要后横贯分隔线、代码块语言标题栏 + 复制按钮待核对。
+
 ## v0.5.252 — fix(ui): 对话消息渲染对齐 Codex(工具行概括化 / 去思考行 / 摘要「已处理」)
 **Date**: 2026-09-12
 **Tag**: v0.5.252

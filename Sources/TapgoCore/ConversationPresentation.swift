@@ -45,17 +45,20 @@ public enum ConversationPresentation {
     }
 
     public static func workTitle(status: Turn.Status, duration: TimeInterval?) -> String {
-        // v0.5.252: 对齐 Codex 桌面端实测文案 —— 进行中固定「正在思考」(不带时长),
-        // 完成后「已处理 {duration}」,中断「已停止」。
+        // v0.5.253: 对齐 Codex 桌面端实测 ——
+        //   进行中「已处理 {时长}」(实时累计),完成「用时 {时长}」,中断「已停止」。
+        // 注意与 v0.5.252 的对应关系相反:Codex 的「已处理」用于进行中,
+        // 「用时」才是完成态(实测截图为证)。
         switch status {
         case .pending, .running:
-            return "正在思考"
+            guard let duration, duration.isFinite, duration >= 1, duration < Double(Int.max / 2) else { return "已处理" }
+            return "已处理 " + DurationFormatter.string(seconds: duration)
         case .awaitingApproval: return "等待确认"
         case .failed: return "处理未完成"
         case .interrupted: return "已停止"
         case .completed:
-            guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "已处理" }
-            return "已处理 " + DurationFormatter.string(seconds: duration)
+            guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "用时" }
+            return "用时 " + DurationFormatter.string(seconds: duration)
         }
     }
 

@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.253", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.253",
+                    summary: "对话渲染二次对齐 Codex:过程消息还原为正文、摘要文案与格式纠正、进行中实时计时。",
+                    changes: [
+                        "ConversationResponseView.ConversationWorkAssistantRow:重写。旧实现把回合内的助手过程消息压成 12pt 单行截断 + 折叠箭头 + 展开套背景框,与 Codex 实机(过程消息与最终回复同为 15pt 正常正文、无卡片)差异很大;现在直接 MarkdownMessageView 完整渲染。",
+                        "ConversationPresentation.workTitle:纠正 v0.5.252 的文案对应关系 —— Codex 实测「已处理」用于**进行中**(实时累计),「用时」才是**完成态**;原实现反了。中断/失败/等待文案不变。",
+                        "DurationFormatter:数字与单位之间去空格,对齐 Codex「2分钟 22秒」「1分钟 24秒」;小时/分钟/秒同理。",
+                        "ConversationWorkDisclosure:新增 startedAt,进行中用 TimelineView 每秒重算「已处理 X分钟 Y秒」(对齐 Codex 跳秒);完成态仍用 turn.duration。",
+                        "同步 ConversationPresentationTests / DurationFormatterTests / TurnPresentationTests / ThreadSummaryTests 断言。",
+                        "App 版本号 0.5.252 → 0.5.253(四源同步)。"
+                    ],
+                    why: "你指出对话渲染与 Codex 仍相差巨大。逐项放大比对后发现两处根因:过程消息被压成灰行截断(观感主因),以及摘要文案对应关系与格式写错。",
+                    next: "Codex 回合摘要后还带一条横贯分隔线,待核对;代码块语言标题栏 + 复制按钮待核对。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.252", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.252",
                     summary: "对话消息渲染对齐 Codex:工具行概括化、去掉思考行、回合摘要改「已处理」。",
                     changes: [

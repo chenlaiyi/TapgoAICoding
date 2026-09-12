@@ -27,11 +27,19 @@ func runConversationPresentationTests(_ t: TestRunner) {
             if activity.latest.id == "cmd" { t.expect(title.contains("失败"), "conversation: failed activity remains distinguishable") }
         }
     }
-    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: nil), "已处理", "conversation: missing duration never invents zero seconds")
+    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: nil), "用时", "conversation: missing duration never invents zero seconds")
     for duration in [Double.infinity, .nan, .greatestFiniteMagnitude, -1] {
-        t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: duration), "已处理", "conversation: invalid duration is safe")
+        t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: duration), "用时", "conversation: invalid duration is safe")
     }
-    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65), "已处理 1 分钟 5 秒", "conversation: completed work duration")
+    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65), "用时 1分钟 5秒", "conversation: completed work duration")
+    // v0.5.253: 进行中用「已处理 {实时时长}」(Codex 实测 142s → 「已处理 2分钟 22秒」);
+    // 完成态才是「用时」。两者不可互换。
+    t.expectEqual(ConversationPresentation.workTitle(status: .running, duration: 142),
+                  "已处理 2分钟 22秒", "conversation: running shows live elapsed prefixed by 已处理")
+    t.expectEqual(ConversationPresentation.workTitle(status: .running, duration: nil),
+                  "已处理", "conversation: running without duration degrades to 已处理")
+    t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 142),
+                  "用时 2分钟 22秒", "conversation: completed uses 用时, not 已处理")
     t.expectEqual(ConversationPresentation.workTitle(status: .failed, duration: 65), "处理未完成", "conversation: failure is not success")
     var live = Turn(id: "live", userInput: "", items: [.assistantMessage(id: "a", text: "流式回复")], status: .running, startedAt: Date())
     live.assistantPhases = ["a": " final "]

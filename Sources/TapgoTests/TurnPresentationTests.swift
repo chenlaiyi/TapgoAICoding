@@ -209,9 +209,9 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expect(!completedDel.contains("+") && !completedDel.contains(" -"),
               "delete without diff has no stats suffix")
 
-    // v0.5.252: 完成回合文案对齐 Codex 实机「已处理 {X 分钟 Y 秒}」。
+    // v0.5.253: 完成回合文案对齐 Codex 实机「用时 {X分钟 Y秒}」(进行中才是「已处理」)。
     t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65),
-                  "已处理 1 分钟 5 秒", "completed with valid duration uses 已处理")
+                  "用时 1分钟 5秒", "completed with valid duration uses 用时")
 
     // v0.5.222: `.tool` 默认 fallback 完成态对齐 Codex 实机「已使用 <name>」。
     var toolCompletedBase: String {

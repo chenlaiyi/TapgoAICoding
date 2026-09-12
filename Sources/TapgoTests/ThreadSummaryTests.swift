@@ -15,7 +15,7 @@ func runThreadSummary(_ t: TestRunner) {
 
     t.expectEqual(th.usageTotal, 150, "usageTotal: sum of totals")
     t.expectEqual(th.durationTotal, TimeInterval(15), "durationTotal: sum")
-    t.expectEqual(th.durationTotalText ?? "", "15 秒", "durationTotalText")
+    t.expectEqual(th.durationTotalText ?? "", "15秒", "durationTotalText")
 
     let e = TapgoCore.Thread(id: "e", title: "e", createdAt: Date(), updatedAt: Date())
     t.expectEqual(e.usageTotal, 0, "usageTotal: empty → 0")

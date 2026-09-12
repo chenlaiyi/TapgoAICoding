@@ -21,7 +21,7 @@ struct ConversationResponseView<Notices: View>: View {
                     TaskPlanCard(progress: progress, status: turn.status)
                 }
                 if !work.isEmpty {
-                    ConversationWorkDisclosure(items: work, status: turn.status, duration: turn.duration, defaultExpanded: showWorkProcess)
+                    ConversationWorkDisclosure(items: work, status: turn.status, duration: turn.duration, startedAt: turn.startedAt, defaultExpanded: showWorkProcess)
                 }
             }
             notices()
@@ -147,6 +147,8 @@ private struct ConversationWorkDisclosure: View {
     let items: [TurnItem]
     let status: Turn.Status
     let duration: TimeInterval?
+    /// v0.5.253: 进行中要用「已处理 {实时时长}」(对齐 Codex),所以需要起点。
+    var startedAt: Date? = nil
     /// `showWorkProcess` 设置为 true 时默认展开，且 turn 结束后不强制收回。
     var defaultExpanded: Bool = false
     @State private var expansionOverride: Bool?
@@ -157,10 +159,16 @@ private struct ConversationWorkDisclosure: View {
     // `defaultExpanded == false`（即设置关闭）时才清 override，避免"开着设置但过程被收回"。
     private var expanded: Bool { expansionOverride ?? defaultExpanded }
     private var blockCount: Int { TurnPresentation.compactBlocks(items).count }
+    /// v0.5.253: 进行中用 now-startedAt 实时累计(Codex 的「已处理 X分钟 Y秒」会跳秒);
+    /// 完成后用 turn.duration(turn.completedAt - startedAt)。
+    private func liveDuration(at date: Date) -> TimeInterval? {
+        if active, let startedAt { return date.timeIntervalSince(startedAt) }
+        return duration
+    }
     private var headerTitle: String {
         // v0.5.243: ZCode 摘要无「· N 步」步数段(chat.history.workedFor/workingFor
         // 只有 {duration}),直接用 workTitle。
-        ConversationPresentation.workTitle(status: status, duration: duration)
+        ConversationPresentation.workTitle(status: status, duration: liveDuration(at: Date()))
     }
 
     var body: some View {
@@ -170,7 +178,12 @@ private struct ConversationWorkDisclosure: View {
                     // v0.5.224: 对齐 Codex 实机 —— 去掉 3 跳动 dots，
                     // 「正在处理」文字改 shimmer 流光（用户反馈）。
                     if active {
-                        ShimmerText(text: headerTitle, fontSize: 13 * scale.multiplier)
+                        // 每秒重算「已处理 X分钟 Y秒」,对齐 Codex 的跳秒。
+                        TimelineView(.periodic(from: .now, by: 1)) { context in
+                            ShimmerText(text: ConversationPresentation.workTitle(
+                                status: status, duration: liveDuration(at: context.date)
+                            ), fontSize: 13 * scale.multiplier)
+                        }
                     } else {
                         Text(headerTitle)
                     }
@@ -261,43 +274,18 @@ private struct ConversationActivityRow: View {
 
 /// v0.5.188: 工作过程中的 assistantMessage 紧凑单行 + 可点击展开
 /// 完整 Markdown，跟 ConversationActivityRow 保持一致的交互样式。
+/// v0.5.253: 对齐 Codex —— 回合内的助手消息**也是正文**。
+/// 旧实现把它压成 12pt 单行截断 + 折叠箭头 + 展开后套一个背景框,
+/// 与 Codex 实机(过程消息与最终回复同为正常正文、无卡片)差异很大,
+/// 也是消息流"灰行+截断"观感的主因。现在直接以标准正文字号完整渲染。
 private struct ConversationWorkAssistantRow: View {
     let text: String
     let running: Bool
-    @State private var expanded = false
-    @Environment(\.tapgoFontScale) private var scale: AppFontScale
-
-    private var previewText: String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
-        return firstLine.count > 60 ? String(firstLine.prefix(60)) + "…" : firstLine
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button { expanded.toggle() } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "text.quote").frame(width: 16)
-                    Text(previewText).lineLimit(1)
-                    Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 9))
-                }
-                .font(.system(size: 12 * scale.multiplier))
-                .foregroundStyle(DSHTheme.labelDim)
-                .padding(.vertical, 2)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(previewText)
-            .accessibilityValue(expanded ? "详情已展开" : "详情已收起")
-            if expanded {
-                MarkdownMessageView(text)
-                    .environment(\.conversationBodySize, 12)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(DSHTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(DSHTheme.border, lineWidth: 0.5))
-            }
-        }
+        MarkdownMessageView(text, isStreaming: running)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
