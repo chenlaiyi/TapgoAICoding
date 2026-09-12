@@ -3,6 +3,42 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.254</title>
+            <pubDate>Sat, 12 Sep 2026 10:17:03 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.254</link>
+            <sparkle:version>0.5.254</sparkle:version>
+            <sparkle:shortVersionString>0.5.254</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.254
+
+## 对话渲染三次对齐 Codex
+
+### 1. 回合摘要行常显 + 分隔线
+
+此前摘要行只在打开「显示工作过程」时才出现。现在**每个回合都有一行摘要**，与 Codex 一致：
+
+- 进行中：`已处理 2分钟 22秒 ›`（每秒实时更新）
+- 已完成：`用时 3分钟 21秒 ›`
+- 摘要行下方新增**横贯整宽的分隔线**，把回合内容与下一回合分开。
+- 没有工作细节可展开时，只显示时长、不显示箭头。
+
+「显示工作过程」这个开关的语义相应收窄为：**工作细节默认是否展开**（不再影响摘要行是否出现）。
+
+### 2. 代码块：语法着色 + 换行切换
+
+- **语法着色**：代码块按 注释 → 字符串 → 关键字 → 数字 的优先级着色，覆盖 Swift / Python / JS / TS / Shell / JSON / SQL / Go / Rust / YAML 等。实现为内置的正则分段器，**不引入任何第三方依赖**。实测效果：`func` 紫色、`"Hello, World!"` 橙色。
+- **自动换行切换**：标题栏新增换行开关（默认关，长行水平滚动以保持代码列对齐），与 Codex 代码块的两个按钮一致。
+
+## 验证
+
+- 摘要行 + 分隔线：实机截图确认。
+- 代码块着色与两个按钮：通过实际发送一条含 Swift 代码块的请求确认。
+- 全量回归通过；剩余失败为存量环境项（SSH 集成假 IP 超时、缺 auth.json 的集成跳过），与本版无关。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.254/Tapgo-AICoding-0.5.254.zip" length="12379807" type="application/octet-stream" sparkle:edSignature="MlnyFEx3sgx6qHWdKpgEq92WK1QPqCkg6PPxWJf5wPa/cmz4xgfiGsmH5ueLefaI/Pyow4dVbaxitqPoeLyjCw=="/>
+        </item>
+        <item>
             <title>0.5.253</title>
             <pubDate>Sat, 12 Sep 2026 10:00:14 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.253</link>
@@ -69,49 +105,6 @@ v0.5.245 引入的「终端 · N 个命令」折叠在真实会话里从未触�
 - 剩余失败均为存量环境项（SSH 集成使用保留网段假 IP、缺 auth.json 的集成跳过），与本版无关。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.252/Tapgo-AICoding-0.5.252.zip" length="12366941" type="application/octet-stream" sparkle:edSignature="dWhKMyYS9Oth7K6JF5Sr1XIvXm8kwAZnwm9GPGeQnL1Nk/65pZwIyGnwk6tP5l07Q9ESucxwGdudQiOgeGb+BA=="/>
-        </item>
-        <item>
-            <title>0.5.251</title>
-            <pubDate>Sat, 12 Sep 2026 02:00:20 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.251</link>
-            <sparkle:version>0.5.251</sparkle:version>
-            <sparkle:shortVersionString>0.5.251</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.251
-
-本次跨越 0.5.247 → 0.5.251 五个未发布版本，一次性汇总。
-
-## 新对话欢迎页对齐 Codex Desktop
-
-- **八角形 Codex Logo**（顶部居中，Canvas 自绘 1.4pt 描边，中心短横呼应 `_`）。
-- **标题改为「你想让我们在 <项目> 中构建什么?」**，项目名以虚线虚划线标注，可点击切换项目。
-- **四张建议卡横排**：探索并理解代码 / 构建新功能、应用或工具 / 审查代码并提出修改建议 / 修复问题和失败；各配彩色 hierarchical 图标（蓝 / 紫 / 绿 / 橙），点击即把对应提示词填入输入框（不自动发送）。
-- 移除旧的时段问候语 + 项目副行 + 胶囊横排形态。
-
-## 输入框顶栏：项目 / 环境 / 分支三段 chip
-
-- 三段并列于同一浅色圆角背景内，匹配 Codex Desktop 实机形态。
-- **项目 chip**：点击切换项目。
-- **环境 chip（本地 / 远程）**：本地或远程是项目属性，点击打开项目选择器切换。
-- **分支 chip**：显示当前 git 分支，点击弹出本地分支列表并可直接切换（`git checkout`）；切换失败（如未提交改动冲突）弹窗回显 git 错误首行。远程项目无本地分支，该段自动隐藏。
-
-## 额度环恢复新任务对话显示
-
-- 新任务（欢迎页）对话重新可见额度圈；会话内同样保留。
-- 欢迎态底栏维持精简：电脑控制 chip 仍在欢迎态隐藏，会话内按设置显示。
-
-## 模型切换菜单与设置页同源
-
-- 输入框模型菜单的数据源从内置目录切到 ProviderRegistry（与模型设置页 / 手机端 / `/model` 命令同源）。
-- 在设置页把 DeepSeek 模型改为 V4.1 后，切换菜单立即同步；未配置 Key 的模型项禁用。
-
-## 测试
-
-- 全量回归通过；`MakeHistory parity` 860/0（含 Info.plist / project.yml 版本四源对齐）。
-- 失败项均为存量远端 SSH 集成与 auth.json 环境性，与本批改动无关。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.251/Tapgo-AICoding-0.5.251.zip" length="12367974" type="application/octet-stream" sparkle:edSignature="ac0Z+HaYKc9OJXaIVWwdirQ5F+OKFZIQV5v7PTpvEU6csFpIsKZdQkYspOMEO0D06GJ2yblyym6C9tOLQaXHBg=="/>
         </item>
     </channel>
 </rss>
