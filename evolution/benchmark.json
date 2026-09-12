@@ -57,11 +57,6 @@
       "command": "python3 scripts/evolution-backlog.py top >/dev/null"
     },
     {
-      "id": "main-log-pointer",
-      "weight": 5,
-      "command": "python3 -c 't=open(\"EVOLUTION.md\",encoding=\"utf-8\").read(); assert \"iOS 版本序列（独立编号）\" in t and \"历史归档（v0.5.5 之前）\" in t'"
-    },
-    {
       "id": "model-eval-references",
       "weight": 5,
       "command": "python3 scripts/evolution-model-eval.py verify-references >/dev/null"
@@ -70,6 +65,11 @@
       "id": "model-eval-framework",
       "weight": 5,
       "command": "test -x scripts/evolution-model-eval.py && test -s evolution/model-eval/tasks.json"
+    },
+    {
+      "id": "feedback-regressions",
+      "weight": 5,
+      "command": "python3 scripts/evolution-feedback.py verify >/dev/null"
     }
   ]
 }

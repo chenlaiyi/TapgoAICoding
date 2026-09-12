@@ -1,0 +1,16 @@
+{
+  "version": "0.5.276",
+  "tag": "v0.5.276",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 用户反馈回归注册表",
+  "changes": [
+    "6 条真实反馈固定为最小复现检查并进入 benchmark",
+    "benchmark 继承发布期望版本,修复 FB-004 假失败"
+  ],
+  "details": "6 条真实反馈固定为可执行检查,每轮 benchmark 验证",
+  "why": "真实用户反馈修复后只留在日志,没有回归守卫,同类问题可能再次出现",
+  "next": "EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本",
+  "testStatus": "— 3257 passed, 0 failed —",
+  "commitSha": null
+}

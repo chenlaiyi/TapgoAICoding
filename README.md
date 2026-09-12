@@ -332,6 +332,7 @@ TapgoAICoding/
 - 指标详情：日志页「指标详情」展示周期趋势柱状图、状态时间线、失败原因、flaky 列表与 health/worktree 通过数。
 - 评测基准：`evolution/benchmark.json` 定义确定性检查（总分 100）；`evolve.sh` 每轮计分并写入 JSONL 历史，低于历史最高分即回滚不推送。
 - 模型级评测框架：`scripts/evolution-model-eval.py` 提供固定任务、参考解自检与可插拔 runner；真实模型运行必须显式提供 `EVOLVE_MODEL_RUNNER`，Codex 不会自动委派其它 agent。
+- 反馈回归注册表：`evolution/feedback/registry.json` 把 6 条真实用户反馈固定为最小复现检查，`scripts/evolution-feedback.py verify` 进入 benchmark。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

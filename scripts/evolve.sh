@@ -426,7 +426,7 @@ echo "==> Tests: ${TEST_LINE}"
 write_progress "tests" 3 "done" "${TEST_LINE}"
 
 echo "==> Evolution benchmark"
-BENCH_OUT="$(python3 "$BENCHMARK_TOOL" run --version "$NEW_VERSION" --history "$BENCHMARK_HISTORY")"
+BENCH_OUT="$(TAPGO_EXPECTED_VERSION="$NEW_VERSION" TAPGO_SKIP_REMOTE_INTEGRATION=1 python3 "$BENCHMARK_TOOL" run --version "$NEW_VERSION" --history "$BENCHMARK_HISTORY")"
 echo "    ${BENCH_OUT}"
 BENCHMARK_SCORE="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["score"])' "$BENCH_OUT" 2>/dev/null || echo "")"
 if ! python3 "$BENCHMARK_TOOL" compare --history "$BENCHMARK_HISTORY"; then

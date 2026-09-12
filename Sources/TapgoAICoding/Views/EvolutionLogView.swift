@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.276", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.276",
+                    summary: "用户反馈回归注册表:6 条真实问题固定为最小复现检查,进入 benchmark。",
+                    changes: [
+                        "新增 evolution/feedback/registry.json:问号输入、逐字符保存 CPU、MiniMax 额度反转、helper 版本/签名、版本日志同步、过程消息阅读疲劳 6 条真实反馈。",
+                        "新增 scripts/evolution-feedback.py:list/verify;每条反馈绑定源码守卫或现有测试 section,verify 计分并失败即非零退出。",
+                        "benchmark 用 feedback-regressions 替换冗余 main-log-pointer 检查,总分仍 100;反馈验证当前 100/100(6/6)。",
+                        "新增 3 项 feedback registry 回归;受保护路径纳入 registry 与校验脚本。",
+                        "EVO-020 完成;新增 EVO-023 反馈自动采集。"
+                    ],
+                    why: "真实用户反馈修复后只留在版本日志里,没有回归守卫;同类问题可能再次出现。EVO-020 把反馈固定成可执行注册表并纳入每轮 benchmark。",
+                    next: "EVO-021 用真实 runner 记录首份模型基线;EVO-022 评测预算/超时;EVO-023 自动采集反馈草稿。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.275", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.275",
                     summary: "模型级评测框架:3 个固定任务+参考解自检+可插拔 runner,零模型依赖进入 benchmark。",
                     changes: [

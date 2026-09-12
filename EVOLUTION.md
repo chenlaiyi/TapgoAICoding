@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.276 — feat(evolution): 用户反馈回归注册表
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.276`)_
+**Tag**: v0.5.276
+**Test status**: — 3257 passed, 0 failed —
+**Changed**:
+- 6 条真实反馈固定为最小复现检查并进入 benchmark
+- benchmark 继承发布期望版本,修复 FB-004 假失败
+
+6 条真实反馈固定为可执行检查,每轮 benchmark 验证
+**Why**: 真实用户反馈修复后只留在日志,没有回归守卫,同类问题可能再次出现
+**Next**: EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本
+
+
 ## v0.5.275 — feat(evolution): 模型级评测框架
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.275`)_
