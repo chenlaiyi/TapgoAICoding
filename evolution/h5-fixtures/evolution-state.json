@@ -1,0 +1,76 @@
+{
+  "_comment": "EVO-054: H5 渲染测试与 Swift 契约测试共享的服务器快照形状。字段名必须与 PhoneRemote.stateJSON 输出一致。",
+  "rev": 12,
+  "hostname": "h5-render-fixture",
+  "appVersion": "0.5.999",
+  "linkVersion": 3,
+  "activeId": null,
+  "activeProjectId": null,
+  "model": null,
+  "projects": [],
+  "threads": [],
+  "transcript": [],
+  "attachedCount": 0,
+  "evolution": {
+    "version": "0.5.999",
+    "phase": "deploy",
+    "phaseIndex": 7,
+    "phaseCount": 9,
+    "status": "running",
+    "message": "三机部署中",
+    "benchmarkScore": 100,
+    "modelEvalBestScore": 88,
+    "backlogOpen": 3,
+    "backlogTop": "EVO-999 下一项",
+    "updatedAt": "2026-09-13T00:00:00Z",
+    "rollbackDrillRuns": 2,
+    "lastRollbackDrillTag": "v0.5.307",
+    "lastRollbackDrillPassed": true,
+    "lastRollbackDrillAt": "2026-09-13T01:00:00Z",
+    "maintenanceRuns": 4,
+    "lastMaintenanceStatus": "ok",
+    "lastMaintenanceAt": "2026-09-13T02:00:00Z",
+    "funnel": {
+      "schemaVersion": 1,
+      "drafts": {
+        "total": 5,
+        "open": 2,
+        "promoted": 3,
+        "staleOverDays": 1
+      },
+      "registered": {
+        "total": 6,
+        "shipped": 5,
+        "unshipped": 1,
+        "staleOverDays": 0
+      },
+      "conversion": {
+        "draftToRegistered": 0.4,
+        "registeredToShipped": 0.8333,
+        "draftToShipped": 0.3333
+      },
+      "waitsDays": {
+        "registeredToShippedMedian": 12.5,
+        "registeredToShippedSamples": 4
+      },
+      "unknownTimingShipped": 1
+    },
+    "metricsSummary": {
+      "recordCount": 55,
+      "latestVersion": "0.5.311",
+      "successRate": 0.98,
+      "medianCycleSeconds": 900,
+      "p95CycleSeconds": 1163.8,
+      "mttrMedianSeconds": 86400,
+      "mttrSampleCount": 3,
+      "unrecoveredFailureCount": 1,
+      "runDurationMedianSeconds": 497,
+      "runDurationP95Seconds": 520,
+      "runTokensTotal": 12000,
+      "runCostUSDTotal": 1.25,
+      "localAppRunning": "0.5.299",
+      "localAppInstalled": "0.5.311",
+      "localAppStale": true
+    }
+  }
+}

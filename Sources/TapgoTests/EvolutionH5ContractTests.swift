@@ -103,6 +103,33 @@ func runEvolutionH5Contract(_ t: TestRunner) {
     let notReferenced = funnelContract.filter { !appJS.contains($0.expression) }.map(\.path)
     t.expect(notReferenced.isEmpty, "h5-contract: app.js 未使用已序列化的 funnel 路径 \(notReferenced)")
 
+    // 共享 fixture（EVO-054）：Node 侧 evolution-h5-render 用同一份状态跑真实
+    // app.js 渲染；这里保证它不会漂移成"服务器永远不会发的形状"——
+    //   1) 能被真实模型解码（否则 fixture 自己就是伪造的）；
+    //   2) 覆盖 app.js 读取的每个顶层键（否则渲染测试会喂出服务器给不出的数据）。
+    let fixtureURL = repoRoot.appendingPathComponent("evolution/h5-fixtures/evolution-state.json")
+    if let fixtureText = try? String(contentsOf: fixtureURL, encoding: .utf8),
+       let fixtureData = fixtureText.data(using: .utf8),
+       let fixtureRoot = try? JSONSerialization.jsonObject(with: fixtureData) as? [String: Any],
+       let fixtureEvolution = fixtureRoot["evolution"] as? [String: Any] {
+        let fixtureMissing = used.subtracting(fixtureEvolution.keys).sorted()
+        t.expect(fixtureMissing.isEmpty,
+                 "h5-contract: 共享 fixture 必须覆盖 app.js 读取的键，缺失 \(fixtureMissing)")
+        if let evolutionData = try? JSONSerialization.data(withJSONObject: fixtureEvolution),
+           let decoded = try? JSONDecoder().decode(PhoneRemote.EvolutionStatus.self, from: evolutionData) {
+            t.expectEqual(decoded.funnel?.registeredToShippedRate, 0.8333,
+                          "h5-contract: fixture 漏斗转化率可解码")
+            t.expectEqual(decoded.metricsSummary?.p95CycleSeconds, 1163.8,
+                          "h5-contract: fixture 指标 p95 可解码")
+            t.expectEqual(decoded.metricsSummary?.localAppStale, true,
+                          "h5-contract: fixture 本机漂移标记可解码")
+        } else {
+            t.expect(false, "h5-contract: 共享 fixture 无法解码为 EvolutionStatus（形状已漂移）")
+        }
+    } else {
+        t.expect(false, "h5-contract: 共享 fixture 不可读（evolution/h5-fixtures/evolution-state.json）")
+    }
+
     let metricsKeys = Set((encoded["metricsSummary"] as? [String: Any])?.keys ?? [:].keys)
     let missingMetrics = Set([
         "p95CycleSeconds", "mttrMedianSeconds", "runDurationMedianSeconds",

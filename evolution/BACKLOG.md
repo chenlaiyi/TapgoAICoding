@@ -80,6 +80,7 @@
 - [x] **EVO-051 维护告警 launchd 自检**：`evolution-maintenance-selftest.sh` 用独立 Label 在真实 launchd 上下文跑一次失败维护（注入必失败演练桩 + 通知捕获 + 临时 state），验证「launchd + 失败 → 告警」这条组合；生产任务与 state 不受影响（v0.5.310）
 - [x] **EVO-052 双实现指标一致性**：新增 Swift 测试用同一份 fixture 同时跑 `evolution-metrics.py` 与 `EvolutionMetrics`，逐项比对 16 个关键指标；当场抓出并修掉 `canary_failed` 只在一侧计入失败的长期分叉（v0.5.311）
 - [x] **EVO-053 H5/App 字段契约**：新增契约测试对照「App 真实序列化的 JSON」与「app.js 真实读取的键」；当场抓出 **app.js 读扁平 funnel 键、而 Swift 序列化的是嵌套文件形状**（手机端漏斗行永远不显示）（v0.5.312）
+- [x] **EVO-054 H5 渲染执行级测试**：用最小 DOM stub 在 node 里跑真实 `app.js`（真实 fetch 回调 → 真实 refresh/render → 断言 DOM 文案与 hidden），40 项断言覆盖完整 evolution 渲染、evolution 消失后恢复、漏斗/指标为空边界、CSS `hidden` 不变量；变异验证有牙（改回修复前漏斗形状 → 5 项失败，边界条件写成 `>=` → 1 项失败）。Swift 侧同时校验共享 fixture 仍是合法服务器 payload（v0.5.313）
 
 ## P9 — 待外部输入
 

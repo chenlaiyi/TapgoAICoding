@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.313", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.313",
+                    summary: "H5 渲染执行级测试:补上「键名对得上但逻辑写错」的最后一段盲区。",
+                    changes: [
+                        "新增 scripts/tests/evolution-h5-render.mjs:用最小 DOM stub 在 node 里加载真实 app.js,通过真实 fetch 回调驱动 refresh() → renderEvolution(),断言渲染进 DOM 的文案与 hidden 状态;共 40 项断言。",
+                        "覆盖四个场景:①完整 evolution(阶段进度 7/9 三机部署、benchmark/model/backlog 元信息、p95 19m / MTTR 24.0h / 单轮 8m / tokens 12000 / $1.25 / 本机 App 落后、漏斗 83%、回滚与维护的 PASS 与时间格式);②点刷新后 evolution 消失 → 卡片隐藏,数据回来 → 完整恢复;③evolution 在但漏斗/指标为空 → 只隐藏这两行(正是 EVO-053 的边界条件);④CSS 不变量:这五行不得被 author display 覆盖,否则 [hidden] 形同虚设。",
+                        "变异验证(证明测试有牙):把 app.js 漏斗改回修复前的扁平键 → 5 项失败,其中「漏斗行可见」正是 EVO-053 的用户可见症状;把可见性边界从 > 0 改成 >= 0 → 1 项失败。还原后 40/40 绿。",
+                        "甄别掉一个假阳性:evolution 为 null 时子行会保留上一帧的 hidden=false,但子行都在已隐藏的卡片子树内、.evolution-card 无 author display 规则,UA 的 [hidden] 生效,用户不可见;因此断言改为「卡片隐藏 + 数据回来完整恢复」,不改生产代码去迎合测试。",
+                        "共享 fixture evolution/h5-fixtures/evolution-state.json:Swift 契约测试(EVO-053)校验它仍是合法服务器 payload(可解码为 EvolutionStatus)且覆盖 app.js 读取的每个键,避免 Node 侧拿服务器给不出的形状自说自话。",
+                        "接入 scripts/tests/run-all.sh 单绿门禁(需要 node,缺失时明确失败而非静默跳过)。"
+                    ],
+                    why: "字符串断言只能证明「键名写对了」,证明不了「条件成立、分支走对、文案算对」。H5 是一千多行真实 UI,此前一次都没被执行过——EVO-053 抓的是形状错配,而形状对了之后「条件永不成立」「边界写成 >=」这类错误仍然只能靠人在真机上肉眼看,这次让它们变成秒级门禁。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.312", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.312",
                     summary: "H5/App 字段契约测试:抓出手机端漏斗行永远不显示的扁平/嵌套错配。",
                     changes: [
