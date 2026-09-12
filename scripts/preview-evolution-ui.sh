@@ -28,5 +28,5 @@ WIDTH="$(sips -g pixelWidth "$OUT" | awk '/pixelWidth/{print $2}')"
 HEIGHT="$(sips -g pixelHeight "$OUT" | awk '/pixelHeight/{print $2}')"
 SIZE="$(stat -f%z "$OUT")"
 echo "EVOLUTION UI VERIFY OK ${WIDTH}x${HEIGHT} bytes=${SIZE} path=${OUT}"
-[[ "$WIDTH" == "1800" && "$HEIGHT" == "1200" ]] || { echo "ERROR: unexpected render size ${WIDTH}x${HEIGHT}" >&2; exit 4; }
+[[ "$WIDTH" == "1800" && "$HEIGHT" == "1960" ]] || { echo "ERROR: unexpected render size ${WIDTH}x${HEIGHT}" >&2; exit 4; }
 [[ "$SIZE" -gt 10000 ]] || { echo "ERROR: snapshot looks blank (${SIZE} bytes)" >&2; exit 5; }

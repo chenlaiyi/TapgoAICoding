@@ -19,6 +19,7 @@ struct EvolutionLogView: View {
     @State private var loadError: String? = nil
     @State private var hasLoaded = false
     @State private var metrics: TapgoCore.EvolutionMetricsSnapshot? = nil
+    @State private var showMetricsDetail = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
     /// 历史日志条目。最新在最上。
@@ -69,6 +70,11 @@ struct EvolutionLogView: View {
         }
         .frame(width: 640, height: 720)
         .background(DSHTheme.bg)
+        .sheet(isPresented: $showMetricsDetail) {
+            EvolutionMetricsDetailView(metrics: metrics ?? .empty)
+                .frame(width: 720, height: 560)
+                .background(DSHTheme.bg)
+        }
         .onAppear(perform: initialExpansion)
     }
 
@@ -173,12 +179,20 @@ struct EvolutionLogView: View {
     }
 
     private func metricsBar(_ m: TapgoCore.EvolutionMetricsSnapshot) -> some View {
-        EvolutionMetricsStrip(metrics: m)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(DSHTheme.bgLayer1)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("自进化指标：成功率\(metricRateText(m))，迭代\(m.iterationCount)次，失败\(m.failedCount)次，中位周期\(metricCycleText(m))，backlog \(m.openBacklog) 项未完成")
+        HStack(spacing: 10) {
+            EvolutionMetricsStrip(metrics: m)
+            Button {
+                showMetricsDetail = true
+            } label: {
+                Label("指标详情", systemImage: "chart.bar.xaxis")
+            }
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(DSHTheme.bgLayer1)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("自进化指标：成功率\(metricRateText(m))，迭代\(m.iterationCount)次，失败\(m.failedCount)次，中位周期\(metricCycleText(m))，backlog \(m.openBacklog) 项未完成")
     }
 
     private func metricStat(_ label: String, _ value: String) -> some View {
@@ -324,6 +338,20 @@ struct EvolutionLogView: View {
     private static func makeHistory() -> [EvolutionEntry] {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
+                EvolutionEntry(
+                    version: "v0.5.273", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.273",
+                    summary: "指标趋势看板:周期趋势/状态时间线/失败原因/flaky 可钻取,详情 sheet 接入日志页。",
+                    changes: [
+                        "EvolutionMetrics 扩展:health/worktree 计数、testRunCount/lastTestStatus、flakySections、环境/真实失败、failureReasons、cyclePoints 与 iterations 时间线;解析 test_run_history.jsonl。",
+                        "新增 EvolutionMetricsDetailView:周期趋势柱状图、状态时间线(失败红点)、失败原因、flaky 列表、health/worktree 通过数。",
+                        "EvolutionLogView 指标条新增「指标详情」按钮,sheet 展示详情视图。",
+                        "离屏 UI fixture 扩展为 900x980@2x 并填入非空周期/时间线/失败/flaky 数据;快照断言 1800x1960 与人工复核通过。",
+                        "EvolutionMetricsTests 扩到 26 项,覆盖新字段、JSONL 解析与 flaky 计算。",
+                        "EVO-017 完成;下一项 EVO-018 自进化评测基准。"
+                    ],
+                    why: "此前指标只有一行汇总,无法看到失败发生在哪一轮、失败原因、flaky 与周期趋势;EVO-017 把指标做成可钻取图表。",
+                    next: "EVO-018 自进化评测基准:固定任务集前后对比,量化每轮进化是否真的提升。"
+                ),
                 EvolutionEntry(
                     version: "v0.5.272", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.272",
                     summary: "真实 UI 回归自动化:进度/指标/diff 组件离屏渲染 PNG 并自动断言。",

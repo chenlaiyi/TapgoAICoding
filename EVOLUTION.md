@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.273 — feat(evolution): 指标趋势看板
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.273`)_
+**Tag**: v0.5.273
+**Test status**: — 3247 passed, 0 failed —
+**Changed**:
+- 新增指标详情 sheet 与可钻取图表
+- 指标模型扩展并补 26 项回归与离屏快照
+
+周期/状态/失败原因/flaky 可钻取,详情接入日志页
+**Why**: 指标只有一行汇总,无法看到失败轮次/原因/flaky 与周期趋势
+**Next**: EVO-018 自进化评测基准: 给固定任务集跑前后对比，量化每轮进化是否真的提升
+
+
 ## v0.5.272 — feat(evolution): UI 离屏回归自动化
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.272`)_

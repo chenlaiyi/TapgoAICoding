@@ -328,7 +328,8 @@ TapgoAICoding/
 - 版本序列：Mac 0.x 记录在 `EVOLUTION.md`；iOS 1.0.x 独立存放于 `evolution/ios/EVOLUTION.md`，不参与 Mac tag/Info.plist/makeHistory 校验。
 - 历史归档：v0.5.5 之前 11 个版本节存放于 `evolution/archive/EVOLUTION-pre-0.5.5.md`，主日志仅保留 v0.5.5 之后。
 - worktree 验证：publish 前从 tag 创建 detached worktree 做 clean-checkout 构建，确保 tag 自包含；失败不推送并标记 `worktree_verify_failed`。
-- UI 回归：`scripts/preview-evolution-ui.sh` 离屏渲染进度/指标/diff 组件为 1800×1200 PNG（不启动第二个 App）；`evolution-ui-snapshot-test` 自动断言尺寸与非空。
+- UI 回归：`scripts/preview-evolution-ui.sh` 离屏渲染进度/指标/diff 组件为 1800×1960 PNG（不启动第二个 App）；`evolution-ui-snapshot-test` 自动断言尺寸与非空。
+- 指标详情：日志页「指标详情」展示周期趋势柱状图、状态时间线、失败原因、flaky 列表与 health/worktree 通过数。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

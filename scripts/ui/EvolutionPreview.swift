@@ -20,11 +20,33 @@ struct EvolutionPreviewMain {
             updatedAt: ISO8601DateFormatter().string(from: Date())
         )
         let metrics = TapgoCore.EvolutionMetricsSnapshot(
-            recordCount: 14, iterationCount: 13, publishedCount: 13, failedCount: 0,
-            successRate: 1.0, medianCycleSeconds: 420,
+            recordCount: 14, iterationCount: 13, publishedCount: 12, failedCount: 1,
+            successRate: 12.0 / 13.0, medianCycleSeconds: 420,
             cycleDurations: [300, 420, 380, 500, 450, 410, 390, 470, 430, 460],
             testPassedTotal: 41000, testVersionCount: 13,
-            openBacklog: 2, doneBacklog: 16
+            openBacklog: 2, doneBacklog: 16,
+            healthPassedCount: 9, healthFailedCount: 0,
+            worktreePassedCount: 4, worktreeFailedCount: 1,
+            testRunCount: 8, lastTestStatus: "pass",
+            flakySections: ["Parser section"],
+            environmentFailureCount: 1, realFailureCount: 2,
+            failureReasons: ["release_failed": 1],
+            cyclePoints: [
+                TapgoCore.EvolutionCyclePoint(version: "0.5.267", seconds: 300),
+                TapgoCore.EvolutionCyclePoint(version: "0.5.268", seconds: 420),
+                TapgoCore.EvolutionCyclePoint(version: "0.5.269", seconds: 380),
+                TapgoCore.EvolutionCyclePoint(version: "0.5.270", seconds: 500),
+                TapgoCore.EvolutionCyclePoint(version: "0.5.271", seconds: 450),
+                TapgoCore.EvolutionCyclePoint(version: "0.5.272", seconds: 390)
+            ],
+            iterations: [
+                TapgoCore.EvolutionIterationPoint(version: "0.5.267", status: "published", date: "2026-09-12T10:00:00Z"),
+                TapgoCore.EvolutionIterationPoint(version: "0.5.268", status: "published", date: "2026-09-12T10:20:00Z"),
+                TapgoCore.EvolutionIterationPoint(version: "0.5.269", status: "published", date: "2026-09-12T10:40:00Z"),
+                TapgoCore.EvolutionIterationPoint(version: "0.5.270", status: "release_failed", date: "2026-09-12T11:00:00Z"),
+                TapgoCore.EvolutionIterationPoint(version: "0.5.271", status: "published", date: "2026-09-12T11:20:00Z"),
+                TapgoCore.EvolutionIterationPoint(version: "0.5.272", status: "published", date: "2026-09-12T11:40:00Z")
+            ]
         )
 
         let content = VStack(alignment: .leading, spacing: 14) {
@@ -34,6 +56,8 @@ struct EvolutionPreviewMain {
             EvolutionMetricsStrip(metrics: metrics)
                 .padding(10)
                 .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 8))
+            EvolutionMetricsDetailView(metrics: metrics)
+                .background(DSHTheme.bgLayer1, in: RoundedRectangle(cornerRadius: 8))
             EvolutionDiffSummaryCard(
                 range: "范围: v0.5.271..v0.5.272",
                 commit: "abc1234 feat(evolution): UI 回归自动化",
@@ -42,7 +66,7 @@ struct EvolutionPreviewMain {
             Spacer()
         }
         .padding(20)
-        .frame(width: 900, height: 600)
+        .frame(width: 900, height: 980)
         .background(DSHTheme.bg)
 
         let renderer = ImageRenderer(content: content)

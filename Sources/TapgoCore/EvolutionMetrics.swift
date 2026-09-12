@@ -25,12 +25,68 @@ public struct EvolutionHistoryEntry: Equatable {
     public let status: String
     public let builtAt: String?
     public let testStatus: String?
+    public let healthCheck: String?
+    public let worktreeVerified: String?
 
-    public init(version: String, status: String, builtAt: String?, testStatus: String?) {
+    public init(
+        version: String, status: String, builtAt: String?, testStatus: String?,
+        healthCheck: String? = nil, worktreeVerified: String? = nil
+    ) {
         self.version = version
         self.status = status
         self.builtAt = builtAt
         self.testStatus = testStatus
+        self.healthCheck = healthCheck
+        self.worktreeVerified = worktreeVerified
+    }
+}
+
+public struct EvolutionTestRunEntry: Equatable {
+    public let status: String?
+    public let failedSections: [String]
+    public let reruns: [(section: String, passed: Bool)]
+    public let environmentFailures: Int
+    public let realFailures: Int
+
+    public init(
+        status: String?, failedSections: [String],
+        reruns: [(section: String, passed: Bool)],
+        environmentFailures: Int, realFailures: Int
+    ) {
+        self.status = status
+        self.failedSections = failedSections
+        self.reruns = reruns
+        self.environmentFailures = environmentFailures
+        self.realFailures = realFailures
+    }
+
+    public static func == (lhs: EvolutionTestRunEntry, rhs: EvolutionTestRunEntry) -> Bool {
+        lhs.status == rhs.status && lhs.failedSections == rhs.failedSections
+            && lhs.environmentFailures == rhs.environmentFailures
+            && lhs.realFailures == rhs.realFailures
+            && lhs.reruns.map { "\($0.section):\($0.passed)" } == rhs.reruns.map { "\($0.section):\($0.passed)" }
+    }
+}
+
+public struct EvolutionCyclePoint: Equatable {
+    public let version: String
+    public let seconds: Double
+
+    public init(version: String, seconds: Double) {
+        self.version = version
+        self.seconds = seconds
+    }
+}
+
+public struct EvolutionIterationPoint: Equatable {
+    public let version: String
+    public let status: String
+    public let date: String?
+
+    public init(version: String, status: String, date: String?) {
+        self.version = version
+        self.status = status
+        self.date = date
     }
 }
 
@@ -46,11 +102,29 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let testVersionCount: Int
     public let openBacklog: Int
     public let doneBacklog: Int
+    public let healthPassedCount: Int
+    public let healthFailedCount: Int
+    public let worktreePassedCount: Int
+    public let worktreeFailedCount: Int
+    public let testRunCount: Int
+    public let lastTestStatus: String?
+    public let flakySections: [String]
+    public let environmentFailureCount: Int
+    public let realFailureCount: Int
+    public let failureReasons: [String: Int]
+    public let cyclePoints: [EvolutionCyclePoint]
+    public let iterations: [EvolutionIterationPoint]
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
         successRate: Double?, medianCycleSeconds: Double?, cycleDurations: [Double],
-        testPassedTotal: Int, testVersionCount: Int, openBacklog: Int, doneBacklog: Int
+        testPassedTotal: Int, testVersionCount: Int, openBacklog: Int, doneBacklog: Int,
+        healthPassedCount: Int = 0, healthFailedCount: Int = 0,
+        worktreePassedCount: Int = 0, worktreeFailedCount: Int = 0,
+        testRunCount: Int = 0, lastTestStatus: String? = nil,
+        flakySections: [String] = [], environmentFailureCount: Int = 0,
+        realFailureCount: Int = 0, failureReasons: [String: Int] = [:],
+        cyclePoints: [EvolutionCyclePoint] = [], iterations: [EvolutionIterationPoint] = []
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -63,6 +137,18 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.testVersionCount = testVersionCount
         self.openBacklog = openBacklog
         self.doneBacklog = doneBacklog
+        self.healthPassedCount = healthPassedCount
+        self.healthFailedCount = healthFailedCount
+        self.worktreePassedCount = worktreePassedCount
+        self.worktreeFailedCount = worktreeFailedCount
+        self.testRunCount = testRunCount
+        self.lastTestStatus = lastTestStatus
+        self.flakySections = flakySections
+        self.environmentFailureCount = environmentFailureCount
+        self.realFailureCount = realFailureCount
+        self.failureReasons = failureReasons
+        self.cyclePoints = cyclePoints
+        self.iterations = iterations
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -81,7 +167,8 @@ public enum EvolutionMetrics {
     public static func compute(
         records: [EvolutionRecordEntry],
         history: [EvolutionHistoryEntry],
-        backlogText: String
+        backlogText: String,
+        testRuns: [EvolutionTestRunEntry] = []
     ) -> EvolutionMetricsSnapshot {
         // 同一版本多次状态迁移时，最后一条生效。
         var finalByVersion: [String: EvolutionHistoryEntry] = [:]
@@ -129,6 +216,37 @@ public enum EvolutionMetrics {
         let openBacklog = countMatches(in: backlogText, pattern: #"^\s*-\s*\[ \]"#)
         let doneBacklog = countMatches(in: backlogText, pattern: #"^\s*-\s*\[[xX]\]"#)
 
+        let healthPassed = finalEntries.filter { $0.healthCheck == "passed" }.count
+        let healthFailed = finalEntries.filter { $0.healthCheck == "failed" }.count
+        let worktreePassed = finalEntries.filter { $0.worktreeVerified == "yes" }.count
+        let worktreeFailed = finalEntries.filter { $0.status == "worktree_verify_failed" }.count
+
+        var reasons: [String: Int] = [:]
+        for entry in finalEntries where failedStatuses.contains(entry.status) {
+            reasons[entry.status, default: 0] += 1
+        }
+
+        var flakySections: [String] = []
+        for run in testRuns {
+            let failed = Set(run.failedSections)
+            for rerun in run.reruns where failed.contains(rerun.section) && rerun.passed {
+                flakySections.append(rerun.section)
+            }
+        }
+        flakySections = Array(Set(flakySections)).sorted()
+
+        var points: [EvolutionCyclePoint] = []
+        for index in 1..<terminalTimes.count {
+            points.append(EvolutionCyclePoint(
+                version: terminalTimes[index].version,
+                seconds: terminalTimes[index].date.timeIntervalSince(terminalTimes[index - 1].date)
+            ))
+        }
+        let iterations = finalEntries
+            .sorted { ($0.builtAt ?? "") < ($1.builtAt ?? "") }
+            .suffix(12)
+            .map { EvolutionIterationPoint(version: $0.version, status: $0.status, date: $0.builtAt) }
+
         return EvolutionMetricsSnapshot(
             recordCount: records.count,
             iterationCount: finalEntries.count,
@@ -140,7 +258,19 @@ public enum EvolutionMetrics {
             testPassedTotal: testTotal,
             testVersionCount: testVersions,
             openBacklog: openBacklog,
-            doneBacklog: doneBacklog
+            doneBacklog: doneBacklog,
+            healthPassedCount: healthPassed,
+            healthFailedCount: healthFailed,
+            worktreePassedCount: worktreePassed,
+            worktreeFailedCount: worktreeFailed,
+            testRunCount: testRuns.count,
+            lastTestStatus: testRuns.last?.status,
+            flakySections: flakySections,
+            environmentFailureCount: testRuns.reduce(0) { $0 + $1.environmentFailures },
+            realFailureCount: testRuns.reduce(0) { $0 + $1.realFailures },
+            failureReasons: reasons,
+            cyclePoints: points,
+            iterations: iterations
         )
     }
 
@@ -156,7 +286,9 @@ public enum EvolutionMetrics {
                 version: version,
                 status: status,
                 builtAt: object["builtAt"] as? String,
-                testStatus: object["testStatus"] as? String
+                testStatus: object["testStatus"] as? String,
+                healthCheck: object["healthCheck"] as? String,
+                worktreeVerified: object["worktreeVerified"] as? String
             ))
         }
         return entries
@@ -180,6 +312,31 @@ public enum EvolutionMetrics {
         return records.sorted { $0.version.localizedStandardCompare($1.version) == .orderedAscending }
     }
 
+    public static func parseTestRuns(_ text: String) -> [EvolutionTestRunEntry] {
+        var entries: [EvolutionTestRunEntry] = []
+        for line in text.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            let failedSections = (object["failedSections"] as? [[String: Any]] ?? [])
+                .compactMap { $0["section"] as? String }
+            var reruns: [(String, Bool)] = []
+            for item in object["reruns"] as? [[String: Any]] ?? [] {
+                if let section = item["section"] as? String, let passed = item["passed"] as? Bool {
+                    reruns.append((section, passed))
+                }
+            }
+            entries.append(EvolutionTestRunEntry(
+                status: object["status"] as? String,
+                failedSections: failedSections,
+                reruns: reruns,
+                environmentFailures: object["environmentFailures"] as? Int ?? 0,
+                realFailures: object["realFailures"] as? Int ?? 0
+            ))
+        }
+        return entries
+    }
+
     public static func load(projectRoot: URL, stateDirectory: URL) -> EvolutionMetricsSnapshot {
         let records = parseRecords(directory: projectRoot.appendingPathComponent("evolution/versions"))
         let historyURL = stateDirectory.appendingPathComponent("evolution_state_history.jsonl")
@@ -192,7 +349,13 @@ public enum EvolutionMetrics {
             historyText = ""
         }
         let backlogText = (try? String(contentsOf: projectRoot.appendingPathComponent("evolution/BACKLOG.md"), encoding: .utf8)) ?? ""
-        return compute(records: records, history: parseHistory(historyText), backlogText: backlogText)
+        let testHistoryText = (try? String(contentsOf: stateDirectory.appendingPathComponent("test_run_history.jsonl"), encoding: .utf8)) ?? ""
+        return compute(
+            records: records,
+            history: parseHistory(historyText),
+            backlogText: backlogText,
+            testRuns: parseTestRuns(testHistoryText)
+        )
     }
 
     private static func passedCount(in testStatus: String?) -> Int {

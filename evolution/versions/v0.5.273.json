@@ -1,0 +1,16 @@
+{
+  "version": "0.5.273",
+  "tag": "v0.5.273",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 指标趋势看板",
+  "changes": [
+    "新增指标详情 sheet 与可钻取图表",
+    "指标模型扩展并补 26 项回归与离屏快照"
+  ],
+  "details": "周期/状态/失败原因/flaky 可钻取,详情接入日志页",
+  "why": "指标只有一行汇总,无法看到失败轮次/原因/flaky 与周期趋势",
+  "next": "EVO-018 自进化评测基准: 给固定任务集跑前后对比，量化每轮进化是否真的提升",
+  "testStatus": "— 3247 passed, 0 failed —",
+  "commitSha": null
+}
