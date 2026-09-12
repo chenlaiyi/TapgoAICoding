@@ -15,6 +15,10 @@
 # 等于部署版本、H5 骨架与 app.js 标记齐全、无 token 请求仍被拒绝。
 # 失败即视为部署失败（版本到位 ≠ 界面可用）。EVOLVE_SKIP_UI_ASSERT=1 可跳过。
 #
+# 可覆盖入口（测试/自定义部署，真实环境走默认值）：
+#   EVOLVE_FLEET_APP / LOCAL_DEST / REMOTE_APP / SSH / SCP / RESTART_SCRIPT /
+#   UI_ASSERT_SCRIPT / RESTART_WAIT / TARGETS_OVERRIDE / OPEN / PGREP
+#
 # Usage:
 #   ./scripts/deploy-fleet.sh                 # version from AppBuilder/Info.plist
 #   ./scripts/deploy-fleet.sh 0.5.257
@@ -48,8 +52,16 @@ while [[ "$#" -gt 0 ]]; do
 done
 [[ -z "$ONLY_HOST" || -z "$EXCLUDE_HOST" ]] || { echo "ERROR: --only and --exclude are mutually exclusive." >&2; exit 2; }
 VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' AppBuilder/Info.plist)}"
-APP="$ROOT/Tapgo AICoding.app"
+# 可覆盖入口（EVO-045）：测试与自定义部署用；真实环境全部落到默认值。
+APP="${EVOLVE_FLEET_APP:-$ROOT/Tapgo AICoding.app}"
 BIN_REL="Contents/MacOS/TapgoAICoding"
+LOCAL_DEST="${EVOLVE_FLEET_LOCAL_DEST:-/Applications/Tapgo AICoding.app}"
+REMOTE_APP="${EVOLVE_FLEET_REMOTE_APP:-/Applications/Tapgo AICoding.app}"
+SSH_BIN="${EVOLVE_FLEET_SSH:-ssh}"
+SCP_BIN="${EVOLVE_FLEET_SCP:-scp}"
+RESTART_SCRIPT="${EVOLVE_FLEET_RESTART_SCRIPT:-$ROOT/scripts/restart-and-resume.sh}"
+UI_ASSERT_SCRIPT="${EVOLVE_FLEET_UI_ASSERT_SCRIPT:-$ROOT/scripts/evolution-ui-assert.sh}"
+RESTART_WAIT="${EVOLVE_FLEET_RESTART_WAIT:-3}"
 [[ -d "$APP" ]] || { echo "ERROR: $APP missing; run scripts/build-app.sh first." >&2; exit 3; }
 BUILT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 [[ "$BUILT" == "$VERSION" ]] || { echo "ERROR: bundle $BUILT != requested $VERSION" >&2; exit 3; }
@@ -57,7 +69,11 @@ BUILT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Co
 # 部署目标来自 scripts/fleet-hosts.sh（唯一真源，预检脚本共用）。
 # shellcheck source=scripts/fleet-hosts.sh
 source "$ROOT/scripts/fleet-hosts.sh"
-ALL_TARGETS=("${TAPGO_FLEET_TARGETS[@]}")
+if [[ -n "${EVOLVE_FLEET_TARGETS_OVERRIDE:-}" ]]; then
+  IFS=',' read -r -a ALL_TARGETS <<< "$EVOLVE_FLEET_TARGETS_OVERRIDE"
+else
+  ALL_TARGETS=("${TAPGO_FLEET_TARGETS[@]}")
+fi
 TARGETS=()
 for target in "${ALL_TARGETS[@]}"; do
   host="${target%%:*}"
@@ -71,23 +87,26 @@ INCLUDE_LOCAL=1
 [[ -n "$EXCLUDE_HOST" && "$EXCLUDE_HOST" == "local" ]] && INCLUDE_LOCAL=0
 
 install_local() {
-  local dest="/Applications/Tapgo AICoding.app"
+  local dest="$LOCAL_DEST"
   echo "==> [local] installing v${VERSION}"
   if [[ -n "$DRY_RUN" ]]; then
     echo "    [dry-run] rm -rf $dest && ditto '$APP' $dest"
     return 0
   fi
   rm -rf "$dest"
-  ditto "$APP" "$dest"
+  if ! ditto "$APP" "$dest"; then
+    echo "ERROR: [local] 复制到 ${dest} 失败" >&2
+    return 1
+  fi
   local got
   got="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$dest/Contents/Info.plist")"
   [[ "$got" == "$VERSION" ]] || { echo "ERROR: local installed version $got != $VERSION" >&2; return 1; }
   echo "==> [local] installed version=${got} (restart deferred)"
   if [[ -n "$RESTART_LOCAL" ]]; then
-    ./scripts/restart-and-resume.sh
+    "$RESTART_SCRIPT"
     if [[ "${EVOLVE_SKIP_UI_ASSERT:-}" == "1" ]]; then
       echo "==> [local] UI assert skipped (EVOLVE_SKIP_UI_ASSERT=1)"
-    elif ! "$ROOT/scripts/evolution-ui-assert.sh" --expect-version "$VERSION"; then
+    elif ! "$UI_ASSERT_SCRIPT" --expect-version "$VERSION"; then
       echo "ERROR: [local] 界面断言失败：版本到位但界面不可用" >&2
       return 1
     else
@@ -114,13 +133,22 @@ install_remote() {
   fi
 
   ditto -c -k --keepParent "$APP" "$zip"
-  scp -q -o BatchMode=yes "$zip" "${host}:${remote_zip}"
+  # 注意：install_remote 是从 `if ! install_remote` 里调用的，bash 在这种上下文
+  # 会关闭 errexit —— 所以每一步都必须显式判状态，否则传输/安装失败会被后续步骤
+  # 掩盖（EVO-045 演练实测：scp 失败时旧代码仍打印 "restart + version verified"）。
+  if ! "$SCP_BIN" -q -o BatchMode=yes "$zip" "${host}:${remote_zip}"; then
+    rm -f "$zip"
+    echo "ERROR: [${host}] 传输失败：无法把 ${zip} 复制到 ${remote_zip}" >&2
+    return 1
+  fi
   rm -f "$zip"
 
-  ssh -o BatchMode=yes "$host" bash -s -- "$VERSION" "$remote_zip" "$remote_unpack" <<'REMOTE'
+  if ! "$SSH_BIN" -o BatchMode=yes "$host" bash -s -- \
+    "$VERSION" "$remote_zip" "$remote_unpack" "$REMOTE_APP" "$RESTART_WAIT" <<'REMOTE'
 set -euo pipefail
-VERSION="$1"; ZIP="$2"; UNPACK="$3"
-APP="/Applications/Tapgo AICoding.app"
+VERSION="$1"; ZIP="$2"; UNPACK="$3"; APP="$4"; WAIT="${5:-3}"
+OPEN_BIN="${EVOLVE_FLEET_OPEN:-open}"
+PGREP_BIN="${EVOLVE_FLEET_PGREP:-pgrep}"
 BIN="$APP/Contents/MacOS/TapgoAICoding"
 SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle"
 HELPER="$APP/Contents/Resources/computer-use-helper/Tapgo Computer Use.app/Contents/MacOS/TapgoComputerUseHelper"
@@ -128,7 +156,7 @@ HELPER="$APP/Contents/Resources/computer-use-helper/Tapgo Computer Use.app/Conte
 pkill -f "$BIN" 2>/dev/null || true
 sleep 1
 rm -rf "$APP" "$UNPACK"
-mkdir -p "$UNPACK"
+mkdir -p "$UNPACK" "$(dirname "$APP")"
 ditto -x -k "$ZIP" "$UNPACK"
 mv "$UNPACK/Tapgo AICoding.app" "$APP"
 rm -rf "$UNPACK" "$ZIP"
@@ -141,13 +169,17 @@ codesign --force --deep --sign - "$APP" >/dev/null 2>&1
 
 GOT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist" 2>/dev/null || echo missing)"
 [[ "$GOT" == "$VERSION" ]] || { echo "ERROR: installed version ${GOT} != ${VERSION}" >&2; exit 1; }
-open "$APP" >/dev/null 2>&1 || true
-sleep 3
-PID="$(pgrep -f "$BIN" 2>/dev/null | head -1 || true)"
+"$OPEN_BIN" "$APP" >/dev/null 2>&1 || true
+sleep "$WAIT"
+PID="$("$PGREP_BIN" -f "$BIN" 2>/dev/null | head -1 || true)"
 echo "VERSION=${GOT}"
 echo "PID=${PID:-none}"
 [[ -n "$PID" ]]
 REMOTE
+  then
+    echo "ERROR: [${host}] 远端安装/重启失败（见上方远端输出）" >&2
+    return 1
+  fi
   echo "==> [${host}] restart + version ${VERSION} verified"
 
   if [[ "${EVOLVE_SKIP_UI_ASSERT:-}" == "1" ]]; then
@@ -155,8 +187,8 @@ REMOTE
     return 0
   fi
   # 把本机的最新断言脚本喂给远端 bash，避免依赖远端仓库版本。
-  if ! ssh -o BatchMode=yes "$host" bash -s -- --expect-version "$VERSION" \
-       < "$ROOT/scripts/evolution-ui-assert.sh"; then
+  if ! "$SSH_BIN" -o BatchMode=yes "$host" bash -s -- --expect-version "$VERSION" \
+       < "$UI_ASSERT_SCRIPT"; then
     echo "ERROR: [${host}] 界面断言失败：版本到位但界面不可用（H5 状态/资源/鉴权）" >&2
     return 1
   fi
@@ -165,7 +197,7 @@ REMOTE
 
 [[ "$INCLUDE_LOCAL" -eq 1 ]] && install_local
 FAIL=0
-for target in "${TARGETS[@]}"; do
+for target in ${TARGETS[@]+"${TARGETS[@]}"}; do
   if ! install_remote "$target"; then
     echo "ERROR: deployment failed on ${target%%:*}" >&2
     FAIL=1

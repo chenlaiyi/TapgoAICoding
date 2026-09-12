@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.302", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.302",
+                    summary: "部署端到端演练:真跑 deploy-fleet,顺带修掉三个真实缺陷。",
+                    changes: [
+                        "新增 scripts/tests/deploy-fleet-test.sh:合成 .app + fake ssh/scp 在本机执行远端 heredoc,覆盖 dry-run 三机、本地安装/回读、本地重启+界面断言、远端安装+回读、界面断言经 ssh 管道、跳过开关、目标过滤,共 32 项断言。",
+                        "修复 deploy-fleet 缺陷 1:install_remote 由 if ! 调用,bash 会关闭 errexit,于是 scp/ssh 安装失败被后续步骤掩盖并打印假的 restart + version verified;现在每一步显式判状态并返回 1。",
+                        "修复缺陷 2:目标全部被过滤掉时 TARGETS 为空数组,bash 3.2 + set -u 下 ${TARGETS[@]} 直接 unbound 崩溃;改为 ${TARGETS[@]+...} 惯用法。",
+                        "修复缺陷 3:远端安装未确保目标父目录存在(真实 /Applications 存在所以没暴露),现在 mkdir -p $(dirname $APP)。",
+                        "deploy-fleet 暴露 EVOLVE_FLEET_* 注入点(APP/LOCAL_DEST/REMOTE_APP/SSH/SCP/RESTART_SCRIPT/UI_ASSERT_SCRIPT/RESTART_WAIT/TARGETS_OVERRIDE/OPEN/PGREP),真实环境全部走默认值。"
+                    ],
+                    why: "deploy-fleet 是发布已公开之后才跑的最后一环,此前只有 stub 覆盖;第一次真跑就发现它会掩饰安装失败——这类缺陷发生时用户看到的是旧版界面,而流水线报成功。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题(候选:canary 提升路径的同类演练、维护任务真实触发一次)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.301", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.301",
                     summary: "UI 快照基线门禁:渲染结果与基线比像素,布局回归不再无人守。",
                     changes: [
