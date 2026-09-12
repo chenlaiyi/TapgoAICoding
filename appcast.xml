@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.272</title>
+            <pubDate>Sat, 12 Sep 2026 19:58:51 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.272</link>
+            <sparkle:version>0.5.272</sparkle:version>
+            <sparkle:shortVersionString>0.5.272</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.272
+
+feat(evolution): UI 离屏回归自动化
+
+## 变更
+
+- 抽出可复用组件并新增离屏渲染 UI 回归
+- 快照断言接入 run-all,preview 纳入受保护路径
+
+进度/指标/diff 组件离屏渲染 PNG 并自动断言,不重启当前会话
+
+## Next
+
+EVO-017 指标趋势看板: 把 flaky、健康检查、失败原因与周期趋势做成可钻取的图表
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.272/Tapgo-AICoding-0.5.272.zip" length="12509325" type="application/octet-stream" sparkle:edSignature="wzb1PLckeqBSajfeHBGj9IOKiR7Y04R1xC8BXTKtU489dzexzUzdqg07fRQ2YcTr1ll7K0NdCLxNwT2lVV4wAA=="/>
+        </item>
+        <item>
             <title>0.5.271</title>
             <pubDate>Sat, 12 Sep 2026 19:50:52 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.271</link>
@@ -51,31 +76,6 @@ feat(evolution): 早期日志归档
 EVO-015 worktree 隔离: 分支隔离后的强化项，每轮在独立 git worktree 执行，主 checkout 零改动
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.270/Tapgo-AICoding-0.5.270.zip" length="12497259" type="application/octet-stream" sparkle:edSignature="ffo5o8LfPieOaW8IT/LWHWrTln2CZSMxQUb/jaXJ2WzKBXb7mkHj6efQo+XYv4f40oMhgFlmGDcffWO716eyCw=="/>
-        </item>
-        <item>
-            <title>0.5.269</title>
-            <pubDate>Sat, 12 Sep 2026 19:36:25 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.269</link>
-            <sparkle:version>0.5.269</sparkle:version>
-            <sparkle:shortVersionString>0.5.269</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.269
-
-feat(evolution): iOS 版本序列分离
-
-## 变更
-
-- iOS 历史移入独立日志,主日志留指针
-- 记录校验按 scope 分流并补 iOS 回归
-
-iOS 1.0.x 独立归档,Mac 0.x 校验不再受跨序列重复干扰
-
-## Next
-
-EVO-014 旧日志归档: 把 v0.5.5 之前与 iOS 历史移入 `evolution/archive/`，主日志保持可读
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.269/Tapgo-AICoding-0.5.269.zip" length="12496987" type="application/octet-stream" sparkle:edSignature="uxc/SRwruXBUjzzplG4o4w2m5yXAZ1Ugjux7kvkbXkMw/JuDppLdNb+N6Ly/37+9ZhGq7tDIROcsrblcwDc4Ag=="/>
         </item>
     </channel>
 </rss>
