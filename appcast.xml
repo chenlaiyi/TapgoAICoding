@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.293</title>
+            <pubDate>Sat, 12 Sep 2026 23:52:17 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.293</link>
+            <sparkle:version>0.5.293</sparkle:version>
+            <sparkle:shortVersionString>0.5.293</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.293
+
+feat(evolution): 远端锁 TTL
+
+## 变更
+
+- evolution-remote-lock.sh 重构：抽 make_lock_commit/push_lock_lease/report_held，新增 --ttl（默认 EVOLVE_LOCK_TTL_SECONDS=14400）。
+- acquire 遇到 started 超过 TTL 的锁会打印 REMOTE LOCK STALE RECLAIMED 并自动接管；元数据读不出 started（例如手推 ref）时只报 HELD 且明确 auto-reclaim disabled，绝不自动接管。
+- 新增 reclaim 子命令：force-with-lease 覆盖当前锁，供 evolve.sh --break-remote-lock 使用（不再先删 ref 再抢，消除竞态窗口）。
+- status 增加 ttlSeconds/ageSeconds/remainingSeconds/stale 输出；--ttl 非整数直接拒绝（exit 2）。
+- 回归：锁测试 4→15 项，失败注入 135→138 项（S29 端到端陈旧锁自动回收后完成发布）；真实 GitHub 远端已实测 stale→自动回收→release→FREE。
+
+陈旧远端锁自动回收，reclaim 显式抢占
+
+## Next
+
+EVO-038 反馈闭环转化率: drafts → check → backlog → 版本的转化率与等待时长
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.293/Tapgo-AICoding-0.5.293.zip" length="12645198" type="application/octet-stream" sparkle:edSignature="rF5Jh2tTr9iqBKqeyac0K4rQFrIZqM5nZuXXp/Y7RvccrsbeGuVBxfSWTHnoyLE/yXg1ALPUQr840F7fkjBODA=="/>
+        </item>
+        <item>
             <title>0.5.292</title>
             <pubDate>Sat, 12 Sep 2026 23:34:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.292</link>
@@ -57,34 +85,6 @@ state json/jsonl 全部带版本，写入前补章、未来版本拒跑
 EVO-036 度量扩展: 周期 P95、失败后 MTTR、单轮 token/时长成本
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.291/Tapgo-AICoding-0.5.291.zip" length="12632368" type="application/octet-stream" sparkle:edSignature="faDpBrkIJV6k7oTN3h4SYSdFcMvQiGBWtZbx+72mfeN3vh2JZbHZRYuY6u6j3UI8yUEW3P0tWUdoCwID5wyoDg=="/>
-        </item>
-        <item>
-            <title>0.5.290</title>
-            <pubDate>Sat, 12 Sep 2026 22:58:50 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.290</link>
-            <sparkle:version>0.5.290</sparkle:version>
-            <sparkle:shortVersionString>0.5.290</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.290
-
-feat(evolution): 发布前环境预检
-
-## 变更
-
-- 新增 scripts/evolution-preflight.sh：检查 git/python3(>=3.9)/xcrun+swift SDK、磁盘、仓库关键文件、受保护清单、state 目录可写、origin 可达、HEAD==origin/main、gh auth、三机 SSH、tag 冲突；失败列原因并以 12 退出。
-- evolve.sh 在算出新版本号后立即执行预检（--publish --resume 同样先过，tag 用 --expect-existing-tag），EVOLVE_SKIP_PREFLIGHT=1 跳过，EVOLVE_PREFLIGHT_SKIP_SSH=1 只跳过三机连通性。
-- 新增 scripts/fleet-hosts.sh 作为三机部署目标唯一真源，deploy-fleet.sh 与预检共用，消除主机清单漂移。
-- 新增 30 项预检回归与 14 项失败注入断言（预检失败零改动、预检通过照常发布、续跑被预检拦住）。
-- 逐层实测：预检真实运行 local 9 项、publish 14 项（含两台远端 Mac SSH）全通过。
-
-gh/SDK/磁盘/远端/三机/tag 统一预检，失败零改动退出
-
-## Next
-
-EVO-035 运行态 schemaVersion: state json/jsonl 加版本字段与迁移，防止字段演进静默失真
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.290/Tapgo-AICoding-0.5.290.zip" length="12631029" type="application/octet-stream" sparkle:edSignature="+4NRKQlnmtLOuDxk+Gh2ZFGif7ODimUnENSAiq1AjFj6qm0lhJPvvSF1Ms5o5sKRLzKSNvTJp9VQVFKLEfyEDA=="/>
         </item>
     </channel>
 </rss>
