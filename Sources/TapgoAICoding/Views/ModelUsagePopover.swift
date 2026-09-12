@@ -166,23 +166,28 @@ struct ModelUsagePopover: View {
         }
     }
 
-    /// 额度来源标签跟随所选模型: 显示各自官方接口的语义名。
+    /// 额度来源标签跟随所选 Provider: 显示各自官方接口的语义名。
+    /// 不能用 `builtIn`（按 apiModel 反查）——DeepSeek V4.1 改名后会误判。
+    private var quotaChannel: TapgoQuotaChannel? {
+        TapgoConfig.resolveSelectedProvider().quotaChannel
+    }
+
     private var sourceLabel: String {
         if rateLimitsLoading { return "刷新中…" }
-        switch TapgoConfig.resolveSelected().builtIn {
-        case .minimaxM3: return "MiniMax coding_plan/remains"
-        case .glm53Flash: return "BigModel monitor/usage/quota/limit"
-        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "DeepSeek user/balance"
+        switch quotaChannel {
+        case .minimax: return "MiniMax coding_plan/remains"
+        case .glm: return "BigModel monitor/usage/quota/limit"
+        case .deepseek: return "DeepSeek user/balance"
         case nil: return "自定义模型未配置额度接口"
         }
     }
 
-    /// 无快照时的占位文案，按模型给出对应指引。
+    /// 无快照时的占位文案，按 Provider 给出对应指引。
     private var emptyQuotaHint: String {
-        switch TapgoConfig.resolveSelected().builtIn {
-        case .minimaxM3: return "等待首次订阅用量上报"
-        case .glm53Flash: return "暂无 GLM 额度数据（检查 auth-glm.json）"
-        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "暂无 DeepSeek 余额数据（检查 auth-deepseek.json）"
+        switch quotaChannel {
+        case .minimax: return "等待首次订阅用量上报"
+        case .glm: return "暂无 GLM 额度数据（检查 auth-glm.json）"
+        case .deepseek: return "暂无 DeepSeek 余额数据（检查 auth-deepseek.json）"
         case nil: return "自定义模型暂无额度数据"
         }
     }

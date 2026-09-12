@@ -909,13 +909,13 @@ struct SidebarView: View {
         var parts: [String]
         let snapshot = store.rateLimits
         let selected = TapgoConfig.resolveSelected()
-        switch selected.builtIn {
-        case .minimaxM3:
+        switch TapgoConfig.resolveSelectedProvider().quotaChannel {
+        case .minimax:
             // MiniMax 接口不返回套餐名, 用本地常量 (实际订阅 Ultra)。
             parts = ["MiniMax", TapgoConfig.planDisplayName]
-        case .glm53Flash:
+        case .glm:
             parts = ["GLM", snapshot?.planLabel ?? "Coding Plan"]
-        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp:
+        case .deepseek:
             parts = ["DeepSeek"]
             if let credits = snapshot?.credits, credits.isVisible, !credits.balance.isEmpty {
                 parts.append("余额 \(credits.balance)")

@@ -1,5 +1,21 @@
 # Evolution Log
 
+## v0.5.315 — fix(quota): DeepSeek V4.1 改名后仍显示余额
+**Date**: 2026-09-13
+**Commit**: _(see `git log -1 v0.5.315`)_
+**Tag**: v0.5.315
+**Test status**: — 3495 passed, 0 failed —
+**Changed**:
+- 新增 TapgoQuotaChannel 与 Provider.quotaChannel：内置供应商稳定映射到 MiniMax / GLM / DeepSeek 官方额度通道，自定义 Provider 为 nil。
+- SessionStore、ModelUsagePopover、SidebarView 统一按 provider.quotaChannel 查询、显示来源与空态，不再用 TapgoModel(rawValue: apiModel) 判定额度通道。
+- 回归：DeepSeek 模型 apiModel 改名 deepseek-v4.1-flash 后，builtInKind 与 quotaChannel 均保持 DeepSeek；真实余额接口同轮验证 HTTP 200 返回 ¥13.85 CNY。
+- makeHistory 同步 prepend v0.5.315，修复首轮四方一致性校验暴露的日志同步缺失。
+
+额度通道改按内置供应商身份路由
+**Why**: DeepSeek V4.1 只是用户在模型设置页改的 apiModel，供应商身份仍是内置 DeepSeek。旧额度路由用 TapgoModel(rawValue:) 反查，改名后得到 nil，于是清空余额并显示「自定义模型未配置额度接口」；额度通道必须跟随供应商而不是可编辑模型名。
+**Next**: EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+
+
 ## v0.5.314 — feat(evolution): 本机版本漂移可老化可查询
 **Date**: 2026-09-13
 **Commit**: _(see `git log -1 v0.5.314`)_

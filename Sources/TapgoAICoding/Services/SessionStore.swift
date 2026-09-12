@@ -140,8 +140,11 @@ final class SessionStore: ObservableObject {
     /// UI 展示用的当前模型名（品牌 + 模型名）。
     var modelDisplayName: String { TapgoConfig.resolveSelected().displayName }
 
-    /// 内置模型非空；自定义模型为 nil（无额度通道）。
-    var selectedBuiltInModel: TapgoModel? { TapgoConfig.resolveSelected().builtIn }
+    /// 当前选中 Provider 的官方额度通道。按供应商身份判定，避免用户把
+    /// DeepSeek 模型 slug 改成 V4.1 后被误判成自定义模型。
+    var selectedQuotaChannel: TapgoQuotaChannel? {
+        TapgoConfig.resolveSelectedProvider().quotaChannel
+    }
 
     /// 拉取当前所选模型的官方套餐余量/余额，写入 `rateLimits`。可重复调用 —
     /// 重叠请求由 `rateLimitsLoading` 合并。三条通道：MiniMax 走
@@ -155,17 +158,17 @@ final class SessionStore: ObservableObject {
             defer { self?.rateLimitsLoading = false }
             do {
                 let snapshot: RateLimitsSnapshot
-                switch self?.selectedBuiltInModel {
-                case .minimaxM3:
+                switch self?.selectedQuotaChannel {
+                case .minimax:
                     snapshot = try await MiniMaxQuotaClient(
                         apiKey: TapgoConfig.providerAPIKey(.minimax),
                         modelName: TapgoConfig.modelName
                     ).fetchRemains()
-                case .glm53Flash:
+                case .glm:
                     snapshot = try await GLMQuotaClient(
                         apiKey: TapgoConfig.providerAPIKey(.zhipu)
                     ).fetchRemains()
-                case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp:
+                case .deepseek:
                     snapshot = try await DeepSeekQuotaClient(
                         apiKey: TapgoConfig.providerAPIKey(.deepseek)
                     ).fetchBalance()

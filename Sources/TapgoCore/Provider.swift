@@ -107,6 +107,15 @@ public enum TapgoProviderKind: String, Codable, CaseIterable, Equatable {
     public var registryID: String { "builtin:" + rawValue }
 }
 
+/// 官方额度接口通道。只由内置供应商身份决定，不能用可编辑的
+/// `ProviderModel.apiModel` 反查：用户在模型设置页把 DeepSeek 改成
+/// `deepseek-v4.1-flash` 后，旧逻辑因枚举查不到而误判为自定义模型。
+public enum TapgoQuotaChannel: String, Codable, Equatable {
+    case minimax
+    case glm
+    case deepseek
+}
+
 /// 供应商（v0.5.53 起）。`builtIn` 非空 = 内置供应商（key/端点允许用户改，
 /// 模型列表可改）；`builtIn == nil` = 用户自建供应商（全部字段可改）。
 public struct Provider: Codable, Identifiable, Equatable {
@@ -156,6 +165,16 @@ public struct Provider: Codable, Identifiable, Equatable {
     }
 
     public var isBuiltin: Bool { builtInKind != nil }
+
+    /// 当前 Provider 对应的官方额度通道；自定义 Provider 无额度接口。
+    public var quotaChannel: TapgoQuotaChannel? {
+        switch builtInKind {
+        case .minimax: return .minimax
+        case .zhipu: return .glm
+        case .deepseek: return .deepseek
+        case nil: return nil
+        }
+    }
 
     /// 单字段校验错误列表。UI 在 Provider / AddProviderSheet 顶部红字列出。
     public var validationErrors: [String] {

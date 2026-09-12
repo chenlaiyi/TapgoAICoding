@@ -127,6 +127,31 @@ func runProviderRegistry(_ t: TestRunner) {
                   "not-a-url",
                   "provider: 内置 baseURL 允许改（保留 v0.5.52 端点覆盖行为）")
 
+    // MARK: - 额度通道按内置供应商，不按可改名 apiModel（v0.5.315）
+    let deepSeek = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
+    t.expectEqual(deepSeek.quotaChannel, .deepseek,
+                  "quota: DeepSeek Provider 路由到余额接口")
+    var renamedDeepSeek = deepSeek
+    renamedDeepSeek.models = [
+        ProviderModel(
+            id: "builtin:deepseek::deepseek-v4-pro",
+            displayName: "DeepSeek V4.1 flash",
+            apiModel: "deepseek-v4.1-flash",
+            contextWindow: 1_048_576,
+            isCustom: false)
+    ]
+    registry.addOrUpdate(renamedDeepSeek)
+    registry.setSelectedProvider(id: renamedDeepSeek.id)
+    registry.setSelectedModel(renamedDeepSeek.models[0], for: renamedDeepSeek)
+    let renamedSelected = registry.resolveSelectedProvider()
+    t.expectEqual(renamedSelected.builtInKind, .deepseek,
+                  "quota: 模型 slug 改名后仍保留 DeepSeek 供应商身份")
+    t.expectEqual(renamedSelected.quotaChannel, .deepseek,
+                  "quota: V4.1 改名不影响 DeepSeek 余额通道")
+    t.expectEqual(registry.resolveSelectedModel(for: renamedSelected).apiModel,
+                  "deepseek-v4.1-flash",
+                  "quota: 仍返回用户改后的实际模型 slug")
+
     // MARK: - reorderProviders（UI 占位）
     let order = [
         TapgoProviderKind.deepseek.registryID,

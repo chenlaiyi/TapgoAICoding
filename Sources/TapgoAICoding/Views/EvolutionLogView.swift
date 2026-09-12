@@ -339,6 +339,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.315", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.315",
+                    summary: "DeepSeek V4.1 改名后余额恢复显示：额度通道改按内置供应商身份路由。",
+                    changes: [
+                        "根因：用户在模型设置页把 DeepSeek 的 apiModel 改成 deepseek-v4.1-flash 后，额度路由仍用 TapgoModel(rawValue: apiModel) 反查，得到 nil，被误判为自定义模型，清空余额并显示「自定义模型未配置额度接口」。实测 /user/balance HTTP 200、余额 ¥13.85 CNY，密钥与网络均正常。",
+                        "新增 TapgoQuotaChannel 与 Provider.quotaChannel：内置供应商稳定映射 MiniMax / GLM / DeepSeek 官方额度通道；模型显示名与 apiModel 可编辑，但不再参与额度通道判定。",
+                        "SessionStore、ModelUsagePopover、SidebarView 统一按 provider.quotaChannel 查询余额、显示来源标签与空态文案；侧栏 DeepSeek 行不再回落成「自定义」。",
+                        "回归：ProviderRegistry 用例把 DeepSeek 模型改名为 deepseek-v4.1-flash，断言 builtInKind / quotaChannel 仍为 DeepSeek 且返回改后 slug；定向 28/28 通过。"
+                    ],
+                    why: "内置供应商的模型列表允许编辑，apiModel 不是稳定身份键。把额度通道绑在可改名 slug 上，任何改名都会静默丢失余额；身份路由必须跟随 builtInKind。",
+                    next: "backlog 仅剩 EVO-021（需操作者提供真实 model runner）；下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.314", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.314",
                     summary: "本机版本漂移从一次性 WARN 变成可老化、可查询、可延续的待办。",
                     changes: [
