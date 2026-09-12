@@ -19,6 +19,16 @@ from pathlib import Path
 KEYWORDS = ("问题", "不能", "无法", "失败", "报错", "崩溃", "不对", "错误",
             "应该是", "希望", "请修复", "bug", "crash", "error", "wrong", "should")
 INPUT_RE = re.compile(r"###\s+turn\s+\d+\s*\n```\n(.*?)\n```", re.S)
+SECTION_RE = re.compile(r'"([^"]+)"')
+
+CATEGORY_RULES = [
+    ("quota", ["额度", "用量", "剩余", "quota", "余额"], ["quota", "remaining", "used", "balance"]),
+    ("performance", ["cpu", "卡顿", "性能", "每个字符", "保存"], ["debounce", "scheduleSave", "cpu"]),
+    ("release", ["签名", "helper", "更新", "版本落后", "release"], ["AppUpdate", "Helper", "release", "version"]),
+    ("version-sync", ["同步", "日志", "makehistory"], ["Evolution log sync", "makeHistory", "version"]),
+    ("ui", ["输入", "快捷键", "按钮", "界面", "样式", "布局", "显示", "问号"], ["desktop-design", "Conversation", "Sidebar", "presentation"]),
+    ("regression", ["崩溃", "报错", "失败", "错误", "crash", "error", "回归"], []),
+]
 
 
 def repo_root(explicit: str | None) -> Path:
@@ -49,6 +59,48 @@ def extract_candidates(text: str) -> list[str]:
 def draft_id(title: str) -> str:
     digest = hashlib.sha1(title.encode("utf-8")).hexdigest()[:8].upper()
     return f"DRAFT-{digest}"
+
+
+def load_test_sections(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    start = text.find("let allSections")
+    if start < 0:
+        return []
+    assign = text.find("= [", start)
+    if assign < 0:
+        return []
+    end = text.find("]", assign)
+    return SECTION_RE.findall(text[assign:end if end > 0 else len(text)])
+
+
+def suggest_for(title: str, sections: list[str]) -> dict:
+    lowered = title.lower()
+    kind = "regression"
+    tokens: list[str] = []
+    for candidate_kind, keywords, section_tokens in CATEGORY_RULES:
+        if any(keyword.lower() in lowered for keyword in keywords):
+            kind = candidate_kind
+            tokens = section_tokens
+            break
+    candidates = []
+    for section in sections:
+        if any(token.lower() in section.lower() for token in tokens):
+            candidates.append(section)
+        if len(candidates) >= 3:
+            break
+    if candidates:
+        suggested = f"xcrun -sdk macosx26.5 swift run TapgoTests --filter '{candidates[0]}' >/dev/null"
+    elif kind == "quota":
+        suggested = "python3 -c '# TODO: 补最小复现响应样例，断言 used = total - remaining'"
+    else:
+        suggested = "# TODO: 补最小复现 fixture / 源码守卫后填写 command"
+    return {
+        "suggestedCheck": suggested,
+        "suggestionKind": kind,
+        "candidateSections": candidates,
+    }
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -90,13 +142,38 @@ def cmd_discover(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_suggest(args: argparse.Namespace) -> int:
+    root = repo_root(args.root)
+    path = Path(args.out) if args.out else root / "evolution/feedback/drafts.json"
+    testmain = Path(args.testmain) if args.testmain else root / "Sources/TapgoTests/TestMain.swift"
+    sections = load_test_sections(testmain)
+    data = load_drafts(path)
+    updated = 0
+    for draft in data.get("drafts", []):
+        suggestion = suggest_for(draft["title"], sections)
+        for key, value in suggestion.items():
+            if draft.get(key) != value:
+                draft[key] = value
+                updated += 1
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"SUGGEST OK: {len(data.get('drafts', []))} draft(s), {updated} field update(s), sections={len(sections)}")
+    return 0
+
+
 def cmd_render(args: argparse.Namespace) -> int:
     root = repo_root(args.root)
     path = Path(args.out) if args.out else root / "evolution/feedback/drafts.json"
     for draft in load_drafts(path).get("drafts", []):
         print(f"- [ ] **{draft['id']}** {draft['title']}")
         print(f"  - source: `{draft.get('source','')}` reported: {draft.get('reported','')}")
-        print("  - 建议补充最小复现 check 后，将其提升到 `registry.json`")
+        if draft.get("suggestionKind"):
+            print(f"  - kind: `{draft['suggestionKind']}`")
+        if draft.get("suggestedCheck"):
+            print(f"  - suggested check: `{draft['suggestedCheck']}`")
+        if draft.get("candidateSections"):
+            print("  - candidate sections: " + ", ".join(draft["candidateSections"]))
+        print("  - 人工确认后，将最小复现 check 提升到 `registry.json`")
     return 0
 
 
@@ -109,6 +186,11 @@ def main() -> int:
     p.add_argument("--feedback-dir", default=None)
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_discover)
+    p = sub.add_parser("suggest")
+    p.add_argument("--root", default=None)
+    p.add_argument("--out", default=None)
+    p.add_argument("--testmain", default=None)
+    p.set_defaults(func=cmd_suggest)
     p = sub.add_parser("render"); p.add_argument("--root", default=None); p.add_argument("--out", default=None); p.set_defaults(func=cmd_render)
     args = parser.parse_args()
     return args.func(args)

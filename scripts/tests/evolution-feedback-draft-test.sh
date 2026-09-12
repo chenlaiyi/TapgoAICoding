@@ -36,4 +36,23 @@ LIST="$("$TOOL" list --out "$OUT")"
 RENDER="$("$TOOL" render --out "$OUT")"
 [[ "$RENDER" == *"快捷键拦截"* && "$RENDER" == *"missing symbol"* ]] || { echo "FAIL render: $RENDER" >&2; exit 1; }
 
-echo "evolution-feedback-draft tests: 5 passed, 0 failed"
+# 建议生成: 分类 + 现有测试 section 匹配 + 幂等。
+SUGGEST="$("$TOOL" suggest --out "$OUT" --testmain "$ROOT/Sources/TapgoTests/TestMain.swift")"
+[[ "$SUGGEST" == *"sections=199"* || "$SUGGEST" == *"sections="* ]] || { echo "FAIL suggest: $SUGGEST" >&2; exit 1; }
+python3 - "$OUT" <<'PY'
+import json, sys
+drafts = json.load(open(sys.argv[1]))["drafts"]
+by_title = {d["title"]: d for d in drafts}
+ui = next(d for t, d in by_title.items() if "快捷键" in t)
+reg = next(d for t, d in by_title.items() if "报错" in t)
+assert ui["suggestionKind"] == "ui", ui
+assert ui["candidateSections"], ui
+assert "TapgoTests --filter" in ui["suggestedCheck"], ui
+assert reg["suggestionKind"] == "regression", reg
+PY
+SECOND_SUGGEST="$("$TOOL" suggest --out "$OUT" --testmain "$ROOT/Sources/TapgoTests/TestMain.swift")"
+[[ "$SECOND_SUGGEST" == *"0 field update(s)"* ]] || { echo "FAIL suggest idempotence: $SECOND_SUGGEST" >&2; exit 1; }
+RENDER2="$("$TOOL" render --out "$OUT")"
+[[ "$RENDER2" == *"suggested check"* ]] || { echo "FAIL render suggestion: $RENDER2" >&2; exit 1; }
+
+echo "evolution-feedback-draft tests: 9 passed, 0 failed"

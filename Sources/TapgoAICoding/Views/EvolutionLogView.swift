@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.281", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.281",
+                    summary: "反馈草稿建议:分类并匹配现有测试 section,生成最小复现命令模板。",
+                    changes: [
+                        "evolution-feedback-draft.py 新增 suggest:按 quota/performance/release/version-sync/ui/regression 分类。",
+                        "解析 TestMain allSections 并匹配候选 section(199 条),生成 `swift run TapgoTests --filter` 命令模板;无匹配时给出 fixture TODO。",
+                        "建议仍只写 drafts.json,不修改正式 registry;render 输出 kind/candidate sections/suggested check。",
+                        "草稿回归扩到 9 项(分类、候选匹配、建议生成、二次 suggest 幂等、render);benchmark feedback 检查纳入 suggest。",
+                        "EVO-026 完成;下一项 EVO-027 多机协调锁。"
+                    ],
+                    why: "草稿此前只有标题,人工仍需从零设计最小复现;EVO-026 先匹配现有测试 section 并给出命令模板,降低提升成本。",
+                    next: "EVO-027 多机协调锁:跨机器避免同时自进化,冲突时给出版本/rebase 指引。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.280", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.280",
                     summary: "手机端自进化状态:快照暴露进度/benchmark/模型评测/backlog,H5 新增自进化卡片。",
                     changes: [

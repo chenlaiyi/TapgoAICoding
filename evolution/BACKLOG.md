@@ -43,6 +43,6 @@
 ## P5 — 远程与协同
 
 - [x] **EVO-025 手机端自进化状态**：snapshot 暴露进度/benchmark/model eval/backlog，H5 新增自进化卡片（v0.5.280）
-- [ ] **EVO-026 草稿 check 建议**：为 `drafts.json` 自动生成候选最小复现命令模板，仍人工确认
+- [x] **EVO-026 草稿 check 建议**：分类 + 匹配现有测试 section + 生成命令模板，仍只写 drafts（v0.5.281）
 - [ ] **EVO-027 多机协调锁**：跨机器避免同时自进化，冲突时给出版本/rebase 指引
 - [ ] **EVO-021 操作者模型基线**：用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
