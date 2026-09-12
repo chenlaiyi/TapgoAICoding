@@ -169,6 +169,9 @@ run_evolve() {
     export EVOLVE_TEST_HISTORY="$state/test_run_history.jsonl"
     export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
     export EVOLVE_STATE_DIR="$state"
+    # 环境预检默认关闭（由 evolution-preflight-test.sh 专测）；
+    # 需要覆盖时显式传 EVOLVE_SKIP_PREFLIGHT=0 + EVOLVE_PREFLIGHT_SCRIPT。
+    export EVOLVE_SKIP_PREFLIGHT="${EVOLVE_SKIP_PREFLIGHT:-1}"
     bash "$repo/scripts/evolve.sh" "$@"
   ) >"$log" 2>&1
 }
@@ -427,6 +430,66 @@ assert_grep "$BASE/s21.log" "already published" "s21 reports nothing to resume"
 set +e; run_evolve "$R18" "$BASE/s18-state" "$BASE/s22.log" --resume; RC=$?; set -e
 assert_eq "$RC" 2 "s22 resume without publish rejected"
 assert_grep "$BASE/s22.log" "only applies to publish mode" "s22 explains publish requirement"
+
+# ---------- S23: 环境预检失败 -> exit 12 且不改任何文件 ----------
+R23="$BASE/s23"; make_repo "$R23"
+cat > "$BASE/s23-preflight.sh" <<'FAKE'
+#!/usr/bin/env bash
+echo "FAIL gh-auth 预检桩失败"
+exit 12
+FAKE
+chmod +x "$BASE/s23-preflight.sh"
+set +e
+EVOLVE_SKIP_PREFLIGHT=0 EVOLVE_PREFLIGHT_SCRIPT="$BASE/s23-preflight.sh" \
+  run_evolve "$R23" "$BASE/s23-state" "$BASE/s23.log" --paths scripts patch "s23" "s23" --next n
+RC=$?
+set -e
+assert_eq "$RC" 12 "s23 exit 12 on preflight failure"
+assert_eq "$(git -C "$R23" rev-list --count HEAD)" 1 "s23 no commit after preflight failure"
+assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R23/AppBuilder/Info.plist")" 0.5.1 "s23 plist untouched"
+assert_no_file "$R23/evolution/versions/v0.5.2.json" "s23 no record"
+assert_grep "$BASE/s23.log" "Environment preflight" "s23 preflight ran"
+assert_grep "$BASE/s23.log" "ENVIRONMENT PREFLIGHT FAILED" "s23 failure surfaced"
+assert_eq "$(git -C "$R23" branch --list 'codex/evolution-v0.5.2' | wc -l | tr -d ' ')" 0 "s23 no iteration branch"
+assert_eq "$(git -C "$R23" status --porcelain --untracked-files=no | wc -l | tr -d ' ')" 0 "s23 tracked files untouched"
+
+# ---------- S24: 预检通过时发布流程照常 ----------
+R24="$BASE/s24"; make_repo "$R24"
+git -C "$R24" init -q --bare "$BASE/s24-origin.git"
+git -C "$R24" remote add origin "$BASE/s24-origin.git"
+git -C "$R24" push -q -u origin main --tags
+cat > "$BASE/s24-preflight.sh" <<'FAKE'
+#!/usr/bin/env bash
+echo "PREFLIGHT OK (fake) $*"
+exit 0
+FAKE
+chmod +x "$BASE/s24-preflight.sh"
+EVOLVE_SKIP_PREFLIGHT=0 EVOLVE_PREFLIGHT_SCRIPT="$BASE/s24-preflight.sh" \
+  run_evolve "$R24" "$BASE/s24-state" "$BASE/s24.log" --publish --paths scripts patch "s24" "s24" --next n
+assert_json "$BASE/s24-state/evolution_state.json" 'd["status"] == "published"' "s24 published with preflight enabled"
+assert_grep "$BASE/s24.log" "Environment preflight" "s24 preflight ran"
+
+# ---------- S25: 续跑同样先过预检，失败则停在原状态 ----------
+R25="$BASE/s25"; make_repo "$R25"
+git -C "$R25" init -q --bare "$BASE/s25-origin.git"
+git -C "$R25" remote add origin "$BASE/s25-origin.git"
+git -C "$R25" push -q -u origin main --tags
+set +e; FAKE_RELEASE_RC=1 run_evolve "$R25" "$BASE/s25-state" "$BASE/s25.log" --publish --paths scripts patch "s25" "s25" --next n; RC=$?; set -e
+assert_eq "$RC" 7 "s25 exit 7 on release failure"
+cat > "$BASE/s25-preflight.sh" <<'FAKE'
+#!/usr/bin/env bash
+echo "FAIL disk 预检桩失败"
+exit 12
+FAKE
+chmod +x "$BASE/s25-preflight.sh"
+set +e
+EVOLVE_SKIP_PREFLIGHT=0 EVOLVE_PREFLIGHT_SCRIPT="$BASE/s25-preflight.sh" \
+  run_evolve "$R25" "$BASE/s25-state" "$BASE/s25.resume.log" --publish --resume
+RC=$?
+set -e
+assert_eq "$RC" 12 "s25 resume blocked by preflight failure"
+assert_json "$BASE/s25-state/evolution_state.json" 'd["status"] == "release_failed"' "s25 state unchanged after blocked resume"
+assert_grep "$BASE/s25.resume.log" "ENVIRONMENT PREFLIGHT FAILED" "s25 resume preflight failure surfaced"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

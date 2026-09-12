@@ -27,6 +27,8 @@
     "scripts/preview-evolution-ui.sh",
     "scripts/tests/**",
     "scripts/evolution-maintenance.sh",
-    "scripts/install-evolution-maintenance.sh"
+    "scripts/install-evolution-maintenance.sh",
+    "scripts/evolution-preflight.sh",
+    "scripts/fleet-hosts.sh"
   ]
 }

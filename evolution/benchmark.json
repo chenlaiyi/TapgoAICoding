@@ -13,7 +13,7 @@
     },
     {
       "id": "metrics-json",
-      "weight": 10,
+      "weight": 5,
       "command": "python3 scripts/evolution-metrics.py --json >/dev/null"
     },
     {
@@ -95,6 +95,11 @@
       "id": "maintenance-helper",
       "weight": 5,
       "command": "test -x scripts/evolution-maintenance.sh && bash scripts/tests/evolution-maintenance-test.sh >/dev/null"
+    },
+    {
+      "id": "preflight-helper",
+      "weight": 5,
+      "command": "test -x scripts/evolution-preflight.sh && bash scripts/tests/evolution-preflight-test.sh >/dev/null"
     }
   ]
 }

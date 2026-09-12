@@ -16,6 +16,10 @@
 #   --resume   读 evolution_state.json,从失败的发布阶段继续:跳过版本号/记录/
 #              测试/构建/commit,直接重跑 worktree 验证、push、release、部署。
 #
+# Environment preflight (EVO-034): 版本号确定后立刻检查工具链/SDK/磁盘/远端/
+#   gh 认证/三机 SSH/tag 冲突,失败以 12 退出且不改任何文件;EVOLVE_SKIP_PREFLIGHT=1
+#   可跳过,EVOLVE_PREFLIGHT_SKIP_SSH=1 只跳过三机连通性。
+#
 # Safety contract (v0.5.257):
 #   1. 工作树/索引必须干净,否则拒绝启动(避免把无关改动卷进自进化 commit)。
 #   2. 仓库级 mkdir 锁,防止同机两个 evolve 进程同时改版本。
@@ -56,6 +60,7 @@ BENCHMARK_TOOL="${EVOLVE_BENCHMARK_TOOL:-$ROOT/scripts/evolution-benchmark.py}"
 REMOTE_LOCK_SCRIPT="${EVOLVE_REMOTE_LOCK_SCRIPT:-$ROOT/scripts/evolution-remote-lock.sh}"
 CANARY_PROMOTE_SCRIPT="${EVOLVE_CANARY_PROMOTE_SCRIPT:-$ROOT/scripts/canary-promote.sh}"
 ARCHIVE_TOOL="${EVOLVE_ARCHIVE_TOOL:-$ROOT/scripts/evolution-archive.py}"
+PREFLIGHT_SCRIPT="${EVOLVE_PREFLIGHT_SCRIPT:-$ROOT/scripts/evolution-preflight.sh}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -583,6 +588,31 @@ echo "  Restart+resume: ./scripts/restart-and-resume.sh"
 echo "==================================================="
 }
 
+# run_env_preflight <version|-> [--expect-existing-tag] — EVO-034 环境预检。
+# 失败返回 12，不修改任何文件；EVOLVE_SKIP_PREFLIGHT=1 可跳过。
+run_env_preflight() {
+  local version="$1" extra="${2:-}"
+  if [[ "${EVOLVE_SKIP_PREFLIGHT:-}" == "1" ]]; then
+    echo "==> Environment preflight skipped (EVOLVE_SKIP_PREFLIGHT=1)"
+    return 0
+  fi
+  local args=(--mode "$MODE" --remote "$UPSTREAM_REMOTE" --sdk "$TAPGO_SDK" --state-dir "$STATE_DIR")
+  if [[ -n "$version" && "$version" != "-" ]]; then
+    args+=(--next-version "$version")
+  fi
+  if [[ "$extra" == "--expect-existing-tag" ]]; then
+    args+=(--expect-existing-tag)
+  fi
+  if [[ "${EVOLVE_PREFLIGHT_SKIP_SSH:-}" == "1" ]]; then
+    args+=(--skip-ssh)
+  fi
+  echo "==> Environment preflight (${MODE})"
+  if ! "$PREFLIGHT_SCRIPT" ${args[@]+"${args[@]}"}; then
+    echo "ENVIRONMENT PREFLIGHT FAILED — 未修改版本号/记录，也未开始测试。" >&2
+    return 12
+  fi
+}
+
 # ---------- 0. Preflight: clean tree + no in-flight git operation ----------
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
   if [[ -f "$GIT_DIR_REAL/$marker" ]]; then
@@ -656,6 +686,9 @@ if [[ "$RESUME" == "1" ]]; then
     echo "  steps:   resume at ${RESUME_STAGE} → ... → published → fleet deploy"
     exit 0
   fi
+  if ! run_env_preflight "$NEW_VERSION" --expect-existing-tag; then
+    exit 12
+  fi
   write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
   publish_tail "$RESUME_STAGE"
   archive_state_history
@@ -680,6 +713,11 @@ OLD_VERSION="${LATEST_TAG#v}"
 [[ -n "$OLD_VERSION" ]] || OLD_VERSION="$FALLBACK_VERSION"
 NEW_VERSION="$(evo_next_version "$OLD_VERSION" "$BUMP")"
 echo "==> Version: ${OLD_VERSION} → ${NEW_VERSION}  (${BUMP})"
+
+# ---------- 1b. Environment preflight (EVO-034) ----------
+if ! run_env_preflight "$NEW_VERSION"; then
+  exit 12
+fi
 
 if git rev-parse -q --verify "refs/tags/v${NEW_VERSION}" >/dev/null; then
   echo "ERROR: tag v${NEW_VERSION} already exists; refusing to reuse it." >&2

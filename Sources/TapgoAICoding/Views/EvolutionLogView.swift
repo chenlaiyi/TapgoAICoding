@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.290", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.290",
+                    summary: "发布前环境预检:工具链/SDK/磁盘/远端/认证/三机/tag 一次查完,失败零改动退出。",
+                    changes: [
+                        "新增 scripts/evolution-preflight.sh:检查 git/python3(>=3.9)/xcrun+swift SDK、磁盘可用空间、仓库关键文件、受保护清单、state 目录可写、origin 可达、HEAD==origin/main、gh auth、三机 SSH、tag 冲突;失败列原因并以 12 退出。",
+                        "evolve.sh 在算出新版本号后立即执行预检(--publish --resume 同样先过,tag 用 --expect-existing-tag),EVOLVE_SKIP_PREFLIGHT=1 跳过,EVOLVE_PREFLIGHT_SKIP_SSH=1 只跳过三机连通性。",
+                        "新增 scripts/fleet-hosts.sh 作为三机部署目标唯一真源,deploy-fleet.sh 与预检共用,消除主机清单漂移。",
+                        "新增 30 项预检回归(通过/gh 未登录/磁盘不足/SDK 缺失/远端不可达/SSH 失败/tag 冲突与续跑/JSON 输出)与 14 项失败注入断言(预检失败零改动、预检通过照常发布、续跑被预检拦住)。",
+                        "逐层实测:预检真实运行 local 9 项、publish 14 项(含两台远端 Mac SSH)全通过。"
+                    ],
+                    why: "此前 gh 未登录、SDK 缺失、远端不可达或三机 SSH 不通都要跑到发布中段才暴露,失败后还要回滚版本改动;EVO-034 把这些外部依赖提前到版本号确定后立刻判定。",
+                    next: "EVO-035 运行态 schemaVersion:state json/jsonl 加版本字段与迁移,防止字段演进静默失真。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.289", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.289",
                     summary: "发布失败续跑:--resume 从失败阶段继续,不再整轮重来。",
                     changes: [

@@ -49,10 +49,10 @@ BIN_REL="Contents/MacOS/TapgoAICoding"
 BUILT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 [[ "$BUILT" == "$VERSION" ]] || { echo "ERROR: bundle $BUILT != requested $VERSION" >&2; exit 3; }
 
-ALL_TARGETS=(
-  "jkmacmini:/Users/chanlaiyi/TapgoAICoding"
-  "chenlaiyi@100.100.191.111:/Users/chenlaiyi/TapgoAICoding"
-)
+# 部署目标来自 scripts/fleet-hosts.sh（唯一真源，预检脚本共用）。
+# shellcheck source=scripts/fleet-hosts.sh
+source "$ROOT/scripts/fleet-hosts.sh"
+ALL_TARGETS=("${TAPGO_FLEET_TARGETS[@]}")
 TARGETS=()
 for target in "${ALL_TARGETS[@]}"; do
   host="${target%%:*}"

@@ -60,7 +60,7 @@
 ## P8 — 运维韧性（下一阶段）
 
 - [x] **EVO-033 发布失败续跑**：`--publish --resume [--resume-from stage]` 从失败阶段继续，不重做版本/测试/构建/commit（v0.5.289）
-- [ ] **EVO-034 发布前环境预检**：gh 认证 / SDK / python3 / 磁盘 / 远端可达 / tag 冲突统一预检后再启动
+- [x] **EVO-034 发布前环境预检**：新增 evolution-preflight.sh（工具链/SDK/磁盘/仓库/远端/gh/三机 SSH/tag），evolve.sh 在版本号确定后立即执行，失败以 12 退出且零改动（v0.5.290）
 - [ ] **EVO-035 运行态 schemaVersion**：state json/jsonl 加版本字段与迁移，防止字段演进静默失真
 - [ ] **EVO-036 度量扩展**：周期 P95、失败后 MTTR、单轮 token/时长成本
 - [ ] **EVO-037 远端锁 TTL**：崩溃后锁按 TTL 自动回收，保留显式抢占入口
