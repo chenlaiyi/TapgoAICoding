@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.312</title>
+            <pubDate>Sun, 13 Sep 2026 04:47:22 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.312</link>
+            <sparkle:version>0.5.312</sparkle:version>
+            <sparkle:shortVersionString>0.5.312</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.312
+
+fix(evolution): H5/App 字段契约
+
+## 变更
+
+- 新增 Evolution: H5 field contract 测试：用 EvolutionStatus 真实序列化出 evolution JSON，再与 app.js 真实读取的键双向对照——H5 读的顶层键必须存在、序列化里未被读取的键必须在白名单内、嵌套对象按「点号路径 ↔ app.js 表达式」逐条对照、关键值必须真的过河。
+- 修复手机端漏斗行静默失能：app.js 原读扁平键（f.draftsOpen/f.registeredTotal），而 FeedbackFunnelSnapshot 序列化的是文件形状，条件永不成立导致「反馈漏斗」行恒隐藏；改为读 funnel.drafts.total / funnel.registered.total / funnel.registered.shipped / funnel.conversion.registeredToShipped，与 Swift 序列化及 state/feedback_funnel.json 格式统一，并保留缺字段兜底。
+- 同步 PhoneRemote 页面断言到新契约（registeredToShippedRate → fConversion.registeredToShipped），避免旧字符串断言在形状统一后误报。
+- .gitignore 忽略 .playwright-cli/（H5 实测产生的临时调试产物），避免脏树预检把发布挡在门外。
+
+手机端反馈漏斗行恢复显示
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.312/Tapgo-AICoding-0.5.312.zip" length="12737368" type="application/octet-stream" sparkle:edSignature="EcRDA8CEEm9L2VAchOzOuiuDeDZnp3g6pQPlgQLpNTdCutPKTM8hOng2F4U2vHtjn1+IlhSKRWg0XotD3IMvDQ=="/>
+        </item>
+        <item>
             <title>0.5.311</title>
             <pubDate>Sun, 13 Sep 2026 04:26:48 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.311</link>
@@ -56,33 +83,6 @@ test(evolution): 维护告警 launchd 自检
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.310/Tapgo-AICoding-0.5.310.zip" length="12736214" type="application/octet-stream" sparkle:edSignature="1T0vyaiL0DA68H+uxqrDZf87U4nKu1OTeB/vvMxXBNTvz/E8ntJbVOUGKKTTlrwpAFZl/LcVIWXN8f2iNpJRCQ=="/>
-        </item>
-        <item>
-            <title>0.5.309</title>
-            <pubDate>Sun, 13 Sep 2026 03:57:04 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.309</link>
-            <sparkle:version>0.5.309</sparkle:version>
-            <sparkle:shortVersionString>0.5.309</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.309
-
-test(evolution): canary 全链路演练
-
-## 变更
-
-- 失败注入矩阵新增 S35：用真实 canary-promote.sh 与真实 deploy-fleet.sh（fake ssh/scp 在本机执行远端 heredoc）跑 evolve.sh --publish --canary，而不是像 S16/S17c 那样用 stub。
-- 验证链路：灰度 deploy --only → release 契约暂存 appcast → canary-promote 拷 appcast 入仓/提交/推送 → gh release edit --draft=false → deploy --exclude → 状态 published 且 canary=fakehost。
-- harness 增强：run_evolve 允许调用方覆盖 EVOLVE_DEPLOY_SCRIPT/EVOLVE_CANARY_PROMOTE_SCRIPT；release stub 在 TAPGO_CANARY=1 时复刻真实 appcast staging 契约。
-- 断言含 origin main 前进 3 个提交、灰度与其余机器都拿到 0.5.2、gh undraft 被调用、UI 断言经真实 deploy-fleet 下发、日志无 ERROR。失败注入矩阵 151→162 项。
-
-真实 promote + 真实 deploy-fleet 跑通 evolve 灰度
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.309/Tapgo-AICoding-0.5.309.zip" length="12735832" type="application/octet-stream" sparkle:edSignature="P9y11VIQXuQRfU4hpRJQaaSWybrZKRTVcTihjt1/4CV1JNcOT08q016vnKZqCGBY7IW5KDMSl7a9aHedrpHgBg=="/>
         </item>
     </channel>
 </rss>
