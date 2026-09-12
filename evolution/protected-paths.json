@@ -11,6 +11,8 @@
     "scripts/evolution-records.py",
     "scripts/evolution-protect.py",
     "scripts/evolution-benchmark.py",
+    "scripts/evolution-model-eval.py",
+    "evolution/model-eval/**",
     "evolution/benchmark.json",
     "scripts/test-failure-report.py",
     "scripts/worktree-verify.sh",

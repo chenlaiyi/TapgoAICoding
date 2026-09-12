@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "fix-off-by-one",
+      "weight": 34,
+      "prompt": "Counter.swift 的循环越界，导致访问 items[items.count]。请修复为不越界的写法，保留既有命名与结构，只改必要的一行。",
+      "fixture": "fix-off-by-one",
+      "checks": [{"command": "grep -q '0..<items.count' Counter.swift"}]
+    },
+    {
+      "id": "cli-json-flag",
+      "weight": 33,
+      "prompt": "cli.sh 目前只输出纯文本。请新增 --json 参数：传入时输出合法 JSON 且 ok 字段为 true，不传时保持原行为。",
+      "fixture": "cli-json-flag",
+      "checks": [{"command": "bash cli.sh --json | python3 -c 'import json,sys; assert json.load(sys.stdin)[\"ok\"] is True'"}]
+    },
+    {
+      "id": "align-version",
+      "weight": 33,
+      "prompt": "VERSION 与 README.md 中的版本号不一致。请把两者对齐到 VERSION 文件的值，不做其它改动。",
+      "fixture": "align-version",
+      "checks": [{"command": "v=$(cat VERSION); grep -q \"版本 $v\" README.md"}]
+    }
+  ]
+}

@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.275", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.275",
+                    summary: "模型级评测框架:3 个固定任务+参考解自检+可插拔 runner,零模型依赖进入 benchmark。",
+                    changes: [
+                        "新增 evolution/model-eval/tasks.json 与 3 个 fixture/reference:off-by-one 修复、CLI --json、版本对齐。",
+                        "新增 scripts/evolution-model-eval.py:list/verify-references/run/report;run 只在显式提供 EVOLVE_MODEL_RUNNER 或 --runner 时执行,工具自身绝不调用模型。",
+                        "逐任务记录通过、耗时、tokens/cost 并写 JSONL;report 对比历史最佳分。",
+                        "新增 6 项 mock runner 回归(完美 runner 100、空 runner 0、报告 best=100);benchmark 加入参考解自检与框架存在性检查,总分仍 100。",
+                        "遵守不委派其它 agent 的约束:自动流程只验证 fixture/检查可用,真实模型基线需操作者显式触发。",
+                        "EVO-019 完成;新增 EVO-021 操作者模型基线、EVO-022 评测预算/超时。"
+                    ],
+                    why: "确定性 benchmark 只能验证基础设施,无法量化模型完成任务的能力;但当前约束禁止 Codex 自动委派其它 agent,因此实现可验证的评测框架与参考解,把真实模型运行留给操作者显式触发。",
+                    next: "EVO-020 把真实用户反馈转成最小复现 fixture;EVO-021 用真实 runner 记录首份模型基线。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.274", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.274",
                     summary: "自进化评测基准:12 项确定性检查总分 100,每轮计分,低于历史最高分即回滚。",
                     changes: [

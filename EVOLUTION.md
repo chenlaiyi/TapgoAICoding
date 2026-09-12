@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.275 — feat(evolution): 模型级评测框架
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.275`)_
+**Tag**: v0.5.275
+**Test status**: — 3254 passed, 0 failed —
+**Changed**:
+- 新增固定任务+参考解自检+可插拔 runner 的模型评测框架
+- 真实模型运行需操作者显式提供 runner,自动流程只做参考解验证
+
+3 个固定任务与参考解自检进入 benchmark,真实模型运行由操作者显式触发
+**Why**: 确定性 benchmark 无法量化模型完成任务能力,但约束禁止自动委派其它 agent
+**Next**: EVO-020 回归用例固化: 把真实用户反馈转成最小可复现 fixture，进入 benchmark
+
+
 ## v0.5.274 — feat(evolution): 自进化评测基准
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.274`)_
