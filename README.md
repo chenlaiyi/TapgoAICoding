@@ -330,6 +330,7 @@ TapgoAICoding/
 - worktree 验证：publish 前从 tag 创建 detached worktree 做 clean-checkout 构建，确保 tag 自包含；失败不推送并标记 `worktree_verify_failed`。
 - UI 回归：`scripts/preview-evolution-ui.sh` 离屏渲染进度/指标/diff 组件为 1800×1960 PNG（不启动第二个 App）；`evolution-ui-snapshot-test` 自动断言尺寸与非空。
 - 指标详情：日志页「指标详情」展示周期趋势柱状图、状态时间线、失败原因、flaky 列表与 health/worktree 通过数。
+- 评测基准：`evolution/benchmark.json` 定义 12 项确定性检查（总分 100）；`evolve.sh` 每轮计分并写入 JSONL 历史，低于历史最高分即回滚不推送。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

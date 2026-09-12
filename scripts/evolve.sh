@@ -47,6 +47,7 @@ HEALTH_SCRIPT="${EVOLVE_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
 TEST_REPORT_TOOL="${EVOLVE_TEST_REPORT_TOOL:-$ROOT/scripts/test-failure-report.py}"
 PROTECT_TOOL="${EVOLVE_PROTECT_TOOL:-$ROOT/scripts/evolution-protect.py}"
 WORKTREE_VERIFY_SCRIPT="${EVOLVE_WORKTREE_VERIFY_SCRIPT:-$ROOT/scripts/worktree-verify.sh}"
+BENCHMARK_TOOL="${EVOLVE_BENCHMARK_TOOL:-$ROOT/scripts/evolution-benchmark.py}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -113,6 +114,7 @@ EVOLUTION="${ROOT}/EVOLUTION.md"
 STATE_DIR="${EVOLVE_STATE_DIR:-$HOME/Library/Application Support/Tapgo AICoding/state}"
 STATE_FILE="${STATE_DIR}/evolution_state.json"
 TEST_HISTORY="${EVOLVE_TEST_HISTORY:-$STATE_DIR/test_run_history.jsonl}"
+BENCHMARK_HISTORY="${EVOLVE_BENCHMARK_HISTORY:-$STATE_DIR/evolution_benchmark_history.jsonl}"
 PROGRESS_FILE="${EVOLVE_PROGRESS_FILE:-$STATE_DIR/evolution_progress.json}"
 STOP_FILE="${EVOLVE_STOP_FILE:-$STATE_DIR/evolution_stop_request}"
 PROGRESS_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -121,6 +123,7 @@ STOPPED=0
 NOTES_FILE=""
 NEW_VERSION=""
 WORKTREE_VERIFIED=""
+BENCHMARK_SCORE=""
 ITER_BRANCH=""
 BRANCH_CREATED=0
 COMMITTED=0
@@ -422,6 +425,15 @@ rm -f "$TEST_LOG"
 echo "==> Tests: ${TEST_LINE}"
 write_progress "tests" 3 "done" "${TEST_LINE}"
 
+echo "==> Evolution benchmark"
+BENCH_OUT="$(python3 "$BENCHMARK_TOOL" run --version "$NEW_VERSION" --history "$BENCHMARK_HISTORY")"
+echo "    ${BENCH_OUT}"
+BENCHMARK_SCORE="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["score"])' "$BENCH_OUT" 2>/dev/null || echo "")"
+if ! python3 "$BENCHMARK_TOOL" compare --history "$BENCHMARK_HISTORY"; then
+  echo "BENCHMARK REGRESSED — rolling back version edits" >&2
+  exit 10
+fi
+
 python3 "$RECORDS_TOOL" set-test-status --version "$NEW_VERSION" --value "$TEST_LINE"
 python3 - "$EVOLUTION" "$TEST_LINE" <<'PYEOF'
 import sys
@@ -531,6 +543,7 @@ write_state() {
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
   EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
   EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
+  EVO_BENCHMARK="$BENCHMARK_SCORE" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -553,6 +566,7 @@ state = {
     "fleetDeploy": os.environ.get("EVO_FLEET", ""),
     "protectedGate": os.environ.get("EVO_PROTECT", ""),
     "worktreeVerified": os.environ.get("EVO_WORKTREE_VERIFIED", ""),
+    "benchmarkScore": int(os.environ["EVO_BENCHMARK"]) if os.environ.get("EVO_BENCHMARK", "").strip().isdigit() else None,
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),

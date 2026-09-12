@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 TERMINAL = {"published", "local_built"}
-FAILED = {"push_failed", "release_failed", "health_failed", "worktree_verify_failed"}
+FAILED = {"push_failed", "release_failed", "health_failed", "worktree_verify_failed", "benchmark_regressed"}
 
 
 def repo_root(explicit: str | None) -> Path:

@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.274", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.274",
+                    summary: "自进化评测基准:12 项确定性检查总分 100,每轮计分,低于历史最高分即回滚。",
+                    changes: [
+                        "新增 evolution/benchmark.json:records/backlog/metrics/日志边界/归档/受保护清单/工具可执行/测试套件/state schema/backlog top/指针等 12 项检查,权重合计 100。",
+                        "新增 scripts/evolution-benchmark.py:run 计分并写 JSONL 历史,compare 与历史最高分对比,latest 查询。",
+                        "evolve.sh 在测试后运行 benchmark;低于历史最佳分退出 10 并回滚,分数写入 evolution_state.json 的 benchmarkScore。",
+                        "Swift EvolutionMetrics 与指标详情视图展示 benchmark 分数;evolution-metrics 将 benchmark_regressed 计入失败。",
+                        "新增 4 项 benchmark 回归;失败注入扩到 66 项,新增 S14 基准回归不提交。",
+                        "EVO-018 完成,P3 backlog 清空;新增 P4 EVO-019 模型级评测与 EVO-020 用户反馈 fixture。"
+                    ],
+                    why: "此前只有单轮健康指标,没有固定基准衡量每轮进化是否真的提升或退化;EVO-018 引入确定性 100 分基准与回归门禁。",
+                    next: "EVO-019 模型级评测:固定提示词任务集,端到端跑通率/耗时/成本对比。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.273", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.273",
                     summary: "指标趋势看板:周期趋势/状态时间线/失败原因/flaky 可钻取,详情 sheet 接入日志页。",
                     changes: [

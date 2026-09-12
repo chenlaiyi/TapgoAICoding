@@ -117,7 +117,18 @@ set -euo pipefail
 echo "fake worktree verify: $*"
 exit "${FAKE_WORKTREE_RC:-0}"
 FAKE
-  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh" "$dir/scripts/worktree-verify.sh"
+  cat > "$dir/scripts/evolution-benchmark.py" <<'FAKE'
+#!/usr/bin/env python3
+import json, os, sys
+command = sys.argv[1] if len(sys.argv) > 1 else ""
+if command == "run":
+    print(json.dumps({"score": 100, "maxScore": 100, "failed": []}))
+    sys.exit(0)
+if command == "compare":
+    sys.exit(int(os.environ.get("FAKE_BENCHMARK_RC", "0")))
+sys.exit(0)
+FAKE
+  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh" "$dir/scripts/worktree-verify.sh" "$dir/scripts/evolution-benchmark.py"
 
   git -C "$dir" init -q
   git -C "$dir" config user.email test@example.com
@@ -141,6 +152,8 @@ run_evolve() {
     export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
     export EVOLVE_PROTECT_TOOL="$repo/scripts/evolution-protect.py"
     export EVOLVE_WORKTREE_VERIFY_SCRIPT="$repo/scripts/worktree-verify.sh"
+    export EVOLVE_BENCHMARK_TOOL="$repo/scripts/evolution-benchmark.py"
+    export EVOLVE_BENCHMARK_HISTORY="$state/evolution_benchmark_history.jsonl"
     export EVOLVE_TEST_HISTORY="$state/test_run_history.jsonl"
     export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
     export EVOLVE_STATE_DIR="$state"
@@ -149,7 +162,7 @@ run_evolve() {
 }
 
 # ---------- S1: dirty path not covered by --paths ----------
-R1="$BASE/s1"; make_repo "$R1"; echo unrelated > "$R1/UNRELATED.txt"
+R1="$BASE/s1"; make_repo "$R1"; echo unrelated > "$R1/UNRELATED.bin"
 set +e; run_evolve "$R1" "$BASE/s1-state" "$BASE/s1.log" --paths scripts patch "s1" "s1" --next n; RC=$?; set -e
 assert_eq "$RC" 9 "s1 exit 9 on uncovered dirty path"
 assert_eq "$(git -C "$R1" rev-list --count HEAD)" 1 "s1 no commit"
@@ -195,6 +208,7 @@ assert_json "$BASE/s4-state/evolution_state.json" 'd["healthCheck"]' "s4 health 
 assert_json "$BASE/s4-state/evolution_state.json" 'd["fleetDeploy"]' "s4 fleet skipped locally"
 assert_grep "$BASE/s4-state/test_run_history.jsonl" '"status": "pass"' "s4 pass recorded"
 assert_grep "$BASE/s4-state/evolution_progress.json" '"status": "done"' "s4 progress done recorded"
+assert_json "$BASE/s4-state/evolution_state.json" 'd["benchmarkScore"]' "s4 benchmark score stored"
 assert_grep "$R4/EVOLUTION.md" "## v0.5.2 — s4 message" "s4 rendered log"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R4/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s4 built app version"
 
@@ -285,6 +299,12 @@ set +e; FAKE_WORKTREE_RC=1 run_evolve "$R13" "$BASE/s13-state" "$BASE/s13.log" -
 assert_eq "$RC" 10 "s13 exit 10 on worktree verify failure"
 assert_json "$BASE/s13-state/evolution_state.json" 'd["status"]' "s13 worktree_verify_failed state"
 assert_eq "$(git -C "$BASE/s13-origin.git" rev-list --count main)" 1 "s13 nothing pushed"
+
+# ---------- S14: benchmark regression aborts before commit ----------
+R14="$BASE/s14"; make_repo "$R14"
+set +e; FAKE_BENCHMARK_RC=1 run_evolve "$R14" "$BASE/s14-state" "$BASE/s14.log" --paths scripts patch "s14" "s14" --next n; RC=$?; set -e
+assert_eq "$RC" 10 "s14 exit 10 on benchmark regression"
+assert_eq "$(git -C "$R14" rev-list --count HEAD)" 1 "s14 no commit on regression"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

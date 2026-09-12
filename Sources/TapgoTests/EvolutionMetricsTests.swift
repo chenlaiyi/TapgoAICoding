@@ -9,7 +9,7 @@ func runEvolutionMetrics(_ t: TestRunner) {
         TapgoCore.EvolutionRecordEntry(version: "0.5.3", date: "2026-09-03", testStatus: "— 300 passed, 0 failed —")
     ]
     let history = [
-        TapgoCore.EvolutionHistoryEntry(version: "0.5.1", status: "published", builtAt: "2026-09-01T00:00:00Z", testStatus: "— 100 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes"),
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.1", status: "published", builtAt: "2026-09-01T00:00:00Z", testStatus: "— 100 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes", benchmarkScore: 100),
         TapgoCore.EvolutionHistoryEntry(version: "0.5.2", status: "committed", builtAt: "2026-09-02T00:00:00Z", testStatus: "— 200 passed, 0 failed —"),
         TapgoCore.EvolutionHistoryEntry(version: "0.5.2", status: "release_failed", builtAt: "2026-09-02T01:00:00Z", testStatus: "— 200 passed, 0 failed —"),
         TapgoCore.EvolutionHistoryEntry(version: "0.5.3", status: "published", builtAt: "2026-09-03T01:00:00Z", testStatus: "— 300 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes")
@@ -40,6 +40,7 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(snapshot.realFailureCount, 1, "metrics: real failures")
     t.expectEqual(snapshot.failureReasons["release_failed"], 1, "metrics: failure reasons")
     t.expectEqual(snapshot.cyclePoints.count, 1, "metrics: cycle points")
+    t.expectEqual(snapshot.lastBenchmarkScore, 100, "metrics: benchmark score")
     t.expectEqual(!snapshot.iterations.isEmpty, true, "metrics: iteration timeline")
 
     let parsedHistory = TapgoCore.EvolutionMetrics.parseHistory(

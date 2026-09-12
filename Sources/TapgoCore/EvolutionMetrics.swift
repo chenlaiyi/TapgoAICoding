@@ -27,10 +27,11 @@ public struct EvolutionHistoryEntry: Equatable {
     public let testStatus: String?
     public let healthCheck: String?
     public let worktreeVerified: String?
+    public let benchmarkScore: Int?
 
     public init(
         version: String, status: String, builtAt: String?, testStatus: String?,
-        healthCheck: String? = nil, worktreeVerified: String? = nil
+        healthCheck: String? = nil, worktreeVerified: String? = nil, benchmarkScore: Int? = nil
     ) {
         self.version = version
         self.status = status
@@ -38,6 +39,7 @@ public struct EvolutionHistoryEntry: Equatable {
         self.testStatus = testStatus
         self.healthCheck = healthCheck
         self.worktreeVerified = worktreeVerified
+        self.benchmarkScore = benchmarkScore
     }
 }
 
@@ -114,6 +116,7 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let failureReasons: [String: Int]
     public let cyclePoints: [EvolutionCyclePoint]
     public let iterations: [EvolutionIterationPoint]
+    public let lastBenchmarkScore: Int?
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
@@ -124,7 +127,8 @@ public struct EvolutionMetricsSnapshot: Equatable {
         testRunCount: Int = 0, lastTestStatus: String? = nil,
         flakySections: [String] = [], environmentFailureCount: Int = 0,
         realFailureCount: Int = 0, failureReasons: [String: Int] = [:],
-        cyclePoints: [EvolutionCyclePoint] = [], iterations: [EvolutionIterationPoint] = []
+        cyclePoints: [EvolutionCyclePoint] = [], iterations: [EvolutionIterationPoint] = [],
+        lastBenchmarkScore: Int? = nil
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -149,6 +153,7 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.failureReasons = failureReasons
         self.cyclePoints = cyclePoints
         self.iterations = iterations
+        self.lastBenchmarkScore = lastBenchmarkScore
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -270,7 +275,11 @@ public enum EvolutionMetrics {
             realFailureCount: testRuns.reduce(0) { $0 + $1.realFailures },
             failureReasons: reasons,
             cyclePoints: points,
-            iterations: iterations
+            iterations: iterations,
+            lastBenchmarkScore: finalEntries
+                .filter { $0.benchmarkScore != nil }
+                .sorted { ($0.builtAt ?? "") < ($1.builtAt ?? "") }
+                .last?.benchmarkScore
         )
     }
 
@@ -288,7 +297,8 @@ public enum EvolutionMetrics {
                 builtAt: object["builtAt"] as? String,
                 testStatus: object["testStatus"] as? String,
                 healthCheck: object["healthCheck"] as? String,
-                worktreeVerified: object["worktreeVerified"] as? String
+                worktreeVerified: object["worktreeVerified"] as? String,
+                benchmarkScore: object["benchmarkScore"] as? Int
             ))
         }
         return entries

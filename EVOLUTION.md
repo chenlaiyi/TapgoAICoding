@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.274 — feat(evolution): 自进化评测基准
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.274`)_
+**Tag**: v0.5.274
+**Test status**: — 3251 passed, 0 failed —
+**Changed**:
+- 新增 12 项 100 分确定性 benchmark 与历史回归门禁
+- benchmark 分数进入 state 与指标详情,失败注入 S14
+
+12 项确定性检查每轮计分,低于历史最高分即回滚不推送
+**Why**: 只有单轮健康指标,没有固定基准衡量每轮进化是否提升或退化
+**Next**: EVO-019 模型级评测基准: 固定提示词任务集，端到端跑通率/耗时/成本对比
+
+
 ## v0.5.273 — feat(evolution): 指标趋势看板
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.273`)_

@@ -1,0 +1,16 @@
+{
+  "version": "0.5.274",
+  "tag": "v0.5.274",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 自进化评测基准",
+  "changes": [
+    "新增 12 项 100 分确定性 benchmark 与历史回归门禁",
+    "benchmark 分数进入 state 与指标详情,失败注入 S14"
+  ],
+  "details": "12 项确定性检查每轮计分,低于历史最高分即回滚不推送",
+  "why": "只有单轮健康指标,没有固定基准衡量每轮进化是否提升或退化",
+  "next": "EVO-019 模型级评测基准: 固定提示词任务集，端到端跑通率/耗时/成本对比",
+  "testStatus": "— 3251 passed, 0 failed —",
+  "commitSha": null
+}

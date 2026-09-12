@@ -46,7 +46,8 @@ struct EvolutionPreviewMain {
                 TapgoCore.EvolutionIterationPoint(version: "0.5.270", status: "release_failed", date: "2026-09-12T11:00:00Z"),
                 TapgoCore.EvolutionIterationPoint(version: "0.5.271", status: "published", date: "2026-09-12T11:20:00Z"),
                 TapgoCore.EvolutionIterationPoint(version: "0.5.272", status: "published", date: "2026-09-12T11:40:00Z")
-            ]
+            ],
+            lastBenchmarkScore: 100
         )
 
         let content = VStack(alignment: .leading, spacing: 14) {
