@@ -339,6 +339,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.303", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.303",
+                    summary: "修复部署参数经 ssh 拼接失真:改用哨兵值并加远端路径/等待校验。",
+                    changes: [
+                        "真机暴露:ssh 把 ProgramArguments 用空格拼成一条命令,空参数会消失导致后续参数整体前移,v0.5.302 的部署因此把 App 装到名为 3 的目录并报 PID=none(发布已公开、三机却没更新)。",
+                        "改用非空哨兵:本地传 \"${REMOTE_APP_OVERRIDE:--}\",远端 \"APP=${4:--}\" 且 - 映射回 /Applications/Tapgo AICoding.app(默认路径留在远端脚本内,不再经 ssh 传递)。",
+                        "远端新增守卫:APP 必须以 .app 结尾、WAIT 必须是整数,配置失真立刻报错而不是装到莫名其妙的位置。",
+                        "EVOLVE_FLEET_REMOTE_APP 含空格直接在本地拒绝并说明原因(ssh 会重新分词)。",
+                        "演练升级:fake ssh 改为忠实模拟参数拼接(bash -c \"bash -s -- $args\"),新增哨兵静态断言、非 .app 路径拒绝、ssh 参数留痕;测试 32→42 项。",
+                        "安全护栏:演练在临时目录外直接拒绝运行,并断言所有安装目标都在 $TMP 内——测试曾尝试写真实 /Applications,现已不可能。",
+                        "真机复验:v0.5.302 补跑部署 → jkmacmini/chenlaiyi-mbp 均 PID 正常且 UI ASSERT OK。"
+                    ],
+                    why: "这是本仓库第三次同类问题:$VAR 紧跟全角字符、空参数经 ssh 拼接消失——都是「看起来能跑、真机才炸」的边界。EVO-045 的价值就在于它用真跑把它逼出来了。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮候选:canary 提升路径同类演练、维护任务真实触发一次。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.302", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.302",
                     summary: "部署端到端演练:真跑 deploy-fleet,顺带修掉三个真实缺陷。",
                     changes: [

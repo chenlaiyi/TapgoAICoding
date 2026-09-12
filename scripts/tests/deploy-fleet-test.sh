@@ -11,6 +11,14 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/tapgo-deploy-fleet.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 VERSION="9.9.9"
 
+# 安全护栏：这个演练会真的执行远端 heredoc（fake ssh 在本机跑），必须确保
+# 所有安装目标都在临时目录里；否则可能覆盖真实 /Applications（v0.5.302 曾误试）。
+case "$TMP" in
+  /var/folders/*|/tmp/*|/private/var/folders/*) ;;
+  *) echo "REFUSING: TMP=$TMP 不在临时目录" >&2; exit 2 ;;
+esac
+for required in EVOLVE_FLEET_LOCAL_DEST EVOLVE_FLEET_REMOTE_APP; do :; done
+
 PASSED=0; FAILED=0
 ok()  { PASSED=$((PASSED + 1)); }
 bad() { FAILED=$((FAILED + 1)); echo "FAIL: $1" >&2; }
@@ -48,7 +56,9 @@ done
 stdin_file="$(mktemp)"
 cat > "$stdin_file"
 { echo "=== ssh stdin ==="; cat "$stdin_file"; } >> "$SSH_STDIN_LOG"
-bash "$stdin_file" ${args[@]+"${args[@]}"}
+{ echo "=== ssh args ==="; printf '[%s]\n' ${args[@]+"${args[@]}"}; } >> "${SSH_ARGS_LOG:-/dev/null}"
+# 忠实模拟真实 ssh：把参数用空格拼成一条远端命令（含空格的参数会被重新分词）
+bash -c "bash -s -- ${args[*]-}" < "$stdin_file"
 FAKE
 
 cat > "$TMP/bin/scp" <<'FAKE'
@@ -115,10 +125,11 @@ chmod +x "$TMP/restart.sh" "$TMP/ui-ok.sh" "$TMP/ui-fail.sh"
 FLEET_ENV_LIST=(
   "PATH=$TMP/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   "SSH_STDIN_LOG=$TMP/ssh-stdin.log"
+  "SSH_ARGS_LOG=$TMP/ssh-args.log"
   "RESTART_LOG=$TMP/restart.log"
   "EVOLVE_FLEET_APP=$APP"
   "EVOLVE_FLEET_LOCAL_DEST=$TMP/local/Applications/Tapgo AICoding.app"
-  "EVOLVE_FLEET_REMOTE_APP=$TMP/remote/Applications/Tapgo AICoding.app"
+  "EVOLVE_FLEET_REMOTE_APP=$TMP/remote.app"
   "EVOLVE_FLEET_SSH=$TMP/bin/ssh"
   "EVOLVE_FLEET_SCP=$TMP/bin/scp"
   "EVOLVE_FLEET_RESTART_SCRIPT=$TMP/restart.sh"
@@ -176,7 +187,7 @@ rm -f "$TMP/ssh-stdin.log"
 run_fleet "$TMP/remote.log" --only fakehost "$VERSION"
 expect_eq "remote install: exit 0" "0" "$RC"
 expect_eq "remote install: version landed" "$VERSION" \
-  "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$TMP/remote/Applications/Tapgo AICoding.app/Contents/Info.plist")"
+  "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$TMP/remote.app/Contents/Info.plist")"
 expect_grep "remote install: verified line" "restart + version ${VERSION} verified" "$TMP/remote.log"
 expect_grep "remote install: ui assert piped over ssh" "UI-ASSERT-STUB OK" "$TMP/ssh-stdin.log"
 expect_grep "remote install: assert passed" "UI assert passed" "$TMP/remote.log"
@@ -196,7 +207,7 @@ expect_grep "skip ui assert: reported" "UI assert skipped" "$TMP/skip.log"
 rm -f "$TMP/ssh-stdin.log"
 set +e
 env "${FLEET_ENV_LIST[@]}" EVOLVE_FLEET_PGREP="$TMP/bin/pgrep-none" \
-  EVOLVE_FLEET_REMOTE_APP="$TMP/remote-nopid/Applications/Tapgo AICoding.app" \
+  EVOLVE_FLEET_REMOTE_APP="$TMP/remote-nopid.app" \
   "$TOOL" --only fakehost "$VERSION" > "$TMP/nopid.log" 2>&1
 RC=$?
 set -e
@@ -208,7 +219,7 @@ expect_no_grep "missing pid: must not claim verified" "verified" "$TMP/nopid.log
 # ---------- 8. scp 失败 → 立刻失败，且不再误报 verified ----------
 set +e
 env "${FLEET_ENV_LIST[@]}" EVOLVE_FLEET_SCP="$TMP/bin/scp-fail" \
-  EVOLVE_FLEET_REMOTE_APP="$TMP/remote-scpfail/Applications/Tapgo AICoding.app" \
+  EVOLVE_FLEET_REMOTE_APP="$TMP/remote-scpfail.app" \
   "$TOOL" --only fakehost "$VERSION" > "$TMP/scpfail.log" 2>&1
 RC=$?
 set -e
@@ -224,6 +235,43 @@ run_fleet "$TMP/allfiltered.log" --exclude fakehost "$VERSION"
 expect_eq "all remotes filtered: exit 0" "0" "$RC"
 expect_no_grep "all remotes filtered: no unbound error" "unbound variable" "$TMP/allfiltered.log"
 expect_no_grep "all remotes filtered: no remote install" "\[fakehost\] installing" "$TMP/allfiltered.log"
+
+# ---------- 10. 含空格的远端覆盖必须被拒绝（ssh 会拆参数）----------
+set +e
+env "${FLEET_ENV_LIST[@]}" EVOLVE_FLEET_REMOTE_APP="/tmp/bad path/Tapgo AICoding.app" \
+  "$TOOL" --only fakehost "$VERSION" > "$TMP/badpath.log" 2>&1
+RC=$?
+set -e
+expect_eq "spaced remote path: rejected" "2" "$RC"
+expect_grep "spaced remote path: reason" "不能含空格" "$TMP/badpath.log"
+expect_grep "remote default lives in remote script" "/Applications/Tapgo AICoding.app" "$ROOT/scripts/deploy-fleet.sh"
+
+# ---------- 11. 哨兵：不传覆盖时用非空 "-"，避免空参数被 ssh 吃掉 ----------
+expect_grep "sentinel: passed as 4th arg" 'REMOTE_APP_OVERRIDE:--' "$ROOT/scripts/deploy-fleet.sh"
+expect_grep "sentinel: remote maps dash to default" 'APP="${4:--}"' "$ROOT/scripts/deploy-fleet.sh"
+expect_grep "sentinel: default lives in remote script" '/Applications/Tapgo AICoding.app' "$ROOT/scripts/deploy-fleet.sh"
+expect_grep "remote app override must be space-free" '不能含空格' "$ROOT/scripts/deploy-fleet.sh"
+
+# ---------- 12. 远端路径不像 .app → 远端守卫拒绝 ----------
+set +e
+env "${FLEET_ENV_LIST[@]}" EVOLVE_FLEET_REMOTE_APP="$TMP/not-an-app" \
+  "$TOOL" --only fakehost "$VERSION" > "$TMP/badapp.log" 2>&1
+RC=$?
+set -e
+[[ "$RC" -ne 0 ]] && ok || bad "non-.app remote path must fail"
+expect_grep "non-.app path: guard message" "远端 App 路径异常" "$TMP/badapp.log"
+
+# ---------- 13. 护栏自检：所有安装目标都在临时目录 ----------
+GUARD_OK=1
+for entry in "${FLEET_ENV_LIST[@]}"; do
+  case "$entry" in
+    EVOLVE_FLEET_LOCAL_DEST=*|EVOLVE_FLEET_REMOTE_APP=*)
+      value="${entry#*=}"
+      [[ "$value" == "$TMP"/* ]] || { GUARD_OK=0; echo "  越界目标: $value" >&2; }
+      ;;
+  esac
+done
+[[ "$GUARD_OK" -eq 1 ]] && ok || bad "演练目标必须全部位于 $TMP 之内"
 
 echo "deploy-fleet tests: $PASSED passed, $FAILED failed"
 [[ "$FAILED" -eq 0 ]]

@@ -56,7 +56,14 @@ VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionStr
 APP="${EVOLVE_FLEET_APP:-$ROOT/Tapgo AICoding.app}"
 BIN_REL="Contents/MacOS/TapgoAICoding"
 LOCAL_DEST="${EVOLVE_FLEET_LOCAL_DEST:-/Applications/Tapgo AICoding.app}"
-REMOTE_APP="${EVOLVE_FLEET_REMOTE_APP:-/Applications/Tapgo AICoding.app}"
+# 远端 App 路径默认值写在远端脚本内部：ssh 会把 ProgramArguments 拼成一条命令，
+# 含空格的路径作为参数传过去会被拆开（v0.5.302 真机踩过：sleep 收到 AICoding.app）。
+# 需要覆盖时用不含空格的路径（EVOLVE_FLEET_REMOTE_APP）。
+REMOTE_APP_OVERRIDE="${EVOLVE_FLEET_REMOTE_APP:-}"
+if [[ -n "$REMOTE_APP_OVERRIDE" && "$REMOTE_APP_OVERRIDE" == *" "* ]]; then
+  echo "ERROR: EVOLVE_FLEET_REMOTE_APP 不能含空格（ssh 参数会被重新分词）：$REMOTE_APP_OVERRIDE" >&2
+  exit 2
+fi
 SSH_BIN="${EVOLVE_FLEET_SSH:-ssh}"
 SCP_BIN="${EVOLVE_FLEET_SCP:-scp}"
 RESTART_SCRIPT="${EVOLVE_FLEET_RESTART_SCRIPT:-$ROOT/scripts/restart-and-resume.sh}"
@@ -127,7 +134,7 @@ install_remote() {
   local remote_unpack="/tmp/tapgo-fleet-unpack-${VERSION}"
   echo "==> [${host}] installing v${VERSION}"
   if [[ -n "$DRY_RUN" ]]; then
-    echo "    [dry-run] copy bundle to ${host}${repo}, install /Applications, restart, verify version/PID + UI assert"
+    echo "    [dry-run] copy bundle to ${host}${repo}, install ${REMOTE_APP_OVERRIDE:-/Applications/Tapgo AICoding.app}, restart, verify version/PID + UI assert"
     rm -f "$zip"
     return 0
   fi
@@ -143,10 +150,17 @@ install_remote() {
   fi
   rm -f "$zip"
 
+  # 注意：空字符串参数经 ssh 拼接会消失，导致后续参数整体前移（v0.5.302 真机踩过：
+  # $4 变成等待秒数、App 被装到名为 "3" 的目录）。所以用 "-" 作哨兵，永不传空串。
   if ! "$SSH_BIN" -o BatchMode=yes "$host" bash -s -- \
-    "$VERSION" "$remote_zip" "$remote_unpack" "$REMOTE_APP" "$RESTART_WAIT" <<'REMOTE'
+    "$VERSION" "$remote_zip" "$remote_unpack" "${REMOTE_APP_OVERRIDE:--}" "$RESTART_WAIT" <<'REMOTE'
 set -euo pipefail
-VERSION="$1"; ZIP="$2"; UNPACK="$3"; APP="$4"; WAIT="${5:-3}"
+VERSION="$1"; ZIP="$2"; UNPACK="$3"
+APP="${4:--}"
+[[ "$APP" == "-" ]] && APP="/Applications/Tapgo AICoding.app"   # 默认值留在远端，避免空格路径被 ssh 拆开
+WAIT="${5:-3}"
+[[ "$APP" == *.app ]] || { echo "ERROR: 远端 App 路径异常（应为 *.app）: ${APP}" >&2; exit 1; }
+[[ "$WAIT" =~ ^[0-9]+$ ]] || { echo "ERROR: 远端等待秒数非法: ${WAIT}" >&2; exit 1; }
 OPEN_BIN="${EVOLVE_FLEET_OPEN:-open}"
 PGREP_BIN="${EVOLVE_FLEET_PGREP:-pgrep}"
 BIN="$APP/Contents/MacOS/TapgoAICoding"
