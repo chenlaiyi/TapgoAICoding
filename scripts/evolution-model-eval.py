@@ -78,18 +78,11 @@ def cmd_verify_references(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_run(args: argparse.Namespace) -> int:
-    root = repo_root(args.root)
-    tasks = load_tasks(root)
-    if args.tasks:
-        wanted = set(args.tasks.split(","))
-        tasks = [t for t in tasks if t["id"] in wanted]
-    runner = args.runner or os.environ.get("EVOLVE_MODEL_RUNNER", "")
-    if not runner:
-        print("ERROR: no runner. Set EVOLVE_MODEL_RUNNER or pass --runner.", file=sys.stderr)
-        print("       This tool never invokes a model by itself.", file=sys.stderr)
-        return 2
-
+def evaluate_tasks(
+    root: Path, tasks: list[dict], runner: str, version: str = "",
+    timeout_seconds: float = 300, max_tokens: int = 200000,
+    max_cost_usd: float = 5.0, max_duration_seconds: float = 1800,
+) -> dict:
     results = []
     total_weight = sum(int(t["weight"]) for t in tasks)
     earned = 0
@@ -99,13 +92,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     wall_started = time.monotonic()
 
     for task in tasks:
-        if args.max_duration_seconds > 0 and time.monotonic() - wall_started > args.max_duration_seconds:
+        if max_duration_seconds > 0 and time.monotonic() - wall_started > max_duration_seconds:
             aborted_reason = "max_duration"
             break
-        if args.max_tokens > 0 and spent_tokens > args.max_tokens:
+        if max_tokens > 0 and spent_tokens > max_tokens:
             aborted_reason = "max_tokens"
             break
-        if args.max_cost_usd > 0 and spent_cost > args.max_cost_usd:
+        if max_cost_usd > 0 and spent_cost > max_cost_usd:
             aborted_reason = "max_cost"
             break
 
@@ -121,7 +114,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         try:
             proc = subprocess.run(
                 ["bash", "-c", runner], env=env, capture_output=True, text=True,
-                timeout=args.timeout_seconds if args.timeout_seconds > 0 else None,
+                timeout=timeout_seconds if timeout_seconds > 0 else None,
             )
             runner_exit = proc.returncode
             stdout = proc.stdout or ""
@@ -160,8 +153,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         shutil.rmtree(workdir, ignore_errors=True)
 
     score = (earned / total_weight * 100) if total_weight else 0
-    record = {
-        "version": args.version or "",
+    return {
+        "version": version,
         "ranAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "score": round(score, 2),
         "maxScore": 100,
@@ -169,37 +162,111 @@ def cmd_run(args: argparse.Namespace) -> int:
         "totalTokens": sum(r["tokens"] or 0 for r in results) or None,
         "totalCostUSD": sum(r["costUSD"] or 0 for r in results) or None,
         "limits": {
-            "timeoutSeconds": args.timeout_seconds,
-            "maxTokens": args.max_tokens,
-            "maxCostUSD": args.max_cost_usd,
-            "maxDurationSeconds": args.max_duration_seconds,
+            "timeoutSeconds": timeout_seconds,
+            "maxTokens": max_tokens,
+            "maxCostUSD": max_cost_usd,
+            "maxDurationSeconds": max_duration_seconds,
         },
         "aborted": aborted_reason,
         "completedTasks": len(results),
         "totalTasks": len(tasks),
         "tasks": results,
     }
-    if args.out:
-        path = Path(args.out)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-    print(json.dumps({
+
+
+def write_record(path: str | None, record: dict) -> None:
+    if not path:
+        return
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+
+
+def summarize(record: dict) -> dict:
+    return {
         "score": record["score"],
-        "failed": [r["taskId"] for r in results if not r["passed"]],
+        "failed": [r["taskId"] for r in record["tasks"] if not r["passed"]],
         "aborted": record["aborted"],
         "completedTasks": record["completedTasks"],
         "totalTasks": record["totalTasks"],
         "totalDurationSeconds": record["totalDurationSeconds"],
         "totalTokens": record["totalTokens"],
         "totalCostUSD": record["totalCostUSD"],
-    }, ensure_ascii=False))
-    if aborted_reason:
+    }
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    root = repo_root(args.root)
+    tasks = load_tasks(root)
+    if args.tasks:
+        wanted = set(args.tasks.split(","))
+        tasks = [t for t in tasks if t["id"] in wanted]
+    runner = args.runner or os.environ.get("EVOLVE_MODEL_RUNNER", "")
+    if not runner:
+        print("ERROR: no runner. Set EVOLVE_MODEL_RUNNER or pass --runner.", file=sys.stderr)
+        print("       This tool never invokes a model by itself.", file=sys.stderr)
+        return 2
+    record = evaluate_tasks(
+        root, tasks, runner, version=args.version,
+        timeout_seconds=args.timeout_seconds, max_tokens=args.max_tokens,
+        max_cost_usd=args.max_cost_usd, max_duration_seconds=args.max_duration_seconds,
+    )
+    write_record(args.out, record)
+    print(json.dumps(summarize(record), ensure_ascii=False))
+    if record["aborted"]:
         return 3
-    if args.fail_under is not None and score < args.fail_under:
+    if args.fail_under is not None and record["score"] < args.fail_under:
         return 1
+    return 0
+
+
+def cmd_ab(args: argparse.Namespace) -> int:
+    root = repo_root(args.root)
+    tasks = load_tasks(root)
+    if args.tasks:
+        wanted = set(args.tasks.split(","))
+        tasks = [t for t in tasks if t["id"] in wanted]
+    if len(args.runners) < 2:
+        print("ERROR: ab needs at least two --runners \"name=command\" entries.", file=sys.stderr)
+        return 2
+    runs = []
+    for index, spec in enumerate(args.runners):
+        name, sep, command = spec.partition("=")
+        if not sep or not command.strip():
+            name, command = f"runner{index + 1}", spec
+        record = evaluate_tasks(
+            root, tasks, command, version=args.version,
+            timeout_seconds=args.timeout_seconds, max_tokens=args.max_tokens,
+            max_cost_usd=args.max_cost_usd, max_duration_seconds=args.max_duration_seconds,
+        )
+        runs.append({"name": name, **record})
+    baseline = runs[0]["score"]
+    comparison = [{
+        "name": run["name"],
+        "score": run["score"],
+        "deltaVsBaseline": round(run["score"] - baseline, 2),
+        "durationSeconds": run["totalDurationSeconds"],
+        "tokens": run["totalTokens"],
+        "costUSD": run["totalCostUSD"],
+        "aborted": run["aborted"],
+    } for run in runs]
+    record = {
+        "version": args.version or "",
+        "ranAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "baseline": runs[0]["name"],
+        "comparison": comparison,
+        "runs": runs,
+    }
+    write_record(args.out, record)
+    print(json.dumps({"baseline": runs[0]["name"], "comparison": comparison}, ensure_ascii=False))
+    if args.require_candidate_not_worse:
+        for item in comparison[1:]:
+            if item["score"] < baseline:
+                print(f"AB REGRESSED: {item['name']} score={item['score']} < baseline={baseline}", file=sys.stderr)
+                return 1
     return 0
 
 
@@ -236,6 +303,18 @@ def main() -> int:
     p.add_argument("--max-cost-usd", type=float, default=5.0)
     p.add_argument("--max-duration-seconds", type=float, default=1800)
     p.set_defaults(func=cmd_run)
+    p = sub.add_parser("ab")
+    p.add_argument("--root", default=None)
+    p.add_argument("--runners", action="append", required=True)
+    p.add_argument("--tasks", default=None)
+    p.add_argument("--out", default=None)
+    p.add_argument("--version", default="")
+    p.add_argument("--timeout-seconds", type=float, default=300)
+    p.add_argument("--max-tokens", type=int, default=200000)
+    p.add_argument("--max-cost-usd", type=float, default=5.0)
+    p.add_argument("--max-duration-seconds", type=float, default=1800)
+    p.add_argument("--require-candidate-not-worse", action="store_true")
+    p.set_defaults(func=cmd_ab)
     p = sub.add_parser("report"); p.add_argument("--history", required=True); p.set_defaults(func=cmd_report)
     args = parser.parse_args()
     return args.func(args)

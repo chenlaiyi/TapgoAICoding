@@ -64,7 +64,7 @@
     {
       "id": "model-eval-framework",
       "weight": 5,
-      "command": "test -x scripts/evolution-model-eval.py && test -s evolution/model-eval/tasks.json"
+      "command": "test -x scripts/evolution-model-eval.py && test -s evolution/model-eval/tasks.json && python3 scripts/evolution-model-eval.py ab --help >/dev/null"
     },
     {
       "id": "feedback-regressions",

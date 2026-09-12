@@ -79,6 +79,28 @@ assert r["aborted"] == "max_tokens", r
 assert r["completedTasks"] == 1, r
 PY
 
+# A/B: candidate worse than baseline must fail the gate.
+set +e
+AB_BAD="$("$TOOL" ab --root "$ROOT" --tasks fix-off-by-one \
+  --runners "perfect=$TMP/perfect-runner.sh" --runners "lazy=$TMP/lazy-runner.sh" \
+  --require-candidate-not-worse)"
+AB_BAD_RC=$?
+set -e
+[[ "$AB_BAD_RC" -eq 1 ]] || { echo "FAIL ab regression rc=$AB_BAD_RC" >&2; exit 1; }
+python3 - "$AB_BAD" <<'PY'
+import json, sys
+r = json.loads(sys.argv[1])
+assert r["baseline"] == "perfect", r
+assert r["comparison"][0]["score"] == 100, r
+assert r["comparison"][1]["score"] == 0, r
+assert r["comparison"][1]["deltaVsBaseline"] == -100.0, r
+PY
+
+# A/B: candidate better than baseline passes.
+"$TOOL" ab --root "$ROOT" --tasks fix-off-by-one \
+  --runners "lazy=$TMP/lazy-runner.sh" --runners "perfect=$TMP/perfect-runner.sh" \
+  --require-candidate-not-worse >/dev/null
+
 # Operator wrapper refuses without explicit confirmation.
 set +e
 "$ROOT/scripts/run-model-eval.sh" >/dev/null 2>&1
@@ -86,4 +108,4 @@ WRAP_RC=$?
 set -e
 [[ "$WRAP_RC" -eq 2 ]] || { echo "FAIL wrapper rc=$WRAP_RC" >&2; exit 1; }
 
-echo "evolution-model-eval tests: 10 passed, 0 failed"
+echo "evolution-model-eval tests: 13 passed, 0 failed"

@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.279", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.279",
+                    summary: "多 runner A/B:同一任务集对比通过率/耗时/成本,候选退化即失败。",
+                    changes: [
+                        "重构 evolution-model-eval.py:抽出 evaluate_tasks 共享逻辑,run 与新增 ab 子命令复用预算/超时/检查。",
+                        "ab 支持多个 --runners \"name=command\",输出 comparison(score/delta/duration/tokens/cost/aborted),并写 JSONL。",
+                        "--require-candidate-not-worse 在任一候选低于 basline 分数时 exit 1;mock runner 回归扩到 13 项。",
+                        "benchmark 的 model-eval-framework 检查纳入 ab 可用性,总分仍 100。",
+                        "EVO-024 完成;新增 P5 EVO-025 手机端状态、EVO-026 草稿 check 建议、EVO-027 多机协调锁;EVO-021 仍等待操作者 runner。"
+                    ],
+                    why: "单 runner 只能给出绝对分,无法回答模型/策略替换是否更好;EVO-024 用同一任务集做 A/B 并提供退化门禁。",
+                    next: "EVO-025 把版本/进度/benchmark/模型评测/backlog 暴露到手机端状态快照。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.278", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.278",
                     summary: "反馈草稿自动提取:扫描快照关键词并去重,草稿与正式回归表分离。",
                     changes: [
