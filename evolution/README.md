@@ -42,6 +42,8 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 - `scripts/evolution-metrics.py` 从记录 + `evolution_state_history.jsonl` 汇总成功率、失败、中位周期与测试总量。
 - `evolution/BACKLOG.md` 是下一轮选点的单一待办清单；完成后把 `[ ]` 改为 `[x]` 并附版本号。
 - `scripts/evolution-backlog.py` 提供 `list / top / validate`；Swift 侧 `TapgoCore.EvolutionBacklog` 使用同一格式驱动 App 横幅与 kickoff prompt。
+- `scripts/evolution-schema.py` 是运行态 schema 注册表与门禁（EVO-035）：`status` 看版本分布，`ensure` 给历史记录补章 `schemaVersion` 后校验，`validate` 只读校验；未来版本以 13 退出，读者（Python/Swift/H5）保持宽容。
+- 当前版本：`evolution_state.json` / `evolution_state_history.jsonl` = v2，`evolution_progress.json`、`test_run_history.jsonl`、`evolution_benchmark_history.jsonl`、`model_eval_history.jsonl`、`rollback_drill_history.jsonl`、`maintenance_history.jsonl` = v1；新增 artifact 必须先在 registry 登记。
 - `scripts/evolution-preflight.sh` 是发布前环境预检（EVO-034）：工具链、SDK、磁盘、仓库布局、受保护清单、state 目录、origin 可达、HEAD==origin/main、gh 认证、三机 SSH、tag 冲突；失败以 12 退出且不改任何文件。
 - `evolve.sh` 在算出新版本号后立即跑预检（`EVOLVE_SKIP_PREFLIGHT=1` 可跳过，`EVOLVE_PREFLIGHT_SKIP_SSH=1` 只跳过三机连通性）；`--publish --resume` 同样先过预检（tag 用 `--expect-existing-tag`）。
 - 三机部署目标在 `scripts/fleet-hosts.sh` 维护唯一真源，`deploy-fleet.sh` 与预检共用，避免主机清单漂移。

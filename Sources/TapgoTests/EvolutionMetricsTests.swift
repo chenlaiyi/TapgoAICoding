@@ -83,4 +83,11 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(loaded.maintenanceRuns, 2, "metrics: load maintenance runs")
     t.expectEqual(loaded.lastMaintenanceStatus, "failed", "metrics: load maintenance status")
     t.expectEqual(loaded.lastMaintenanceAt, "2026-09-02T10:00:00Z", "metrics: load maintenance timestamp")
+
+    // EVO-035：schemaVersion 门禁在写入侧；读者对未来版本保持宽容，不因版本号崩掉。
+    try? "{\"schemaVersion\":99,\"status\":\"ok\",\"ranAt\":\"2026-09-03T10:00:00Z\"}\n".write(
+        to: state.appendingPathComponent("maintenance_history.jsonl"), atomically: true, encoding: .utf8)
+    let futureSchema = TapgoCore.EvolutionMetrics.load(projectRoot: tmp, stateDirectory: state)
+    t.expectEqual(futureSchema.maintenanceRuns, 1, "metrics: tolerates future schemaVersion")
+    t.expectEqual(futureSchema.lastMaintenanceStatus, "ok", "metrics: reads fields regardless of schemaVersion")
 }

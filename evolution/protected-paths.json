@@ -29,6 +29,7 @@
     "scripts/evolution-maintenance.sh",
     "scripts/install-evolution-maintenance.sh",
     "scripts/evolution-preflight.sh",
-    "scripts/fleet-hosts.sh"
+    "scripts/fleet-hosts.sh",
+    "scripts/evolution-schema.py"
   ]
 }

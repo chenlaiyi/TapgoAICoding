@@ -19,6 +19,8 @@
 # Environment preflight (EVO-034): 版本号确定后立刻检查工具链/SDK/磁盘/远端/
 #   gh 认证/三机 SSH/tag 冲突,失败以 12 退出且不改任何文件;EVOLVE_SKIP_PREFLIGHT=1
 #   可跳过,EVOLVE_PREFLIGHT_SKIP_SSH=1 只跳过三机连通性。
+# Runtime state schema (EVO-035): 预检后立即补齐/校验 state json/jsonl 的
+#   schemaVersion,发现未来版本以 13 退出;EVOLVE_SKIP_SCHEMA_CHECK=1 可跳过。
 #
 # Safety contract (v0.5.257):
 #   1. 工作树/索引必须干净,否则拒绝启动(避免把无关改动卷进自进化 commit)。
@@ -61,6 +63,7 @@ REMOTE_LOCK_SCRIPT="${EVOLVE_REMOTE_LOCK_SCRIPT:-$ROOT/scripts/evolution-remote-
 CANARY_PROMOTE_SCRIPT="${EVOLVE_CANARY_PROMOTE_SCRIPT:-$ROOT/scripts/canary-promote.sh}"
 ARCHIVE_TOOL="${EVOLVE_ARCHIVE_TOOL:-$ROOT/scripts/evolution-archive.py}"
 PREFLIGHT_SCRIPT="${EVOLVE_PREFLIGHT_SCRIPT:-$ROOT/scripts/evolution-preflight.sh}"
+SCHEMA_TOOL="${EVOLVE_SCHEMA_TOOL:-$ROOT/scripts/evolution-schema.py}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -613,6 +616,24 @@ run_env_preflight() {
   fi
 }
 
+# run_schema_gate — EVO-035：补齐/校验运行态 schemaVersion，版本不兼容时拒绝继续。
+run_schema_gate() {
+  if [[ "${EVOLVE_SKIP_SCHEMA_CHECK:-}" == "1" ]]; then
+    echo "==> Runtime state schema check skipped (EVOLVE_SKIP_SCHEMA_CHECK=1)"
+    return 0
+  fi
+  local out=""
+  if ! out="$(python3 "$SCHEMA_TOOL" ensure --quiet 2>&1)"; then
+    echo "$out" >&2
+    echo "SCHEMA GATE FAILED — 运行态文件 schema 不兼容，未修改任何文件。" >&2
+    return 13
+  fi
+  if [[ -n "$out" ]]; then
+    echo "$out"
+  fi
+  echo "==> Runtime state schema: ok"
+}
+
 # ---------- 0. Preflight: clean tree + no in-flight git operation ----------
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
   if [[ -f "$GIT_DIR_REAL/$marker" ]]; then
@@ -689,6 +710,9 @@ if [[ "$RESUME" == "1" ]]; then
   if ! run_env_preflight "$NEW_VERSION" --expect-existing-tag; then
     exit 12
   fi
+  if ! run_schema_gate; then
+    exit 13
+  fi
   write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
   publish_tail "$RESUME_STAGE"
   archive_state_history
@@ -717,6 +741,11 @@ echo "==> Version: ${OLD_VERSION} → ${NEW_VERSION}  (${BUMP})"
 # ---------- 1b. Environment preflight (EVO-034) ----------
 if ! run_env_preflight "$NEW_VERSION"; then
   exit 12
+fi
+
+# ---------- 1c. Runtime state schema gate (EVO-035) ----------
+if ! run_schema_gate; then
+  exit 13
 fi
 
 if git rev-parse -q --verify "refs/tags/v${NEW_VERSION}" >/dev/null; then

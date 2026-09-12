@@ -108,6 +108,7 @@ def cmd_record(args: argparse.Namespace) -> int:
     parsed = parse_log(text)
     reruns = json.loads(args.reruns) if args.reruns else []
     record = {
+        "schemaVersion": 1,
         "version": args.version,
         "ranAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "status": args.status,

@@ -154,6 +154,7 @@ def evaluate_tasks(
 
     score = (earned / total_weight * 100) if total_weight else 0
     return {
+        "schemaVersion": 1,
         "version": version,
         "ranAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "score": round(score, 2),
@@ -254,6 +255,7 @@ def cmd_ab(args: argparse.Namespace) -> int:
         "aborted": run["aborted"],
     } for run in runs]
     record = {
+        "schemaVersion": 1,
         "version": args.version or "",
         "ranAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "baseline": runs[0]["name"],

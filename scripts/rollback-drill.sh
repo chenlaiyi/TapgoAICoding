@@ -38,7 +38,7 @@ fail_record() {
 import datetime, json, os, sys
 path, tag, reason = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(os.path.dirname(path), exist_ok=True)
-record = {"tag": tag, "ranAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "passed": False, "reason": reason}
+record = {"schemaVersion": 1, "tag": tag, "ranAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "passed": False, "reason": reason}
 with open(path, "a", encoding="utf-8") as fh:
     fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 PY
@@ -88,6 +88,7 @@ import datetime, json, os, sys
 path, tag, source, full_build = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] == "1"
 os.makedirs(os.path.dirname(path), exist_ok=True)
 record = {
+    "schemaVersion": 1,
     "tag": tag,
     "ranAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "passed": True,

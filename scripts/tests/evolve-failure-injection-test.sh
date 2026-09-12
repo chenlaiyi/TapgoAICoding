@@ -40,8 +40,10 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/test-failure-report.py" "$dir/scripts/test-failure-report.py"
   cp "$SOURCE_ROOT/scripts/evolution-protect.py" "$dir/scripts/evolution-protect.py"
   cp "$SOURCE_ROOT/scripts/evolution-remote-lock.sh" "$dir/scripts/evolution-remote-lock.sh"
+  cp "$SOURCE_ROOT/scripts/evolution-schema.py" "$dir/scripts/evolution-schema.py"
   cp "$SOURCE_ROOT/evolution/protected-paths.json" "$dir/evolution/protected-paths.json"
   chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py" "$dir/scripts/evolution-remote-lock.sh"
+  chmod +x "$dir/scripts/evolution-schema.py"
   cat > "$dir/evolution/BACKLOG.md" <<'MD'
 # Backlog
 ## P0
@@ -490,6 +492,32 @@ set -e
 assert_eq "$RC" 12 "s25 resume blocked by preflight failure"
 assert_json "$BASE/s25-state/evolution_state.json" 'd["status"] == "release_failed"' "s25 state unchanged after blocked resume"
 assert_grep "$BASE/s25.resume.log" "ENVIRONMENT PREFLIGHT FAILED" "s25 resume preflight failure surfaced"
+
+# ---------- S26: 运行态 schema 未来版本 -> exit 13 且不改文件 ----------
+R26="$BASE/s26"; make_repo "$R26"
+mkdir -p "$BASE/s26-state"
+printf '%s\n' '{"schemaVersion":99,"version":"9.9.9","ranAt":"2026-09-01T00:00:00Z","status":"pass"}' \
+  > "$BASE/s26-state/test_run_history.jsonl"
+set +e; run_evolve "$R26" "$BASE/s26-state" "$BASE/s26.log" --paths scripts patch "s26" "s26" --next n; RC=$?; set -e
+assert_eq "$RC" 13 "s26 exit 13 on future schemaVersion"
+assert_eq "$(git -C "$R26" rev-list --count HEAD)" 1 "s26 no commit"
+assert_no_file "$R26/evolution/versions/v0.5.2.json" "s26 no record"
+assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R26/AppBuilder/Info.plist")" 0.5.1 "s26 plist untouched"
+assert_grep "$BASE/s26.log" "SCHEMA GATE FAILED" "s26 schema gate surfaced"
+assert_eq "$(python3 -c 'import json;print(json.loads(open("'"$BASE"'/s26-state/test_run_history.jsonl").readline())["schemaVersion"])')" 99 "s26 future record untouched"
+
+# ---------- S27: 缺 schemaVersion 的历史记录自动补章后流程照常 ----------
+R27="$BASE/s27"; make_repo "$R27"
+git -C "$R27" init -q --bare "$BASE/s27-origin.git"
+git -C "$R27" remote add origin "$BASE/s27-origin.git"
+git -C "$R27" push -q -u origin main --tags
+mkdir -p "$BASE/s27-state"
+printf '%s\n' '{"tag":"v0.5.1","passed":true,"ranAt":"2026-09-01T00:00:00Z"}' \
+  > "$BASE/s27-state/rollback_drill_history.jsonl"
+run_evolve "$R27" "$BASE/s27-state" "$BASE/s27.log" --publish --paths scripts patch "s27" "s27" --next n
+assert_json "$BASE/s27-state/evolution_state.json" 'd["status"] == "published"' "s27 published after stamping"
+assert_grep "$BASE/s27-state/rollback_drill_history.jsonl" '"schemaVersion": 1' "s27 legacy record stamped"
+assert_grep "$BASE/s27.log" "Runtime state schema: ok" "s27 schema gate ran"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

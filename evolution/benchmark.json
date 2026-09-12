@@ -39,7 +39,7 @@
     {
       "id": "machinery-executable",
       "weight": 5,
-      "command": "test -x scripts/worktree-verify.sh && test -x scripts/preview-evolution-ui.sh && test -x scripts/deploy-fleet.sh && test -x scripts/test-failure-report.py"
+      "command": "test -x scripts/worktree-verify.sh && test -x scripts/preview-evolution-ui.sh && test -x scripts/deploy-fleet.sh && test -x scripts/test-failure-report.py && test -x scripts/evolution-schema.py"
     },
     {
       "id": "test-suite-present",
@@ -49,7 +49,8 @@
     {
       "id": "state-schema",
       "weight": 5,
-      "command": "python3 -c 'import json,os,pathlib; p=pathlib.Path(os.environ[\"HOME\"])/\"Library/Application Support/Tapgo AICoding/state/evolution_state_history.jsonl\"; lines=[l for l in p.read_text().splitlines() if l.strip()] if p.exists() else []; sys=__import__(\"sys\"); last=json.loads(lines[-1]) if lines else {}; sys.exit(0 if (not lines or (\"healthCheck\" in last and \"worktreeVerified\" in last)) else 1)'"
+      "command": "python3 scripts/evolution-schema.py validate --quiet",
+      "detail": "运行态 state json/jsonl 的 schemaVersion 已知且最新状态字段齐全"
     },
     {
       "id": "backlog-top",

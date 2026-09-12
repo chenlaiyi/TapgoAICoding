@@ -72,6 +72,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             "detail": (proc.stderr or proc.stdout).strip()[:200] if not passed else "",
         })
     record = {
+        "schemaVersion": 1,
         "version": args.version or "",
         "ranAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "score": score,

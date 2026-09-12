@@ -131,6 +131,7 @@ def passed(value: str) -> bool | None:
     return True if value == "passed" else False if value == "failed" else None
 
 record = {
+    "schemaVersion": 1,
     "ranAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "status": status,
     "durationSeconds": int(duration),
