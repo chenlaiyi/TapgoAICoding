@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.304</title>
+            <pubDate>Sun, 13 Sep 2026 02:38:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.304</link>
+            <sparkle:version>0.5.304</sparkle:version>
+            <sparkle:shortVersionString>0.5.304</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.304
+
+test(evolution): canary 提升演练
+
+## 变更
+
+- 新增 scripts/tests/canary-promote-test.sh：fixture 仓库 + 裸 origin + 假 gh/deploy，真跑 canary-promote.sh 的 9 组场景共 31 项断言。
+- 覆盖：参数缺失(2)/缺 canary appcast(3)/正常提升（appcast 入仓并推送 + gh release edit --draft=false + deploy --exclude canary）/重复提升不产生多余提交仍部署。
+- 关键安全属性：推送失败(4)与 draft 提升失败(5)都会中止且不部署其余机器；其余机器部署失败报 6；Release 不存在或没有 gh 时只提示并继续。
+- 顺带修掉硬编码：canary-promote 之前写死 git push origin，现在与 evolve.sh/sync-upstream.sh 一致走 tapgo_upstream_remote（EVOLVE_CANARY_REMOTE 可覆盖）。
+- 新增 EVOLVE_CANARY_{REPO_ROOT,GH,DEPLOY_SCRIPT} 注入点；测试接进 run-all 与 benchmark。另加内容行引号守卫（makeHistory 内容行必须恰好 2 个引号）。
+
+真跑推 appcast/解除 draft/部署其余机器并分级失败
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.304/Tapgo-AICoding-0.5.304.zip" length="12701568" type="application/octet-stream" sparkle:edSignature="jCeNNrGsfsSwW19uyCmskzYIUT9BkduPza2waMseZGSyzrzjEbfH1lLuQHudg+6wCt63lQQ/vmANN4oivuUxDg=="/>
+        </item>
+        <item>
             <title>0.5.303</title>
             <pubDate>Sun, 13 Sep 2026 02:25:50 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.303</link>
@@ -58,34 +86,6 @@ test(evolution): 部署端到端演练
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.302/Tapgo-AICoding-0.5.302.zip" length="12700578" type="application/octet-stream" sparkle:edSignature="0jXJWqZhIQwg3NMgHmn2m8No1lc//7wc/3vg3PSFHm7rjWjIXdoh4xihqZVekrY62uyGI4MaFZ6swsqamK5MDg=="/>
-        </item>
-        <item>
-            <title>0.5.301</title>
-            <pubDate>Sun, 13 Sep 2026 01:56:56 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.301</link>
-            <sparkle:version>0.5.301</sparkle:version>
-            <sparkle:shortVersionString>0.5.301</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.301
-
-feat(evolution): UI 快照基线比对
-
-## 变更
-
-- 新增 scripts/evolution-ui-diff.py：字节相同直接通过；否则用 Pillow 逐像素比较，按「通道差 > 8 的像素占比 ≤ 0.1%」判定，输出差异 bbox/最大通道差，--json 可机读，--diff-out 落差异图。
-- 缺 Pillow 且两份快照字节不同时以 exit 3 明确报告无法比对，不假装通过（Pillow 是用户级安装，不能假设每台机器都有）。
-- 新增基线 evolution/ui-baseline/evolution-ui.png：实测两次渲染逐字节一致（1800x1960, 199893B），像素门禁在同机稳定。
-- evolution-ui-snapshot-test.sh 升级：渲染后与基线比对并加两个负向对照（sips 改尺寸、200x20 条带局部改动），--update-baseline 刷新基线。
-- 测试从 3 项扩到 9 项；benchmark 的 machinery-executable 追加基线文件断言。
-
-离屏渲染与基线做像素门禁，布局回归可拦截
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.301/Tapgo-AICoding-0.5.301.zip" length="12699049" type="application/octet-stream" sparkle:edSignature="TjtK9OekoEJVxKMrAjYZ7OgxpCkM9v3bc98xuD15NgVkjfCLOLlAltrzStLBIblvUNrBY/Ho0y7g49nDT4m9CQ=="/>
         </item>
     </channel>
 </rss>
