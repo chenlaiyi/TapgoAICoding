@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.313</title>
+            <pubDate>Sun, 13 Sep 2026 05:01:29 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.313</link>
+            <sparkle:version>0.5.313</sparkle:version>
+            <sparkle:shortVersionString>0.5.313</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.313
+
+test(evolution): H5 渲染执行级测试
+
+## 变更
+
+- 新增 scripts/tests/evolution-h5-render.mjs（EVO-054）：最小 DOM stub 里加载真实 app.js，用真实 fetch 回调驱动 refresh() → renderEvolution()，断言渲染进 DOM 的文案与 hidden 状态；40 项断言覆盖完整渲染、evolution 消失后恢复、漏斗/指标为空边界、CSS hidden 不变量。
+- 变异验证证明测试有牙：把漏斗改回修复前扁平键 → 5 项失败（含用户可见症状「漏斗行可见」）；可见性边界 > 0 写成 >= 0 → 1 项失败；还原后 40/40 绿。甄别掉一个假阳性——evolution 为 null 时子行保留旧 hidden 标志，但子行在已隐藏卡片子树内且无 author display 覆盖，用户不可见，故断言用户可见语义而非改生产代码迎合测试。
+- 共享 fixture evolution/h5-fixtures/evolution-state.json：Swift 契约测试（EVO-053）增加 4 项断言，校验它仍能解码为 EvolutionStatus 且覆盖 app.js 读取的每个顶层键，避免 Node 侧拿服务器给不出的形状自说自话。
+- 接入 scripts/tests/run-all.sh 单绿门禁（需要 node，缺失时明确失败而不是静默跳过）。
+
+手机端自进化卡片渲染纳入秒级门禁
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.313/Tapgo-AICoding-0.5.313.zip" length="12737798" type="application/octet-stream" sparkle:edSignature="93AGWB+VtSGaKaxbqW8Ee9Ii3hHpRsZayCeAFdNatN4F2t5wQjEPlrPe+1BmI+zjVWu7euQnv5jk0VDywIk9BQ=="/>
+        </item>
+        <item>
             <title>0.5.312</title>
             <pubDate>Sun, 13 Sep 2026 04:47:22 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.312</link>
@@ -55,34 +82,6 @@ test(evolution): 双实现指标一致性
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.311/Tapgo-AICoding-0.5.311.zip" length="12736482" type="application/octet-stream" sparkle:edSignature="98PvjphW2ntKhB9R8k2Ox8MkBaru1JvZeK0wsF/4UYL/BJuMknrZn1Fv5zzcm94OgdU0eJx42FTn3dQnOYEDCw=="/>
-        </item>
-        <item>
-            <title>0.5.310</title>
-            <pubDate>Sun, 13 Sep 2026 04:12:24 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.310</link>
-            <sparkle:version>0.5.310</sparkle:version>
-            <sparkle:shortVersionString>0.5.310</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.310
-
-test(evolution): 维护告警 launchd 自检
-
-## 变更
-
-- 新增 scripts/evolution-maintenance-selftest.sh：装独立 Label 的临时 LaunchAgent（RunAtLoad），通过 EnvironmentVariables 注入必失败演练桩 + 通知捕获 + 临时 state/日志，跑完 bootout 并删除 plist——生产任务与 state 不受影响。
-- 真机验证：launchd 上下文里维护按预期失败（last exit code=1）、历史写 status=failed 且带注入原因、通知脚本收到标题与完整原因；--use-system-notify 变体也跑通。
-- 这段组合此前从没跑过：launchd+成功已验、直接调用+失败+假 osascript 已验，唯独「launchd + 失败 → 真实告警」缺失。
-- 自检脚本修掉一个抢跑 bug：维护脚本先写历史、后发通知，原来只等历史就断言导致偶发假失败；现在等 launchd 不再 running 再断言。
-- 新增 16 项回归（plist 形状 8 + 真实 launchd 运行 8，无 launchctl 自动跳过），接入 run-all 与 benchmark。
-
-真实 launchd 跑一次失败维护并验证通知
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.310/Tapgo-AICoding-0.5.310.zip" length="12736214" type="application/octet-stream" sparkle:edSignature="1T0vyaiL0DA68H+uxqrDZf87U4nKu1OTeB/vvMxXBNTvz/E8ntJbVOUGKKTTlrwpAFZl/LcVIWXN8f2iNpJRCQ=="/>
         </item>
     </channel>
 </rss>
