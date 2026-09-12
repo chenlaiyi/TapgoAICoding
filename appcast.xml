@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.309</title>
+            <pubDate>Sun, 13 Sep 2026 03:57:04 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.309</link>
+            <sparkle:version>0.5.309</sparkle:version>
+            <sparkle:shortVersionString>0.5.309</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.309
+
+test(evolution): canary 全链路演练
+
+## 变更
+
+- 失败注入矩阵新增 S35：用真实 canary-promote.sh 与真实 deploy-fleet.sh（fake ssh/scp 在本机执行远端 heredoc）跑 evolve.sh --publish --canary，而不是像 S16/S17c 那样用 stub。
+- 验证链路：灰度 deploy --only → release 契约暂存 appcast → canary-promote 拷 appcast 入仓/提交/推送 → gh release edit --draft=false → deploy --exclude → 状态 published 且 canary=fakehost。
+- harness 增强：run_evolve 允许调用方覆盖 EVOLVE_DEPLOY_SCRIPT/EVOLVE_CANARY_PROMOTE_SCRIPT；release stub 在 TAPGO_CANARY=1 时复刻真实 appcast staging 契约。
+- 断言含 origin main 前进 3 个提交、灰度与其余机器都拿到 0.5.2、gh undraft 被调用、UI 断言经真实 deploy-fleet 下发、日志无 ERROR。失败注入矩阵 151→162 项。
+
+真实 promote + 真实 deploy-fleet 跑通 evolve 灰度
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.309/Tapgo-AICoding-0.5.309.zip" length="12735832" type="application/octet-stream" sparkle:edSignature="P9y11VIQXuQRfU4hpRJQaaSWybrZKRTVcTihjt1/4CV1JNcOT08q016vnKZqCGBY7IW5KDMSl7a9aHedrpHgBg=="/>
+        </item>
+        <item>
             <title>0.5.308</title>
             <pubDate>Sun, 13 Sep 2026 03:34:28 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.308</link>
@@ -57,34 +84,6 @@ launchd 真跑一次 + osascript 分支补回归
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.307/Tapgo-AICoding-0.5.307.zip" length="12733988" type="application/octet-stream" sparkle:edSignature="KU/3pAQkU33PzDYxw+kP0l1aVgZlI2acvAMa8aPj31dNavQFiohC5C6qwmVie3b+x485fHVv53MyICyZy2aaAQ=="/>
-        </item>
-        <item>
-            <title>0.5.306</title>
-            <pubDate>Sun, 13 Sep 2026 03:05:46 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.306</link>
-            <sparkle:version>0.5.306</sparkle:version>
-            <sparkle:shortVersionString>0.5.306</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.306
-
-fix(evolution): 指标摘要契约
-
-## 变更
-
-- 真机发现：evolution-metrics 只写扁平键 localAppRunning/Installed/Stale，而 App 的 EvolutionMetricsSummary 读嵌套 localApp.*——手写 Swift fixture 恰好是嵌套形状，于是单测全绿、真实产物却读不出本机漂移。
-- 生产侧同时输出嵌套 localApp{installed,running,stale}（脚本用扁平键、App 用嵌套），两边同源。
-- 读取侧改嵌套优先、扁平兜底，老快照不会因此失效。
-- metrics 回归新增跨语言契约断言：真实 --out 产物必须含 p95CycleSeconds/mttrMedianSeconds/mttrSamples/runDurationMedianSeconds/runTokensTotal/runCostUSDTotal 与嵌套 localApp.stale。
-- 真机端到端复验：把真实摘要放到 jkmacmini 的 state 后，其 /api/state 的 evolution.metricsSummary 返回 12 个键（p95=1158.7 / mttr=855 / runDuration=500 / stale=true），验证完即清理。
-
-生产侧补嵌套 localApp + 跨语言契约断言
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.306/Tapgo-AICoding-0.5.306.zip" length="12733694" type="application/octet-stream" sparkle:edSignature="2G4rmqpKamPGtEIeU5r+C+1RrgU0MQpW5zuaiseGE6xPPccllz9r4hvfnmzfr3r9Arm3sNnp04xZ9HWj4U2PBQ=="/>
         </item>
     </channel>
 </rss>
