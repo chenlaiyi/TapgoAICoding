@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.297</title>
+            <pubDate>Sun, 13 Sep 2026 01:02:36 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.297</link>
+            <sparkle:version>0.5.297</sparkle:version>
+            <sparkle:shortVersionString>0.5.297</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.297
+
+feat(evolution): 成本归属
+
+## 变更
+
+- 新增 TapgoCore.EvolutionCostSnapshot：state/evolution_cost.json 的写入/读取契约（原子写、缺失或非法 JSON 返回 nil），只记能核实的累计 token，不估算美元金额。
+- SessionStore 在自进化线程（evolutionMode 或 evo- 前缀）收到 turnCompleted/tokenUsageUpdated 时写入累计 usageTotal：同一值不重写、5 秒内且增量不足 1000 跳过，写失败不影响会话主流程。
+- evolve.sh 新增 resolve_run_cost：EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 优先（source=env）→ 否则读 App 快照并与上次发布记录 tokens 相减得到本轮增量（source=app-snapshot-delta）→ 都没有就留空不编造；日志打印 Run cost source 便于审计。
+- state schema 升到 v4：新增 costSource 字段说明 tokens/costUSD 来自哪条路径。
+- 测试：Swift 新增 14 项成本契约断言，失败注入扩到 145 项（快照增量归因、快照未更新不归因、env 优先）。
+
+App 写自进化会话 token 快照，evolve.sh 取增量并标注来源
+
+## Next
+
+EVO-042 反馈漏斗接入看板: 把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.297/Tapgo-AICoding-0.5.297.zip" length="12660376" type="application/octet-stream" sparkle:edSignature="1L5zPvxnT3XAj9IZUi15RdiBq46w8R6N32+n2iiF9Cmj2vc8Qfv7xNrrt0iNnxlHV2mrCBakPfWzMP9r32xZBw=="/>
+        </item>
+        <item>
             <title>0.5.296</title>
             <pubDate>Sun, 13 Sep 2026 00:45:28 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.296</link>
@@ -57,34 +85,6 @@ feat(evolution): 三机界面自动断言
 EVO-040 依赖路径探测: SDK 与 codex/gh 等路径自动探测，替换硬编码
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.295/Tapgo-AICoding-0.5.295.zip" length="12646581" type="application/octet-stream" sparkle:edSignature="G4WErjHlccOsWOgrex7PCnojXwf4z/lbXpL09kS7Nrw3McMMQqo/f8nSLh7lBRaxOhZp6PYlIdhvY1p+lCwaAA=="/>
-        </item>
-        <item>
-            <title>0.5.294</title>
-            <pubDate>Sun, 13 Sep 2026 00:05:02 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.294</link>
-            <sparkle:version>0.5.294</sparkle:version>
-            <sparkle:shortVersionString>0.5.294</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.294
-
-feat(evolution): 反馈闭环转化率
-
-## 变更
-
-- 新增 scripts/evolution-feedback-funnel.py：统计 drafts/registered/shipped 三阶段计数、转化率与等待时长 median/P95，并提供陈旧告警（--stale-days 默认 30、--fail-on-stale 可当门禁）。
-- registry.json 升级 v2：6 条历史反馈补齐真实 provenance——origin=manual、registeredAt=2026-09-12（v0.5.276 首次入库）、fixedIn 从 EVOLUTION.md 逐条核对（v0.5.230/v0.5.72/v0.5.27/v0.5.232/v0.5.128/v0.5.256）。
-- 草稿工具写入 discoveredAt，让 draft→registered 等待可度量；registry 用 sourceDraft 回指草稿完成两段串联。
-- 诚实边界：fixedIn 早于 registeredAt 记 backfilled 只计数不编造等待；发布日缺失（早于结构化版本记录）记 unknownReleaseDate——当前 6 条如实显示 unknown 而非伪装成 0。
-- 新增 31 项漏斗回归并接入 benchmark 的 feedback-regressions（总分仍 100）。
-
-drafts→registered→shipped 转化率与等待时长可量化
-
-## Next
-
-EVO-039 三机界面自动断言: 部署后截图/UI 断言，区分"版本到位"与"界面可用"
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.294/Tapgo-AICoding-0.5.294.zip" length="12645902" type="application/octet-stream" sparkle:edSignature="BWbI+a/JjmpqHiQgC6lVI8zCe2fYXPW2EzEuUcEvqQEvVkcEnQpm7En+Oh58FvNz3LllQXTe8xGCYitOVYf+Cw=="/>
         </item>
     </channel>
 </rss>
