@@ -3,6 +3,30 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.257</title>
+            <pubDate>Sat, 12 Sep 2026 18:32:51 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.257</link>
+            <sparkle:version>0.5.257</sparkle:version>
+            <sparkle:shortVersionString>0.5.257</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.257
+
+feat(evolution): 闭环安全加固
+
+## 变更
+
+- feat(evolution): 闭环安全加固
+
+显式路径白名单、并发锁、语义化最高版本、提交前 App 构建、日志头插、分阶段 state 与三机部署脚本
+
+## Next
+
+下一轮:统一结构化版本真源 + evolve.sh 失败注入测试
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.257/Tapgo-AICoding-0.5.257.zip" length="12385010" type="application/octet-stream" sparkle:edSignature="GJbss1fdHdmgYQg7qXDbkhZsNmro8/AN8ThdwuHUFdsleuam9Kjt7VldNZFXvz5IyESdmr6oJ5u/FlHZ9DVxCQ=="/>
+        </item>
+        <item>
             <title>0.5.256</title>
             <pubDate>Sat, 12 Sep 2026 15:46:18 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.256</link>
@@ -73,44 +97,6 @@
 - 全量回归通过；剩余失败为存量环境项（SSH 集成假 IP 超时、缺 auth.json 的集成跳过），与本版无关。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.254/Tapgo-AICoding-0.5.254.zip" length="12379807" type="application/octet-stream" sparkle:edSignature="MlnyFEx3sgx6qHWdKpgEq92WK1QPqCkg6PPxWJf5wPa/cmz4xgfiGsmH5ueLefaI/Pyow4dVbaxitqPoeLyjCw=="/>
-        </item>
-        <item>
-            <title>0.5.253</title>
-            <pubDate>Sat, 12 Sep 2026 10:00:14 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.253</link>
-            <sparkle:version>0.5.253</sparkle:version>
-            <sparkle:shortVersionString>0.5.253</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.253
-
-## 对话渲染二次对齐 Codex
-
-本版修掉了上一版遗留的两个根因 —— 不是措辞微调，而是消息流读感"像日志"的来源。
-
-### 1. 过程消息还原为正文（观感主因）
-
-回合内助手的过程消息，此前被渲染成 **12pt 单行 + 60 字符截断 + 折叠箭头**，展开后还套一个灰底卡片。Codex 实机里，过程消息与最终回复**同样是正常正文、无卡片**。
-
-现在过程消息以标准正文字号完整渲染（含 Markdown、行内代码、列表、表格），不再截断、不再套框。
-
-### 2. 摘要文案与格式纠正
-
-| 状态 | 文案 |
-|---|---|
-| 进行中 | `已处理 2分钟 22秒`（实时跳秒） |
-| 已完成 | `用时 3分钟 21秒` |
-
-同时修正时长格式：数字与单位之间不再有空格（`2分钟 22秒`、`14秒`）。
-
-上一版把「已处理」用在完成态、「正在思考」用在进行态，与 Codex 正好相反，本版已纠正，并补了互斥断言防止回退。
-
-## 测试
-
-- 改动相关断言全部通过，新增「进行中/完成态文案互斥」用例。
-- 剩余失败为存量环境项（SSH 集成使用保留网段假 IP、缺 auth.json 的集成跳过），与本版无关。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.253/Tapgo-AICoding-0.5.253.zip" length="12362050" type="application/octet-stream" sparkle:edSignature="XTszf1uYk6mXvJepPKb+eZGXuqRT8Mw9CW3ju+cLYZC4xjzztqYKxffXqNLITsRe31WvWFtPCgDJDVkyn8VgDQ=="/>
         </item>
     </channel>
 </rss>
