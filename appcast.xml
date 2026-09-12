@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.311</title>
+            <pubDate>Sun, 13 Sep 2026 04:26:48 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.311</link>
+            <sparkle:version>0.5.311</sparkle:version>
+            <sparkle:shortVersionString>0.5.311</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.311
+
+test(evolution): 双实现指标一致性
+
+## 变更
+
+- 新增 Evolution: python/swift metrics consistency 测试：同一份 fixture（含 canary_failed 与一次失败后恢复）同时跑 evolution-metrics.py 与 TapgoCore.EvolutionMetrics.load，比对 16 个关键指标。
+- 首个发现：Python 的 FAILED 集合缺 canary_failed，而 Swift failedStatuses 有它——canary 失败时 CLI 与 App 会给出不同的失败数与成功率。已把两侧对齐（状态机确实会写 canary_failed）。
+- 比对项：iterations/published/failed/successRate、中位与 P95 周期、MTTR（中位/样本数/未恢复）、单轮时长/token/成本、回滚演练数、维护数、backlog 开/关。
+- 这类分叉此前无任何测试能发现：两边各自有单测，但都用自造 fixture，从没对过同一份输入（上一轮扁平键/嵌套键的契约 bug 同源）。
+
+同一 fixture 交叉比对 Python/Swift 指标并修分叉
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.311/Tapgo-AICoding-0.5.311.zip" length="12736482" type="application/octet-stream" sparkle:edSignature="98PvjphW2ntKhB9R8k2Ox8MkBaru1JvZeK0wsF/4UYL/BJuMknrZn1Fv5zzcm94OgdU0eJx42FTn3dQnOYEDCw=="/>
+        </item>
+        <item>
             <title>0.5.310</title>
             <pubDate>Sun, 13 Sep 2026 04:12:24 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.310</link>
@@ -56,34 +83,6 @@ test(evolution): canary 全链路演练
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.309/Tapgo-AICoding-0.5.309.zip" length="12735832" type="application/octet-stream" sparkle:edSignature="P9y11VIQXuQRfU4hpRJQaaSWybrZKRTVcTihjt1/4CV1JNcOT08q016vnKZqCGBY7IW5KDMSl7a9aHedrpHgBg=="/>
-        </item>
-        <item>
-            <title>0.5.308</title>
-            <pubDate>Sun, 13 Sep 2026 03:34:28 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.308</link>
-            <sparkle:version>0.5.308</sparkle:version>
-            <sparkle:shortVersionString>0.5.308</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.308
-
-feat(evolution): 月度维护验证可重建
-
-## 变更
-
-- 现状：过去 4 次回滚演练全是 fullBuild=False——只验证了归档能解包 + health-check + tag 工作树干净，从未验证该 tag 现在是否还能从源码编译。
-- 月度 launchd 任务改为带 --full-build（plist 模板固化）；维护脚本把 drill.fullBuild 写进维护历史，便于审计与指标展示。
-- evolution-metrics 新增 lastRollbackDrillFullBuild，文本输出 rollback drill … fullBuild=yes/no。
-- 真机实跑：./scripts/evolution-maintenance.sh --full-build 用时 109s 通过（drill v0.5.307），drill 历史 fullBuild=True、source=local-dist。
-- 重装 launchd 任务使月度执行带上新参数；维护回归 51→57 项，metrics 断言 27→28。
-
-回滚演练增加 clean-checkout 重编译并留痕
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.308/Tapgo-AICoding-0.5.308.zip" length="12734589" type="application/octet-stream" sparkle:edSignature="wXB7WO1Pd1M2gZug7iLWdmCwialbcmYQ85Te0anpT3pGBcTTyjsQauxwkHV8juc4tf6gvAUGn28PUMqjMy7jBw=="/>
         </item>
     </channel>
 </rss>
