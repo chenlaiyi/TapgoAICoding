@@ -3,6 +3,32 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.298</title>
+            <pubDate>Sun, 13 Sep 2026 01:14:28 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.298</link>
+            <sparkle:version>0.5.298</sparkle:version>
+            <sparkle:shortVersionString>0.5.298</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.298
+
+fix(evolution): state schema 版本漂移
+
+## 变更
+
+- 修正 evolve.sh write_state 写出的 schemaVersion：EVO-041 把注册表升到 v4（新增 costSource）但漏改写入方，导致新记录仍标 v3；validate 把 v3 当 legacy 放过，正是 EVO-035 要消灭的静默漂移。
+- evolution-schema 回归新增漂移守卫：从注册表读 evolution_state.json 的版本、从 evolve.sh write_state 段读写入字面量，两者必须相等；负向验证（写回 3）确认守卫会失败。
+- 本机现有 state 已带 costSource 字段，本轮发布起落盘 schemaVersion=4。
+
+写入方版本号对齐注册表并加守卫
+
+## Next
+
+EVO-042 反馈漏斗接入看板: 把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.298/Tapgo-AICoding-0.5.298.zip" length="12660883" type="application/octet-stream" sparkle:edSignature="FrkUMWls96FL1MVS37kymI7h2TOXmy06IrI7eanEZTfsO5c1/hr8dMSb82uMTdpOnQPYNng7wuZXL8QBAngmBA=="/>
+        </item>
+        <item>
             <title>0.5.297</title>
             <pubDate>Sun, 13 Sep 2026 01:02:36 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.297</link>
@@ -57,34 +83,6 @@ SDK 与 codex 收敛到单点真源，升级机器不再硬失败
 EVO-041 自进化成本归属: App 把当前会话的 token/成本传给 evolve.sh（`EVOLVE_RUN_TOKENS`/`EVOLVE_RUN_COST_USD`），让单轮成本指标有真实数据
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.296/Tapgo-AICoding-0.5.296.zip" length="12647637" type="application/octet-stream" sparkle:edSignature="/fuD4Dp/lsQ5j8983a3JlQrI4U3q/IkbkWy0Co4UByZXGrMOteROzvy3YxY2k2pqi8pGTCEbJQFwB/Jht67RCQ=="/>
-        </item>
-        <item>
-            <title>0.5.295</title>
-            <pubDate>Sun, 13 Sep 2026 00:31:23 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.295</link>
-            <sparkle:version>0.5.295</sparkle:version>
-            <sparkle:shortVersionString>0.5.295</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.295
-
-feat(evolution): 三机界面自动断言
-
-## 变更
-
-- 新增 scripts/evolution-ui-assert.sh：不依赖 GUI 截图权限，用 App 自带 H5 服务断言——读 UserDefaults token、lsof 找 PID 监听端口（带重试）、/api/state 的 appVersion 必须等于期望版本、/r/<token> 骨架引用 app.js、assets/app.js 含 evolutionCard 标记、无 token 请求必须 403/404。
-- 退出码分级 21 无进程/22 无 token/23 无端口/24 状态接口失败/25 版本不一致/26 骨架异常/27 资源缺标记/28 鉴权回归，--json 可机读。
-- deploy-fleet.sh 远端安装重启后用 ssh 管道执行该断言（不依赖远端仓库版本），失败即部署失败；本地仅在 --restart-local 时断言，否则显式记 skipped；EVOLVE_SKIP_UI_ASSERT=1 可跳过。
-- 真实反例：本机 /Applications 已是 0.5.294 但运行进程仍是 0.5.256，断言以 25 精确报出，这正是此前只回读版本/PID 抓不到的失效模式。
-- 新增 23 项 UI 断言回归（真实 HTTP 桩服务）+ 新门禁 app-sources-parse-test.sh（swiftc -parse 覆盖 App target，本轮有一条被 ASCII 引号截断的字符串躲过全部单测直到 build 才炸，现提前到测试阶段）。
-
-部署后断言 H5 界面可用且运行的是新版本
-
-## Next
-
-EVO-040 依赖路径探测: SDK 与 codex/gh 等路径自动探测，替换硬编码
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.295/Tapgo-AICoding-0.5.295.zip" length="12646581" type="application/octet-stream" sparkle:edSignature="G4WErjHlccOsWOgrex7PCnojXwf4z/lbXpL09kS7Nrw3McMMQqo/f8nSLh7lBRaxOhZp6PYlIdhvY1p+lCwaAA=="/>
         </item>
     </channel>
 </rss>
