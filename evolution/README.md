@@ -43,6 +43,8 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 - 单轮成本来自 `evolution_state*.json` 的 `durationSeconds`/`tokens`/`costUSD`（state schema v3）：时长由 `evolve.sh` 自动记录，token/成本由 harness 通过 `EVOLVE_RUN_TOKENS` / `EVOLVE_RUN_COST_USD` 提供，缺失即留空不估算。
 - `evolution/BACKLOG.md` 是下一轮选点的单一待办清单；完成后把 `[ ]` 改为 `[x]` 并附版本号。
 - `scripts/evolution-backlog.py` 提供 `list / top / validate`；Swift 侧 `TapgoCore.EvolutionBacklog` 使用同一格式驱动 App 横幅与 kickoff prompt。
+- `scripts/evolution-feedback-funnel.py` 量化反馈闭环（EVO-038）：`drafts → registered → shipped` 三阶段计数、转化率、等待时长（median/P95）与陈旧告警（`--stale-days`，默认 30；`--fail-on-stale` 可当门禁用）。
+- 反馈 provenance 约定：草稿写 `discoveredAt`；提升进 `registry.json` 时补 `registeredAt`（入库日期）、`origin`（manual/draft）、`sourceDraft`（回指草稿）、`fixedIn`（真正修掉该问题的发布 tag）。`fixedIn` 早于 `registeredAt` 的条目算“回填”，只计入 shipped 计数、不编造等待时长；发布日缺失（早于结构化版本记录）计入 `unknownReleaseDate`。
 - `scripts/evolution-remote-lock.sh` 是跨机互斥锁（EVO-037）：`acquire` 在锁陈旧（`started` 超过 `EVOLVE_LOCK_TTL_SECONDS`，默认 14400s）时自动回收，元数据读不出 `started` 时只报 HELD 不自动接管；`reclaim` 是显式抢占（force-with-lease，`evolve.sh --break-remote-lock` 走它）；`status` 输出 `ttlSeconds/ageSeconds/remainingSeconds/stale`。
 - `scripts/evolution-schema.py` 是运行态 schema 注册表与门禁（EVO-035）：`status` 看版本分布，`ensure` 给历史记录补章 `schemaVersion` 后校验，`validate` 只读校验；未来版本以 13 退出，读者（Python/Swift/H5）保持宽容。
 - 当前版本：`evolution_state.json` / `evolution_state_history.jsonl` = v2，`evolution_progress.json`、`test_run_history.jsonl`、`evolution_benchmark_history.jsonl`、`model_eval_history.jsonl`、`rollback_drill_history.jsonl`、`maintenance_history.jsonl` = v1；新增 artifact 必须先在 registry 登记。

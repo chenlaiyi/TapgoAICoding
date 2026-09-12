@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.294", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.294",
+                    summary: "反馈闭环转化率:drafts→registered→shipped 转化率与等待时长可量化。",
+                    changes: [
+                        "新增 scripts/evolution-feedback-funnel.py:统计 drafts/registered/shipped 三阶段计数、转化率(draft→registered、registered→shipped、draft→shipped)与等待时长 median/P95,并给出陈旧告警(--stale-days 默认 30、--fail-on-stale 可当门禁)。",
+                        "registry.json 升级 v2:6 条历史反馈补齐真实 provenance——origin=manual、registeredAt=2026-09-12(v0.5.276 首次入库)、fixedIn 从 EVOLUTION.md 逐条核对(v0.5.230/v0.5.72/v0.5.27/v0.5.232/v0.5.128/v0.5.256)。",
+                        "草稿工具写入 discoveredAt,让 draft→registered 等待可度量;registry 用 sourceDraft 回指草稿完成两段串联。",
+                        "诚实边界:fixedIn 早于 registeredAt 记 backfilled 只计数不编造等待;发布日缺失(早于结构化版本记录)记 unknownReleaseDate,当前 6 条如实显示为 unknown 而非 0。",
+                        "新增 31 项漏斗回归(转化率/等待时长/回填排除/版本号不当日期/空目录/真实仓库自检),benchmark 的 feedback-regressions 同时跑该回归,总分仍 100。"
+                    ],
+                    why: "反馈采集、草稿、注册表此前是三段互不相连的静态文件:采了多少、提升多少、多久修掉完全不可见,也就无法判断反馈闭环是否真的在转。",
+                    next: "EVO-042 反馈漏斗接入看板:把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.293", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.293",
                     summary: "远端锁 TTL:陈旧锁自动回收,reclaim 走 force-with-lease 显式抢占。",
                     changes: [

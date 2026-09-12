@@ -70,7 +70,7 @@
     {
       "id": "feedback-regressions",
       "weight": 5,
-      "command": "python3 scripts/evolution-feedback.py verify >/dev/null && python3 scripts/evolution-feedback-draft.py list >/dev/null && python3 scripts/evolution-feedback-draft.py suggest --out evolution/feedback/drafts.json >/dev/null"
+      "command": "python3 scripts/evolution-feedback.py verify >/dev/null && python3 scripts/evolution-feedback-draft.py list >/dev/null && python3 scripts/evolution-feedback-draft.py suggest --out evolution/feedback/drafts.json >/dev/null && bash scripts/tests/evolution-feedback-funnel-test.sh >/dev/null"
     },
     {
       "id": "remote-lock-helper",

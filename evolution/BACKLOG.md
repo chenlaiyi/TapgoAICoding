@@ -64,10 +64,11 @@
 - [x] **EVO-035 运行态 schemaVersion**：新增 evolution-schema.py（registry/migrate/validate），7 个 state artifact 全部带版本，evolve.sh 写入前 `ensure` 补章并以 13 拒绝未来版本（v0.5.291）
 - [x] **EVO-036 度量扩展**：周期 P95/max、失败后 MTTR（中位/P95/未恢复）、单轮时长与可选 token/成本（v0.5.292）
 - [x] **EVO-037 远端锁 TTL**：锁带 started 元数据，超过 `EVOLVE_LOCK_TTL_SECONDS`（默认 4h）自动回收；`reclaim` 走 force-with-lease 显式抢占；读不出 started 时拒绝自动接管（v0.5.293）
-- [ ] **EVO-038 反馈闭环转化率**：drafts → check → backlog → 版本的转化率与等待时长
+- [x] **EVO-038 反馈闭环转化率**：新增 evolution-feedback-funnel.py（drafts→registered→shipped 转化率 + 等待时长 + 陈旧告警），registry 升级 v2 补 `registeredAt/origin/fixedIn` 真实 provenance（v0.5.294）
 - [ ] **EVO-039 三机界面自动断言**：部署后截图/UI 断言，区分"版本到位"与"界面可用"
 - [ ] **EVO-040 依赖路径探测**：SDK 与 codex/gh 等路径自动探测，替换硬编码
 - [ ] **EVO-041 自进化成本归属**：App 把当前会话的 token/成本传给 evolve.sh（`EVOLVE_RUN_TOKENS`/`EVOLVE_RUN_COST_USD`），让单轮成本指标有真实数据
+- [ ] **EVO-042 反馈漏斗接入看板**：把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
 
 ## P9 — 待外部输入
 

@@ -30,6 +30,7 @@
     "scripts/install-evolution-maintenance.sh",
     "scripts/evolution-preflight.sh",
     "scripts/fleet-hosts.sh",
-    "scripts/evolution-schema.py"
+    "scripts/evolution-schema.py",
+    "scripts/evolution-feedback-funnel.py"
   ]
 }

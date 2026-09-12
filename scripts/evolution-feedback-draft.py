@@ -129,6 +129,7 @@ def cmd_discover(args: argparse.Namespace) -> int:
                 mtime = dt.datetime.fromtimestamp(snapshot.stat().st_mtime, dt.timezone.utc)
                 data["drafts"].append({
                     "id": ident,
+                    "discoveredAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "title": title,
                     "source": snapshot.name,
                     "reported": mtime.strftime("%Y-%m-%d"),

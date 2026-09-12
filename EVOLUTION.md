@@ -1,5 +1,22 @@
 # Evolution Log
 
+## v0.5.294 — feat(evolution): 反馈闭环转化率
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.294`)_
+**Tag**: v0.5.294
+**Test status**: — 3362 passed, 0 failed —
+**Changed**:
+- 新增 scripts/evolution-feedback-funnel.py：统计 drafts/registered/shipped 三阶段计数、转化率与等待时长 median/P95，并提供陈旧告警（--stale-days 默认 30、--fail-on-stale 可当门禁）。
+- registry.json 升级 v2：6 条历史反馈补齐真实 provenance——origin=manual、registeredAt=2026-09-12（v0.5.276 首次入库）、fixedIn 从 EVOLUTION.md 逐条核对（v0.5.230/v0.5.72/v0.5.27/v0.5.232/v0.5.128/v0.5.256）。
+- 草稿工具写入 discoveredAt，让 draft→registered 等待可度量；registry 用 sourceDraft 回指草稿完成两段串联。
+- 诚实边界：fixedIn 早于 registeredAt 记 backfilled 只计数不编造等待；发布日缺失（早于结构化版本记录）记 unknownReleaseDate——当前 6 条如实显示 unknown 而非伪装成 0。
+- 新增 31 项漏斗回归并接入 benchmark 的 feedback-regressions（总分仍 100）。
+
+drafts→registered→shipped 转化率与等待时长可量化
+**Why**: 反馈采集、草稿、注册表此前是三段互不相连的静态文件：采了多少、提升多少、多久修掉完全不可见，无法判断反馈闭环是否真的在转。
+**Next**: EVO-039 三机界面自动断言: 部署后截图/UI 断言，区分"版本到位"与"界面可用"
+
+
 ## v0.5.293 — feat(evolution): 远端锁 TTL
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.293`)_
