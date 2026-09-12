@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.292", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.292",
+                    summary: "度量扩展:周期 P95/max、失败后 MTTR、单轮时长与可选 token/成本。",
+                    changes: [
+                        "evolve.sh 每次写状态时记录 startedAt/durationSeconds(墙钟),并接受 EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 写入 tokens/costUSD;state schema 升到 v3。",
+                        "evolution-metrics.py 新增 p95CycleSeconds/maxCycleSeconds、MTTR(mttrMedianSeconds/mttrP95Seconds/mttrSamples/unrecoveredFailures/lastRecoverySeconds)与单轮汇总(runDuration*/runTokens*/runCostUSD*)。",
+                        "MTTR 定义:失败状态 → 其后第一个终端成功(同版本 --resume 续跑或下一版发布);未恢复的失败单独计数、不计入采样。",
+                        "Swift EvolutionMetricsSnapshot 同步新增 P95/MTTR/单轮时长成本字段并补齐 failedStatuses(worktree_verify_failed/benchmark_regressed/canary_failed),指标详情新增「周期 P95 / MTTR / 单轮时长」卡片。",
+                        "测试:Python 指标断言扩到 21 项,Swift 新增 9 项(3353 passed),覆盖插值 P95、MTTR 24h 恢复与 token/成本汇总。"
+                    ],
+                    why: "此前只有成功率与中位周期:长尾劣化、失败后多久恢复、单轮到底花了多少时间/成本都不可见,无法判断自进化是否在变慢变贵。",
+                    next: "EVO-037 远端锁 TTL:崩溃后锁按 TTL 自动回收,保留显式抢占入口。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.291", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.291",
                     summary: "运行态 schemaVersion:7 个 state artifact 全部带版本,写入前补章、未来版本拒跑。",
                     changes: [

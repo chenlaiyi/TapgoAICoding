@@ -162,6 +162,20 @@ struct EvolutionMetricsDetailView: View {
 
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
+    /// 周期/时长的紧凑展示：<1h 用分钟，否则用小时。
+    private func shortDuration(_ seconds: Double) -> String {
+        seconds < 3600 ? String(format: "%.0fm", seconds / 60) : String(format: "%.1fh", seconds / 3600)
+    }
+
+    /// MTTR 展示：中位恢复时长；有未恢复失败时优先暴露该事实。
+    private var mttrLabel: String {
+        if metrics.unrecoveredFailureCount > 0 {
+            return "未恢复 \(metrics.unrecoveredFailureCount)"
+        }
+        guard let median = metrics.mttrMedianSeconds else { return "—" }
+        return "n=\(metrics.mttrSampleCount) \(shortDuration(median))"
+    }
+
     /// 月度维护最近结果：`OK 09-05 ×2`（状态 + 日期 + 累计次数）。
     private var maintenanceLabel: String {
         guard metrics.maintenanceRuns > 0 else { return "—" }
@@ -189,6 +203,9 @@ struct EvolutionMetricsDetailView: View {
                 card("model eval", metrics.modelEvalBestScore.map { String(format: "%.0f/100", $0) } ?? "—")
                 card("rollback", metrics.lastRollbackDrillPassed.map { $0 ? "PASS" : "FAIL" } ?? "—")
                 card("maintenance", maintenanceLabel)
+                card("周期 P95", metrics.p95CycleSeconds.map(shortDuration) ?? "—")
+                card("MTTR", mttrLabel)
+                card("单轮时长", metrics.runDurationMedianSeconds.map(shortDuration) ?? "—")
             }
 
             Divider()

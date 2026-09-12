@@ -228,6 +228,10 @@ assert_grep "$BASE/s4-state/evolution_progress.json" '"status": "done"' "s4 prog
 assert_json "$BASE/s4-state/evolution_state.json" 'd["benchmarkScore"]' "s4 benchmark score stored"
 assert_grep "$R4/EVOLUTION.md" "## v0.5.2 — s4 message" "s4 rendered log"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R4/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s4 built app version"
+assert_json "$BASE/s4-state/evolution_state.json" 'd["schemaVersion"] == 3' "s4 state schema v3"
+assert_json "$BASE/s4-state/evolution_state.json" 'isinstance(d["durationSeconds"], int) and d["durationSeconds"] >= 0' "s4 run duration recorded"
+assert_json "$BASE/s4-state/evolution_state.json" 'isinstance(d["startedAt"], str) and d["startedAt"].endswith("Z")' "s4 run startedAt recorded"
+assert_json "$BASE/s4-state/evolution_state.json" 'd["tokens"] is None and d["costUSD"] is None' "s4 token/cost absent without harness input"
 
 # ---------- S5: unmerged existing tag -> refuse reuse ----------
 R5="$BASE/s5"; make_repo "$R5"
@@ -518,6 +522,13 @@ run_evolve "$R27" "$BASE/s27-state" "$BASE/s27.log" --publish --paths scripts pa
 assert_json "$BASE/s27-state/evolution_state.json" 'd["status"] == "published"' "s27 published after stamping"
 assert_grep "$BASE/s27-state/rollback_drill_history.jsonl" '"schemaVersion": 1' "s27 legacy record stamped"
 assert_grep "$BASE/s27.log" "Runtime state schema: ok" "s27 schema gate ran"
+
+# ---------- S28: harness 提供 token/成本时写入 state（EVO-036）----------
+R28="$BASE/s28"; make_repo "$R28"
+EVOLVE_RUN_TOKENS=4321 EVOLVE_RUN_COST_USD=1.25 \
+  run_evolve "$R28" "$BASE/s28-state" "$BASE/s28.log" --paths scripts patch "s28" "s28" --next n
+assert_json "$BASE/s28-state/evolution_state.json" 'd["tokens"] == 4321' "s28 tokens recorded"
+assert_json "$BASE/s28-state/evolution_state.json" 'abs(d["costUSD"] - 1.25) < 1e-9' "s28 cost recorded"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

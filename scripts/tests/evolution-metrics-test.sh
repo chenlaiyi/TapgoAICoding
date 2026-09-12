@@ -19,10 +19,10 @@ cat > "$TMP/evolution/versions/v0.5.2.json" <<'JSON'
 {"version":"0.5.2","tag":"v0.5.2","date":"2026-09-02","scope":"mac","message":"m2","changes":["c"],"details":"d","why":"w","next":"n","testStatus":"pending","commitSha":null}
 JSON
 cat > "$TMP/history.jsonl" <<'JSONL'
-{"status":"published","version":"0.5.1","mode":"publish","builtAt":"2026-09-01T00:00:00Z","testStatus":"— 100 passed, 0 failed —"}
+{"schemaVersion":3,"status":"published","version":"0.5.1","mode":"publish","builtAt":"2026-09-01T00:00:00Z","testStatus":"— 100 passed, 0 failed —","durationSeconds":600,"tokens":1000,"costUSD":0.5}
 {"status":"committed","version":"0.5.2","mode":"publish","builtAt":"2026-09-02T00:00:00Z","testStatus":"— 200 passed, 0 failed —"}
 {"status":"release_failed","version":"0.5.2","mode":"publish","builtAt":"2026-09-02T01:00:00Z","testStatus":"— 200 passed, 0 failed —"}
-{"status":"published","version":"0.5.3","mode":"publish","builtAt":"2026-09-03T01:00:00Z","testStatus":"— 300 passed, 0 failed —"}
+{"schemaVersion":3,"status":"published","version":"0.5.3","mode":"publish","builtAt":"2026-09-03T01:00:00Z","testStatus":"— 300 passed, 0 failed —","durationSeconds":900,"tokens":2000,"costUSD":1.5}
 JSONL
 
 cat > "$TMP/maintenance_history.jsonl" <<'JSONL'
@@ -46,5 +46,21 @@ assert m["maintenanceRuns"] == 2, m
 assert m["lastMaintenanceStatus"] == "failed", m
 assert m["lastMaintenanceAt"] == "2026-09-05T10:00:00Z", m
 assert m["lastMaintenanceReason"] == "remote tag v0.5.1 not found", m
-print("evolution-metrics assertions: 12 passed, 0 failed")
+# EVO-036：周期 P95 / MTTR / 单轮时长与成本
+assert abs(m["p95CycleSeconds"] - 176400.0) < 1e-6, m
+assert abs(m["maxCycleSeconds"] - 176400.0) < 1e-6, m
+assert m["mttrSamples"] == 1, m
+assert abs(m["mttrMedianSeconds"] - 86400.0) < 1e-6, m
+assert m["unrecoveredFailures"] == 0, m
+assert m["lastFailureVersion"] == "0.5.2", m
+assert abs(m["lastRecoverySeconds"] - 86400.0) < 1e-6, m
+assert m["runDurationSamples"] == 2, m
+assert abs(m["runDurationMedianSeconds"] - 750.0) < 1e-6, m
+assert abs(m["runDurationP95Seconds"] - 885.0) < 1e-6, m
+assert m["runDurationTotalSeconds"] == 1500, m
+assert m["runTokensTotal"] == 3000, m
+assert m["runTokensMedian"] == 1500, m
+assert abs(m["runCostUSDTotal"] - 2.0) < 1e-6, m
+assert abs(m["lastRunCostUSD"] - 1.5) < 1e-6, m
+print("evolution-metrics assertions: 21 passed, 0 failed")
 PY

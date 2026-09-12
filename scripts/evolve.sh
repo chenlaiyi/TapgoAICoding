@@ -150,6 +150,7 @@ BENCHMARK_HISTORY="${EVOLVE_BENCHMARK_HISTORY:-$STATE_DIR/evolution_benchmark_hi
 PROGRESS_FILE="${EVOLVE_PROGRESS_FILE:-$STATE_DIR/evolution_progress.json}"
 STOP_FILE="${EVOLVE_STOP_FILE:-$STATE_DIR/evolution_stop_request}"
 PROGRESS_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+RUN_START_EPOCH="$(date +%s)"
 PROGRESS_PHASE_INDEX=0
 STOPPED=0
 NOTES_FILE=""
@@ -248,6 +249,8 @@ write_state() {
   local status="$1"
   local CANARY_STATE=""
   [[ "$CANARY" == "1" ]] && CANARY_STATE="$CANARY_HOST"
+  # EVO-036：单轮墙钟时长 + 可选的 token/成本（由 harness/操作者通过环境变量提供）。
+  local RUN_DURATION="$(( $(date +%s) - RUN_START_EPOCH ))"
   mkdir -p "$STATE_DIR"
   EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
   EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
@@ -256,15 +259,30 @@ write_state() {
   EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
   EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" EVO_CANARY="$CANARY_STATE" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
+  EVO_STARTED_AT="$PROGRESS_STARTED_AT" EVO_DURATION="$RUN_DURATION" \
+  EVO_TOKENS="${EVOLVE_RUN_TOKENS:-}" EVO_COST="${EVOLVE_RUN_COST_USD:-}" \
   python3 - "$STATE_FILE" <<'PY'
+from __future__ import annotations
+
 import json, os, sys, datetime
 path = sys.argv[1]
 version = os.environ["EVO_VERSION"]
 prev = os.environ.get("EVO_PREV") or "(none)"
 next_action = os.environ.get("EVO_NEXT", "").strip()
 mode = os.environ["EVO_MODE"]
+def _optional_int(raw: str) -> int | None:
+    return int(raw) if raw.strip().isdigit() else None
+
+
+def _optional_float(raw: str) -> float | None:
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 state = {
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "status": os.environ["EVO_STATUS"],
     "version": version,
     "commitSha": os.environ["EVO_SHA"],
@@ -284,6 +302,10 @@ state = {
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),
     "builtAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "startedAt": os.environ.get("EVO_STARTED_AT") or None,
+    "durationSeconds": _optional_int(os.environ.get("EVO_DURATION", "")),
+    "tokens": _optional_int(os.environ.get("EVO_TOKENS", "")),
+    "costUSD": _optional_float(os.environ.get("EVO_COST", "")),
     "evolutionNote": os.environ["EVO_NOTE"],
     "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
     "threadToResume": None,

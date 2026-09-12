@@ -28,10 +28,15 @@ public struct EvolutionHistoryEntry: Equatable {
     public let healthCheck: String?
     public let worktreeVerified: String?
     public let benchmarkScore: Int?
+    /// EVO-036：单轮墙钟时长与可选 token/成本（state schema v3）。
+    public let durationSeconds: Double?
+    public let tokens: Int?
+    public let costUSD: Double?
 
     public init(
         version: String, status: String, builtAt: String?, testStatus: String?,
-        healthCheck: String? = nil, worktreeVerified: String? = nil, benchmarkScore: Int? = nil
+        healthCheck: String? = nil, worktreeVerified: String? = nil, benchmarkScore: Int? = nil,
+        durationSeconds: Double? = nil, tokens: Int? = nil, costUSD: Double? = nil
     ) {
         self.version = version
         self.status = status
@@ -40,6 +45,9 @@ public struct EvolutionHistoryEntry: Equatable {
         self.healthCheck = healthCheck
         self.worktreeVerified = worktreeVerified
         self.benchmarkScore = benchmarkScore
+        self.durationSeconds = durationSeconds
+        self.tokens = tokens
+        self.costUSD = costUSD
     }
 }
 
@@ -126,6 +134,16 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let maintenanceRuns: Int
     public let lastMaintenanceStatus: String?
     public let lastMaintenanceAt: String?
+    /// EVO-036：周期长尾、失败恢复速度与单轮成本。
+    public let p95CycleSeconds: Double?
+    public let mttrMedianSeconds: Double?
+    public let mttrSampleCount: Int
+    public let unrecoveredFailureCount: Int
+    public let runDurationSampleCount: Int
+    public let runDurationMedianSeconds: Double?
+    public let runDurationP95Seconds: Double?
+    public let runTokensTotal: Int?
+    public let runCostUSDTotal: Double?
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
@@ -146,7 +164,16 @@ public struct EvolutionMetricsSnapshot: Equatable {
         lastRollbackDrillPassed: Bool? = nil,
         maintenanceRuns: Int = 0,
         lastMaintenanceStatus: String? = nil,
-        lastMaintenanceAt: String? = nil
+        lastMaintenanceAt: String? = nil,
+        p95CycleSeconds: Double? = nil,
+        mttrMedianSeconds: Double? = nil,
+        mttrSampleCount: Int = 0,
+        unrecoveredFailureCount: Int = 0,
+        runDurationSampleCount: Int = 0,
+        runDurationMedianSeconds: Double? = nil,
+        runDurationP95Seconds: Double? = nil,
+        runTokensTotal: Int? = nil,
+        runCostUSDTotal: Double? = nil
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -181,6 +208,15 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.maintenanceRuns = maintenanceRuns
         self.lastMaintenanceStatus = lastMaintenanceStatus
         self.lastMaintenanceAt = lastMaintenanceAt
+        self.p95CycleSeconds = p95CycleSeconds
+        self.mttrMedianSeconds = mttrMedianSeconds
+        self.mttrSampleCount = mttrSampleCount
+        self.unrecoveredFailureCount = unrecoveredFailureCount
+        self.runDurationSampleCount = runDurationSampleCount
+        self.runDurationMedianSeconds = runDurationMedianSeconds
+        self.runDurationP95Seconds = runDurationP95Seconds
+        self.runTokensTotal = runTokensTotal
+        self.runCostUSDTotal = runCostUSDTotal
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -194,7 +230,10 @@ public struct EvolutionMetricsSnapshot: Equatable {
 
 public enum EvolutionMetrics {
     public static let terminalStatuses: Set<String> = ["published", "local_built"]
-    public static let failedStatuses: Set<String> = ["push_failed", "release_failed", "health_failed"]
+    public static let failedStatuses: Set<String> = [
+        "push_failed", "release_failed", "health_failed",
+        "worktree_verify_failed", "benchmark_regressed", "canary_failed",
+    ]
 
     public static func compute(
         records: [EvolutionRecordEntry],
@@ -226,13 +265,35 @@ public enum EvolutionMetrics {
         for index in 1..<terminalTimes.count {
             durations.append(terminalTimes[index].date.timeIntervalSince(terminalTimes[index - 1].date))
         }
-        let median: Double?
-        if durations.isEmpty {
-            median = nil
-        } else {
-            let sorted = durations.sorted()
-            let mid = sorted.count / 2
-            median = sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+        let median = Self.median(durations)
+        let p95Cycle = Self.percentile(durations, 0.95)
+
+        // MTTR：失败状态 → 其后第一个终端成功（同版本 --resume 续跑，或下一版发布）。
+        var ordered: [(date: Date, status: String)] = []
+        for entry in history {
+            if let raw = entry.builtAt, let date = formatter.date(from: raw) {
+                ordered.append((date, entry.status))
+            }
+        }
+        ordered.sort { $0.date < $1.date }
+        var mttrValues: [Double] = []
+        var unrecoveredFailures = 0
+        for (index, row) in ordered.enumerated() where failedStatuses.contains(row.status) {
+            if let recovered = ordered[(index + 1)...].first(where: { terminalStatuses.contains($0.status) }) {
+                mttrValues.append(recovered.date.timeIntervalSince(row.date))
+            } else {
+                unrecoveredFailures += 1
+            }
+        }
+
+        // 单轮墙钟时长与可选 token/成本（同一版本多次运行取最后一次）。
+        var runDurations: [Double] = []
+        var runTokens: [Int] = []
+        var runCosts: [Double] = []
+        for entry in finalEntries {
+            if let duration = entry.durationSeconds { runDurations.append(duration) }
+            if let tokens = entry.tokens { runTokens.append(tokens) }
+            if let cost = entry.costUSD { runCosts.append(cost) }
         }
 
         var testTotal = 0
@@ -306,8 +367,35 @@ public enum EvolutionMetrics {
             lastBenchmarkScore: finalEntries
                 .filter { $0.benchmarkScore != nil }
                 .sorted { ($0.builtAt ?? "") < ($1.builtAt ?? "") }
-                .last?.benchmarkScore
+                .last?.benchmarkScore,
+            p95CycleSeconds: p95Cycle,
+            mttrMedianSeconds: Self.median(mttrValues),
+            mttrSampleCount: mttrValues.count,
+            unrecoveredFailureCount: unrecoveredFailures,
+            runDurationSampleCount: runDurations.count,
+            runDurationMedianSeconds: Self.median(runDurations),
+            runDurationP95Seconds: Self.percentile(runDurations, 0.95),
+            runTokensTotal: runTokens.isEmpty ? nil : runTokens.reduce(0, +),
+            runCostUSDTotal: runCosts.isEmpty ? nil : runCosts.reduce(0, +)
         )
+    }
+
+    /// 线性插值分位数；空数组返回 nil。
+    static func percentile(_ values: [Double], _ fraction: Double) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        if sorted.count == 1 { return sorted[0] }
+        let position = Double(sorted.count - 1) * fraction
+        let low = Int(position)
+        let high = min(low + 1, sorted.count - 1)
+        return sorted[low] + (sorted[high] - sorted[low]) * (position - Double(low))
+    }
+
+    static func median(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        let mid = sorted.count / 2
+        return sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
     }
 
     public static func parseHistory(_ text: String) -> [EvolutionHistoryEntry] {
@@ -325,7 +413,10 @@ public enum EvolutionMetrics {
                 testStatus: object["testStatus"] as? String,
                 healthCheck: object["healthCheck"] as? String,
                 worktreeVerified: object["worktreeVerified"] as? String,
-                benchmarkScore: object["benchmarkScore"] as? Int
+                benchmarkScore: object["benchmarkScore"] as? Int,
+                durationSeconds: (object["durationSeconds"] as? NSNumber)?.doubleValue,
+                tokens: (object["tokens"] as? NSNumber)?.intValue,
+                costUSD: (object["costUSD"] as? NSNumber)?.doubleValue
             ))
         }
         return entries
@@ -443,7 +534,16 @@ public enum EvolutionMetrics {
             lastRollbackDrillPassed: lastRollback?["passed"] as? Bool,
             maintenanceRuns: maintenanceRecords.count,
             lastMaintenanceStatus: lastMaintenance?["status"] as? String,
-            lastMaintenanceAt: lastMaintenance?["ranAt"] as? String
+            lastMaintenanceAt: lastMaintenance?["ranAt"] as? String,
+            p95CycleSeconds: snapshot.p95CycleSeconds,
+            mttrMedianSeconds: snapshot.mttrMedianSeconds,
+            mttrSampleCount: snapshot.mttrSampleCount,
+            unrecoveredFailureCount: snapshot.unrecoveredFailureCount,
+            runDurationSampleCount: snapshot.runDurationSampleCount,
+            runDurationMedianSeconds: snapshot.runDurationMedianSeconds,
+            runDurationP95Seconds: snapshot.runDurationP95Seconds,
+            runTokensTotal: snapshot.runTokensTotal,
+            runCostUSDTotal: snapshot.runCostUSDTotal
         )
         return snapshot
     }

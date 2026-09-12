@@ -6,6 +6,8 @@ model-eval、rollback-drill.sh、maintenance.sh），字段演进时读者只能
 这里给每个 artifact 登记当前 schema 版本：
 
   * 新记录必须自带 schemaVersion（各写入方负责写入）；
+  * v3 起 evolution_state*.json 额外记录 startedAt/durationSeconds/tokens/costUSD
+    （token/成本可选，由 harness 通过 EVOLVE_RUN_TOKENS / EVOLVE_RUN_COST_USD 提供）；
   * `ensure` 给历史记录补写推断出的版本（原子、幂等、不新增/删除字段）；
   * `validate` 拒绝未知或未来版本（例如用旧代码解析新格式时应显式失败）；
   * 读者（Python/Swift/H5）保持宽容：缺字段不崩，门禁放在写入侧。
@@ -35,9 +37,9 @@ class Artifact:
 
 
 ARTIFACTS: dict[str, Artifact] = {
-    "evolution_state.json": Artifact(2, "json", ("status", "version")),
+    "evolution_state.json": Artifact(3, "json", ("status", "version")),
     "evolution_state_history.jsonl": Artifact(
-        2, "jsonl", ("status", "version", "healthCheck", "worktreeVerified")),
+        3, "jsonl", ("status", "version", "healthCheck", "worktreeVerified")),
     "evolution_progress.json": Artifact(1, "json", ("phase", "phaseIndex", "status")),
     "test_run_history.jsonl": Artifact(1, "jsonl", ("status", "ranAt")),
     "evolution_benchmark_history.jsonl": Artifact(1, "jsonl", ("score", "ranAt")),

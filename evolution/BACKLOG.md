@@ -62,7 +62,7 @@
 - [x] **EVO-033 发布失败续跑**：`--publish --resume [--resume-from stage]` 从失败阶段继续，不重做版本/测试/构建/commit（v0.5.289）
 - [x] **EVO-034 发布前环境预检**：新增 evolution-preflight.sh（工具链/SDK/磁盘/仓库/远端/gh/三机 SSH/tag），evolve.sh 在版本号确定后立即执行，失败以 12 退出且零改动（v0.5.290）
 - [x] **EVO-035 运行态 schemaVersion**：新增 evolution-schema.py（registry/migrate/validate），7 个 state artifact 全部带版本，evolve.sh 写入前 `ensure` 补章并以 13 拒绝未来版本（v0.5.291）
-- [ ] **EVO-036 度量扩展**：周期 P95、失败后 MTTR、单轮 token/时长成本
+- [x] **EVO-036 度量扩展**：周期 P95/max、失败后 MTTR（中位/P95/未恢复）、单轮时长与可选 token/成本（v0.5.292）
 - [ ] **EVO-037 远端锁 TTL**：崩溃后锁按 TTL 自动回收，保留显式抢占入口
 - [ ] **EVO-038 反馈闭环转化率**：drafts → check → backlog → 版本的转化率与等待时长
 - [ ] **EVO-039 三机界面自动断言**：部署后截图/UI 断言，区分"版本到位"与"界面可用"

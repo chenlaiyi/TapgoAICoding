@@ -39,7 +39,8 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 
 - `scripts/tests/evolution-records-test.sh` 覆盖 schema、渲染、重复版本拒绝、test-status 更新与当前版本一致性。
 - `scripts/tests/evolve-failure-injection-test.sh` 用临时 git 仓库注入测试失败、构建失败、发布失败、未覆盖脏路径等场景，验证回滚与状态机。
-- `scripts/evolution-metrics.py` 从记录 + `evolution_state_history.jsonl` 汇总成功率、失败、中位周期与测试总量。
+- `scripts/evolution-metrics.py` 从记录 + `evolution_state_history.jsonl` 汇总：成功率/失败、周期中位与 **P95/max**、**MTTR**（失败 → 其后第一个终端成功，同版本 `--resume` 或下一版；含未恢复失败计数）、**单轮墙钟时长**（median/P95/总计）与可选 token/成本。
+- 单轮成本来自 `evolution_state*.json` 的 `durationSeconds`/`tokens`/`costUSD`（state schema v3）：时长由 `evolve.sh` 自动记录，token/成本由 harness 通过 `EVOLVE_RUN_TOKENS` / `EVOLVE_RUN_COST_USD` 提供，缺失即留空不估算。
 - `evolution/BACKLOG.md` 是下一轮选点的单一待办清单；完成后把 `[ ]` 改为 `[x]` 并附版本号。
 - `scripts/evolution-backlog.py` 提供 `list / top / validate`；Swift 侧 `TapgoCore.EvolutionBacklog` 使用同一格式驱动 App 横幅与 kickoff prompt。
 - `scripts/evolution-schema.py` 是运行态 schema 注册表与门禁（EVO-035）：`status` 看版本分布，`ensure` 给历史记录补章 `schemaVersion` 后校验，`validate` 只读校验；未来版本以 13 退出，读者（Python/Swift/H5）保持宽容。

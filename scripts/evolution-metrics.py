@@ -59,6 +59,62 @@ def parse_passed(value: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def percentile(values: list[float], fraction: float) -> float | None:
+    """线性插值分位数；空集返回 None。"""
+    if not values:
+        return None
+    xs = sorted(values)
+    if len(xs) == 1:
+        return xs[0]
+    position = (len(xs) - 1) * fraction
+    low = int(position)
+    high = min(low + 1, len(xs) - 1)
+    return xs[low] + (xs[high] - xs[low]) * (position - low)
+
+
+def ordered_transitions(history: list[dict]) -> list[tuple[dt.datetime, str, str]]:
+    """按时间排序的 (时间, 版本, 状态) 迁移序列。"""
+    rows = []
+    for entry in history:
+        version = str(entry.get("version", ""))
+        stamp = parse_timestamp(str(entry.get("builtAt", "")))
+        if version and stamp is not None:
+            rows.append((stamp, version, str(entry.get("status", ""))))
+    rows.sort(key=lambda row: row[0])
+    return rows
+
+
+def recovery_samples(rows: list[tuple[dt.datetime, str, str]]) -> tuple[list[float], int]:
+    """MTTR 采样：每个失败状态 → 其后第一个终端成功（同版本续跑或下一版发布）。
+
+    返回 (恢复秒数列表, 未恢复失败次数)。未恢复的失败不计入采样但单独计数。
+    """
+    samples: list[float] = []
+    unrecovered = 0
+    for index, (stamp, _version, status) in enumerate(rows):
+        if status not in FAILED:
+            continue
+        for later_stamp, _later_version, later_status in rows[index + 1:]:
+            if later_status in TERMINAL:
+                samples.append((later_stamp - stamp).total_seconds())
+                break
+        else:
+            unrecovered += 1
+    return samples, unrecovered
+
+
+def numeric(entry: dict, key: str) -> float | None:
+    value = entry.get(key)
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
 def collect_test_runs(path: Path) -> list[dict]:
     return load_history(path)
 
@@ -104,6 +160,40 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         for i in range(1, len(terminal_times))
     ]
     median_cycle_seconds = statistics.median(deltas) if deltas else None
+    p95_cycle_seconds = percentile(deltas, 0.95)
+    max_cycle_seconds = max(deltas) if deltas else None
+
+    transitions = ordered_transitions(history)
+    mttr_values, unrecovered_failures = recovery_samples(transitions)
+    mttr_median_seconds = statistics.median(mttr_values) if mttr_values else None
+    mttr_p95_seconds = percentile(mttr_values, 0.95)
+    last_failure_version = next(
+        (version for stamp, version, status in reversed(transitions) if status in FAILED), None)
+    last_recovery_seconds = None
+    last_failure_index = next(
+        (index for index, row in enumerate(reversed(transitions)) if row[2] in FAILED), None)
+    if last_failure_index is not None:
+        tail = list(reversed(transitions))[:last_failure_index + 1]
+        failure_stamp = tail[-1][0]
+        for stamp, _version, status in reversed(tail):
+            if status in TERMINAL:
+                last_recovery_seconds = (stamp - failure_stamp).total_seconds()
+                break
+
+    run_durations: list[float] = []
+    run_tokens: list[float] = []
+    run_costs: list[float] = []
+    for entry in final.values():
+        duration = numeric(entry, "durationSeconds")
+        if duration is not None:
+            run_durations.append(duration)
+        tokens = numeric(entry, "tokens")
+        if tokens is not None:
+            run_tokens.append(tokens)
+        cost = numeric(entry, "costUSD")
+        if cost is not None:
+            run_costs.append(cost)
+    last_state = max(final.values(), key=lambda e: parse_timestamp(str(e.get("builtAt", ""))) or dt.datetime.min.replace(tzinfo=dt.timezone.utc), default={})
 
     test_total = 0
     test_versions = 0
@@ -150,6 +240,23 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "other": other,
         "successRate": success_rate,
         "medianCycleSeconds": median_cycle_seconds,
+        "p95CycleSeconds": p95_cycle_seconds,
+        "maxCycleSeconds": max_cycle_seconds,
+        "mttrMedianSeconds": mttr_median_seconds,
+        "mttrP95Seconds": mttr_p95_seconds,
+        "mttrSamples": len(mttr_values),
+        "unrecoveredFailures": unrecovered_failures,
+        "lastFailureVersion": last_failure_version,
+        "lastRecoverySeconds": last_recovery_seconds,
+        "runDurationSamples": len(run_durations),
+        "runDurationMedianSeconds": statistics.median(run_durations) if run_durations else None,
+        "runDurationP95Seconds": percentile(run_durations, 0.95),
+        "runDurationTotalSeconds": sum(run_durations) if run_durations else None,
+        "runTokensTotal": int(sum(run_tokens)) if run_tokens else None,
+        "runTokensMedian": statistics.median(run_tokens) if run_tokens else None,
+        "runCostUSDTotal": round(sum(run_costs), 4) if run_costs else None,
+        "lastRunTokens": int(run_tokens[-1]) if run_tokens else None,
+        "lastRunCostUSD": round(run_costs[-1], 4) if run_costs else None,
         "testPassedTotal": test_total,
         "testVersions": test_versions,
         "openBacklog": open_backlog,
@@ -211,6 +318,30 @@ def main() -> int:
     print(f"failed:            {metrics['failed']}")
     print(f"success rate:      {rate_text}")
     print(f"median cycle:      {cycle_text}")
+    p95 = metrics["p95CycleSeconds"]
+    worst = metrics["maxCycleSeconds"]
+    if p95 is not None:
+        worst_text = "—" if worst is None else f"{worst / 3600:.1f}h"
+        print(f"cycle p95 / max:   {p95 / 3600:.1f}h / {worst_text}")
+    if metrics["mttrSamples"] or metrics["unrecoveredFailures"]:
+        mttr_median = metrics["mttrMedianSeconds"]
+        mttr_p95 = metrics["mttrP95Seconds"]
+        mttr_text = "n/a" if mttr_median is None else f"median {mttr_median / 3600:.2f}h"
+        p95_text = "n/a" if mttr_p95 is None else f"p95 {mttr_p95 / 3600:.2f}h"
+        print(f"mttr:              {mttr_text} / {p95_text} over {metrics['mttrSamples']} "
+              f"(unrecovered {metrics['unrecoveredFailures']})")
+    if metrics["runDurationSamples"]:
+        median_run = metrics["runDurationMedianSeconds"] or 0
+        p95_run = metrics["runDurationP95Seconds"] or 0
+        print(f"run duration:      median {median_run / 60:.1f}m / p95 {p95_run / 60:.1f}m "
+              f"over {metrics['runDurationSamples']} run(s)")
+    if metrics["runTokensTotal"] is not None or metrics["runCostUSDTotal"] is not None:
+        tokens = metrics["runTokensTotal"]
+        cost = metrics["runCostUSDTotal"]
+        tokens_text = "n/a" if tokens is None else f"{tokens}"
+        cost_text = "n/a" if cost is None else f"${cost:.2f}"
+        print(f"run cost:          tokens={tokens_text} cost={cost_text} "
+              f"(last tokens={metrics['lastRunTokens']} cost={metrics['lastRunCostUSD']})")
     print(f"tests (last-state): {metrics['testPassedTotal']} across {metrics['testVersions']} versions")
     print(f"backlog:           {metrics['openBacklog']} open / {metrics['doneBacklog']} done")
     print(f"test runs:         {metrics['testRuns']} (last {metrics['lastTestStatus'] or 'n/a'})")

@@ -9,10 +9,10 @@ func runEvolutionMetrics(_ t: TestRunner) {
         TapgoCore.EvolutionRecordEntry(version: "0.5.3", date: "2026-09-03", testStatus: "— 300 passed, 0 failed —")
     ]
     let history = [
-        TapgoCore.EvolutionHistoryEntry(version: "0.5.1", status: "published", builtAt: "2026-09-01T00:00:00Z", testStatus: "— 100 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes", benchmarkScore: 100),
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.1", status: "published", builtAt: "2026-09-01T00:00:00Z", testStatus: "— 100 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes", benchmarkScore: 100, durationSeconds: 600, tokens: 1000, costUSD: 0.5),
         TapgoCore.EvolutionHistoryEntry(version: "0.5.2", status: "committed", builtAt: "2026-09-02T00:00:00Z", testStatus: "— 200 passed, 0 failed —"),
         TapgoCore.EvolutionHistoryEntry(version: "0.5.2", status: "release_failed", builtAt: "2026-09-02T01:00:00Z", testStatus: "— 200 passed, 0 failed —"),
-        TapgoCore.EvolutionHistoryEntry(version: "0.5.3", status: "published", builtAt: "2026-09-03T01:00:00Z", testStatus: "— 300 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes")
+        TapgoCore.EvolutionHistoryEntry(version: "0.5.3", status: "published", builtAt: "2026-09-03T01:00:00Z", testStatus: "— 300 passed, 0 failed —", healthCheck: "passed", worktreeVerified: "yes", durationSeconds: 900, tokens: 2000, costUSD: 1.5)
     ]
     let backlog = "- [x] done\n- [ ] open\n"
     let testRuns = [
@@ -42,6 +42,22 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(snapshot.cyclePoints.count, 1, "metrics: cycle points")
     t.expectEqual(snapshot.lastBenchmarkScore, 100, "metrics: benchmark score")
     t.expectEqual(!snapshot.iterations.isEmpty, true, "metrics: iteration timeline")
+
+    // EVO-036：周期 P95、失败恢复时间（MTTR）与单轮时长/成本。
+    t.expectEqual(snapshot.p95CycleSeconds.map { abs($0 - 176400) < 1 } ?? false, true,
+                  "metrics: p95 cycle equals single sample")
+    t.expectEqual(snapshot.mttrSampleCount, 1, "metrics: mttr sample count")
+    t.expectEqual(snapshot.mttrMedianSeconds.map { abs($0 - 86400) < 1 } ?? false, true,
+                  "metrics: mttr median (release_failed → next published)")
+    t.expectEqual(snapshot.unrecoveredFailureCount, 0, "metrics: no unrecovered failure")
+    t.expectEqual(snapshot.runDurationSampleCount, 2, "metrics: run duration samples")
+    t.expectEqual(snapshot.runDurationMedianSeconds.map { abs($0 - 750) < 0.01 } ?? false, true,
+                  "metrics: run duration median")
+    t.expectEqual(snapshot.runDurationP95Seconds.map { abs($0 - 885) < 0.01 } ?? false, true,
+                  "metrics: run duration p95 (interpolated)")
+    t.expectEqual(snapshot.runTokensTotal, 3000, "metrics: run tokens total")
+    t.expectEqual(snapshot.runCostUSDTotal.map { abs($0 - 2.0) < 0.0001 } ?? false, true,
+                  "metrics: run cost total")
 
     let parsedHistory = TapgoCore.EvolutionMetrics.parseHistory(
         "{\"version\":\"0.5.1\",\"status\":\"published\",\"builtAt\":\"2026-09-01T00:00:00Z\"}\nnot-json\n"

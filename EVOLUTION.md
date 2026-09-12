@@ -1,5 +1,22 @@
 # Evolution Log
 
+## v0.5.292 — feat(evolution): 度量扩展
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.292`)_
+**Tag**: v0.5.292
+**Test status**: — 3356 passed, 0 failed —
+**Changed**:
+- evolve.sh 每次写状态记录 startedAt/durationSeconds（墙钟），并接受 EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 写入 tokens/costUSD；state schema 升到 v3。
+- evolution-metrics.py 新增 p95CycleSeconds/maxCycleSeconds、MTTR（mttrMedianSeconds/mttrP95Seconds/mttrSamples/unrecoveredFailures/lastRecoverySeconds）与单轮汇总（runDuration*/runTokens*/runCostUSD*）。
+- MTTR 定义：失败状态 → 其后第一个终端成功（同版本 --resume 续跑或下一版发布）；未恢复失败单独计数、不计入采样。
+- Swift EvolutionMetricsSnapshot 同步 P95/MTTR/单轮时长成本字段并补齐 failedStatuses（worktree_verify_failed/benchmark_regressed/canary_failed），指标详情新增「周期 P95 / MTTR / 单轮时长」卡片。
+- 测试：Python 指标断言扩到 21 项、Swift 新增 9 项（3353 passed）、失败注入扩到 135 项（时长/token/成本落盘）。
+
+新增周期 P95、MTTR 与单轮时长/成本指标
+**Why**: 此前只有成功率与中位周期：长尾劣化、失败后多久恢复、单轮到底花了多少时间/成本都不可见，无法判断自进化是否在变慢变贵。
+**Next**: EVO-037 远端锁 TTL: 崩溃后锁按 TTL 自动回收，保留显式抢占入口
+
+
 ## v0.5.291 — feat(evolution): 运行态 schemaVersion
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.291`)_
