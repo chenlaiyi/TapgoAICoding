@@ -124,6 +124,7 @@
               <div class="evolution-progress"><span id="evolutionBar"></span></div>
               <div class="evolution-meta" id="evolutionMeta"></div>
               <div class="evolution-next" id="evolutionNext"></div>
+              <div class="evolution-metrics" id="evolutionMetrics" hidden></div>
               <div class="evolution-rollback" id="evolutionRollback" hidden></div>
               <div class="evolution-maintenance" id="evolutionMaintenance" hidden></div>
               <div class="evolution-funnel" id="evolutionFunnel" hidden></div>
@@ -364,6 +365,28 @@
     if (evo.backlogOpen) meta.push("backlog " + evo.backlogOpen);
     $("evolutionMeta").textContent = meta.join(" · ");
     $("evolutionNext").textContent = evo.backlogTop ? "下一项：" + evo.backlogTop : "";
+    const metricsLine = $("evolutionMetrics");
+    if (metricsLine) {
+      const m = evo.metricsSummary;
+      const parts = [];
+      const dur = (s) => (s == null ? null : (s < 3600 ? Math.round(s / 60) + "m" : (s / 3600).toFixed(1) + "h"));
+      if (m) {
+        if (m.p95CycleSeconds != null) parts.push("周期 p95 " + dur(m.p95CycleSeconds));
+        if (m.mttrMedianSeconds != null) parts.push("MTTR " + dur(m.mttrMedianSeconds));
+        else if (m.unrecoveredFailureCount > 0) parts.push("MTTR 未恢复 " + m.unrecoveredFailureCount);
+        if (m.runDurationMedianSeconds != null) parts.push("单轮 " + dur(m.runDurationMedianSeconds));
+        if (m.runTokensTotal != null) parts.push("tokens " + m.runTokensTotal);
+        if (m.runCostUSDTotal != null) parts.push("$" + Number(m.runCostUSDTotal).toFixed(2));
+        if (m.localAppStale === true) parts.push("本机 App 落后 " + (m.localAppRunning || "?"));
+      }
+      if (parts.length) {
+        metricsLine.hidden = false;
+        metricsLine.textContent = parts.join(" · ");
+        metricsLine.dataset.stale = m && m.localAppStale === true ? "yes" : "no";
+      } else {
+        metricsLine.hidden = true;
+      }
+    }
     const rollback = $("evolutionRollback");
     if (rollback) {
       if (evo.rollbackDrillRuns > 0) {

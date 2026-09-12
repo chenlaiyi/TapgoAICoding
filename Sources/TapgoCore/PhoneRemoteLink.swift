@@ -716,6 +716,8 @@ public enum PhoneRemote {
         public var lastMaintenanceAt: String?
         /// EVO-042：反馈闭环漏斗（只读快照）。
         public var funnel: FeedbackFunnelSnapshot?
+        /// EVO-047：指标摘要（周期 P95 / MTTR / 单轮时长与成本，只读快照）。
+        public var metricsSummary: EvolutionMetricsSummary?
 
         public init(
             version: String? = nil, phase: String? = nil,
@@ -731,7 +733,8 @@ public enum PhoneRemote {
             maintenanceRuns: Int = 0,
             lastMaintenanceStatus: String? = nil,
             lastMaintenanceAt: String? = nil,
-            funnel: FeedbackFunnelSnapshot? = nil
+            funnel: FeedbackFunnelSnapshot? = nil,
+            metricsSummary: EvolutionMetricsSummary? = nil
         ) {
             self.version = version
             self.phase = phase
@@ -752,6 +755,7 @@ public enum PhoneRemote {
             self.lastMaintenanceStatus = lastMaintenanceStatus
             self.lastMaintenanceAt = lastMaintenanceAt
             self.funnel = funnel
+            self.metricsSummary = metricsSummary
         }
     }
 
@@ -897,9 +901,10 @@ public enum PhoneRemote {
         let maintenanceRecords = jsonLines(in: stateDirectory.appendingPathComponent("maintenance_history.jsonl"))
         let lastMaintenance = maintenanceRecords.last
         let funnel = FeedbackFunnelSnapshot.load(stateDirectory: stateDirectory)
+        let metricsSummary = EvolutionMetricsSummary.load(stateDirectory: stateDirectory)
         guard progress != nil || benchmarkScore != nil || modelEvalBest != nil
                 || backlogTop != nil || lastRollback != nil || lastMaintenance != nil
-                || funnel != nil else {
+                || funnel != nil || metricsSummary != nil else {
             return nil
         }
         return EvolutionStatus(
@@ -921,7 +926,8 @@ public enum PhoneRemote {
             maintenanceRuns: maintenanceRecords.count,
             lastMaintenanceStatus: lastMaintenance?["status"] as? String,
             lastMaintenanceAt: lastMaintenance?["ranAt"] as? String,
-            funnel: funnel
+            funnel: funnel,
+            metricsSummary: metricsSummary
         )
     }
 

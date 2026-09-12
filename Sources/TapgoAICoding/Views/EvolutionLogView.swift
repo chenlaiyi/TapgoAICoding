@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.305", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.305",
+                    summary: "手机端指标补齐:周期 p95/MTTR/单轮时长成本/本机落后 一行显示。",
+                    changes: [
+                        "evolution-metrics.py 新增 --out(原子写 JSON 摘要)与 --quiet;evolve.sh 每轮收尾把它和反馈漏斗快照一起刷新(refresh_snapshots),失败只 WARN。",
+                        "新增 TapgoCore.EvolutionMetricsSummary:宽容解析 state/evolution_metrics_summary.json(缺文件/缺字段返回 nil 或默认值),口径仍以 Python 指标工具为唯一真源。",
+                        "PhoneRemote.EvolutionStatus 增加 metricsSummary;H5 自进化卡片新增一行「周期 p95 · MTTR · 单轮 · tokens · 成本」,本机 App 落后时额外提示并把整行标黄。",
+                        "桌面端已有这些卡片,本轮把差距补到手机端——用户在手机上也能看到长尾周期、恢复速度与单轮成本。",
+                        "测试:metrics 断言扩到 27 项(--out 原子写与内容),PhoneRemote 快照 58→64、H5 页面 74→78。"
+                    ],
+                    why: "EVO-036/043/047 造出的指标此前只在桌面端可见:手机端卡片只有 benchmark/model/backlog 与几行状态,长尾与成本对用户不可见。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮候选:真实触发一次月度维护任务并验证通知路径。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.304", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.304",
                     summary: "canary 提升演练:真跑推 appcast/解除 draft/部署其余机器,失败分级。",
                     changes: [

@@ -30,6 +30,10 @@ cat > "$TMP/maintenance_history.jsonl" <<'JSONL'
 {"ranAt":"2026-09-05T10:00:00Z","status":"failed","drill":{"status":"failed","reason":"remote tag v0.5.1 not found"},"archive":{"status":"passed","reason":null}}
 JSONL
 
+SUMMARY_OUT="$TMP/summary.json"
+export SUMMARY_OUT
+python3 "$ROOT/scripts/evolution-metrics.py" --root "$TMP" --history "$TMP/history.jsonl" \
+  --out "$SUMMARY_OUT" --quiet >/dev/null
 OUT="$(python3 "$ROOT/scripts/evolution-metrics.py" --root "$TMP" --history "$TMP/history.jsonl" --json)"
 python3 - "$OUT" <<'PY'
 import json, sys
@@ -65,5 +69,14 @@ assert abs(m["lastRunCostUSD"] - 1.5) < 1e-6, m
 assert m["localAppRunning"] == "0.5.1", m
 assert m["localAppInstalled"] == "0.5.3", m
 assert m["localAppStale"] is True, m
-print("evolution-metrics assertions: 24 passed, 0 failed")
+
+# EVO-047：--out 原子写 JSON 摘要（App/H5 只读）
+import os, pathlib
+summary = pathlib.Path(os.environ["SUMMARY_OUT"])
+assert summary.exists(), summary
+snap = json.loads(summary.read_text(encoding="utf-8"))
+assert snap["p95CycleSeconds"] == m["p95CycleSeconds"], snap
+assert snap["runDurationMedianSeconds"] == m["runDurationMedianSeconds"], snap
+assert snap["latestRecord"]["version"] == "0.5.2", snap   # 记录真源是 evolution/versions/*.json
+print("evolution-metrics assertions: 27 passed, 0 failed")
 PY

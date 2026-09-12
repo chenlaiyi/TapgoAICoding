@@ -338,6 +338,13 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     try? "{\"status\":\"ok\",\"ranAt\":\"2026-09-12T10:00:00Z\"}\n".write(
         to: stateDir.appendingPathComponent("maintenance_history.jsonl"), atomically: true, encoding: .utf8)
     try? """
+    {"latestRecord":{"version":"0.5.304"},"successRate":1.0,"medianCycleSeconds":900,
+     "p95CycleSeconds":1163.8,"mttrMedianSeconds":86400,"mttrSamples":1,"unrecoveredFailures":0,
+     "runDurationMedianSeconds":497.0,"runDurationP95Seconds":520.0,
+     "runTokensTotal":12000,"runCostUSDTotal":1.25,
+     "localApp":{"installed":"0.5.304","running":"0.5.295","stale":true}}
+    """.write(to: stateDir.appendingPathComponent("evolution_metrics_summary.json"), atomically: true, encoding: .utf8)
+    try? """
     {"schemaVersion":1,"generatedAt":"2026-09-13T00:00:00Z",
      "drafts":{"total":2,"open":1,"promoted":1,"staleOverDays":0},
      "registered":{"total":6,"shipped":6,"unshipped":0,"staleOverDays":0},
@@ -362,6 +369,12 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(loaded?.funnel?.registeredTotal, 6, "evolution-status: funnel registered")
     t.expectEqual(loaded?.funnel?.draftsOpen, 1, "evolution-status: funnel open drafts")
     t.expectEqual(loaded?.funnel?.registeredToShippedMedianDays, 7.0, "evolution-status: funnel wait")
+    t.expectEqual(loaded?.metricsSummary?.p95CycleSeconds, 1163.8, "evolution-status: metrics p95")
+    t.expectEqual(loaded?.metricsSummary?.mttrMedianSeconds, 86400, "evolution-status: metrics mttr")
+    t.expectEqual(loaded?.metricsSummary?.runDurationMedianSeconds, 497.0, "evolution-status: metrics run duration")
+    t.expectEqual(loaded?.metricsSummary?.runTokensTotal, 12000, "evolution-status: metrics tokens")
+    t.expectEqual(loaded?.metricsSummary?.runCostUSDTotal, 1.25, "evolution-status: metrics cost")
+    t.expectEqual(loaded?.metricsSummary?.localAppStale, true, "evolution-status: metrics local app drift")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
     t.expectEqual(snap.models.count, 2, "snapshot: 模型白名单透传")
     t.expectEqual(snap.models.first?.selected, true, "snapshot: 当前模型标记")
@@ -605,6 +618,10 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(appJS.contains("evolutionFunnel"), "page: app.js 含反馈漏斗行")
     t.expect(appJS.contains("registeredToShippedRate"), "page: app.js 渲染漏斗转化率")
     t.expect(appCSS.contains(".evolution-funnel"), "page: app.css 含漏斗样式")
+    t.expect(appJS.contains("evolutionMetrics"), "page: app.js 含指标摘要行")
+    t.expect(appJS.contains("p95CycleSeconds"), "page: app.js 渲染周期 P95")
+    t.expect(appJS.contains("localAppStale"), "page: app.js 渲染本机 App 落后提示")
+    t.expect(appCSS.contains(".evolution-metrics"), "page: app.css 含指标摘要样式")
 
 
     // H5 页面拆为骨架 + 静态资源；v0.5.96 全面重构 app.css 的移动端布局。

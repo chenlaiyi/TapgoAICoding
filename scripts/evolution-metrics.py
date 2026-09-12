@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import statistics
 import sys
@@ -299,6 +300,8 @@ def main() -> int:
     parser.add_argument("--history", default=None)
     parser.add_argument("--test-history", default=None)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--out", default=None, help="原子写入 JSON 摘要（App/H5 只读）")
+    parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
     root = repo_root(args.root)
@@ -310,8 +313,22 @@ def main() -> int:
     )
     metrics = collect_metrics(root, history_path, test_history_path)
 
+    if args.out:
+        out = Path(args.out).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(out.suffix + ".tmp")
+        with tmp.open("w", encoding="utf-8") as fh:
+            fh.write(json.dumps(metrics, ensure_ascii=False, indent=2) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, out)
+        if not args.quiet:
+            print(f"METRICS SUMMARY: {out}")
+
     if args.json:
         print(json.dumps(metrics, ensure_ascii=False, indent=2))
+        return 0
+    if args.out:
         return 0
 
     rate = metrics["successRate"]

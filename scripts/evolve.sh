@@ -80,6 +80,7 @@ ARCHIVE_TOOL="${EVOLVE_ARCHIVE_TOOL:-$ROOT/scripts/evolution-archive.py}"
 PREFLIGHT_SCRIPT="${EVOLVE_PREFLIGHT_SCRIPT:-$ROOT/scripts/evolution-preflight.sh}"
 SCHEMA_TOOL="${EVOLVE_SCHEMA_TOOL:-$ROOT/scripts/evolution-schema.py}"
 FUNNEL_TOOL="${EVOLVE_FUNNEL_TOOL:-$ROOT/scripts/evolution-feedback-funnel.py}"
+METRICS_TOOL="${EVOLVE_METRICS_TOOL:-$ROOT/scripts/evolution-metrics.py}"
 UI_ASSERT_SCRIPT="${EVOLVE_UI_ASSERT_SCRIPT:-$ROOT/scripts/evolution-ui-assert.sh}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
@@ -624,11 +625,17 @@ archive_state_history() {
   fi
 }
 
-# EVO-042：刷新反馈漏斗快照（App/H5 只读展示），失败只 WARN 不影响发布。
-refresh_feedback_funnel() {
-  [[ -f "$FUNNEL_TOOL" ]] || return 0
-  if ! python3 "$FUNNEL_TOOL" snapshot --out "$STATE_DIR/feedback_funnel.json" --quiet >/dev/null 2>&1; then
-    echo "WARN: 反馈漏斗快照生成失败；看板沿用上一次快照。" >&2
+# EVO-042/047：刷新 App/H5 只读快照（反馈漏斗 + 指标摘要），失败只 WARN 不影响发布。
+refresh_snapshots() {
+  if [[ -f "$FUNNEL_TOOL" ]]; then
+    if ! python3 "$FUNNEL_TOOL" snapshot --out "$STATE_DIR/feedback_funnel.json" --quiet >/dev/null 2>&1; then
+      echo "WARN: 反馈漏斗快照生成失败；看板沿用上一次快照。" >&2
+    fi
+  fi
+  if [[ -f "$METRICS_TOOL" ]]; then
+    if ! python3 "$METRICS_TOOL" --out "$STATE_DIR/evolution_metrics_summary.json" --quiet >/dev/null 2>&1; then
+      echo "WARN: 指标摘要生成失败；手机端沿用上一次快照。" >&2
+    fi
   fi
 }
 
@@ -850,7 +857,7 @@ if [[ "$RESUME" == "1" ]]; then
   write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
   publish_tail "$RESUME_STAGE"
   archive_state_history
-  refresh_feedback_funnel
+  refresh_snapshots
   print_summary
   exit 0
 fi
@@ -1176,5 +1183,5 @@ fi
 
 # ---------- 12. Summary ----------
 archive_state_history
-refresh_feedback_funnel
+refresh_snapshots
 print_summary
