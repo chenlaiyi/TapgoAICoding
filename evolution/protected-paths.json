@@ -18,6 +18,7 @@
     "scripts/run-model-eval.sh",
     "scripts/canary-promote.sh",
     "scripts/rollback-drill.sh",
+    "scripts/evolution-archive.py",
     "evolution/model-eval/**",
     "evolution/feedback/**",
     "evolution/benchmark.json",

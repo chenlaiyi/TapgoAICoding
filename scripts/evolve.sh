@@ -50,6 +50,7 @@ WORKTREE_VERIFY_SCRIPT="${EVOLVE_WORKTREE_VERIFY_SCRIPT:-$ROOT/scripts/worktree-
 BENCHMARK_TOOL="${EVOLVE_BENCHMARK_TOOL:-$ROOT/scripts/evolution-benchmark.py}"
 REMOTE_LOCK_SCRIPT="${EVOLVE_REMOTE_LOCK_SCRIPT:-$ROOT/scripts/evolution-remote-lock.sh}"
 CANARY_PROMOTE_SCRIPT="${EVOLVE_CANARY_PROMOTE_SCRIPT:-$ROOT/scripts/canary-promote.sh}"
+ARCHIVE_TOOL="${EVOLVE_ARCHIVE_TOOL:-$ROOT/scripts/evolution-archive.py}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -730,7 +731,14 @@ else
   write_progress "done" 9 "done" "v${NEW_VERSION} local_built"
 fi
 
-# ---------- 11. Summary ----------
+# ---------- 11. Archive old state history (monthly, non-destructive) ----------
+if [[ -x "$ARCHIVE_TOOL" || -f "$ARCHIVE_TOOL" ]]; then
+  if ! python3 "$ARCHIVE_TOOL" archive --state-dir "$STATE_DIR" --keep-days "${EVOLVE_ARCHIVE_KEEP_DAYS:-90}" >/dev/null 2>&1; then
+    echo "WARN: state history archive failed; live files left untouched." >&2
+  fi
+fi
+
+# ---------- 12. Summary ----------
 echo
 echo "==================================================="
 echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"

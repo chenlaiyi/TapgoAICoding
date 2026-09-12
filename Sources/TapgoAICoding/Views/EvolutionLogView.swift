@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.285", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.285",
+                    summary: "指标归档:按月归档 history,保留 90 天近期记录,幂等且不删除历史。",
+                    changes: [
+                        "新增 scripts/evolution-archive.py archive/status:按 ranAt/builtAt/date 将过期记录移入 state/archive/<name>-YYYY-MM.jsonl。",
+                        "无时间戳记录保留在 live;月归档文件去重重建,重复运行幂等;权限保持 0600。",
+                        "evolve.sh 每轮收尾自动归档(默认 keep 90 天),归档失败只 WARN,不影响发布结果。",
+                        "新增 6 项归档回归(跨月归档、无时间戳保留、幂等、status);benchmark 新增 archive-helper,总分仍 100。",
+                        "EVO-030 完成;下一项进入 P7 EVO-031 远程触发回滚演练。"
+                    ],
+                    why: "state/test/benchmark history 持续追加,长期会拖慢读取并膨胀运行态目录;EVO-030 按月归档,保留近期指标同时不丢历史。",
+                    next: "EVO-031 远程触发回滚演练:手机端/H5 只读按钮与最近结果展示。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.284", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.284",
                     summary: "回滚演练:远端 tag + Release zip + health-check + clean worktree,历史可查。",
                     changes: [

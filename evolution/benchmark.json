@@ -3,7 +3,7 @@
   "checks": [
     {
       "id": "records-validate",
-      "weight": 10,
+      "weight": 5,
       "command": "python3 scripts/evolution-records.py validate --require-rendered --check-current"
     },
     {
@@ -85,6 +85,11 @@
       "id": "rollback-drill-helper",
       "weight": 5,
       "command": "test -x scripts/rollback-drill.sh && bash scripts/tests/rollback-drill-test.sh >/dev/null"
+    },
+    {
+      "id": "archive-helper",
+      "weight": 5,
+      "command": "test -x scripts/evolution-archive.py && bash scripts/tests/evolution-archive-test.sh >/dev/null"
     }
   ]
 }
