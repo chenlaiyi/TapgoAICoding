@@ -3,6 +3,42 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.256</title>
+            <pubDate>Sat, 12 Sep 2026 15:46:18 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.256</link>
+            <sparkle:version>0.5.256</sparkle:version>
+            <sparkle:shortVersionString>0.5.256</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.256
+
+本次包含 0.5.255 与 0.5.256 两个未发布版本。
+
+## 0.5.256 — 消息渲染：过程细节不再"糊成一片"
+
+- **过程消息视觉降级**：回合内 agent 的叙述性过程（"我先读…继续看…"）改为 **13.5pt + 略低透明度**，最终回复保持 15pt 主色。展开工作过程时可以先抓结论，过程退到背景。
+- **设置语义澄清**：「显示工作过程」更名为「**工作过程默认展开**」。关闭时（推荐，对齐 Codex）回合只显示一行「用时/已处理」摘要，点箭头才展开；开启后细节全量展开、消息会明显变长。
+- 说明：这个开关同时会影响发给模型的指令 —— 关闭时模型被要求**省略日常过程播报**，所以关掉它不只是"少显示几行"，模型输出本身也会更精炼。
+
+## 0.5.255 — 自进化模块可移植化
+
+让任何 clone 这份代码的人都能跑通自进化，并且本地定制不会被上游更新覆盖。
+
+- **仓库归属参数化**：新增 `scripts/tapgo-repo-slug.sh`，按 `TAPGO_REPO_SLUG` → `upstream` → `origin` 解析；发布 URL 不再硬编码维护者仓库，fork 用户无需改脚本。
+- **本地 / 发布双模式**：`evolve.sh --local`（默认）只 commit + tag 到本地，不 push、不发 Release、不动 appcast；`--publish` 保留维护者完整发布闭环。新增 `--dry-run` 先看计划。
+- **防撞版本号**：先 `git fetch --tags` 上游，再从 `upstream/main` 的 tag 推算版本。
+- **防"更新覆盖本地"**：本地定制构建会自动**关闭「自动安装更新」**，可用 `TAPGO_FEED_URL` 指定自己的更新源。
+- **上游同步脚本**：新增 `scripts/sync-upstream.sh` —— 预检双方 commit 差异，`--apply` 以 rebase 方式把本地演进叠到上游之上，冲突时停下给指引。
+- **入口更宽容**：项目根定位支持 `TAPGO_PROJECT_ROOT` 及多个常见 clone 路径。
+- README 中英双版新增「自进化」章节。
+
+## 测试
+
+- 全量回归通过；剩余失败为存量环境项（SSH 集成使用保留网段假 IP、缺 auth.json 的集成跳过），与本批改动无关。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.256/Tapgo-AICoding-0.5.256.zip" length="12383824" type="application/octet-stream" sparkle:edSignature="ZoOoXoNq0R+124BeJvrZHL48rKujVeiwXZlAYoXvx0imG5G3ABurONqZrWLea5etkeeZNRTE9Zi/hILljdg3AA=="/>
+        </item>
+        <item>
             <title>0.5.254</title>
             <pubDate>Sat, 12 Sep 2026 10:17:03 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.254</link>
@@ -75,36 +111,6 @@
 - 剩余失败为存量环境项（SSH 集成使用保留网段假 IP、缺 auth.json 的集成跳过），与本版无关。
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.253/Tapgo-AICoding-0.5.253.zip" length="12362050" type="application/octet-stream" sparkle:edSignature="XTszf1uYk6mXvJepPKb+eZGXuqRT8Mw9CW3ju+cLYZC4xjzztqYKxffXqNLITsRe31WvWFtPCgDJDVkyn8VgDQ=="/>
-        </item>
-        <item>
-            <title>0.5.252</title>
-            <pubDate>Sat, 12 Sep 2026 09:34:18 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.252</link>
-            <sparkle:version>0.5.252</sparkle:version>
-            <sparkle:shortVersionString>0.5.252</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.252
-
-## 对话消息渲染对齐 Codex
-
-本版修正了消息流的呈现基准 —— 参考对象是 **Codex**（`com.openai.codex`）实机，而不是此前的第三方客户端。
-
-- **工具行改为概括短语**：命令执行不再把原始命令行铺进消息流，改为 Codex 式动词短语「**运行了命令**」（运行中「正在运行命令」，失败「运行了命令 · 执行失败」）。原始命令行仍完整保留在会话数据里，供展开详情、导出与诊断使用。
-- **不再渲染「思考」行**：对齐 Codex 实测 —— 消息流里没有独立的思考行；此前的每条 reasoning 都会占一行，是"流水账感"的主要来源。
-- **回合摘要文案对齐**：完成回合「已工作 X」→「**已处理 X**」；进行中「工作中 X」→「**正在思考**」。
-- **时长单位对齐**：「1 分 5 秒」→「**1 分钟 5 秒**」。
-
-## 顺带修复：命令折叠长期不生效
-
-v0.5.245 引入的「终端 · N 个命令」折叠在真实会话里从未触发。根因是 `reasoning` 与 `commandExecution` 在聚合层互相冲刷，真实轨迹总是"思考↔命令"交替，永远凑不出折叠条件。本版让 reasoning 不再打断命令序列，折叠恢复正常工作。
-
-## 测试
-
-- 全量回归通过；改动相关断言已同步，并新增「reasoning 夹在命令之间不再打断折叠」用例。
-- 剩余失败均为存量环境项（SSH 集成使用保留网段假 IP、缺 auth.json 的集成跳过），与本版无关。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.252/Tapgo-AICoding-0.5.252.zip" length="12366941" type="application/octet-stream" sparkle:edSignature="dWhKMyYS9Oth7K6JF5Sr1XIvXm8kwAZnwm9GPGeQnL1Nk/65pZwIyGnwk6tP5l07Q9ESucxwGdudQiOgeGb+BA=="/>
         </item>
     </channel>
 </rss>
