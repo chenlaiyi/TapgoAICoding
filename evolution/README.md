@@ -42,3 +42,6 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 - `scripts/evolution-metrics.py` 从记录 + `evolution_state_history.jsonl` 汇总成功率、失败、中位周期与测试总量。
 - `evolution/BACKLOG.md` 是下一轮选点的单一待办清单；完成后把 `[ ]` 改为 `[x]` 并附版本号。
 - `scripts/evolution-backlog.py` 提供 `list / top / validate`；Swift 侧 `TapgoCore.EvolutionBacklog` 使用同一格式驱动 App 横幅与 kickoff prompt。
+- `scripts/evolution-maintenance.sh` 是月度维护入口：跑回滚演练 + 指标归档，写 `state/maintenance_history.jsonl`，成功静默、失败才通知。
+- `scripts/install-evolution-maintenance.sh` 注册 launchd 任务（每月 1 日 10:00，`RunAtLoad=false`）；`--print / --run-now / --uninstall` 分别用于预览、立即执行与卸载。
+- 通知默认走 macOS 通知中心；接入 Bark/webhook 时把 `EVOLVE_MAINTENANCE_NOTIFY` 指向一个接收 `<title> <message>` 的包装脚本。

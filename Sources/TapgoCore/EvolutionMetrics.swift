@@ -123,6 +123,9 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let rollbackDrillRuns: Int
     public let lastRollbackDrillTag: String?
     public let lastRollbackDrillPassed: Bool?
+    public let maintenanceRuns: Int
+    public let lastMaintenanceStatus: String?
+    public let lastMaintenanceAt: String?
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
@@ -140,7 +143,10 @@ public struct EvolutionMetricsSnapshot: Equatable {
         modelEvalBestScore: Double? = nil,
         rollbackDrillRuns: Int = 0,
         lastRollbackDrillTag: String? = nil,
-        lastRollbackDrillPassed: Bool? = nil
+        lastRollbackDrillPassed: Bool? = nil,
+        maintenanceRuns: Int = 0,
+        lastMaintenanceStatus: String? = nil,
+        lastMaintenanceAt: String? = nil
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -172,6 +178,9 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.rollbackDrillRuns = rollbackDrillRuns
         self.lastRollbackDrillTag = lastRollbackDrillTag
         self.lastRollbackDrillPassed = lastRollbackDrillPassed
+        self.maintenanceRuns = maintenanceRuns
+        self.lastMaintenanceStatus = lastMaintenanceStatus
+        self.lastMaintenanceAt = lastMaintenanceAt
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -377,6 +386,16 @@ public enum EvolutionMetrics {
         return scores
     }
 
+    /// 解析 JSONL 文件为对象数组；空行与损坏行直接跳过。
+    public static func jsonLines(in url: URL) -> [[String: Any]] {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return text.components(separatedBy: .newlines).compactMap { line -> [String: Any]? in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }
+    }
+
     public static func load(projectRoot: URL, stateDirectory: URL) -> EvolutionMetricsSnapshot {
         let records = parseRecords(directory: projectRoot.appendingPathComponent("evolution/versions"))
         let historyURL = stateDirectory.appendingPathComponent("evolution_state_history.jsonl")
@@ -392,13 +411,10 @@ public enum EvolutionMetrics {
         let testHistoryText = (try? String(contentsOf: stateDirectory.appendingPathComponent("test_run_history.jsonl"), encoding: .utf8)) ?? ""
         let modelEvalText = (try? String(contentsOf: stateDirectory.appendingPathComponent("model_eval_history.jsonl"), encoding: .utf8)) ?? ""
         let modelScores = parseModelEval(modelEvalText)
-        let rollbackText = (try? String(contentsOf: stateDirectory.appendingPathComponent("rollback_drill_history.jsonl"), encoding: .utf8)) ?? ""
-        let rollbackRecords = rollbackText.components(separatedBy: .newlines).compactMap { line -> [String: Any]? in
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { return nil }
-            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        }
+        let rollbackRecords = jsonLines(in: stateDirectory.appendingPathComponent("rollback_drill_history.jsonl"))
         let lastRollback = rollbackRecords.last
+        let maintenanceRecords = jsonLines(in: stateDirectory.appendingPathComponent("maintenance_history.jsonl"))
+        let lastMaintenance = maintenanceRecords.last
         var snapshot = compute(
             records: records,
             history: parseHistory(historyText),
@@ -424,7 +440,10 @@ public enum EvolutionMetrics {
             modelEvalBestScore: modelScores.max(),
             rollbackDrillRuns: rollbackRecords.count,
             lastRollbackDrillTag: lastRollback?["tag"] as? String,
-            lastRollbackDrillPassed: lastRollback?["passed"] as? Bool
+            lastRollbackDrillPassed: lastRollback?["passed"] as? Bool,
+            maintenanceRuns: maintenanceRecords.count,
+            lastMaintenanceStatus: lastMaintenance?["status"] as? String,
+            lastMaintenanceAt: lastMaintenance?["ranAt"] as? String
         )
         return snapshot
     }

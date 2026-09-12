@@ -65,6 +65,8 @@ func runEvolutionMetrics(_ t: TestRunner) {
         to: state.appendingPathComponent("model_eval_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"tag\":\"v0.5.1\",\"passed\":true}\n".write(
         to: state.appendingPathComponent("rollback_drill_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "{\"status\":\"ok\",\"ranAt\":\"2026-09-01T10:00:00Z\"}\n{\"status\":\"failed\",\"ranAt\":\"2026-09-02T10:00:00Z\"}\n".write(
+        to: state.appendingPathComponent("maintenance_history.jsonl"), atomically: true, encoding: .utf8)
     try? "- [ ] load test\n".write(to: tmp.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = TapgoCore.EvolutionMetrics.load(projectRoot: tmp, stateDirectory: state)
     t.expectEqual(loaded.recordCount, 1, "metrics: load record count")
@@ -78,4 +80,7 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(loaded.rollbackDrillRuns, 1, "metrics: load rollback drill runs")
     t.expectEqual(loaded.lastRollbackDrillTag, "v0.5.1", "metrics: load rollback drill tag")
     t.expectEqual(loaded.lastRollbackDrillPassed, true, "metrics: load rollback drill passed")
+    t.expectEqual(loaded.maintenanceRuns, 2, "metrics: load maintenance runs")
+    t.expectEqual(loaded.lastMaintenanceStatus, "failed", "metrics: load maintenance status")
+    t.expectEqual(loaded.lastMaintenanceAt, "2026-09-02T10:00:00Z", "metrics: load maintenance timestamp")
 }

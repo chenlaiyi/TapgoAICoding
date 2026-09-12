@@ -335,6 +335,8 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     try? "{\"score\":70}\n{\"score\":88}\n".write(to: stateDir.appendingPathComponent("model_eval_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"tag\":\"v0.5.1\",\"passed\":true,\"ranAt\":\"2026-09-12T11:00:00Z\"}\n".write(
         to: stateDir.appendingPathComponent("rollback_drill_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "{\"status\":\"ok\",\"ranAt\":\"2026-09-12T10:00:00Z\"}\n".write(
+        to: stateDir.appendingPathComponent("maintenance_history.jsonl"), atomically: true, encoding: .utf8)
     try? "# Backlog\n## P0\n- [ ] **EVO-026 草稿 check**：生成建议\n".write(
         to: rootDir.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = PhoneRemote.loadEvolutionStatus(stateDirectory: stateDir, projectRoot: rootDir)
@@ -346,6 +348,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(loaded?.rollbackDrillRuns, 1, "evolution-status: rollback runs")
     t.expectEqual(loaded?.lastRollbackDrillTag, "v0.5.1", "evolution-status: rollback tag")
     t.expectEqual(loaded?.lastRollbackDrillPassed, true, "evolution-status: rollback passed")
+    t.expectEqual(loaded?.maintenanceRuns, 1, "evolution-status: maintenance runs")
+    t.expectEqual(loaded?.lastMaintenanceStatus, "ok", "evolution-status: maintenance status")
+    t.expectEqual(loaded?.lastMaintenanceAt, "2026-09-12T10:00:00Z", "evolution-status: maintenance time")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
     t.expectEqual(snap.models.count, 2, "snapshot: 模型白名单透传")
     t.expectEqual(snap.models.first?.selected, true, "snapshot: 当前模型标记")
@@ -583,6 +588,9 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(appJS.contains("rollbackDrillRuns"), "page: app.js 渲染回滚演练结果")
     t.expect(appCSS.contains(".evolution-card"), "page: app.css 含自进化卡片样式")
     t.expect(appCSS.contains(".evolution-rollback"), "page: app.css 含回滚演练样式")
+    t.expect(appJS.contains("evolutionMaintenance"), "page: app.js 含月度维护状态")
+    t.expect(appJS.contains("maintenanceRuns"), "page: app.js 渲染月度维护结果")
+    t.expect(appCSS.contains(".evolution-maintenance"), "page: app.css 含月度维护样式")
 
 
     // H5 页面拆为骨架 + 静态资源；v0.5.96 全面重构 app.css 的移动端布局。

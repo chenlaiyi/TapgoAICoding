@@ -63,6 +63,17 @@ def collect_test_runs(path: Path) -> list[dict]:
     return load_history(path)
 
 
+def last_maintenance_reason(record: dict) -> str | None:
+    """维护失败原因：优先取失败的子任务原因，其次取最后一条非空原因。"""
+    if str(record.get("status", "")) != "failed":
+        return None
+    for key in ("drill", "archive"):
+        section = record.get(key)
+        if isinstance(section, dict) and section.get("reason"):
+            return str(section["reason"])
+    return "unknown"
+
+
 def collect_metrics(root: Path, history_path: Path, test_history_path: Path | None = None) -> dict:
     records = load_records(root)
     history = load_history(history_path)
@@ -106,6 +117,8 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
     model_eval_path = test_history_path.parent / "model_eval_history.jsonl" if test_history_path else None
     rollback_path = test_history_path.parent / "rollback_drill_history.jsonl" if test_history_path else None
     rollback_runs = load_history(rollback_path) if rollback_path else []
+    maintenance_path = test_history_path.parent / "maintenance_history.jsonl" if test_history_path else None
+    maintenance_runs = load_history(maintenance_path) if maintenance_path else []
     model_eval_runs = load_history(model_eval_path) if model_eval_path else []
     model_eval_scores = [float(r.get("score", 0)) for r in model_eval_runs]
     flaky_sections = set()
@@ -156,6 +169,10 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "rollbackDrillRuns": len(rollback_runs),
         "lastRollbackDrillTag": rollback_runs[-1].get("tag") if rollback_runs else None,
         "lastRollbackDrillPassed": rollback_runs[-1].get("passed") if rollback_runs else None,
+        "maintenanceRuns": len(maintenance_runs),
+        "lastMaintenanceStatus": maintenance_runs[-1].get("status") if maintenance_runs else None,
+        "lastMaintenanceAt": maintenance_runs[-1].get("ranAt") if maintenance_runs else None,
+        "lastMaintenanceReason": last_maintenance_reason(maintenance_runs[-1]) if maintenance_runs else None,
     }
 
 
@@ -200,6 +217,7 @@ def main() -> int:
     print(f"flaky sections:    {metrics['flakyCount']}")
     print(f"model eval:        runs={metrics['modelEvalRuns']} latest={metrics['modelEvalLatestScore']} best={metrics['modelEvalBestScore']}")
     print(f"rollback drill:    runs={metrics['rollbackDrillRuns']} last={metrics['lastRollbackDrillTag']} passed={metrics['lastRollbackDrillPassed']}")
+    print(f"maintenance:       runs={metrics['maintenanceRuns']} last={metrics['lastMaintenanceStatus']} at={metrics['lastMaintenanceAt']}")
     return 0
 
 

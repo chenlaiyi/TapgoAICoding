@@ -162,6 +162,17 @@ struct EvolutionMetricsDetailView: View {
 
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
 
+    /// 月度维护最近结果：`OK 09-05 ×2`（状态 + 日期 + 累计次数）。
+    private var maintenanceLabel: String {
+        guard metrics.maintenanceRuns > 0 else { return "—" }
+        let status = (metrics.lastMaintenanceStatus ?? "unknown").uppercased()
+        let day = metrics.lastMaintenanceAt.map { value -> String in
+            let parts = value.prefix(10).split(separator: "-")
+            return parts.count == 3 ? "\(parts[1])-\(parts[2])" : ""
+        } ?? ""
+        return day.isEmpty ? status : "\(status) \(day)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("自进化指标详情")
@@ -177,6 +188,7 @@ struct EvolutionMetricsDetailView: View {
                 card("benchmark", metrics.lastBenchmarkScore.map { "\($0)/100" } ?? "—")
                 card("model eval", metrics.modelEvalBestScore.map { String(format: "%.0f/100", $0) } ?? "—")
                 card("rollback", metrics.lastRollbackDrillPassed.map { $0 ? "PASS" : "FAIL" } ?? "—")
+                card("maintenance", maintenanceLabel)
             }
 
             Divider()

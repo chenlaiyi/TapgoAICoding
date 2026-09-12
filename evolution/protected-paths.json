@@ -25,6 +25,8 @@
     "scripts/test-failure-report.py",
     "scripts/worktree-verify.sh",
     "scripts/preview-evolution-ui.sh",
-    "scripts/tests/**"
+    "scripts/tests/**",
+    "scripts/evolution-maintenance.sh",
+    "scripts/install-evolution-maintenance.sh"
   ]
 }

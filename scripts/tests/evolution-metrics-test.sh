@@ -25,6 +25,11 @@ cat > "$TMP/history.jsonl" <<'JSONL'
 {"status":"published","version":"0.5.3","mode":"publish","builtAt":"2026-09-03T01:00:00Z","testStatus":"— 300 passed, 0 failed —"}
 JSONL
 
+cat > "$TMP/maintenance_history.jsonl" <<'JSONL'
+{"ranAt":"2026-09-04T10:00:00Z","status":"ok","drill":{"status":"passed","reason":null},"archive":{"status":"passed","reason":null}}
+{"ranAt":"2026-09-05T10:00:00Z","status":"failed","drill":{"status":"failed","reason":"remote tag v0.5.1 not found"},"archive":{"status":"passed","reason":null}}
+JSONL
+
 OUT="$(python3 "$ROOT/scripts/evolution-metrics.py" --root "$TMP" --history "$TMP/history.jsonl" --json)"
 python3 - "$OUT" <<'PY'
 import json, sys
@@ -37,5 +42,9 @@ assert abs(m["successRate"] - 2/3) < 1e-9, m
 assert m["testPassedTotal"] == 600, m
 assert m["openBacklog"] == 2 and m["doneBacklog"] == 1, m
 assert m["medianCycleSeconds"] == 176400.0, m  # 49h between published v0.5.1 and v0.5.3
-print("evolution-metrics assertions: 8 passed, 0 failed")
+assert m["maintenanceRuns"] == 2, m
+assert m["lastMaintenanceStatus"] == "failed", m
+assert m["lastMaintenanceAt"] == "2026-09-05T10:00:00Z", m
+assert m["lastMaintenanceReason"] == "remote tag v0.5.1 not found", m
+print("evolution-metrics assertions: 12 passed, 0 failed")
 PY

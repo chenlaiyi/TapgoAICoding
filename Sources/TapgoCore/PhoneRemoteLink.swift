@@ -711,6 +711,9 @@ public enum PhoneRemote {
         public var lastRollbackDrillTag: String?
         public var lastRollbackDrillPassed: Bool?
         public var lastRollbackDrillAt: String?
+        public var maintenanceRuns: Int
+        public var lastMaintenanceStatus: String?
+        public var lastMaintenanceAt: String?
 
         public init(
             version: String? = nil, phase: String? = nil,
@@ -722,7 +725,10 @@ public enum PhoneRemote {
             rollbackDrillRuns: Int = 0,
             lastRollbackDrillTag: String? = nil,
             lastRollbackDrillPassed: Bool? = nil,
-            lastRollbackDrillAt: String? = nil
+            lastRollbackDrillAt: String? = nil,
+            maintenanceRuns: Int = 0,
+            lastMaintenanceStatus: String? = nil,
+            lastMaintenanceAt: String? = nil
         ) {
             self.version = version
             self.phase = phase
@@ -739,6 +745,9 @@ public enum PhoneRemote {
             self.lastRollbackDrillTag = lastRollbackDrillTag
             self.lastRollbackDrillPassed = lastRollbackDrillPassed
             self.lastRollbackDrillAt = lastRollbackDrillAt
+            self.maintenanceRuns = maintenanceRuns
+            self.lastMaintenanceStatus = lastMaintenanceStatus
+            self.lastMaintenanceAt = lastMaintenanceAt
         }
     }
 
@@ -881,8 +890,10 @@ public enum PhoneRemote {
         }
         let rollbackRecords = jsonLines(in: stateDirectory.appendingPathComponent("rollback_drill_history.jsonl"))
         let lastRollback = rollbackRecords.last
+        let maintenanceRecords = jsonLines(in: stateDirectory.appendingPathComponent("maintenance_history.jsonl"))
+        let lastMaintenance = maintenanceRecords.last
         guard progress != nil || benchmarkScore != nil || modelEvalBest != nil
-                || backlogTop != nil || lastRollback != nil else {
+                || backlogTop != nil || lastRollback != nil || lastMaintenance != nil else {
             return nil
         }
         return EvolutionStatus(
@@ -900,7 +911,10 @@ public enum PhoneRemote {
             rollbackDrillRuns: rollbackRecords.count,
             lastRollbackDrillTag: lastRollback?["tag"] as? String,
             lastRollbackDrillPassed: lastRollback?["passed"] as? Bool,
-            lastRollbackDrillAt: lastRollback?["ranAt"] as? String
+            lastRollbackDrillAt: lastRollback?["ranAt"] as? String,
+            maintenanceRuns: maintenanceRecords.count,
+            lastMaintenanceStatus: lastMaintenance?["status"] as? String,
+            lastMaintenanceAt: lastMaintenance?["ranAt"] as? String
         )
     }
 

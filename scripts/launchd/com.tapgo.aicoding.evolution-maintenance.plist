@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.tapgo.aicoding.evolution-maintenance — 自进化月度维护（EVO-032）。
+
+  行为：
+    - StartCalendarInterval：每月 1 日 10:00 本地时间跑一次维护
+      （回滚演练 + 指标归档，成功静默、失败才通知）。
+    - RunAtLoad=false：加载/重启不立即跑，避免集中在登录时执行重活。
+    - 维护失败由脚本自行发通知（macOS 通知中心，可用
+      EVOLVE_MAINTENANCE_NOTIFY 换成 Bark/webhook 包装脚本），
+      这里只额外保留 launchd 的 stdout/stderr 日志。
+    - ProcessType=Background：不参与前台 App 切换。
+
+  安装：./scripts/install-evolution-maintenance.sh
+  卸载：./scripts/install-evolution-maintenance.sh --uninstall
+  立即跑一次：./scripts/install-evolution-maintenance.sh --run-now
+
+  占位符（由 scripts/install-evolution-maintenance.sh 替换）：
+    __REPO_ROOT__           → 仓库根目录
+    __MAINTENANCE_SCRIPT__   → <repo>/scripts/evolution-maintenance.sh
+    __STATE_DIR__           → ~/Library/Application Support/Tapgo AICoding/state
+    __LOG_DIR__             → ~/Library/Logs/TapgoAICoding
+    __PATH__                → git/python3/gh/xcrun 所在 PATH
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tapgo.aicoding.evolution-maintenance</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__MAINTENANCE_SCRIPT__</string>
+        <string>--verbose</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__REPO_ROOT__</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__PATH__</string>
+        <key>TERM</key>
+        <string>xterm-256color</string>
+        <key>LANG</key>
+        <string>C.UTF-8</string>
+        <key>EVOLVE_STATE_DIR</key>
+        <string>__STATE_DIR__</string>
+        <key>EVOLVE_MAINTENANCE_LOG</key>
+        <string>__STATE_DIR__/maintenance.log</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Day</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>10</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/evolution-maintenance.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/evolution-maintenance.err.log</string>
+</dict>
+</plist>

@@ -125,6 +125,7 @@
               <div class="evolution-meta" id="evolutionMeta"></div>
               <div class="evolution-next" id="evolutionNext"></div>
               <div class="evolution-rollback" id="evolutionRollback" hidden></div>
+              <div class="evolution-maintenance" id="evolutionMaintenance" hidden></div>
             </div>
             <div class="mobile-section-heading">
               <div>
@@ -371,6 +372,17 @@
         rollback.dataset.state = state.toLowerCase();
       } else {
         rollback.hidden = true;
+      }
+    }
+    const maintenance = $("evolutionMaintenance");
+    if (maintenance) {
+      if (evo.maintenanceRuns > 0) {
+        maintenance.hidden = false;
+        const health = evo.lastMaintenanceStatus === "ok" ? "PASS" : evo.lastMaintenanceStatus === "failed" ? "FAIL" : "未知";
+        maintenance.textContent = `月度维护：${health} · ${(evo.lastMaintenanceAt || "").replace("T", " ").replace("Z", "")}`;
+        maintenance.dataset.state = health.toLowerCase();
+      } else {
+        maintenance.hidden = true;
       }
     }
   }

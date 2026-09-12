@@ -8,7 +8,7 @@
     },
     {
       "id": "backlog-validate",
-      "weight": 10,
+      "weight": 5,
       "command": "python3 scripts/evolution-backlog.py validate"
     },
     {
@@ -90,6 +90,11 @@
       "id": "archive-helper",
       "weight": 5,
       "command": "test -x scripts/evolution-archive.py && bash scripts/tests/evolution-archive-test.sh >/dev/null"
+    },
+    {
+      "id": "maintenance-helper",
+      "weight": 5,
+      "command": "test -x scripts/evolution-maintenance.sh && bash scripts/tests/evolution-maintenance-test.sh >/dev/null"
     }
   ]
 }

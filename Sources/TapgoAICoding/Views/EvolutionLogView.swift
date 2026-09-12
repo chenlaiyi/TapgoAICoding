@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.287", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.287",
+                    summary: "月度维护自动化:定时跑回滚演练与指标归档,成功静默、异常才通知。",
+                    changes: [
+                        "新增 scripts/evolution-maintenance.sh:串联 rollback-drill + evolution-archive,写 maintenance_history.jsonl,失败时 stderr 给一行原因并触发通知。",
+                        "新增 launchd 模板与 install-evolution-maintenance.sh:每月 1 日 10:00 执行,RunAtLoad=false,支持 --print/--run-now/--uninstall。",
+                        "通知默认走 macOS 通知中心,可用 EVOLVE_MAINTENANCE_NOTIFY 换成 Bark/webhook 包装脚本;--no-notify 关闭。",
+                        "指标接入 Python/Swift/H5:maintenanceRuns/lastMaintenanceStatus/lastMaintenanceAt 显示在指标详情与手机端自进化卡片。",
+                        "新增 40 项维护回归与 benchmark maintenance-helper;EVO-032 完成,P8 记录下一阶段运维韧性 backlog。"
+                    ],
+                    why: "EVO-029/030 让回滚演练与指标归档可执行,但仍要人工记得跑;没人跑就没人知道可恢复性已经失效。EVO-032 把它变成每月自动执行,只在失败时打扰人。",
+                    next: "EVO-033 发布失败续跑:--resume 从失败阶段继续,避免 push 成功后 release 失败就整轮重来。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.286", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.286",
                     summary: "手机端回滚演练状态:快照与 H5 只读显示最近 drill 的 PASS/FAIL/tag/时间。",
                     changes: [
