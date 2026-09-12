@@ -714,6 +714,8 @@ public enum PhoneRemote {
         public var maintenanceRuns: Int
         public var lastMaintenanceStatus: String?
         public var lastMaintenanceAt: String?
+        /// EVO-042：反馈闭环漏斗（只读快照）。
+        public var funnel: FeedbackFunnelSnapshot?
 
         public init(
             version: String? = nil, phase: String? = nil,
@@ -728,7 +730,8 @@ public enum PhoneRemote {
             lastRollbackDrillAt: String? = nil,
             maintenanceRuns: Int = 0,
             lastMaintenanceStatus: String? = nil,
-            lastMaintenanceAt: String? = nil
+            lastMaintenanceAt: String? = nil,
+            funnel: FeedbackFunnelSnapshot? = nil
         ) {
             self.version = version
             self.phase = phase
@@ -748,6 +751,7 @@ public enum PhoneRemote {
             self.maintenanceRuns = maintenanceRuns
             self.lastMaintenanceStatus = lastMaintenanceStatus
             self.lastMaintenanceAt = lastMaintenanceAt
+            self.funnel = funnel
         }
     }
 
@@ -892,8 +896,10 @@ public enum PhoneRemote {
         let lastRollback = rollbackRecords.last
         let maintenanceRecords = jsonLines(in: stateDirectory.appendingPathComponent("maintenance_history.jsonl"))
         let lastMaintenance = maintenanceRecords.last
+        let funnel = FeedbackFunnelSnapshot.load(stateDirectory: stateDirectory)
         guard progress != nil || benchmarkScore != nil || modelEvalBest != nil
-                || backlogTop != nil || lastRollback != nil || lastMaintenance != nil else {
+                || backlogTop != nil || lastRollback != nil || lastMaintenance != nil
+                || funnel != nil else {
             return nil
         }
         return EvolutionStatus(
@@ -914,7 +920,8 @@ public enum PhoneRemote {
             lastRollbackDrillAt: lastRollback?["ranAt"] as? String,
             maintenanceRuns: maintenanceRecords.count,
             lastMaintenanceStatus: lastMaintenance?["status"] as? String,
-            lastMaintenanceAt: lastMaintenance?["ranAt"] as? String
+            lastMaintenanceAt: lastMaintenance?["ranAt"] as? String,
+            funnel: funnel
         )
     }
 

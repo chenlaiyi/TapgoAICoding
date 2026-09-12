@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import statistics
 import sys
@@ -28,6 +29,13 @@ def repo_root(explicit: str | None) -> Path:
     if explicit:
         return Path(explicit).resolve()
     return Path(__file__).resolve().parent.parent
+
+
+def default_state_dir() -> Path:
+    explicit = os.environ.get("EVOLVE_STATE_DIR")
+    if explicit:
+        return Path(explicit).expanduser()
+    return Path.home() / "Library" / "Application Support" / "Tapgo AICoding" / "state"
 
 
 def load_json(path: Path) -> dict:
@@ -211,6 +219,29 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_snapshot(args: argparse.Namespace) -> int:
+    """把漏斗结果写成 state/feedback_funnel.json（App 与手机端只读展示）。"""
+    root = repo_root(args.root)
+    result = dict(compute(root, args.stale_days))
+    result["schemaVersion"] = 1
+    result["generatedAt"] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    payload = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+    if args.out == "-":
+        print(payload, end="")
+        return 0
+    out = Path(args.out).expanduser()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_suffix(out.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as fh:
+        fh.write(payload)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, out)
+    if not args.quiet:
+        print(f"FEEDBACK FUNNEL SNAPSHOT: {out}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -220,6 +251,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true")
     p.add_argument("--fail-on-stale", action="store_true")
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("snapshot", help="把漏斗结果写成 state/feedback_funnel.json")
+    p.add_argument("--root", default=None)
+    p.add_argument("--stale-days", type=int, default=DEFAULT_STALE_DAYS)
+    p.add_argument("--out", default=str(default_state_dir() / "feedback_funnel.json"))
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(func=cmd_snapshot)
     return parser
 
 

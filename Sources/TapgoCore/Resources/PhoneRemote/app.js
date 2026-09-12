@@ -126,6 +126,7 @@
               <div class="evolution-next" id="evolutionNext"></div>
               <div class="evolution-rollback" id="evolutionRollback" hidden></div>
               <div class="evolution-maintenance" id="evolutionMaintenance" hidden></div>
+              <div class="evolution-funnel" id="evolutionFunnel" hidden></div>
             </div>
             <div class="mobile-section-heading">
               <div>
@@ -372,6 +373,17 @@
         rollback.dataset.state = state.toLowerCase();
       } else {
         rollback.hidden = true;
+      }
+    }
+    const funnel = $("evolutionFunnel");
+    if (funnel) {
+      const f = evo.funnel;
+      if (f && (f.registeredTotal > 0 || f.draftsTotal > 0)) {
+        const pct = (v) => (v == null ? "n/a" : Math.round(v * 100) + "%");
+        funnel.hidden = false;
+        funnel.textContent = `反馈漏斗：drafts ${f.draftsOpen || 0}/${f.draftsTotal || 0} · 注册 ${f.registeredTotal || 0} · 发布 ${f.shippedTotal || 0} · 转化 ${pct(f.registeredToShippedRate)}`;
+      } else {
+        funnel.hidden = true;
       }
     }
     const maintenance = $("evolutionMaintenance");

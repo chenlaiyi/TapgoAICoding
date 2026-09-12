@@ -337,6 +337,14 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
         to: stateDir.appendingPathComponent("rollback_drill_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"status\":\"ok\",\"ranAt\":\"2026-09-12T10:00:00Z\"}\n".write(
         to: stateDir.appendingPathComponent("maintenance_history.jsonl"), atomically: true, encoding: .utf8)
+    try? """
+    {"schemaVersion":1,"generatedAt":"2026-09-13T00:00:00Z",
+     "drafts":{"total":2,"open":1,"promoted":1,"staleOverDays":0},
+     "registered":{"total":6,"shipped":6,"unshipped":0,"staleOverDays":0},
+     "conversion":{"draftToRegistered":0.5,"registeredToShipped":1.0,"draftToShipped":0.5},
+     "waitsDays":{"registeredToShippedMedian":7.0,"registeredToShippedSamples":3},
+     "backfilledShipped":0,"unknownTimingShipped":0,"staleDays":30}
+    """.write(to: stateDir.appendingPathComponent("feedback_funnel.json"), atomically: true, encoding: .utf8)
     try? "# Backlog\n## P0\n- [ ] **EVO-026 草稿 check**：生成建议\n".write(
         to: rootDir.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = PhoneRemote.loadEvolutionStatus(stateDirectory: stateDir, projectRoot: rootDir)
@@ -351,6 +359,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(loaded?.maintenanceRuns, 1, "evolution-status: maintenance runs")
     t.expectEqual(loaded?.lastMaintenanceStatus, "ok", "evolution-status: maintenance status")
     t.expectEqual(loaded?.lastMaintenanceAt, "2026-09-12T10:00:00Z", "evolution-status: maintenance time")
+    t.expectEqual(loaded?.funnel?.registeredTotal, 6, "evolution-status: funnel registered")
+    t.expectEqual(loaded?.funnel?.draftsOpen, 1, "evolution-status: funnel open drafts")
+    t.expectEqual(loaded?.funnel?.registeredToShippedMedianDays, 7.0, "evolution-status: funnel wait")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
     t.expectEqual(snap.models.count, 2, "snapshot: 模型白名单透传")
     t.expectEqual(snap.models.first?.selected, true, "snapshot: 当前模型标记")
@@ -591,6 +602,9 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(appJS.contains("evolutionMaintenance"), "page: app.js 含月度维护状态")
     t.expect(appJS.contains("maintenanceRuns"), "page: app.js 渲染月度维护结果")
     t.expect(appCSS.contains(".evolution-maintenance"), "page: app.css 含月度维护样式")
+    t.expect(appJS.contains("evolutionFunnel"), "page: app.js 含反馈漏斗行")
+    t.expect(appJS.contains("registeredToShippedRate"), "page: app.js 渲染漏斗转化率")
+    t.expect(appCSS.contains(".evolution-funnel"), "page: app.css 含漏斗样式")
 
 
     // H5 页面拆为骨架 + 静态资源；v0.5.96 全面重构 app.css 的移动端布局。

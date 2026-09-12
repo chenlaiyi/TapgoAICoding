@@ -103,5 +103,22 @@ expect_eq "repo: registered 6" "6" "$(jget "$TMP/repo.json" "'d[\"registered\"][
 expect_eq "repo: shipped 6" "6" "$(jget "$TMP/repo.json" "'d[\"registered\"][\"shipped\"]'")"
 expect_eq "repo: no fabricated waits" "0" "$(jget "$TMP/repo.json" "'d[\"waitsDays\"][\"registeredToShippedSamples\"]'")"
 
+# ---------- snapshot 子命令：写文件供 App/H5 展示 ----------
+SNAP="$TMP/snapshot/feedback_funnel.json"
+set +e; "$TOOL" snapshot --root "$FIX" --out "$SNAP" --quiet > "$TMP/snap.log" 2>&1; RC=$?; set -e
+expect_eq "snapshot: exit 0" "0" "$RC"
+if [[ -f "$SNAP" ]]; then ok; else bad "snapshot: file written"; fi
+python3 - "$SNAP" <<'PYSNAP' && ok || bad "snapshot: payload shape"
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+assert d["schemaVersion"] == 1, d
+assert d["registered"]["total"] == 3, d
+assert d["drafts"]["total"] == 3, d
+assert d["generatedAt"].endswith("Z"), d
+PYSNAP
+if [[ -s "$TMP/snap.log" ]]; then bad "snapshot: --quiet stays quiet"; else ok; fi
+SNAP_OUT="$("$TOOL" snapshot --root "$FIX" --out - 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["registered"]["shipped"])')"
+expect_eq "snapshot: stdout mode" "2" "$SNAP_OUT"
+
 echo "evolution-feedback-funnel tests: $PASSED passed, $FAILED failed"
 [[ "$FAILED" -eq 0 ]]

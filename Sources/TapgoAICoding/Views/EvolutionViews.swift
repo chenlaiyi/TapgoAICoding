@@ -167,6 +167,23 @@ struct EvolutionMetricsDetailView: View {
         seconds < 3600 ? String(format: "%.0fm", seconds / 60) : String(format: "%.1fh", seconds / 3600)
     }
 
+    /// 反馈闭环转化率：draft→registered 与 registered→shipped。
+    private var funnelConversionLabel: String {
+        guard let funnel = metrics.funnel, funnel.hasData else { return "—" }
+        let draft = funnel.draftToRegisteredRate.map { String(format: "%.0f%%", $0 * 100) } ?? "n/a"
+        let shipped = funnel.registeredToShippedRate.map { String(format: "%.0f%%", $0 * 100) } ?? "n/a"
+        return "\(draft)→\(shipped)"
+    }
+
+    /// 反馈闭环等待时长：注册→发布中位天数（发布日未知时明确标出）。
+    private var funnelWaitLabel: String {
+        guard let funnel = metrics.funnel, funnel.hasData else { return "—" }
+        if let median = funnel.registeredToShippedMedianDays {
+            return String(format: "%.1fd", median)
+        }
+        return funnel.unknownReleaseDate > 0 ? "未知\(funnel.unknownReleaseDate)" : "—"
+    }
+
     /// MTTR 展示：中位恢复时长；有未恢复失败时优先暴露该事实。
     private var mttrLabel: String {
         if metrics.unrecoveredFailureCount > 0 {
@@ -206,6 +223,9 @@ struct EvolutionMetricsDetailView: View {
                 card("周期 P95", metrics.p95CycleSeconds.map(shortDuration) ?? "—")
                 card("MTTR", mttrLabel)
                 card("单轮时长", metrics.runDurationMedianSeconds.map(shortDuration) ?? "—")
+                card("反馈草稿", metrics.funnel.map { "\($0.draftsOpen)/\($0.draftsTotal)" } ?? "—")
+                card("反馈转化", funnelConversionLabel)
+                card("反馈等待", funnelWaitLabel)
             }
 
             Divider()

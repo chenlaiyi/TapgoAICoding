@@ -77,6 +77,7 @@ CANARY_PROMOTE_SCRIPT="${EVOLVE_CANARY_PROMOTE_SCRIPT:-$ROOT/scripts/canary-prom
 ARCHIVE_TOOL="${EVOLVE_ARCHIVE_TOOL:-$ROOT/scripts/evolution-archive.py}"
 PREFLIGHT_SCRIPT="${EVOLVE_PREFLIGHT_SCRIPT:-$ROOT/scripts/evolution-preflight.sh}"
 SCHEMA_TOOL="${EVOLVE_SCHEMA_TOOL:-$ROOT/scripts/evolution-schema.py}"
+FUNNEL_TOOL="${EVOLVE_FUNNEL_TOOL:-$ROOT/scripts/evolution-feedback-funnel.py}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -612,6 +613,14 @@ archive_state_history() {
   fi
 }
 
+# EVO-042：刷新反馈漏斗快照（App/H5 只读展示），失败只 WARN 不影响发布。
+refresh_feedback_funnel() {
+  [[ -f "$FUNNEL_TOOL" ]] || return 0
+  if ! python3 "$FUNNEL_TOOL" snapshot --out "$STATE_DIR/feedback_funnel.json" --quiet >/dev/null 2>&1; then
+    echo "WARN: 反馈漏斗快照生成失败；看板沿用上一次快照。" >&2
+  fi
+}
+
 print_summary() {
 echo
 echo "==================================================="
@@ -799,6 +808,7 @@ if [[ "$RESUME" == "1" ]]; then
   write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
   publish_tail "$RESUME_STAGE"
   archive_state_history
+  refresh_feedback_funnel
   print_summary
   exit 0
 fi
@@ -1123,4 +1133,5 @@ fi
 
 # ---------- 12. Summary ----------
 archive_state_history
+refresh_feedback_funnel
 print_summary

@@ -343,3 +343,4 @@ button:disabled { cursor:not-allowed;opacity:.42; }
 .evolution-maintenance { margin-top:4px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums; }
 .evolution-maintenance[data-state="pass"] { color:var(--success); }
 .evolution-maintenance[data-state="fail"] { color:var(--danger); }
+.evolution-funnel { margin-top:4px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums; }

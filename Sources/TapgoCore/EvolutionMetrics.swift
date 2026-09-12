@@ -144,6 +144,8 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let runDurationP95Seconds: Double?
     public let runTokensTotal: Int?
     public let runCostUSDTotal: Double?
+    /// EVO-042：反馈闭环漏斗快照（由 evolution-feedback-funnel.py 写文件）。
+    public let funnel: FeedbackFunnelSnapshot?
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
@@ -173,7 +175,8 @@ public struct EvolutionMetricsSnapshot: Equatable {
         runDurationMedianSeconds: Double? = nil,
         runDurationP95Seconds: Double? = nil,
         runTokensTotal: Int? = nil,
-        runCostUSDTotal: Double? = nil
+        runCostUSDTotal: Double? = nil,
+        funnel: FeedbackFunnelSnapshot? = nil
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -217,6 +220,7 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.runDurationP95Seconds = runDurationP95Seconds
         self.runTokensTotal = runTokensTotal
         self.runCostUSDTotal = runCostUSDTotal
+        self.funnel = funnel
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -506,6 +510,7 @@ public enum EvolutionMetrics {
         let lastRollback = rollbackRecords.last
         let maintenanceRecords = jsonLines(in: stateDirectory.appendingPathComponent("maintenance_history.jsonl"))
         let lastMaintenance = maintenanceRecords.last
+        let funnel = FeedbackFunnelSnapshot.load(stateDirectory: stateDirectory)
         var snapshot = compute(
             records: records,
             history: parseHistory(historyText),
@@ -543,7 +548,8 @@ public enum EvolutionMetrics {
             runDurationMedianSeconds: snapshot.runDurationMedianSeconds,
             runDurationP95Seconds: snapshot.runDurationP95Seconds,
             runTokensTotal: snapshot.runTokensTotal,
-            runCostUSDTotal: snapshot.runCostUSDTotal
+            runCostUSDTotal: snapshot.runCostUSDTotal,
+            funnel: funnel
         )
         return snapshot
     }

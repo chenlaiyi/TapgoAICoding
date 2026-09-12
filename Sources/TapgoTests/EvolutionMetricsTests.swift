@@ -83,6 +83,14 @@ func runEvolutionMetrics(_ t: TestRunner) {
         to: state.appendingPathComponent("rollback_drill_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"status\":\"ok\",\"ranAt\":\"2026-09-01T10:00:00Z\"}\n{\"status\":\"failed\",\"ranAt\":\"2026-09-02T10:00:00Z\"}\n".write(
         to: state.appendingPathComponent("maintenance_history.jsonl"), atomically: true, encoding: .utf8)
+    try? """
+    {"schemaVersion":1,"generatedAt":"2026-09-13T00:00:00Z",
+     "drafts":{"total":3,"open":2,"promoted":1,"staleOverDays":1},
+     "registered":{"total":6,"shipped":5,"unshipped":1,"staleOverDays":0},
+     "conversion":{"draftToRegistered":0.3333,"registeredToShipped":0.8333,"draftToShipped":0.3333},
+     "waitsDays":{"registeredToShippedMedian":12.5,"registeredToShippedSamples":4},
+     "backfilledShipped":1,"unknownTimingShipped":2,"staleDays":30}
+    """.write(to: state.appendingPathComponent("feedback_funnel.json"), atomically: true, encoding: .utf8)
     try? "- [ ] load test\n".write(to: tmp.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = TapgoCore.EvolutionMetrics.load(projectRoot: tmp, stateDirectory: state)
     t.expectEqual(loaded.recordCount, 1, "metrics: load record count")
@@ -99,6 +107,10 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(loaded.maintenanceRuns, 2, "metrics: load maintenance runs")
     t.expectEqual(loaded.lastMaintenanceStatus, "failed", "metrics: load maintenance status")
     t.expectEqual(loaded.lastMaintenanceAt, "2026-09-02T10:00:00Z", "metrics: load maintenance timestamp")
+    t.expectEqual(loaded.funnel?.registeredTotal, 6, "metrics: load funnel registered")
+    t.expectEqual(loaded.funnel?.shippedTotal, 5, "metrics: load funnel shipped")
+    t.expectEqual(loaded.funnel?.draftsOpen, 2, "metrics: load funnel open drafts")
+    t.expectEqual(loaded.funnel?.registeredToShippedMedianDays, 12.5, "metrics: load funnel wait")
 
     // EVO-035：schemaVersion 门禁在写入侧；读者对未来版本保持宽容，不因版本号崩掉。
     try? "{\"schemaVersion\":99,\"status\":\"ok\",\"ranAt\":\"2026-09-03T10:00:00Z\"}\n".write(

@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.299", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.299",
+                    summary: "反馈漏斗接入看板:App 指标详情与手机端卡片显示转化率与等待时长。",
+                    changes: [
+                        "evolution-feedback-funnel.py 新增 snapshot 子命令:原子写 state/feedback_funnel.json(带 schemaVersion/generatedAt),--out - 可打印到 stdout,--quiet 静默。",
+                        "evolve.sh 每轮收尾(含 --resume 路径)刷新该快照,失败只 WARN,不影响发布结果。",
+                        "TapgoCore.FeedbackFunnelSnapshot:宽容解析(缺字段不崩、缺文件返回 nil),不重复实现漏斗计算口径,口径始终以 Python 工具为真源。",
+                        "App 指标详情新增「反馈草稿 / 反馈转化 / 反馈等待」三张卡(draft→registered→shipped 转化率与注册→发布中位天数,发布日未知时明确显示未知计数);手机端 H5 自进化卡片新增一行反馈漏斗摘要。",
+                        "测试:Python 漏斗回归扩到 36 项(快照落盘/载荷字段/stdout 模式/quiet),Swift 指标 +4、PhoneRemote 快照 +3、H5 页面 +3。"
+                    ],
+                    why: "EVO-038 把反馈闭环量化成了命令行数字,但跑完就得去终端看;不进入 App 与手机端,这个指标不会被人日常看到,也就无法驱动改进。",
+                    next: "backlog 清空后按 EVOLUTION.md 与 evolution_state.json 选下一个真实问题(下一项候选:自进化 UI 快照对比、E2E 部署演练)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.298", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.298",
                     summary: "修正 state 写入版本号,并加守卫防止 schema 注册表与写入方漂移。",
                     changes: [
