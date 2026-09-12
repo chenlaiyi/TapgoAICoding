@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.310</title>
+            <pubDate>Sun, 13 Sep 2026 04:12:24 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.310</link>
+            <sparkle:version>0.5.310</sparkle:version>
+            <sparkle:shortVersionString>0.5.310</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.310
+
+test(evolution): 维护告警 launchd 自检
+
+## 变更
+
+- 新增 scripts/evolution-maintenance-selftest.sh：装独立 Label 的临时 LaunchAgent（RunAtLoad），通过 EnvironmentVariables 注入必失败演练桩 + 通知捕获 + 临时 state/日志，跑完 bootout 并删除 plist——生产任务与 state 不受影响。
+- 真机验证：launchd 上下文里维护按预期失败（last exit code=1）、历史写 status=failed 且带注入原因、通知脚本收到标题与完整原因；--use-system-notify 变体也跑通。
+- 这段组合此前从没跑过：launchd+成功已验、直接调用+失败+假 osascript 已验，唯独「launchd + 失败 → 真实告警」缺失。
+- 自检脚本修掉一个抢跑 bug：维护脚本先写历史、后发通知，原来只等历史就断言导致偶发假失败；现在等 launchd 不再 running 再断言。
+- 新增 16 项回归（plist 形状 8 + 真实 launchd 运行 8，无 launchctl 自动跳过），接入 run-all 与 benchmark。
+
+真实 launchd 跑一次失败维护并验证通知
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.310/Tapgo-AICoding-0.5.310.zip" length="12736214" type="application/octet-stream" sparkle:edSignature="1T0vyaiL0DA68H+uxqrDZf87U4nKu1OTeB/vvMxXBNTvz/E8ntJbVOUGKKTTlrwpAFZl/LcVIWXN8f2iNpJRCQ=="/>
+        </item>
+        <item>
             <title>0.5.309</title>
             <pubDate>Sun, 13 Sep 2026 03:57:04 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.309</link>
@@ -56,34 +84,6 @@ feat(evolution): 月度维护验证可重建
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.308/Tapgo-AICoding-0.5.308.zip" length="12734589" type="application/octet-stream" sparkle:edSignature="wXB7WO1Pd1M2gZug7iLWdmCwialbcmYQ85Te0anpT3pGBcTTyjsQauxwkHV8juc4tf6gvAUGn28PUMqjMy7jBw=="/>
-        </item>
-        <item>
-            <title>0.5.307</title>
-            <pubDate>Sun, 13 Sep 2026 03:19:45 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.307</link>
-            <sparkle:version>0.5.307</sparkle:version>
-            <sparkle:shortVersionString>0.5.307</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.307
-
-test(evolution): 维护任务真实触发与告警链路
-
-## 变更
-
-- 真实触发：launchd 任务此前从未执行过（runs=0），用 launchctl kickstart 跑了一次真实月度维护——runs=1、last exit code=0、状态历史新增 drill=v0.5.306 passed + archive=passed（7s），launchd 日志完整落盘。
-- 告警链路补测：维护回归新增默认 osascript 分支（用假 osascript 记录 argv），断言 display notification 的标题与原因内容（含中文与路径）转义正确——此前只有 EVOLVE_MAINTENANCE_NOTIFY 被覆盖。
-- 过程中修掉测试自身缺陷：假 osascript 曾写成文件而非目录（PATH 注入失效，那次失败用例发了真实通知）、chmod 作用在目录上。
-- 实发验证：用真实 osascript 发出一条测试通知（exit 0），确认通知中心链路在本机可用。
-- 维护测试 47→51 项；README 补「手动触发一次维护并验证三处证据」的操作步骤。
-
-launchd 真跑一次 + osascript 分支补回归
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.307/Tapgo-AICoding-0.5.307.zip" length="12733988" type="application/octet-stream" sparkle:edSignature="KU/3pAQkU33PzDYxw+kP0l1aVgZlI2acvAMa8aPj31dNavQFiohC5C6qwmVie3b+x485fHVv53MyICyZy2aaAQ=="/>
         </item>
     </channel>
 </rss>
