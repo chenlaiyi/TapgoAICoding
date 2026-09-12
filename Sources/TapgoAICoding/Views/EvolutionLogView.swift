@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.301", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.301",
+                    summary: "UI 快照基线门禁:渲染结果与基线比像素,布局回归不再无人守。",
+                    changes: [
+                        "新增 scripts/evolution-ui-diff.py:字节相同直接通过;否则用 Pillow 逐像素比较,按「通道差 > --channel-threshold(默认 8)的像素占比 <= --tolerance(默认 0.1%)」判定,输出差异 bbox/最大通道差,--json 可机读,--diff-out 落差异图。",
+                        "缺 Pillow 且两份快照字节不同时以 exit 3 明确报告无法比对,不假装通过(Pillow 是用户级安装,不能假设每台机器都有)。",
+                        "新增基线 evolution/ui-baseline/evolution-ui.png:实测两次渲染逐字节一致(1800x1960,199893B),所以像素门禁在同机是稳定的。",
+                        "evolution-ui-snapshot-test.sh 升级:渲染后与基线比对(带差异产物),并加两个负向对照——sips 改尺寸的候选必须失败、200x20 条带(0.11% 像素)的局部改动必须失败且 bbox 精确命中;--update-baseline 用于有意改 UI 后刷新基线。",
+                        "测试从 3 项扩到 9 项;benchmark 的 machinery-executable 追加基线文件存在性断言。"
+                    ],
+                    why: "EVO-016 起就有离屏渲染,但只断言「能渲染且不空白」:指标卡、漏斗、MTTR 这些每轮都在加的界面元素,布局错了没有任何门禁能发现。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮候选:fixture 内 E2E 部署演练(发布→部署→界面断言→回滚全链路)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.300", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.300",
                     summary: "本机 App 版本漂移留痕:不再「跳过就算过」,运行版本写进 state 并告警。",
                     changes: [

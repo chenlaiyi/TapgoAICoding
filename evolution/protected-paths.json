@@ -33,6 +33,8 @@
     "scripts/evolution-schema.py",
     "scripts/evolution-feedback-funnel.py",
     "scripts/evolution-ui-assert.sh",
-    "scripts/evolution-deps.sh"
+    "scripts/evolution-deps.sh",
+    "scripts/evolution-ui-diff.py",
+    "evolution/ui-baseline/**"
   ]
 }

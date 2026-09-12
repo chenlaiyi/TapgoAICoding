@@ -39,7 +39,7 @@
     {
       "id": "machinery-executable",
       "weight": 5,
-      "command": "test -x scripts/worktree-verify.sh && test -x scripts/preview-evolution-ui.sh && test -x scripts/deploy-fleet.sh && test -x scripts/test-failure-report.py && test -x scripts/evolution-schema.py && test -x scripts/evolution-ui-assert.sh && test -f scripts/evolution-deps.sh"
+      "command": "test -x scripts/worktree-verify.sh && test -x scripts/preview-evolution-ui.sh && test -x scripts/deploy-fleet.sh && test -x scripts/test-failure-report.py && test -x scripts/evolution-schema.py && test -x scripts/evolution-ui-assert.sh && test -f scripts/evolution-deps.sh && test -f evolution/ui-baseline/evolution-ui.png"
     },
     {
       "id": "test-suite-present",
