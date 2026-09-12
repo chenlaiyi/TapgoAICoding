@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.290</title>
+            <pubDate>Sat, 12 Sep 2026 22:58:50 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.290</link>
+            <sparkle:version>0.5.290</sparkle:version>
+            <sparkle:shortVersionString>0.5.290</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.290
+
+feat(evolution): 发布前环境预检
+
+## 变更
+
+- 新增 scripts/evolution-preflight.sh：检查 git/python3(>=3.9)/xcrun+swift SDK、磁盘、仓库关键文件、受保护清单、state 目录可写、origin 可达、HEAD==origin/main、gh auth、三机 SSH、tag 冲突；失败列原因并以 12 退出。
+- evolve.sh 在算出新版本号后立即执行预检（--publish --resume 同样先过，tag 用 --expect-existing-tag），EVOLVE_SKIP_PREFLIGHT=1 跳过，EVOLVE_PREFLIGHT_SKIP_SSH=1 只跳过三机连通性。
+- 新增 scripts/fleet-hosts.sh 作为三机部署目标唯一真源，deploy-fleet.sh 与预检共用，消除主机清单漂移。
+- 新增 30 项预检回归与 14 项失败注入断言（预检失败零改动、预检通过照常发布、续跑被预检拦住）。
+- 逐层实测：预检真实运行 local 9 项、publish 14 项（含两台远端 Mac SSH）全通过。
+
+gh/SDK/磁盘/远端/三机/tag 统一预检，失败零改动退出
+
+## Next
+
+EVO-035 运行态 schemaVersion: state json/jsonl 加版本字段与迁移，防止字段演进静默失真
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.290/Tapgo-AICoding-0.5.290.zip" length="12631029" type="application/octet-stream" sparkle:edSignature="+4NRKQlnmtLOuDxk+Gh2ZFGif7ODimUnENSAiq1AjFj6qm0lhJPvvSF1Ms5o5sKRLzKSNvTJp9VQVFKLEfyEDA=="/>
+        </item>
+        <item>
             <title>0.5.289</title>
             <pubDate>Sat, 12 Sep 2026 22:40:56 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.289</link>
@@ -56,34 +84,6 @@ fix(evolution): 月度维护安装路径
 EVO-033 发布失败续跑: `--resume` 从失败阶段继续（push 成功但 release 失败时不再整轮重来）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.288/Tapgo-AICoding-0.5.288.zip" length="12630071" type="application/octet-stream" sparkle:edSignature="5lWCoEfIzxv28fIK54f6V7FyxbJ+jx+YrYneX1TL3DiWE5oNPkmFWOjc+EHhSdetvGV/lL8xKydCDgWIimwMCQ=="/>
-        </item>
-        <item>
-            <title>0.5.287</title>
-            <pubDate>Sat, 12 Sep 2026 22:15:53 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.287</link>
-            <sparkle:version>0.5.287</sparkle:version>
-            <sparkle:shortVersionString>0.5.287</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.287
-
-feat(evolution): 月度维护自动化
-
-## 变更
-
-- 新增 scripts/evolution-maintenance.sh：串联 rollback-drill + evolution-archive，写 maintenance_history.jsonl，失败给一行原因并触发通知。
-- 新增 launchd 模板与 install-evolution-maintenance.sh：每月 1 日 10:00 执行，RunAtLoad=false，支持 --print/--run-now/--uninstall。
-- 通知默认走 macOS 通知中心，可用 EVOLVE_MAINTENANCE_NOTIFY 换成 Bark/webhook 包装脚本；--no-notify 关闭。
-- 指标接入 Python/Swift/H5：maintenanceRuns/lastMaintenanceStatus/lastMaintenanceAt 显示在指标详情与手机端自进化卡片。
-- 新增 40 项维护回归与 benchmark maintenance-helper；EVO-032 完成并补 P8 运维韧性 backlog。
-
-定时跑回滚演练与指标归档，成功静默、异常才通知
-
-## Next
-
-EVO-033 发布失败续跑: `--resume` 从失败阶段继续（push 成功但 release 失败时不再整轮重来）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.287/Tapgo-AICoding-0.5.287.zip" length="12629517" type="application/octet-stream" sparkle:edSignature="wi2rNWxmtcrFE29bhEDuoc92uMCB7pcLXPWHJaZWubyDAQ94N4PdZS2zE8BgJ1EWDNqePns3TFcbXOuIg2uxCg=="/>
         </item>
     </channel>
 </rss>
