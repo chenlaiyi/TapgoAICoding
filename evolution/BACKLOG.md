@@ -24,4 +24,10 @@
 - [x] **EVO-012 自改门禁**：受保护路径变更需精确内容 token 审批，未审批拒绝启动（v0.5.268）
 - [x] **EVO-013 iOS 版本序列分离**：iOS 1.0.x 历史移入 `evolution/ios/EVOLUTION.md`，主日志仅留指针（v0.5.269）
 - [x] **EVO-014 旧日志归档**：v0.5.5 之前 11 节移入 `evolution/archive/EVOLUTION-pre-0.5.5.md`，主日志只留 v0.5.5+（v0.5.270）
-- [ ] **EVO-015 worktree 隔离**：分支隔离后的强化项，每轮在独立 git worktree 执行，主 checkout 零改动
+- [x] **EVO-015 worktree 验证**：发布前从 tag 创建 detached worktree 做 clean-checkout 构建，失败不推送（v0.5.271）
+
+## P3 — 下一阶段
+
+- [ ] **EVO-016 真实 UI 回归自动化**：不重启当前会话也能验证进度条、停止、diff sheet 与指标看板
+- [ ] **EVO-017 指标趋势看板**：把 flaky、健康检查、失败原因与周期趋势做成可钻取的图表
+- [ ] **EVO-018 自进化评测基准**：给固定任务集跑前后对比，量化每轮进化是否真的提升

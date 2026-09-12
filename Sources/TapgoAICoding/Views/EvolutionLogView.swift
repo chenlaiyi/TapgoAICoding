@@ -333,6 +333,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.271", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.271",
+                    summary: "clean-checkout worktree 验证:发布前从 tag 独立构建,确保 tag 自包含。",
+                    changes: [
+                        "新增 scripts/worktree-verify.sh:git worktree add --detach <tag>,在干净 checkout 中 xcrun swift build -c release --product TapgoAICoding,构建后检查非忽略改动,结束自动移除 worktree。",
+                        "evolve.sh publish 在 push/Release 前运行该验证;失败写 worktree_verify_failed(退出码 10),commit/tag 本地保留但不推送。",
+                        "evolution_state.json 新增 worktreeVerified;evolution-metrics 将 worktree_verify_failed 计入失败;protected-paths 纳入该脚本。",
+                        "新增 3 项 worktree-verify 回归(未跟踪文件不可见/提交后通过/无残留);失败注入扩到 63 项,新增 S13 验证失败不推送。",
+                        "EVO-015 完成,原 backlog 清空;新增 EVO-016 真实 UI 回归、EVO-017 指标趋势看板、EVO-018 自进化评测基准。"
+                    ],
+                    why: "分支隔离只保证 main 只 fast-forward,无法证明 tag 提交在干净 checkout 中可构建;EVO-015 用独立 worktree 验证 tag 自包含,堵住只在脏工作树可构建的漏网情况。",
+                    next: "EVO-016 自进化真实 UI 回归自动化:不重启当前会话也能截图/断言进度条、停止、diff sheet 与指标看板。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.270", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.270",
                     summary: "旧日志归档:v0.5.5 之前 11 个版本节移入 evolution/archive/,主日志只留 v0.5.5+。",
                     changes: [

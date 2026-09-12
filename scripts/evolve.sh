@@ -46,6 +46,7 @@ BACKLOG_TOOL="${EVOLVE_BACKLOG_TOOL:-$ROOT/scripts/evolution-backlog.py}"
 HEALTH_SCRIPT="${EVOLVE_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
 TEST_REPORT_TOOL="${EVOLVE_TEST_REPORT_TOOL:-$ROOT/scripts/test-failure-report.py}"
 PROTECT_TOOL="${EVOLVE_PROTECT_TOOL:-$ROOT/scripts/evolution-protect.py}"
+WORKTREE_VERIFY_SCRIPT="${EVOLVE_WORKTREE_VERIFY_SCRIPT:-$ROOT/scripts/worktree-verify.sh}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -119,6 +120,7 @@ PROGRESS_PHASE_INDEX=0
 STOPPED=0
 NOTES_FILE=""
 NEW_VERSION=""
+WORKTREE_VERIFIED=""
 ITER_BRANCH=""
 BRANCH_CREATED=0
 COMMITTED=0
@@ -528,7 +530,7 @@ write_state() {
   EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
   EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
-  EVO_PROTECT="$PROTECT_STATUS" \
+  EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -550,6 +552,7 @@ state = {
     "healthCheck": os.environ.get("EVO_HEALTH", ""),
     "fleetDeploy": os.environ.get("EVO_FLEET", ""),
     "protectedGate": os.environ.get("EVO_PROTECT", ""),
+    "worktreeVerified": os.environ.get("EVO_WORKTREE_VERIFIED", ""),
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),
@@ -566,6 +569,7 @@ state = {
         "Tests and .app build must be green before any commit.",
         "A new tag is only valid after clean-tree preflight, tests, and a matching .app build.",
         "Iteration commits live on codex/evolution-vX.Y.Z; the original branch only fast-forwards.",
+        "Publish must pass a clean-checkout git worktree build before any push.",
         "Do not start the next iteration until this state is terminal (local_built or published).",
         "Never edit ~/.codex/ — only the isolated Application Support tree.",
         "Never bump major without explicit user approval.",
@@ -600,6 +604,13 @@ PY
 
 # ---------- 10. Publish (optional) ----------
 if [[ "$MODE" == "publish" ]]; then
+  echo "==> Clean-checkout worktree verification for v${NEW_VERSION}"
+  if ! "$WORKTREE_VERIFY_SCRIPT" "v${NEW_VERSION}"; then
+    write_state "worktree_verify_failed"
+    echo "WORKTREE VERIFY FAILED — commit/tag retained locally; nothing pushed." >&2
+    exit 10
+  fi
+  WORKTREE_VERIFIED="yes"
   write_state "committed"
   check_stop 5 "push"
   write_progress "push" 6 "running" "pushing main + audit branch"

@@ -327,6 +327,7 @@ TapgoAICoding/
 - 自改门禁：`evolution/protected-paths.json` 定义受保护路径；变更 evolve.sh/测试/AGENTS.md 等必须携带精确内容 token（`--approve-protected`），否则拒绝启动并写入 `protectedGate` 状态。
 - 版本序列：Mac 0.x 记录在 `EVOLUTION.md`；iOS 1.0.x 独立存放于 `evolution/ios/EVOLUTION.md`，不参与 Mac tag/Info.plist/makeHistory 校验。
 - 历史归档：v0.5.5 之前 11 个版本节存放于 `evolution/archive/EVOLUTION-pre-0.5.5.md`，主日志仅保留 v0.5.5 之后。
+- worktree 验证：publish 前从 tag 创建 detached worktree 做 clean-checkout 构建，确保 tag 自包含；失败不推送并标记 `worktree_verify_failed`。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

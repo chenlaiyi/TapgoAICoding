@@ -111,7 +111,13 @@ set -euo pipefail
 echo "fake fleet deploy: $*"
 exit "${FAKE_DEPLOY_RC:-0}"
 FAKE
-  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh"
+  cat > "$dir/scripts/worktree-verify.sh" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "fake worktree verify: $*"
+exit "${FAKE_WORKTREE_RC:-0}"
+FAKE
+  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh" "$dir/scripts/worktree-verify.sh"
 
   git -C "$dir" init -q
   git -C "$dir" config user.email test@example.com
@@ -134,6 +140,7 @@ run_evolve() {
     export EVOLVE_HEALTH_SCRIPT="$repo/scripts/health-check.sh"
     export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
     export EVOLVE_PROTECT_TOOL="$repo/scripts/evolution-protect.py"
+    export EVOLVE_WORKTREE_VERIFY_SCRIPT="$repo/scripts/worktree-verify.sh"
     export EVOLVE_TEST_HISTORY="$state/test_run_history.jsonl"
     export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
     export EVOLVE_STATE_DIR="$state"
@@ -220,6 +227,7 @@ git -C "$R7" push -q -u origin main --tags
 run_evolve "$R7" "$BASE/s7-state" "$BASE/s7.log" --publish --paths scripts patch "s7" "s7" --next n
 assert_json "$BASE/s7-state/evolution_state.json" 'd["status"]' "s7 published state"
 assert_json "$BASE/s7-state/evolution_state.json" 'd["fleetDeploy"]' "s7 fleet passed"
+assert_json "$BASE/s7-state/evolution_state.json" 'd["worktreeVerified"]' "s7 worktree verified"
 assert_eq "$(git -C "$BASE/s7-origin.git" tag --list v0.5.2)" v0.5.2 "s7 remote tag"
 assert_eq "$(git -C "$R7" rev-list --count origin/main)" 2 "s7 origin main advanced"
 assert_eq "$(git -C "$BASE/s7-origin.git" branch --list codex/evolution-v0.5.2 | wc -l | tr -d ' ')" 1 "s7 iteration branch pushed"
@@ -267,6 +275,16 @@ TOKEN12="$(python3 "$R12/scripts/evolution-protect.py" --root "$R12" token --bas
 run_evolve "$R12" "$BASE/s12-state" "$BASE/s12.log" --approve-protected "$TOKEN12" --paths scripts patch "s12" "s12" --next n
 assert_eq "$(git -C "$R12" rev-list --count HEAD)" 2 "s12 approved protected change committed"
 assert_json "$BASE/s12-state/evolution_state.json" 'd["protectedGate"] == "approved:" + "'"$TOKEN12"'"' "s12 state records approval"
+
+# ---------- S13: worktree verification fails before push ----------
+R13="$BASE/s13"; make_repo "$R13"
+git -C "$R13" init -q --bare "$BASE/s13-origin.git"
+git -C "$R13" remote add origin "$BASE/s13-origin.git"
+git -C "$R13" push -q -u origin main --tags
+set +e; FAKE_WORKTREE_RC=1 run_evolve "$R13" "$BASE/s13-state" "$BASE/s13.log" --publish --paths scripts patch "s13" "s13" --next n; RC=$?; set -e
+assert_eq "$RC" 10 "s13 exit 10 on worktree verify failure"
+assert_json "$BASE/s13-state/evolution_state.json" 'd["status"]' "s13 worktree_verify_failed state"
+assert_eq "$(git -C "$BASE/s13-origin.git" rev-list --count main)" 1 "s13 nothing pushed"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

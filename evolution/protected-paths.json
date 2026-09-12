@@ -11,6 +11,7 @@
     "scripts/evolution-records.py",
     "scripts/evolution-protect.py",
     "scripts/test-failure-report.py",
+    "scripts/worktree-verify.sh",
     "scripts/tests/**"
   ]
 }

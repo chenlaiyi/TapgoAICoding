@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.271 — feat(evolution): worktree clean-checkout 验证
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.271`)_
+**Tag**: v0.5.271
+**Test status**: — 3229 passed, 0 failed —
+**Changed**:
+- 新增独立 worktree clean-checkout 构建验证,失败不推送
+- 失败注入扩到 63 项并新增 P3 backlog
+
+发布前从 tag 独立构建,确保提交自包含;失败不推送
+**Why**: 分支隔离无法证明 tag 在干净 checkout 中可构建,缺少 tag 自包含验证
+**Next**: EVO-016 真实 UI 回归自动化: 不重启当前会话也能验证进度条、停止、diff sheet 与指标看板
+
+
 ## v0.5.270 — feat(evolution): 早期日志归档
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.270`)_
