@@ -18,7 +18,7 @@
     },
     {
       "id": "main-log-boundary",
-      "weight": 10,
+      "weight": 5,
       "command": "python3 -c 'import re,sys; t=open(\"EVOLUTION.md\",encoding=\"utf-8\").read(); vs=[tuple(map(int,v.split(\".\"))) for v in re.findall(r\"^## v(\\d+\\.\\d+\\.\\d+)\", t, re.M)]; sys.exit(0 if all(v>=(0,5,5) for v in vs) and \"## v1.\" not in t else 1)'"
     },
     {
@@ -75,6 +75,11 @@
       "id": "remote-lock-helper",
       "weight": 5,
       "command": "test -x scripts/evolution-remote-lock.sh && bash scripts/tests/evolution-remote-lock-test.sh >/dev/null"
+    },
+    {
+      "id": "canary-scripts",
+      "weight": 5,
+      "command": "test -x scripts/canary-promote.sh && test -x scripts/deploy-fleet.sh"
     }
   ]
 }

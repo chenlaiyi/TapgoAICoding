@@ -109,8 +109,16 @@ FAKE
   cat > "$dir/scripts/deploy-fleet.sh" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
+[[ -n "${EVOLVE_TEST_DEPLOY_LOG:-}" ]] && echo "deploy $*" >> "$EVOLVE_TEST_DEPLOY_LOG"
 echo "fake fleet deploy: $*"
 exit "${FAKE_DEPLOY_RC:-0}"
+FAKE
+  cat > "$dir/scripts/canary-promote.sh" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ -n "${EVOLVE_TEST_DEPLOY_LOG:-}" ]] && echo "promote $*" >> "$EVOLVE_TEST_DEPLOY_LOG"
+echo "fake canary promote: $*"
+exit "${FAKE_PROMOTE_RC:-0}"
 FAKE
   cat > "$dir/scripts/worktree-verify.sh" <<'FAKE'
 #!/usr/bin/env bash
@@ -129,7 +137,7 @@ if command == "compare":
     sys.exit(int(os.environ.get("FAKE_BENCHMARK_RC", "0")))
 sys.exit(0)
 FAKE
-  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh" "$dir/scripts/worktree-verify.sh" "$dir/scripts/evolution-benchmark.py"
+  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh" "$dir/scripts/canary-promote.sh" "$dir/scripts/worktree-verify.sh" "$dir/scripts/evolution-benchmark.py"
 
   git -C "$dir" init -q
   git -C "$dir" config user.email test@example.com
@@ -153,6 +161,8 @@ run_evolve() {
     export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
     export EVOLVE_PROTECT_TOOL="$repo/scripts/evolution-protect.py"
     export EVOLVE_REMOTE_LOCK_SCRIPT="$repo/scripts/evolution-remote-lock.sh"
+    export EVOLVE_CANARY_PROMOTE_SCRIPT="$repo/scripts/canary-promote.sh"
+    export EVOLVE_TEST_DEPLOY_LOG="$state/deploy.log"
     export EVOLVE_WORKTREE_VERIFY_SCRIPT="$repo/scripts/worktree-verify.sh"
     export EVOLVE_BENCHMARK_TOOL="$repo/scripts/evolution-benchmark.py"
     export EVOLVE_BENCHMARK_HISTORY="$state/evolution_benchmark_history.jsonl"
@@ -325,6 +335,27 @@ set -e
 assert_eq "$RC15" 0 "s15 explicit break run succeeds"
 assert_eq "$(git -C "$R15" rev-list --count HEAD)" 2 "s15 explicit break allows evolution"
 assert_eq "$(git -C "$BASE/s15-origin.git" branch --list evolution-lock | wc -l | tr -d ' ')" 0 "s15 lock released after break"
+
+# ---------- S16: canary deploy failure keeps draft and skips promotion ----------
+R16="$BASE/s16"; make_repo "$R16"
+git -C "$R16" init -q --bare "$BASE/s16-origin.git"
+git -C "$R16" remote add origin "$BASE/s16-origin.git"
+git -C "$R16" push -q -u origin main --tags
+set +e; FAKE_DEPLOY_RC=1 run_evolve "$R16" "$BASE/s16-state" "$BASE/s16.log" --publish --canary --paths scripts patch "s16" "s16" --next n; RC=$?; set -e
+assert_eq "$RC" 10 "s16 exit 10 on canary failure"
+assert_json "$BASE/s16-state/evolution_state.json" 'd["status"]' "s16 canary_failed state"
+assert_not_grep "$BASE/s16-state/deploy.log" "promote" "s16 promotion skipped after canary failure"
+
+# ---------- S17: canary success promotes appcast + remaining hosts ----------
+R17="$BASE/s17c"; make_repo "$R17"
+git -C "$R17" init -q --bare "$BASE/s17c-origin.git"
+git -C "$R17" remote add origin "$BASE/s17c-origin.git"
+git -C "$R17" push -q -u origin main --tags
+run_evolve "$R17" "$BASE/s17c-state" "$BASE/s17c.log" --publish --canary --paths scripts patch "s17c" "s17c" --next n
+assert_json "$BASE/s17c-state/evolution_state.json" 'd["status"]' "s17c published state"
+assert_json "$BASE/s17c-state/evolution_state.json" 'd["canary"]' "s17c canary host recorded"
+assert_grep "$BASE/s17c-state/deploy.log" "deploy --only jkmacmini" "s17c canary host deployed first"
+assert_grep "$BASE/s17c-state/deploy.log" "promote 0.5.2 jkmacmini" "s17c promotion ran"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

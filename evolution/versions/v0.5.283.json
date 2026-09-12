@@ -1,0 +1,16 @@
+{
+  "version": "0.5.283",
+  "tag": "v0.5.283",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 发布 canary/灰度",
+  "changes": [
+    "支持 draft+单机 canary+promote 灰度发布",
+    "deploy-fleet --only/--exclude 与 S16/S17 失败注入"
+  ],
+  "details": "draft release 先单机验证,通过后才发布 appcast 并部署其余机器",
+  "why": "每版直接刷新 appcast 让所有客户端同时升级,坏包影响面是全量",
+  "next": "EVO-029 回滚演练: 定期从上一 tag 回滚并跑 health-check，验证可恢复性",
+  "testStatus": "— 3297 passed, 0 failed —",
+  "commitSha": null
+}

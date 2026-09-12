@@ -49,6 +49,7 @@ PROTECT_TOOL="${EVOLVE_PROTECT_TOOL:-$ROOT/scripts/evolution-protect.py}"
 WORKTREE_VERIFY_SCRIPT="${EVOLVE_WORKTREE_VERIFY_SCRIPT:-$ROOT/scripts/worktree-verify.sh}"
 BENCHMARK_TOOL="${EVOLVE_BENCHMARK_TOOL:-$ROOT/scripts/evolution-benchmark.py}"
 REMOTE_LOCK_SCRIPT="${EVOLVE_REMOTE_LOCK_SCRIPT:-$ROOT/scripts/evolution-remote-lock.sh}"
+CANARY_PROMOTE_SCRIPT="${EVOLVE_CANARY_PROMOTE_SCRIPT:-$ROOT/scripts/canary-promote.sh}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -57,6 +58,8 @@ FLEET_STATUS="skipped"
 MODE="local"
 DRY_RUN=""
 BREAK_REMOTE_LOCK=0
+CANARY=0
+CANARY_HOST="jkmacmini"
 BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""; WHY_ACTION=""; PROTECT_APPROVAL=""
 ALLOWED_PATHS=()
 CHANGES=()
@@ -66,6 +69,8 @@ while [[ "$#" -gt 0 ]]; do
     --publish) MODE="publish" ;;
     --dry-run) DRY_RUN="1" ;;
     --break-remote-lock) BREAK_REMOTE_LOCK=1 ;;
+    --canary) CANARY=1 ;;
+    --canary-host) CANARY_HOST="${2:-jkmacmini}"; shift ;;
     --next)    NEXT_ACTION="${2:-}"; shift ;;
     --why)     WHY_ACTION="${2:-}"; shift ;;
     --approve-protected)
@@ -573,7 +578,7 @@ write_state() {
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
   EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
   EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
-  EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" \
+  EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" EVO_CANARY="${CANARY:+$CANARY_HOST}" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -598,6 +603,7 @@ state = {
     "worktreeVerified": os.environ.get("EVO_WORKTREE_VERIFIED", ""),
     "benchmarkScore": int(os.environ["EVO_BENCHMARK"]) if os.environ.get("EVO_BENCHMARK", "").strip().isdigit() else None,
     "remoteLock": os.environ.get("EVO_REMOTE_LOCK") or None,
+    "canary": os.environ.get("EVO_CANARY") or None,
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),
@@ -675,7 +681,7 @@ if [[ "$MODE" == "publish" ]]; then
   check_stop 6 "release"
   write_progress "release" 7 "running" "building signed zip + GitHub Release"
   echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
-  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" "$RELEASE_SCRIPT" "$NOTES_FILE"; then
+  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" TAPGO_CANARY="${CANARY}" "$RELEASE_SCRIPT" "$NOTES_FILE"; then
     write_state "release_failed"
     echo "WARN: tag pushed but release/appcast publish failed; state=release_failed." >&2
     exit 7
@@ -687,6 +693,23 @@ if [[ "$MODE" == "publish" ]]; then
   if [[ "${EVOLVE_SKIP_DEPLOY:-}" == "1" ]]; then
     FLEET_STATUS="skipped"
     echo "==> [health] fleet deploy skipped (EVOLVE_SKIP_DEPLOY=1)"
+  elif [[ "$CANARY" == "1" ]]; then
+    echo "==> [canary] deploying v${NEW_VERSION} to canary host ${CANARY_HOST} only"
+    if ! "$DEPLOY_SCRIPT" --only "$CANARY_HOST" "$NEW_VERSION"; then
+      FLEET_STATUS="canary_failed"
+      write_state "canary_failed"
+      echo "CANARY FAILED: draft release retained; appcast not published." >&2
+      exit 10
+    fi
+    echo "==> [canary] promoting appcast + deploying remaining hosts"
+    if ! "$CANARY_PROMOTE_SCRIPT" "$NEW_VERSION" "$CANARY_HOST"; then
+      FLEET_STATUS="canary_failed"
+      write_state "canary_failed"
+      echo "CANARY PROMOTE FAILED: appcast may already be public; inspect and roll back if needed." >&2
+      exit 10
+    fi
+    FLEET_STATUS="passed"
+    write_progress "deploy" 8 "done" "canary ${CANARY_HOST} promoted; fleet verified"
   else
     echo "==> [health] deploying v${NEW_VERSION} to the three-Mac fleet"
     if ! "$DEPLOY_SCRIPT" "$NEW_VERSION"; then

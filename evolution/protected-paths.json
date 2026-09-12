@@ -16,6 +16,7 @@
     "scripts/evolution-feedback-draft.py",
     "scripts/evolution-remote-lock.sh",
     "scripts/run-model-eval.sh",
+    "scripts/canary-promote.sh",
     "evolution/model-eval/**",
     "evolution/feedback/**",
     "evolution/benchmark.json",

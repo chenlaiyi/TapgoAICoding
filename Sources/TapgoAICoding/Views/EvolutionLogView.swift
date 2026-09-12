@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.283", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.283",
+                    summary: "发布 canary/灰度:draft release → 单机验证 → appcast 全量 → 其余机器。",
+                    changes: [
+                        "create-github-release-artifacts.sh 支持 TAPGO_CANARY=1:创建 draft Release,appcast 只落 dist 不推送。",
+                        "新增 scripts/canary-promote.sh:发布 appcast、解除 draft、部署除 canary 外的其余机器。",
+                        "deploy-fleet.sh 新增 --only/--exclude,支持灰度阶段只更新单台或排除单台。",
+                        "evolve.sh 新增 --canary/--canary-host:publish 时先单机部署验证,失败写 canary_failed 并保留 draft;成功后 promote 再全量。",
+                        "失败注入扩到 79 项,新增 S16 canary 失败跳过 promote 与 S17 canary 成功完整 promote;benchmark 新增 canary-scripts。",
+                        "EVO-028 完成;下一项 EVO-029 回滚演练。"
+                    ],
+                    why: "此前每个版本直接刷新 appcast 让所有客户端同时升级,坏包影响面是全量;EVO-028 用 draft + 单机 canary + promote 把风险控制在三机/客户端扩散前。",
+                    next: "EVO-029 回滚演练:定期从上一 tag 回滚并跑 health-check,验证可恢复性。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.282", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.282",
                     summary: "多机协调锁:远端 evolution-lock 原子互斥,冲突显示持有者/时长,显式 break 才可抢占。",
                     changes: [

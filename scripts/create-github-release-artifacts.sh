@@ -95,8 +95,13 @@ fi
   "$WORK"
 
 cp "$WORK/$ARCHIVE" "$DIST/$ARCHIVE"
-cp "$WORK/appcast.xml" "$ROOT/appcast.xml"
-cp "$WORK/appcast.xml" "$DIST/appcast.xml"
+if [[ "${TAPGO_CANARY:-0}" == "1" ]]; then
+  cp "$WORK/appcast.xml" "$DIST/appcast.xml"
+  echo "==> CANARY: appcast staged at $DIST/appcast.xml (not published yet)"
+else
+  cp "$WORK/appcast.xml" "$ROOT/appcast.xml"
+  cp "$WORK/appcast.xml" "$DIST/appcast.xml"
+fi
 cp "$NOTES_SOURCE" "$DIST/release-notes.md"
 (
   cd "$DIST"
@@ -123,29 +128,41 @@ else
     gh release upload "$TAG" "$DIST/$ARCHIVE" --clobber >/dev/null
     gh release edit "$TAG" --notes-file "$NOTES_SOURCE" >/dev/null
   else
-    echo "==> Creating GitHub Release $TAG with signed zip."
-    gh release create "$TAG" "$DIST/$ARCHIVE" \
-      --title "$TAG" \
-      --notes-file "$NOTES_SOURCE"
+    if [[ "${TAPGO_CANARY:-0}" == "1" ]]; then
+      echo "==> Creating DRAFT GitHub Release $TAG for canary."
+      gh release create "$TAG" "$DIST/$ARCHIVE" \
+        --draft \
+        --title "$TAG" \
+        --notes-file "$NOTES_SOURCE"
+    else
+      echo "==> Creating GitHub Release $TAG with signed zip."
+      gh release create "$TAG" "$DIST/$ARCHIVE" \
+        --title "$TAG" \
+        --notes-file "$NOTES_SOURCE"
+    fi
   fi
 fi
 
-# ---------- 7. Commit refreshed appcast.xml ----------
-# The new appcast.xml in repo root is what raw.githubusercontent.com serves —
-# installed Sparkle clients poll that URL. Commit + push so the next poll
-# sees the new <item>.
-if [[ -f "$ROOT/appcast.xml" ]] && git diff --quiet -- appcast.xml; then
-  echo "==> appcast.xml unchanged; nothing to commit."
-elif [[ -f "$ROOT/appcast.xml" ]]; then
-  git add appcast.xml
-  if git diff --cached --quiet; then
-    echo "==> appcast.xml has no staged diff; skipping commit."
-  else
-    git commit -m "chore(release): refresh appcast.xml for ${TAG}"
-    if git push origin HEAD:main >/dev/null 2>&1; then
-      echo "==> appcast.xml pushed; installed clients will detect ${TAG} on next poll."
+# ---------- 7. Commit refreshed appcast.xml (skipped in canary mode) ----------
+if [[ "${TAPGO_CANARY:-0}" == "1" ]]; then
+  echo "==> CANARY: appcast publication deferred until canary promotion."
+else
+  # The new appcast.xml in repo root is what raw.githubusercontent.com serves —
+  # installed Sparkle clients poll that URL. Commit + push so the next poll
+  # sees the new <item>.
+  if [[ -f "$ROOT/appcast.xml" ]] && git diff --quiet -- appcast.xml; then
+    echo "==> appcast.xml unchanged; nothing to commit."
+  elif [[ -f "$ROOT/appcast.xml" ]]; then
+    git add appcast.xml
+    if git diff --cached --quiet; then
+      echo "==> appcast.xml has no staged diff; skipping commit."
     else
-      echo "WARN: appcast.xml push failed; run: git push origin HEAD:main" >&2
+      git commit -m "chore(release): refresh appcast.xml for ${TAG}"
+      if git push origin HEAD:main >/dev/null 2>&1; then
+        echo "==> appcast.xml pushed; installed clients will detect ${TAG} on next poll."
+      else
+        echo "WARN: appcast.xml push failed; run: git push origin HEAD:main" >&2
+      fi
     fi
   fi
 fi

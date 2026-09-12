@@ -15,6 +15,8 @@
 #   ./scripts/deploy-fleet.sh 0.5.257
 #   ./scripts/deploy-fleet.sh --dry-run 0.5.257
 #   ./scripts/deploy-fleet.sh --restart-local # also restart the local GUI app
+#   ./scripts/deploy-fleet.sh --only jkmacmini 0.5.282      # canary host only
+#   ./scripts/deploy-fleet.sh --exclude jkmacmini 0.5.282   # remaining hosts
 #
 # NOTE: --restart-local kills the currently running Tapgo AICoding, which may
 # terminate the Codex session driving this script. It is opt-in for that reason.
@@ -25,16 +27,21 @@ cd "$ROOT"
 
 DRY_RUN=""
 RESTART_LOCAL=""
+ONLY_HOST=""
+EXCLUDE_HOST=""
 VERSION=""
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --restart-local) RESTART_LOCAL=1 ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    --only) ONLY_HOST="${2:-}"; shift ;;
+    --exclude) EXCLUDE_HOST="${2:-}"; shift ;;
+    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
     *) [[ -z "$VERSION" ]] || { echo "ERROR: unexpected arg: $1" >&2; exit 2; }; VERSION="$1" ;;
   esac
   shift
 done
+[[ -z "$ONLY_HOST" || -z "$EXCLUDE_HOST" ]] || { echo "ERROR: --only and --exclude are mutually exclusive." >&2; exit 2; }
 VERSION="${VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' AppBuilder/Info.plist)}"
 APP="$ROOT/Tapgo AICoding.app"
 BIN_REL="Contents/MacOS/TapgoAICoding"
@@ -42,10 +49,21 @@ BIN_REL="Contents/MacOS/TapgoAICoding"
 BUILT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 [[ "$BUILT" == "$VERSION" ]] || { echo "ERROR: bundle $BUILT != requested $VERSION" >&2; exit 3; }
 
-TARGETS=(
+ALL_TARGETS=(
   "jkmacmini:/Users/chanlaiyi/TapgoAICoding"
   "chenlaiyi@100.100.191.111:/Users/chenlaiyi/TapgoAICoding"
 )
+TARGETS=()
+for target in "${ALL_TARGETS[@]}"; do
+  host="${target%%:*}"
+  [[ -n "$ONLY_HOST" && "$host" != "$ONLY_HOST" ]] && continue
+  [[ -n "$EXCLUDE_HOST" && "$host" == "$EXCLUDE_HOST" ]] && continue
+  TARGETS+=("$target")
+done
+
+INCLUDE_LOCAL=1
+[[ -n "$ONLY_HOST" && "$ONLY_HOST" != "local" ]] && INCLUDE_LOCAL=0
+[[ -n "$EXCLUDE_HOST" && "$EXCLUDE_HOST" == "local" ]] && INCLUDE_LOCAL=0
 
 install_local() {
   local dest="/Applications/Tapgo AICoding.app"
@@ -118,7 +136,7 @@ REMOTE
   echo "==> [${host}] restart + version ${VERSION} verified"
 }
 
-install_local
+[[ "$INCLUDE_LOCAL" -eq 1 ]] && install_local
 FAIL=0
 for target in "${TARGETS[@]}"; do
   if ! install_remote "$target"; then
