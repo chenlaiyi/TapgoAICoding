@@ -39,3 +39,5 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 
 - `scripts/tests/evolution-records-test.sh` 覆盖 schema、渲染、重复版本拒绝、test-status 更新与当前版本一致性。
 - `scripts/tests/evolve-failure-injection-test.sh` 用临时 git 仓库注入测试失败、构建失败、发布失败、未覆盖脏路径等场景，验证回滚与状态机。
+- `scripts/evolution-metrics.py` 从记录 + `evolution_state_history.jsonl` 汇总成功率、失败、中位周期与测试总量。
+- `evolution/BACKLOG.md` 是下一轮选点的单一待办清单；完成后把 `[ ]` 改为 `[x]` 并附版本号。

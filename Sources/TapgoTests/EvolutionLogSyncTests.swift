@@ -28,15 +28,11 @@ func runEvolutionLogSync(_ t: TestRunner) {
               version.range(of: "^v\\d+\\.\\d+\\.\\d+$", options: .regularExpression) != nil else { continue }
         orderedEvoVersions.append(version)
 
-        // 只约束 Mac 0.x 且 >=0.5.233 的版本节。v0.5.232 及更早存在
-        // 历史重复节（如 v0.5.70/71/102/106/107/230/232），属于待清理
-        // 数据债；新版本从 v0.5.233 起必须唯一。
-        if version.hasPrefix("v0."), header.contains(" — ") {
-            let parts = version.dropFirst().split(separator: ".").compactMap { Int($0) }
-            let isStrict = parts.count == 3 && (parts[0], parts[1], parts[2]) >= (0, 5, 233)
-            if isStrict, !seenMacVersions.insert(version).inserted {
-                duplicateMacVersions.append(version)
-            }
+        // Mac 0.x 系列版本节必须全局唯一。v0.5.70/71/102/106/107/230/232
+        // 的历史重复节已在 v0.5.260 清理；iOS 1.0.x 独立序列不在此约束内。
+        if version.hasPrefix("v0."), header.contains(" — "),
+           !seenMacVersions.insert(version).inserted {
+            duplicateMacVersions.append(version)
         }
     }
     let evoVersions = Set(orderedEvoVersions)

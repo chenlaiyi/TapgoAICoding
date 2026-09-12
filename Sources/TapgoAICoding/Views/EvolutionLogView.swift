@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.260", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.260",
+                    summary: "历史日志去重 + 迭代指标:262 个 Mac 版本节全局唯一,状态历史可计算成功率与周期。",
+                    changes: [
+                        "清理 EVOLUTION.md 的 7 个重复版本节:v0.5.70/71 尾部旧脚本冗余删除并合并 helper 备注;v0.5.230/232 两次真实改动合并为单节;v0.5.102 保留为「历史归档:原实现(后并入 v0.5.105)」;v0.5.106/107 串记内容归档,以 git tag 对应的 chat 条目为准。",
+                        "Mac 0.x 版本节唯一性校验从「>=0.5.233」收紧到全部 0.x;当前 262 个 Mac 版本节 0 重复。",
+                        "新增 evolution/BACKLOG.md:EVO-001..014,4 项已完成、10 项待办,作为下一轮选点的单一 backlog。",
+                        "新增 scripts/evolution-metrics.py:从结构化记录 + evolution_state_history.jsonl 汇总迭代数、published/local_built/failed、成功率、中位周期、测试总量、backlog 开闭数,支持 --json。",
+                        "evolve.sh write_state 每次状态迁移追加一行 JSONL 历史(committed/published/push_failed/release_failed),失败率与周期可回溯,不再只保留最后一次状态。",
+                        "新增 evolution-metrics-test.sh(8 断言)并接入 scripts/tests/run-all.sh。"
+                    ],
+                    why: "历史日志已积累 262 个 Mac 版本节,旧 evolve.sh 尾部追加造成 7 个版本重复;同时状态文件只保留最后一次,无法回答成功率/回滚/周期。本轮先清历史债,再补可度量能力。",
+                    next: "EVO-005:kickoff prompt 与 state.nextActions 自动读取 BACKLOG.md 最高优先级未完成项;EVO-006:分支/worktree 隔离。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.259", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.259",
                     summary: "失败注入矩阵 + 记录质量:真实 why/change 入档,四类故障可验证回滚。",
                     changes: [

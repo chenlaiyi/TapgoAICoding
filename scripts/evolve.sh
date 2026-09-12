@@ -157,7 +157,11 @@ if ! evo_lock_acquire "$LOCK_DIR"; then
   echo "ERROR: another evolve.sh run holds the lock ($LOCK_DIR)." >&2
   exit 9
 fi
-echo "==> Preflight: clean tree, branch=${BRANCH}, lock acquired"
+if [[ -n "$DIRTY_STATUS" ]]; then
+  echo "==> Preflight: ${BRANCH}, lock acquired, dirty paths covered by allowlist"
+else
+  echo "==> Preflight: clean tree, branch=${BRANCH}, lock acquired"
+fi
 
 # ---------- 1. Compute next version from semantic max of reachable tags ----------
 if git fetch --tags "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
@@ -325,11 +329,20 @@ fi
 ALLOWED_PATHS+=("$PLIST" "$HELPER_PLIST" "$PROJECT_YML" "$EVOLUTION" "$ROOT/evolution")
 [[ -n "$NOTES_FILE" ]] && ALLOWED_PATHS+=("$NOTES_FILE")
 if [[ -n "$DIRTY_STATUS" ]]; then
+  # Auto-managed files are registered as absolute paths; normalize them to
+  # repo-relative form before matching git status paths.
+  REL_ALLOWED_PATHS=()
+  for allowed in "${ALLOWED_PATHS[@]}"; do
+    case "$allowed" in
+      "$ROOT"/*) REL_ALLOWED_PATHS+=("${allowed#"$ROOT"/}") ;;
+      *) REL_ALLOWED_PATHS+=("$allowed") ;;
+    esac
+  done
   while IFS= read -r dirty_line; do
     [[ -n "$dirty_line" ]] || continue
     dirty_path="${dirty_line:3}"
     dirty_path="${dirty_path%% -> *}"
-    if ! evo_path_covered "$dirty_path" "${ALLOWED_PATHS[@]}"; then
+    if ! evo_path_covered "$dirty_path" "${REL_ALLOWED_PATHS[@]}"; then
       echo "ERROR: dirty path is not covered by --paths: $dirty_path" >&2
       exit 9
     fi
@@ -395,6 +408,24 @@ with open(tmp, "w", encoding="utf-8") as f:
     f.write("\n")
 os.chmod(tmp, 0o600)
 os.replace(tmp, path)
+PY
+
+  # Append every state transition to JSONL so metrics can distinguish
+  # published / failed / retried iterations instead of only seeing the last one.
+  STATE_HISTORY="${EVOLVE_STATE_HISTORY:-$STATE_DIR/evolution_state_history.jsonl}"
+  python3 - "$STATE_FILE" "$STATE_HISTORY" <<'PY'
+import json, os, sys
+state_path, history_path = sys.argv[1], sys.argv[2]
+with open(state_path, encoding="utf-8") as fh:
+    state = json.load(fh)
+parent = os.path.dirname(history_path)
+if parent:
+    os.makedirs(parent, exist_ok=True)
+with open(history_path, "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(state, ensure_ascii=False) + "\n")
+    fh.flush()
+    os.fsync(fh.fileno())
+os.chmod(history_path, 0o600)
 PY
 }
 

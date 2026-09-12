@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.260 — feat(evolution): 历史去重与迭代指标
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.260`)_
+**Tag**: v0.5.260
+**Test status**: — 3153 passed, 0 failed —
+**Changed**:
+- 清理重复日志节并将唯一性校验收紧到全部 0.x
+- 新增 backlog 与状态历史 JSONL 指标
+
+262 个 Mac 版本节全局唯一;状态历史 JSONL 支撑成功率、周期与回滚度量
+**Why**: 历史日志积累 7 个重复版本节;状态文件只保留最后一次导致成功率/回滚/周期不可回溯
+**Next**: EVO-005:backlog 驱动 kickoff 选点;EVO-006 分支/worktree 隔离
+
+
 ## v0.5.259 — feat(evolution): 失败注入矩阵与记录质量
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.259`)_
@@ -309,6 +323,7 @@
 - build-app.sh / TapgoConfig.swift：嵌套 helper 显式签名（防 Launch failed）。
 - ConversationPresentationTests：workTitle 断言同步。
 
+- ConversationResponseView：移除无引用的 StreamingDotsInline struct。
 **Why**: 用户反馈电脑控制授权反复出错。
 **Next**: 继续对齐 Codex 桌面端其他细节。
 
@@ -334,16 +349,6 @@
 **Why**: 对照 Codex 实机截图。
 **Next**: 继续对齐 Codex 桌面端其他细节。
 
-## v0.5.232 — chore: 移除未使用的 StreamingDotsInline（死代码清理）
-**Date**: 2026-09-10
-**Tag**: v0.5.232
-**Test status**: 构建 + 三机安装
-**Changed**:
-- ConversationResponseView：移除无引用的 StreamingDotsInline struct。
-
-**Why**: v0.5.213/224 改用 ShimmerText 后 StreamingDotsInline 不再被引用。
-**Next**: 继续对齐 Codex 桌面端其他细节。
-
 ## v0.5.231 — fix(ui): 新任务态显示电脑操作 chip
 **Date**: 2026-09-10
 **Tag**: v0.5.231
@@ -363,17 +368,8 @@
 - App.swift：文本编辑器 focus 时 ⇧?（半角问号）不再被全局快捷键拦截，正常输入。
 - ConversationResponseView.ConversationWorkDisclosure：去掉 3 跳动 dots，标题「正在处理」改 ShimmerText 流光。
 
-**Why**: 用户反馈问号无法输入、3 点还在。
-**Next**: 继续对齐 Codex 桌面端其他细节。
-
-## v0.5.230 — test: .search 活动行文案对齐 Codex 实机
-**Date**: 2026-09-10
-**Tag**: v0.5.230
-**Test status**: 全量回归 3145 通过 + 三机安装
-**Changed**:
 - TurnPresentationTests：.search args 为空时显示纯动词「查找」断言（对齐 Codex 实机截图 4）。
-
-**Why**: 防止对齐回退。
+**Why**: 用户反馈问号无法输入、3 点还在。
 **Next**: 继续对齐 Codex 桌面端其他细节。
 
 ## v0.5.228 — test: 补 v0.5.214 命令活动态回归测试
@@ -1740,7 +1736,7 @@
 - 简化首页工具栏，保留真实的模型、权限、附件与发送功能。
 
 
-## v0.5.107 — 2026-09-05
+### 历史归档（版本号待核）— 定时任务 MCP 与 Computer Use 继承
 
 - 对话接入定时任务创建、查询、取消 MCP，独立于电脑控制 TCC。
 - 精确日程指令本地解析，支持周一至周五；打开应用原生执行，无需模型。
@@ -1749,7 +1745,7 @@
 - 修复定时任务窗口关闭和嵌套编辑 Esc；组合截图完成后重新生成 AX 观察指纹。
 - 继承 0.5.106 独立柔光光标和真实点击、输入、拖动。
 
-## v0.5.106 — 2026-09-05
+### 历史归档（版本号待核）— Computer Use 独立光标与真实操作校准
 
 - 独立操作光标：依据参考图绘制浅色空心圆角箭头与淡青柔光，操作时可见且鼠标穿透。
 - 修复输入框 AXPress 不支持时无法点击，保留失效观察和禁用控件保护。
@@ -1844,6 +1840,7 @@
 - `SidebarView.swift` 一级导航移除「自进化日志」菜单项；「自进化日志」移到账户菜单（底部 user menu）。
 - `Desktop目标 IDEDesignTests.swift` 新增 `desktop-design: 自进化日志不在一级导航` 断言。
 - AppBuilder/Info.plist bump 0.5.70 → 0.5.71。
+- Evolve.sh 同步补 bump ComputerUseHelper-Info.plist（此前漏改，helper 版本长期停在 0.5.69）。
 **Why**: 「自进化日志」是只读历史页，不该和新建任务/搜索/插件市场混在一级导航；放账户菜单层级更合适。
 **Next**: 监控真机回归确认无布局错位。
 
@@ -2861,31 +2858,6 @@
 **Why**: v0.5.1 只包含一句宽泛提示；仅加强 Prompt 的首次原生回归中，模型仍把三个工具并行执行后集中总结，因此增加 App 事件层保证。
 **Next**: 继续用安装版长任务验证模型在多次工具调用之间真实产生用户可见进度，并跟进 Harness 的原生进度事件能力。
 
-## v0.5.70 — 2026-09-02
-
-侧栏一级菜单与账户菜单的旧标签「自动化」实际指向 EvolutionLogView（自进化历史），
-与项目未来计划新增的「任务调度面板」是两个不同概念——后者目前还没有实现，应作为
-独立 backlog 跟踪。本次只修命名错位：
-
-- SidebarView.swift 一级菜单 label/help/accessibility 三处 + 账户菜单 Label 1 处共 4 处
-  全部从「自动化」改回「自进化日志」
-- Desktop目标 IDEDesignTests 同步更新两条相关断言
-
-构建：swift build -c release 通过；测试中失败的远程 SSH / auth.json 集成用例为环境
-依赖，与本次改动无关，本地断言全部通过。
-
-
-## v0.5.71 — chore(release): v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单
-**Date**: 2026-09-02
-**Commit**: _(see )_
-**Tag**: v0.5.71
-**Test status**: — 2601 passed, 0 failed —
-**Changed**:
-- chore(release): v0.5.71 — 侧栏「自进化日志」从一级导航下放到账户菜单
-「自进化日志」是只读历史页，放在左上角一级导航太抢眼；下放到底部用户头像菜单，与「连接手机/检查更新/设置/退出登录」同级。源码侧只删 SidebarView topBar 中的一项 + 测试断言翻转；用户菜单里的入口保留，所有现有入口路径（点击头像、⌘⌥E、EvolutionPanel「自进化日志」按钮、tapgoOpenEvolution 通知）继续生效。Desktop-design 23 条断言全过，未引入新依赖。顺手修复 AppUpdateDistributionTests 的版本号 hardcode（0.5.69 → git tag/env var），解决发版流程每次 bump 都要改的 pre-existing bug。Evolve.sh 同时补 bump ComputerUseHelper-Info.plist（之前漏改导致 helper 版本长期停在 0.5.69）。
-**Why**: Self-evolution iteration — see commit message + diff.
-**Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
-
 ## v0.5.74 — 目标 IDE asar 频繁色固化（DSHTheme 拓宽 + 5 项贴近测试）
 **Date**: 2026-09-02
 **Test status**: 2685 passed / 14 failed（与 v0.5.73 同样 13 个远程 SSH 集成 + 1 个 appcast 对齐回归，无新增失败；新增 5 项 `desktop-design` 断言全绿）
@@ -3239,7 +3211,7 @@ MessageBubble assistant 分支加 2pt trajectoryAssistant.opacity(0.55) 左缘�
 **Why**: Self-evolution iteration — 上一轮 v0.5.102 只做了面板和调度，用户看不到执行结果；本轮把"触发 → 记录 → 回看"闭环，给失败以可见信号。
 **Next**: see `~/Library/Application Support/Tapgo AICoding/state/evolution_state.json`.
 
-## v0.5.102 — feat(scheduler): 定时任务面板（60s tick runner + 4 种 ScheduleSpec + macOS 通知 + 文件级持久化）— *改名合并到 v0.5.105，本条目保留作历史*
+## 历史归档：v0.5.102 原实现（后并入 v0.5.105） — feat(scheduler): 定时任务面板（60s tick runner + 4 种 ScheduleSpec + macOS 通知 + 文件级持久化）— *改名合并到 v0.5.105，本条目保留作历史*
 **Date**: 2026-09-05
 **Commit**: _(folded into v0.5.105)_
 **Tag**: _(superseded by v0.5.105)_

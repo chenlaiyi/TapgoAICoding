@@ -174,5 +174,12 @@ assert_json "$BASE/s7-state/evolution_state.json" 'd["status"]' "s7 published st
 assert_eq "$(git -C "$BASE/s7-origin.git" tag --list v0.5.2)" v0.5.2 "s7 remote tag"
 assert_eq "$(git -C "$R7" rev-list --count origin/main)" 2 "s7 origin main advanced"
 
+# ---------- S8: pre-dirty auto-managed EVOLUTION.md is covered ----------
+R8="$BASE/s8"; make_repo "$R8"
+printf '# Evolution Log\n\n<!-- hand edit -->\n' > "$R8/EVOLUTION.md"
+run_evolve "$R8" "$BASE/s8-state" "$BASE/s8.log" --paths scripts patch "s8" "s8" --next n
+assert_eq "$(git -C "$R8" rev-list --count HEAD)" 2 "s8 committed with pre-dirty managed file"
+assert_grep "$R8/EVOLUTION.md" "hand edit" "s8 preserves pre-existing managed edit"
+
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

@@ -317,7 +317,9 @@ TapgoAICoding/
 - 同机并发会被 `.git/tapgo-evolve.lock` 拒绝；版本号取 `origin/main` 可达 tag 的语义化最高值。
 - 测试与 `.app` 构建都在 commit 之前完成；失败会自动恢复被脚本改动的版本文件。
 - `evolution_state.json` 记录 `committed / local_built / published / push_failed / release_failed` 分阶段状态，可据此续跑或排障。
-- Shell 回归：`./scripts/tests/run-all.sh`（lib + records + 失败注入矩阵，已接入 evolve.sh 测试阶段）。
+- Shell 回归：`./scripts/tests/run-all.sh`（lib + records + metrics + 失败注入矩阵，已接入 evolve.sh 测试阶段）。
+- 迭代指标：`./scripts/evolution-metrics.py`（成功率、失败、周期、测试量、backlog 开闭）；JSON 输出加 `--json`。
+- 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 
 ### 跟上上游，同时保留你的改动
 
