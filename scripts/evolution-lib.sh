@@ -20,7 +20,7 @@ evo_max_version() {
         best_major = major; best_minor = minor; best_patch = patch; best = $0
       }
     }
-    END { if (best != "") print best }'
+    END { if (best != "") print best }' || true
 }
 
 # evo_next_version <current (vX.Y.Z or X.Y.Z)> <patch|minor|major>

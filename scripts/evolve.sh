@@ -29,12 +29,13 @@ source "$ROOT/scripts/evolution-lib.sh"
 
 # ---------- SDK selection ----------
 TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
-if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
-  echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2
-  exit 7
+if [[ -z "${EVOLVE_SKIP_SDK_CHECK:-}" ]]; then
+  if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
+    echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2
+    exit 7
+  fi
+  echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 fi
-SWIFT=(xcrun -sdk "$TAPGO_SDK" swift)
-echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 
 # Overridable entrypoints keep evolve.sh testable and allow failure injection.
 TESTS_SCRIPT="${EVOLVE_TESTS_SCRIPT:-$ROOT/scripts/tests/run-all.sh}"
@@ -45,14 +46,21 @@ RECORDS_TOOL="${EVOLVE_RECORDS_TOOL:-$ROOT/scripts/evolution-records.py}"
 # ---------- Args ----------
 MODE="local"
 DRY_RUN=""
-BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""
+BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""; WHY_ACTION=""
 ALLOWED_PATHS=()
+CHANGES=()
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --local)   MODE="local" ;;
     --publish) MODE="publish" ;;
     --dry-run) DRY_RUN="1" ;;
     --next)    NEXT_ACTION="${2:-}"; shift ;;
+    --why)     WHY_ACTION="${2:-}"; shift ;;
+    --change)
+      [[ -n "${2:-}" ]] || { echo "ERROR: --change needs a value" >&2; exit 2; }
+      CHANGES+=("$2")
+      shift
+      ;;
     --paths)
       [[ -n "${2:-}" ]] || { echo "ERROR: --paths needs a value" >&2; exit 2; }
       IFS=',' read -r -a _paths <<< "$2"
@@ -75,6 +83,7 @@ done
 BUMP="${BUMP:-patch}"
 MSG="${MSG:-chore: evolve}"
 SUMMARY="${SUMMARY:-_no_summary_}"
+WHY_ACTION="${WHY_ACTION:-Self-evolution iteration — see commit message + diff.}"
 case "$BUMP" in patch|minor|major) ;; *) echo "ERROR: bump must be patch|minor|major (got: $BUMP)" >&2; exit 2 ;; esac
 
 # ---------- Repo identity ----------
@@ -225,14 +234,19 @@ fi
 
 # ---------- 3. Create structured record + prepend rendered EVOLUTION.md ----------
 RESOLVED_NEXT="${NEXT_ACTION:-see state file evolution_state.json}"
+CHANGE_ARGS=()
+for change in "${CHANGES[@]+"${CHANGES[@]}"}"; do
+  CHANGE_ARGS+=(--change "$change")
+done
 python3 "$RECORDS_TOOL" add \
   --version "$NEW_VERSION" \
   --scope mac \
   --message "$MSG" \
   --details "$SUMMARY" \
-  --why "Self-evolution iteration — see commit message + diff." \
+  --why "$WHY_ACTION" \
   --next "$RESOLVED_NEXT" \
-  --test-status pending >/dev/null
+  --test-status pending \
+  ${CHANGE_ARGS[@]+"${CHANGE_ARGS[@]}"} >/dev/null
 
 ENTRY_FILE="$(mktemp -t tapgo-evolution-entry.XXXXXX)"
 python3 "$RECORDS_TOOL" render-entry --version "$NEW_VERSION" > "$ENTRY_FILE"
@@ -281,9 +295,15 @@ python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
 # ---------- 5. Build the real .app before commit ----------
 echo "==> Building .app bundle"
 if [[ "$MODE" == "local" ]]; then
-  TAPGO_LOCAL_BUILD=1 "$BUILD_SCRIPT" >/dev/null
+  if ! TAPGO_LOCAL_BUILD=1 "$BUILD_SCRIPT" >/dev/null; then
+    echo "BUILD FAILED — rolling back version edits" >&2
+    exit 4
+  fi
 else
-  "$BUILD_SCRIPT" >/dev/null
+  if ! "$BUILD_SCRIPT" >/dev/null; then
+    echo "BUILD FAILED — rolling back version edits" >&2
+    exit 4
+  fi
 fi
 BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT/Tapgo AICoding.app/Contents/Info.plist" 2>/dev/null || true)"
 if [[ "$BUILT_VERSION" != "$NEW_VERSION" ]]; then

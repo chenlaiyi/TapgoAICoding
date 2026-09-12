@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.259", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.259",
+                    summary: "失败注入矩阵 + 记录质量:真实 why/change 入档,四类故障可验证回滚。",
+                    changes: [
+                        "新增 scripts/tests/evolve-failure-injection-test.sh:临时 git 仓库 + 可覆写测试/构建/发布入口,覆盖未覆盖脏路径、测试失败、构建失败、本地成功、重复 tag 拒绝、发布失败、发布成功 7 个场景共 28 项断言。",
+                        "evolve.sh 新增 --why 与可重复 --change:真实根因与改动清单写入 evolution/versions/vX.Y.Z.json,再渲染 EVOLUTION.md 与 release notes,不再落通用 why。",
+                        "构建失败统一归一为退出码 4,不再透传 fake/build 子进程的任意退出码;测试失败 5、发布失败 7、脏路径 9 语义固定。",
+                        "修复 pipefail 下 evo_max_version 在无有效 tag 时返回 1 导致 evolve.sh 提前退出的缺陷,并新增 rc=0 回归用例。",
+                        "scripts/tests/run-all.sh 纳入失败注入矩阵;evolve.sh 的测试/构建/发布/记录工具入口均可用 EVOLVE_*_* 覆盖,真实仓库仅作为稳定运行环境。",
+                        "README 与 evolution/README.md 补充 why/change 用法、结构化记录契约与失败注入测试说明。"
+                    ],
+                    why: "v0.5.258 虽然建立了结构化记录,但 evolve.sh 无法传入真实 why,记录里仍是通用文案;同时回滚与状态机只被 happy path 间接覆盖,缺少可重复的故障证据。本轮把记录质量与故障验证同时补齐。",
+                    next: "清理 v0.5.232 及更早的重复日志节;新增 evolution backlog 与迭代指标(成功率、flaky、回滚次数、周期)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.258", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.258",
                     summary: "结构化版本真源:每版一份 JSON,日志与 release notes 由记录渲染并强校验。",
                     changes: [

@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.259 — feat(evolution): 失败注入矩阵与记录质量
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.259`)_
+**Tag**: v0.5.259
+**Test status**: — 3150 passed, 0 failed —
+**Changed**:
+- 新增失败注入矩阵覆盖 7 场景 28 断言
+- evolve.sh 支持 why/change 入档并归一构建失败码
+
+真实 why/change 写入结构化记录;四类故障注入验证回滚与状态机
+**Why**: 自进化记录的 why 必须来自真实迭代理由;回滚路径必须有可重复故障证据
+**Next**: 清理历史重复日志节并建立迭代指标
+
+
 ## v0.5.258 — feat(evolution): 结构化版本真源
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.258`)_

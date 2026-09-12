@@ -302,8 +302,14 @@ TapgoAICoding/
 ./scripts/evolve.sh --paths Sources/TapgoCore/Foo.swift,scripts/evolve.sh   patch "fix: 侧栏空工作区崩溃" "根因与改动说明"
 
 # 维护者发布上线（同样要求 --paths；上传前强制 HEAD == origin/main）
-./scripts/evolve.sh --publish --paths Sources/TapgoCore/Foo.swift   minor "feat: 深色模式" "说明"
+./scripts/evolve.sh --publish --paths Sources/TapgoCore/Foo.swift \
+  --why "用户反馈的根因与取舍" \
+  --change "改动点一" --change "改动点二" \
+  minor "feat: 深色模式" "说明"
 ```
+
+`--why` 与可重复 `--change` 会写入 `evolution/versions/vX.Y.Z.json`，再渲染到
+`EVOLUTION.md` 与 release notes；缺省时至少写入 commit message，不再出现空泛理由。
 
 安全约束（v0.5.257 起）：
 
@@ -311,7 +317,7 @@ TapgoAICoding/
 - 同机并发会被 `.git/tapgo-evolve.lock` 拒绝；版本号取 `origin/main` 可达 tag 的语义化最高值。
 - 测试与 `.app` 构建都在 commit 之前完成；失败会自动恢复被脚本改动的版本文件。
 - `evolution_state.json` 记录 `committed / local_built / published / push_failed / release_failed` 分阶段状态，可据此续跑或排障。
-- Shell 回归：`./scripts/tests/evolution-lib-test.sh`（已接入 evolve.sh 测试阶段）。
+- Shell 回归：`./scripts/tests/run-all.sh`（lib + records + 失败注入矩阵，已接入 evolve.sh 测试阶段）。
 
 ### 跟上上游，同时保留你的改动
 

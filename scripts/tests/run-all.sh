@@ -6,6 +6,7 @@ cd "$ROOT"
 
 "$ROOT/scripts/tests/evolution-lib-test.sh"
 "$ROOT/scripts/tests/evolution-records-test.sh"
+"$ROOT/scripts/tests/evolve-failure-injection-test.sh"
 
 TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
 exec xcrun -sdk "$TAPGO_SDK" swift run TapgoTests "$@"

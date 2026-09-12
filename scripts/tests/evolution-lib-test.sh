@@ -17,6 +17,12 @@ assert_eq() {
 assert_eq "$(printf '%s\n' v0.5.9 v0.5.256 v0.5.10 v0.5.08 | evo_max_version)" "v0.5.256" "max-version: numeric order + leading zero"
 assert_eq "$(printf '%s\n' v1.0.1 v0.5.999 | evo_max_version)" "v1.0.1" "max-version: major series"
 assert_eq "$(printf '%s\n' nonsense v0.5.99 | evo_max_version)" "v0.5.99" "max-version: ignores invalid tags"
+set +e
+OUT="$(printf 'nonsense\n' | evo_max_version)"
+RC=$?
+set -e
+assert_eq "$RC" "0" "max-version: no valid tag returns rc 0"
+assert_eq "$OUT" "" "max-version: no valid tag prints nothing"
 assert_eq "$(evo_max_version)" "" "max-version: empty input"
 assert_eq "$(evo_next_version v0.5.256 patch)" "0.5.257" "next-version: patch"
 assert_eq "$(evo_next_version v0.5.09 minor)" "0.6.0" "next-version: minor + leading zero"

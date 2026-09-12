@@ -35,5 +35,7 @@ python3 scripts/evolution-records.py set-test-status --version 0.5.258 --value "
 python3 scripts/evolution-records.py validate --require-rendered --check-current
 ```
 
-`evolve.sh` 已接入上述流程；`scripts/tests/evolution-records-test.sh` 覆盖 schema、渲染、
-重复版本拒绝、test-status 更新与当前版本一致性。
+`evolve.sh` 已接入上述流程，并额外支持 `--why` 与可重复 `--change` 写入记录。
+
+- `scripts/tests/evolution-records-test.sh` 覆盖 schema、渲染、重复版本拒绝、test-status 更新与当前版本一致性。
+- `scripts/tests/evolve-failure-injection-test.sh` 用临时 git 仓库注入测试失败、构建失败、发布失败、未覆盖脏路径等场景，验证回滚与状态机。

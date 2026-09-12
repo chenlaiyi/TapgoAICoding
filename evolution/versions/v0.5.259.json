@@ -1,0 +1,16 @@
+{
+  "version": "0.5.259",
+  "tag": "v0.5.259",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 失败注入矩阵与记录质量",
+  "changes": [
+    "新增失败注入矩阵覆盖 7 场景 28 断言",
+    "evolve.sh 支持 why/change 入档并归一构建失败码"
+  ],
+  "details": "真实 why/change 写入结构化记录;四类故障注入验证回滚与状态机",
+  "why": "自进化记录的 why 必须来自真实迭代理由;回滚路径必须有可重复故障证据",
+  "next": "清理历史重复日志节并建立迭代指标",
+  "testStatus": "— 3150 passed, 0 failed —",
+  "commitSha": null
+}
