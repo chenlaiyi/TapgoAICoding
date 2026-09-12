@@ -44,5 +44,11 @@
 
 - [x] **EVO-025 手机端自进化状态**：snapshot 暴露进度/benchmark/model eval/backlog，H5 新增自进化卡片（v0.5.280）
 - [x] **EVO-026 草稿 check 建议**：分类 + 匹配现有测试 section + 生成命令模板，仍只写 drafts（v0.5.281）
-- [ ] **EVO-027 多机协调锁**：跨机器避免同时自进化，冲突时给出版本/rebase 指引
+- [x] **EVO-027 多机协调锁**：远端 evolution-lock 原子互斥，冲突显示持有者/时长，显式 break 才可抢占（v0.5.282）
+
+## P6 — 发布韧性与长期维护
+
+- [ ] **EVO-028 发布 canary/灰度**：先只让一台客户端升级，观察后再全量 appcast
+- [ ] **EVO-029 回滚演练**：定期从上一 tag 回滚并跑 health-check，验证可恢复性
+- [ ] **EVO-030 指标归档**：按月归档 state history，控制运行态文件增长
 - [ ] **EVO-021 操作者模型基线**：用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）

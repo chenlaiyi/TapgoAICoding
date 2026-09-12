@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.282", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.282",
+                    summary: "多机协调锁:远端 evolution-lock 原子互斥,冲突显示持有者/时长,显式 break 才可抢占。",
+                    changes: [
+                        "新增 scripts/evolution-remote-lock.sh acquire/release/status:固定 refs/heads/evolution-lock 用 --force-with-lease=<ref>: 实现 create-if-absent。",
+                        "锁 commit message 记录 host/user/pid/startedAt;状态查询显示持有者与 ageSeconds,不自动抢占。",
+                        "evolve.sh publish 启动时获取远端锁,所有退出路径 cleanup 释放;冲突退出 9;--break-remote-lock 显式清理后重试;dry-run 不建远端 ref。",
+                        "state 新增 remoteLock;新增 4 项锁回归(互斥、状态、双重获取失败、释放);失败注入扩到 72 项,新增 S15 锁阻塞与显式 break。",
+                        "benchmark 新增 remote-lock-helper(总分仍 100);EVO-027 完成,新增 P6 canary/回滚演练/指标归档。"
+                    ],
+                    why: "各 Mac 本地锁无法防跨机同时演进,两台机器会算出同一版本并撞 tag/push;EVO-027 用远端原子 ref 做跨机互斥并保留持有者证据。",
+                    next: "EVO-028 发布 canary/灰度:先让一台客户端升级,观察后再全量。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.281", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.281",
                     summary: "反馈草稿建议:分类并匹配现有测试 section,生成最小复现命令模板。",
                     changes: [

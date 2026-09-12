@@ -48,6 +48,7 @@ TEST_REPORT_TOOL="${EVOLVE_TEST_REPORT_TOOL:-$ROOT/scripts/test-failure-report.p
 PROTECT_TOOL="${EVOLVE_PROTECT_TOOL:-$ROOT/scripts/evolution-protect.py}"
 WORKTREE_VERIFY_SCRIPT="${EVOLVE_WORKTREE_VERIFY_SCRIPT:-$ROOT/scripts/worktree-verify.sh}"
 BENCHMARK_TOOL="${EVOLVE_BENCHMARK_TOOL:-$ROOT/scripts/evolution-benchmark.py}"
+REMOTE_LOCK_SCRIPT="${EVOLVE_REMOTE_LOCK_SCRIPT:-$ROOT/scripts/evolution-remote-lock.sh}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -55,6 +56,7 @@ FLEET_STATUS="skipped"
 # ---------- Args ----------
 MODE="local"
 DRY_RUN=""
+BREAK_REMOTE_LOCK=0
 BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""; WHY_ACTION=""; PROTECT_APPROVAL=""
 ALLOWED_PATHS=()
 CHANGES=()
@@ -63,6 +65,7 @@ while [[ "$#" -gt 0 ]]; do
     --local)   MODE="local" ;;
     --publish) MODE="publish" ;;
     --dry-run) DRY_RUN="1" ;;
+    --break-remote-lock) BREAK_REMOTE_LOCK=1 ;;
     --next)    NEXT_ACTION="${2:-}"; shift ;;
     --why)     WHY_ACTION="${2:-}"; shift ;;
     --approve-protected)
@@ -124,6 +127,8 @@ NOTES_FILE=""
 NEW_VERSION=""
 WORKTREE_VERIFIED=""
 BENCHMARK_SCORE=""
+REMOTE_LOCK_SHA=""
+REMOTE_LOCK_HELD=0
 ITER_BRANCH=""
 BRANCH_CREATED=0
 COMMITTED=0
@@ -159,6 +164,11 @@ cleanup() {
       git checkout "$BRANCH" >/dev/null 2>&1 || true
     fi
     git branch -D "$ITER_BRANCH" >/dev/null 2>&1 || true
+  fi
+  if [[ "$REMOTE_LOCK_HELD" -eq 1 && -n "$REMOTE_LOCK_SHA" ]]; then
+    if ! "$REMOTE_LOCK_SCRIPT" release --remote "$UPSTREAM_REMOTE" --sha "$REMOTE_LOCK_SHA" >/dev/null 2>&1; then
+      echo "WARN: failed to release remote evolution lock ${REMOTE_LOCK_SHA}" >&2
+    fi
   fi
   evo_lock_release "$LOCK_DIR"
 }
@@ -241,6 +251,26 @@ else
   echo "==> Preflight: clean tree, branch=${BRANCH}, lock acquired"
 fi
 write_progress "preflight" 1 "running" "branch=${BRANCH}"
+
+# ---------- Remote cross-machine lock (publish only) ----------
+if [[ "$MODE" == "publish" && -z "$DRY_RUN" ]]; then
+  if ! REMOTE_LOCK_SHA="$("$REMOTE_LOCK_SCRIPT" acquire --remote "$UPSTREAM_REMOTE")"; then
+    if [[ "$BREAK_REMOTE_LOCK" == "1" ]]; then
+      echo "==> Breaking remote evolution lock (explicit --break-remote-lock)" >&2
+      git push "$UPSTREAM_REMOTE" :refs/heads/evolution-lock >/dev/null 2>&1 || true
+      REMOTE_LOCK_SHA="$("$REMOTE_LOCK_SCRIPT" acquire --remote "$UPSTREAM_REMOTE")" || {
+        echo "ERROR: could not acquire remote lock after break." >&2; exit 9; }
+    else
+      echo "ERROR: another Mac holds the remote evolution lock." >&2
+      echo "       Wait for it to finish, or rerun with --break-remote-lock only if it is stale." >&2
+      exit 9
+    fi
+  fi
+  REMOTE_LOCK_HELD=1
+  echo "==> Remote evolution lock acquired: ${REMOTE_LOCK_SHA}"
+elif [[ "$MODE" == "publish" ]]; then
+  echo "==> Remote evolution lock skipped (dry-run)"
+fi
 
 # ---------- 1. Compute next version from semantic max of reachable tags ----------
 if git fetch --tags "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
@@ -543,7 +573,7 @@ write_state() {
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
   EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
   EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
-  EVO_BENCHMARK="$BENCHMARK_SCORE" \
+  EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -567,6 +597,7 @@ state = {
     "protectedGate": os.environ.get("EVO_PROTECT", ""),
     "worktreeVerified": os.environ.get("EVO_WORKTREE_VERIFIED", ""),
     "benchmarkScore": int(os.environ["EVO_BENCHMARK"]) if os.environ.get("EVO_BENCHMARK", "").strip().isdigit() else None,
+    "remoteLock": os.environ.get("EVO_REMOTE_LOCK") or None,
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),

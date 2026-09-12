@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.282 — feat(evolution): 多机协调锁
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.282`)_
+**Tag**: v0.5.282
+**Test status**: — 3294 passed, 0 failed —
+**Changed**:
+- 新增远端 evolution-lock 原子互斥与持有者状态
+- 冲突退出 9,显式 break 才能抢占,失败注入 S15
+
+publish 前远端原子互斥,冲突显示持有者/时长,显式 break 才可抢占
+**Why**: 各 Mac 本地锁无法防跨机同时演进,会撞版本和 tag
+**Next**: EVO-028 发布 canary/灰度: 先只让一台客户端升级，观察后再全量 appcast
+
+
 ## v0.5.281 — feat(evolution): 反馈草稿 check 建议
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.281`)_

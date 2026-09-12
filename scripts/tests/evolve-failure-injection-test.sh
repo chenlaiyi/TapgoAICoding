@@ -39,8 +39,9 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/evolution-backlog.py" "$dir/scripts/evolution-backlog.py"
   cp "$SOURCE_ROOT/scripts/test-failure-report.py" "$dir/scripts/test-failure-report.py"
   cp "$SOURCE_ROOT/scripts/evolution-protect.py" "$dir/scripts/evolution-protect.py"
+  cp "$SOURCE_ROOT/scripts/evolution-remote-lock.sh" "$dir/scripts/evolution-remote-lock.sh"
   cp "$SOURCE_ROOT/evolution/protected-paths.json" "$dir/evolution/protected-paths.json"
-  chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py"
+  chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py" "$dir/scripts/evolution-remote-lock.sh"
   cat > "$dir/evolution/BACKLOG.md" <<'MD'
 # Backlog
 ## P0
@@ -151,6 +152,7 @@ run_evolve() {
     export EVOLVE_HEALTH_SCRIPT="$repo/scripts/health-check.sh"
     export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
     export EVOLVE_PROTECT_TOOL="$repo/scripts/evolution-protect.py"
+    export EVOLVE_REMOTE_LOCK_SCRIPT="$repo/scripts/evolution-remote-lock.sh"
     export EVOLVE_WORKTREE_VERIFY_SCRIPT="$repo/scripts/worktree-verify.sh"
     export EVOLVE_BENCHMARK_TOOL="$repo/scripts/evolution-benchmark.py"
     export EVOLVE_BENCHMARK_HISTORY="$state/evolution_benchmark_history.jsonl"
@@ -242,6 +244,7 @@ run_evolve "$R7" "$BASE/s7-state" "$BASE/s7.log" --publish --paths scripts patch
 assert_json "$BASE/s7-state/evolution_state.json" 'd["status"]' "s7 published state"
 assert_json "$BASE/s7-state/evolution_state.json" 'd["fleetDeploy"]' "s7 fleet passed"
 assert_json "$BASE/s7-state/evolution_state.json" 'd["worktreeVerified"]' "s7 worktree verified"
+assert_eq "$(git -C "$BASE/s7-origin.git" branch --list evolution-lock | wc -l | tr -d ' ')" 0 "s7 remote lock released"
 assert_eq "$(git -C "$BASE/s7-origin.git" tag --list v0.5.2)" v0.5.2 "s7 remote tag"
 assert_eq "$(git -C "$R7" rev-list --count origin/main)" 2 "s7 origin main advanced"
 assert_eq "$(git -C "$BASE/s7-origin.git" branch --list codex/evolution-v0.5.2 | wc -l | tr -d ' ')" 1 "s7 iteration branch pushed"
@@ -305,6 +308,23 @@ R14="$BASE/s14"; make_repo "$R14"
 set +e; FAKE_BENCHMARK_RC=1 run_evolve "$R14" "$BASE/s14-state" "$BASE/s14.log" --paths scripts patch "s14" "s14" --next n; RC=$?; set -e
 assert_eq "$RC" 10 "s14 exit 10 on benchmark regression"
 assert_eq "$(git -C "$R14" rev-list --count HEAD)" 1 "s14 no commit on regression"
+
+# ---------- S15: remote lock blocks another Mac; explicit break recovers ----------
+R15="$BASE/s15"; make_repo "$R15"
+git -C "$R15" init -q --bare "$BASE/s15-origin.git"
+git -C "$R15" remote add origin "$BASE/s15-origin.git"
+git -C "$R15" push -q -u origin main --tags
+HOLD_SHA="$(EVOLVE_LOCK_REPO_ROOT="$R15" "$R15/scripts/evolution-remote-lock.sh" acquire --remote origin)"
+set +e; run_evolve "$R15" "$BASE/s15-state" "$BASE/s15.log" --publish --paths scripts patch "s15" "s15" --next n; RC=$?; set -e
+assert_eq "$RC" 9 "s15 exit 9 while remote lock held"
+assert_eq "$(git -C "$R15" rev-list --count HEAD)" 1 "s15 no commit while locked"
+set +e
+run_evolve "$R15" "$BASE/s15-state" "$BASE/s15.log" --publish --break-remote-lock --paths scripts patch "s15" "s15" --next n
+RC15=$?
+set -e
+assert_eq "$RC15" 0 "s15 explicit break run succeeds"
+assert_eq "$(git -C "$R15" rev-list --count HEAD)" 2 "s15 explicit break allows evolution"
+assert_eq "$(git -C "$BASE/s15-origin.git" branch --list evolution-lock | wc -l | tr -d ' ')" 0 "s15 lock released after break"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]
