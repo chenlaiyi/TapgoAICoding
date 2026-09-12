@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.260</title>
+            <pubDate>Sat, 12 Sep 2026 18:49:13 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.260</link>
+            <sparkle:version>0.5.260</sparkle:version>
+            <sparkle:shortVersionString>0.5.260</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.260
+
+feat(evolution): 历史去重与迭代指标
+
+## 变更
+
+- 清理重复日志节并将唯一性校验收紧到全部 0.x
+- 新增 backlog 与状态历史 JSONL 指标
+
+262 个 Mac 版本节全局唯一;状态历史 JSONL 支撑成功率、周期与回滚度量
+
+## Next
+
+EVO-005:backlog 驱动 kickoff 选点;EVO-006 分支/worktree 隔离
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.260/Tapgo-AICoding-0.5.260.zip" length="12388011" type="application/octet-stream" sparkle:edSignature="q5I6pWZPaZKiqxWJWqFKv8l3K6UvFirS/jP6dpYl6Nlnmoiw6g9FC2b1/HtP8asYoZdSfH7D//rJ8zwYVDwABA=="/>
+        </item>
+        <item>
             <title>0.5.259</title>
             <pubDate>Sat, 12 Sep 2026 18:44:00 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.259</link>
@@ -50,30 +75,6 @@ feat(evolution): 结构化版本真源
 为 evolve.sh 增加失败注入测试矩阵,并清理历史重复日志节
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.258/Tapgo-AICoding-0.5.258.zip" length="12386419" type="application/octet-stream" sparkle:edSignature="IriJFUdS2TSWxRoET2gKNAoZLr/pQtqjMlvbDaEV2hZUnSIUJHsW334RAp2X1Ap42CcR8D5cf3YbHxS4306gAg=="/>
-        </item>
-        <item>
-            <title>0.5.257</title>
-            <pubDate>Sat, 12 Sep 2026 18:32:51 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.257</link>
-            <sparkle:version>0.5.257</sparkle:version>
-            <sparkle:shortVersionString>0.5.257</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.257
-
-feat(evolution): 闭环安全加固
-
-## 变更
-
-- feat(evolution): 闭环安全加固
-
-显式路径白名单、并发锁、语义化最高版本、提交前 App 构建、日志头插、分阶段 state 与三机部署脚本
-
-## Next
-
-下一轮:统一结构化版本真源 + evolve.sh 失败注入测试
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.257/Tapgo-AICoding-0.5.257.zip" length="12385010" type="application/octet-stream" sparkle:edSignature="GJbss1fdHdmgYQg7qXDbkhZsNmro8/AN8ThdwuHUFdsleuam9Kjt7VldNZFXvz5IyESdmr6oJ5u/FlHZ9DVxCQ=="/>
         </item>
     </channel>
 </rss>
