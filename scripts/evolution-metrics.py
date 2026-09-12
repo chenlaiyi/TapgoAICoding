@@ -12,7 +12,8 @@ import sys
 from pathlib import Path
 
 TERMINAL = {"published", "local_built"}
-FAILED = {"push_failed", "release_failed", "health_failed", "worktree_verify_failed", "benchmark_regressed"}
+FAILED = {"push_failed", "release_failed", "health_failed", "worktree_verify_failed",
+          "benchmark_regressed", "canary_failed"}   # 与 Swift failedStatuses 保持一致
 
 
 def repo_root(explicit: str | None) -> Path:

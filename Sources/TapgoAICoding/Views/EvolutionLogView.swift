@@ -339,6 +339,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.311", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.311",
+                    summary: "双实现指标一致性测试:当场抓出 canary_failed 只在一侧计入失败。",
+                    changes: [
+                        "新增 Evolution: python/swift metrics consistency 测试:同一份 fixture(含 canary_failed 与一次失败后恢复)同时跑 evolution-metrics.py 与 TapgoCore.EvolutionMetrics.load,比对 16 个关键指标。",
+                        "首个发现:Python 的 FAILED 集合缺 canary_failed,而 Swift failedStatuses 有它——canary 失败时 CLI 与 App 会给出不同的失败数与成功率。已把两侧对齐(状态机确实会写 canary_failed)。",
+                        "比对项:iterations/published/failed/successRate、中位与 P95 周期、MTTR(中位/样本数/未恢复)、单轮时长/token/成本、回滚演练数、维护数、backlog 开/关。",
+                        "这类分叉此前无任何测试能发现:两边各自有单测,但都用自造 fixture,从没对过同一份输入(上一轮扁平键/嵌套键的契约 bug 同源)。"
+                    ],
+                    why: "自进化状态有两个消费者(CLI 与 App),口径分叉意味着同一个仓库在两处显示不同事实;这类错误不会崩,只会让人做错判断,必须靠交叉测试兜住。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.310", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.310",
                     summary: "维护告警自检:真实 launchd 上下文跑一次失败维护并验证通知。",
                     changes: [
