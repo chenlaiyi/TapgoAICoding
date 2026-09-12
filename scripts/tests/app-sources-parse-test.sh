@@ -49,6 +49,17 @@ suspicious = [(i + 1, l.strip()[:80]) for i, l in enumerate(lines[start:end], st
 if suspicious:
     print(suspicious[:3], file=sys.stderr)
     sys.exit(1)
+# 内容行（以 " 开头、以 ", 结尾）必须恰好 2 个引号（允许 \" 转义）：
+# 中文文案里误用 ASCII 引号会截断 Swift 字符串——本项目已踩 5 次，这里给出精确定位。
+bad_content = []
+for i, line in enumerate(lines[start:end], start):
+    text = line.strip()
+    if text.startswith('"') and text.endswith('",'):
+        if text.replace('\\"', '').count('"') != 2:
+            bad_content.append((i + 1, text[:80]))
+if bad_content:
+    print("内容行引号异常（请用「」代替 ASCII 引号）:", bad_content[:3], file=sys.stderr)
+    sys.exit(1)
 PY
 
 echo "app-sources-parse tests: $PASSED passed, $FAILED failed"

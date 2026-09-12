@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.304", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.304",
+                    summary: "canary 提升演练:真跑推 appcast/解除 draft/部署其余机器,失败分级。",
+                    changes: [
+                        "新增 scripts/tests/canary-promote-test.sh:fixture 仓库 + 裸 origin + 假 gh/deploy,真跑 canary-promote.sh 的 9 组场景共 31 项断言。",
+                        "覆盖:参数缺失(2)/缺 canary appcast(3)/正常提升(appcast 入仓并推送 + gh release edit --draft=false + deploy --exclude canary)/重复提升不产生多余提交仍部署。",
+                        "关键安全属性:推送失败(4)与 draft 提升失败(5)都会中止且不部署其余机器;其余机器部署失败报 6;Release 不存在或没有 gh 时只提示并继续。",
+                        "顺带修掉硬编码:canary-promote 之前写死 git push origin,现在与 evolve.sh/sync-upstream.sh 一致走 tapgo_upstream_remote(EVOLVE_CANARY_REMOTE 可覆盖)。",
+                        "新增 EVOLVE_CANARY_{REPO_ROOT,GH,DEPLOY_SCRIPT} 注入点;测试接进 run-all 与 benchmark 的 test-suite-present。"
+                    ],
+                    why: "canary 提升是「Release 已建但仍是 draft、appcast 未发」的中间态收口动作:这一步失败会让灰度机器跑新版、其余机器永远停在旧版,而此前只有 stub 覆盖,从没真跑过。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮候选:真实触发一次月度维护任务并验证通知路径。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.303", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.303",
                     summary: "修复部署参数经 ssh 拼接失真:改用哨兵值并加远端路径/等待校验。",
                     changes: [

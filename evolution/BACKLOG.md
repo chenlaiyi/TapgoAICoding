@@ -72,6 +72,7 @@
 - [x] **EVO-043 本机运行版本漂移留痕**：evolve.sh 探测"正在运行"的 App 版本写入 `localApp{installed,running,stale}`，落后时 WARN + 总结提示重启命令（v0.5.300）
 - [x] **EVO-044 自进化 UI 快照基线对比**：`evolution-ui-diff.py` + `evolution/ui-baseline/evolution-ui.png`，渲染确定（逐字节一致）故可做像素门禁，容差 0.1% 像素（v0.5.301）
 - [x] **EVO-045 部署端到端演练**：`deploy-fleet-test.sh`（42 项，fake ssh 忠实模拟参数拼接）真跑安装/回读/界面断言管道/失败传播/目标过滤，并修掉 6 个真实缺陷（v0.5.302 + v0.5.303）
+- [x] **EVO-046 canary 提升演练**：`canary-promote-test.sh`（31 项）在 fixture 仓库真跑「推 appcast → 解除 draft → 部署其余机器」，并把硬编码 `origin` 改为 `tapgo_upstream_remote`，失败分支显式分级（4 推送/5 draft/6 部署）（v0.5.304）
 
 ## P9 — 待外部输入
 
