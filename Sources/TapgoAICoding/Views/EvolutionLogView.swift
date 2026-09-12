@@ -252,6 +252,21 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.258", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.258",
+                    summary: "结构化版本真源:每版一份 JSON,日志与 release notes 由记录渲染并强校验。",
+                    changes: [
+                        "新增 evolution/versions/vX.Y.Z.json 结构化记录:version/tag/date/scope/message/changes/details/why/next/testStatus 十字段,每个版本一个文件。",
+                        "新增 scripts/evolution-records.py:add / render-entry / render-notes / set-test-status / validate;渲染 EVOLUTION.md 小节与 GitHub release notes,并校验 tag、文件名、日期、字段完整性与重复版本。",
+                        "validate --check-current 强制最新 mac 记录同时等于 Info.plist 与 project.yml 的 MARKETING_VERSION,消除版本真源漂移。",
+                        "evolve.sh 改为「先写记录 → 渲染 EVOLUTION.md → 跑测试 → 回写真实 testStatus → 渲染 release notes」;失败回滚同时删除未提交的 JSON 记录。",
+                        "新增 scripts/tests/run-all.sh 统一绿门(shell + Swift);evolve.sh 的测试/构建/发布入口均可通过 EVOLVE_*_SCRIPT 覆写,为失败注入测试铺路。",
+                        "EvolutionLogSyncTests 增加「结构化记录 → EVOLUTION.md → makeHistory」三方一致性校验,记录缺失或 tag 不一致直接失败。",
+                        "新增 evolution/README.md 固化 schema 与命令;v0.5.258 起新版本必须有结构化记录,更早历史继续以 EVOLUTION.md 兜底。"
+                    ],
+                    why: "v0.5.257 解决了脚本原子性,但版本历史仍是三份手写数据(EVOLUTION.md、makeHistory、状态文件),且 state 曾停在 v0.3.4。本轮把新版本历史收敛到一份机器可读真源,日志与发布说明只做渲染,一致性由测试强制。",
+                    next: "为 evolve.sh 增加失败注入测试矩阵(测试失败/构建失败/发布失败/脏路径未覆盖),并清理 v0.5.232 及更早的重复日志节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.257", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.257",
                     summary: "自进化闭环安全加固:显式路径白名单、并发锁、语义化版本、提交前构建与分阶段状态。",
                     changes: [

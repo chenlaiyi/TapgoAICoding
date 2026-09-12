@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Single green-gate used by evolve.sh: shell + Swift regressions.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+
+"$ROOT/scripts/tests/evolution-lib-test.sh"
+"$ROOT/scripts/tests/evolution-records-test.sh"
+
+TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
+exec xcrun -sdk "$TAPGO_SDK" swift run TapgoTests "$@"

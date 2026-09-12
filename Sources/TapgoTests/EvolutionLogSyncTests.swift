@@ -72,6 +72,29 @@ func runEvolutionLogSync(_ t: TestRunner) {
     t.expect(missingInView.isEmpty,
              "evolution-sync: EVOLUTION.md 最新 10 个版本必须进入 makeHistory（实际缺 \(missingInView)）")
 
+    // 方向四：结构化记录（v0.5.258 起）必须同时出现在 EVOLUTION.md 与 makeHistory。
+    let recordsDir = FileManager.default.currentDirectoryPath + "/evolution/versions"
+    let recordFiles = (try? FileManager.default.contentsOfDirectory(atPath: recordsDir)) ?? []
+    var recordVersions: [String] = []
+    for file in recordFiles where file.hasPrefix("v") && file.hasSuffix(".json") {
+        let path = recordsDir + "/" + file
+        guard let data = FileManager.default.contents(atPath: path),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let version = object["version"] as? String,
+              let tag = object["tag"] as? String else {
+            t.expect(false, "evolution-records: 无法解析 \(file)")
+            continue
+        }
+        recordVersions.append(version)
+        t.expectEqual(tag, "v\(version)", "evolution-records: tag 与 version 一致 (\(file))")
+        t.expect(evoVersions.contains("v\(version)"),
+                 "evolution-records: v\(version) 必须有 EVOLUTION.md 小节")
+        t.expect(viewVersions.contains("v\(version)"),
+                 "evolution-records: v\(version) 必须进入 makeHistory")
+    }
+    t.expectEqual(Set(recordVersions).count, recordVersions.count,
+                  "evolution-records: 版本记录不得重复")
+
     // 方向三：最新 10 条在 makeHistory 源码中保持倒序。
     let positions = latestTen.compactMap { version -> Int? in
         view.range(of: "\"\(version)\"")?.lowerBound.utf16Offset(in: view)

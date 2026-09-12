@@ -36,6 +36,12 @@ fi
 SWIFT=(xcrun -sdk "$TAPGO_SDK" swift)
 echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 
+# Overridable entrypoints keep evolve.sh testable and allow failure injection.
+TESTS_SCRIPT="${EVOLVE_TESTS_SCRIPT:-$ROOT/scripts/tests/run-all.sh}"
+BUILD_SCRIPT="${EVOLVE_BUILD_SCRIPT:-$ROOT/scripts/build-app.sh}"
+RELEASE_SCRIPT="${EVOLVE_RELEASE_SCRIPT:-$ROOT/scripts/create-github-release-artifacts.sh}"
+RECORDS_TOOL="${EVOLVE_RECORDS_TOOL:-$ROOT/scripts/evolution-records.py}"
+
 # ---------- Args ----------
 MODE="local"
 DRY_RUN=""
@@ -83,9 +89,10 @@ PLIST="${ROOT}/AppBuilder/Info.plist"
 HELPER_PLIST="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
 PROJECT_YML="${ROOT}/AppBuilder/project.yml"
 EVOLUTION="${ROOT}/EVOLUTION.md"
-STATE_DIR="${HOME}/Library/Application Support/Tapgo AICoding/state"
+STATE_DIR="${EVOLVE_STATE_DIR:-$HOME/Library/Application Support/Tapgo AICoding/state}"
 STATE_FILE="${STATE_DIR}/evolution_state.json"
 NOTES_FILE=""
+NEW_VERSION=""
 COMMITTED=0
 MUTATED=0
 
@@ -100,6 +107,9 @@ cleanup() {
     git checkout -- "$PLIST" "$PROJECT_YML" "$EVOLUTION" 2>/dev/null || true
     [[ -f "$HELPER_PLIST" ]] && git checkout -- "$HELPER_PLIST" 2>/dev/null || true
     [[ -n "$NOTES_FILE" && -f "$NOTES_FILE" && "$NOTES_FILE" == */release-notes-* ]] && rm -f "$NOTES_FILE"
+    if [[ -n "$NEW_VERSION" && -f "$ROOT/evolution/versions/v${NEW_VERSION}.json" ]]; then
+      rm -f "$ROOT/evolution/versions/v${NEW_VERSION}.json"
+    fi
     # The .app may already have been rebuilt with the failed version; rebuild
     # HEAD so the installed bundle cannot silently mismatch the repo.
     if [[ -d "${ROOT}/Tapgo AICoding.app" ]]; then
@@ -213,23 +223,23 @@ open(path, 'w').write(text)
 PY
 fi
 
-# ---------- 3. Prepend EVOLUTION.md (newest first; tests run against final log state) ----------
-TODAY="$(date +%Y-%m-%d)"
+# ---------- 3. Create structured record + prepend rendered EVOLUTION.md ----------
+RESOLVED_NEXT="${NEXT_ACTION:-see state file evolution_state.json}"
+python3 "$RECORDS_TOOL" add \
+  --version "$NEW_VERSION" \
+  --scope mac \
+  --message "$MSG" \
+  --details "$SUMMARY" \
+  --why "Self-evolution iteration — see commit message + diff." \
+  --next "$RESOLVED_NEXT" \
+  --test-status pending >/dev/null
+
 ENTRY_FILE="$(mktemp -t tapgo-evolution-entry.XXXXXX)"
-cat > "$ENTRY_FILE" <<ENTRY_EOF
-## v${NEW_VERSION} — ${MSG}
-**Date**: ${TODAY}
-**Commit**: _(see \`git log -1 v${NEW_VERSION}\`)_
-**Tag**: v${NEW_VERSION}
-**Test status**: pending
-**Changed**:
-- ${MSG}
-${SUMMARY}
-**Why**: Self-evolution iteration — see commit message + diff.
-**Next**: ${NEXT_ACTION:-see state file evolution_state.json}.
-ENTRY_EOF
+python3 "$RECORDS_TOOL" render-entry --version "$NEW_VERSION" > "$ENTRY_FILE"
 evo_insert_evolution_entry "$EVOLUTION" "$ENTRY_FILE"
 rm -f "$ENTRY_FILE"
+python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
+echo "==> Structured record + EVOLUTION.md rendered for v${NEW_VERSION}"
 
 # ---------- 4. Tests (before any commit) ----------
 WITH_INTEGRATION="${WITH_INTEGRATION:-}"
@@ -241,11 +251,9 @@ if [[ -z "$WITH_INTEGRATION" ]]; then
 else
   echo "==> Running tests (WITH SSH integration)"
 fi
-echo "==> Running evolution shell tests"
-./scripts/tests/evolution-lib-test.sh
-
+echo "==> Running shell + Swift regression via ${TESTS_SCRIPT}"
 TEST_LOG="$(mktemp -t tapgo-evolve-tests.XXXXXX)"
-if ! env "${TEST_ENV[@]}" "${SWIFT[@]}" run TapgoTests ${TEST_ARGS[@]+"${TEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"; then
+if ! env "${TEST_ENV[@]}" "$TESTS_SCRIPT" 2>&1 | tee "$TEST_LOG"; then
   echo "TESTS FAILED — rolling back version edits" >&2
   rm -f "$TEST_LOG"
   exit 5
@@ -258,6 +266,7 @@ fi
 rm -f "$TEST_LOG"
 echo "==> Tests: ${TEST_LINE}"
 
+python3 "$RECORDS_TOOL" set-test-status --version "$NEW_VERSION" --value "$TEST_LINE"
 python3 - "$EVOLUTION" "$TEST_LINE" <<'PYEOF'
 import sys
 path, status = sys.argv[1], sys.argv[2]
@@ -267,13 +276,14 @@ if old not in text:
     raise SystemExit("new EVOLUTION entry has no pending test-status marker")
 open(path, "w", encoding="utf-8").write(text.replace(old, "**Test status**: " + status, 1))
 PYEOF
+python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
 
 # ---------- 5. Build the real .app before commit ----------
 echo "==> Building .app bundle"
 if [[ "$MODE" == "local" ]]; then
-  TAPGO_LOCAL_BUILD=1 ./scripts/build-app.sh >/dev/null
+  TAPGO_LOCAL_BUILD=1 "$BUILD_SCRIPT" >/dev/null
 else
-  ./scripts/build-app.sh >/dev/null
+  "$BUILD_SCRIPT" >/dev/null
 fi
 BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT/Tapgo AICoding.app/Contents/Info.plist" 2>/dev/null || true)"
 if [[ "$BUILT_VERSION" != "$NEW_VERSION" ]]; then
@@ -283,30 +293,16 @@ fi
 echo "==> Built .app version: ${BUILT_VERSION}"
 
 
-# ---------- 6. Release notes (publish only; required by release script) ----------
+# ---------- 6. Release notes (publish only; rendered from the record) ----------
 if [[ "$MODE" == "publish" ]]; then
   NOTES_FILE="${ROOT}/AppBuilder/release-notes-${NEW_VERSION}.md"
   if [[ ! -f "$NOTES_FILE" ]]; then
-    cat > "$NOTES_FILE" <<NOTES_EOF
-# v${NEW_VERSION}
-
-${MSG}
-
-## 变更
-
-- ${MSG}
-
-${SUMMARY}
-
-## Next
-
-${NEXT_ACTION:-继续自进化: 从真实代码问题与 state.nextActions 中选择下一项。}
-NOTES_EOF
+    python3 "$RECORDS_TOOL" render-notes --version "$NEW_VERSION" > "$NOTES_FILE"
   fi
 fi
 
 # ---------- 7. Commit + tag (explicit allowlist; script-managed files auto-added) ----------
-ALLOWED_PATHS+=("$PLIST" "$HELPER_PLIST" "$PROJECT_YML" "$EVOLUTION")
+ALLOWED_PATHS+=("$PLIST" "$HELPER_PLIST" "$PROJECT_YML" "$EVOLUTION" "$ROOT/evolution")
 [[ -n "$NOTES_FILE" ]] && ALLOWED_PATHS+=("$NOTES_FILE")
 if [[ -n "$DIRTY_STATUS" ]]; then
   while IFS= read -r dirty_line; do
@@ -392,7 +388,7 @@ if [[ "$MODE" == "publish" ]]; then
     exit 6
   fi
   echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
-  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" ./scripts/create-github-release-artifacts.sh "$NOTES_FILE"; then
+  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" "$RELEASE_SCRIPT" "$NOTES_FILE"; then
     write_state "release_failed"
     echo "WARN: tag pushed but release/appcast publish failed; state=release_failed." >&2
     exit 7

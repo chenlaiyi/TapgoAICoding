@@ -1,0 +1,15 @@
+{
+  "version": "0.5.258",
+  "tag": "v0.5.258",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 结构化版本真源",
+  "changes": [
+    "feat(evolution): 结构化版本真源"
+  ],
+  "details": "每版一份 JSON 记录,EVOLUTION.md 与 release notes 由记录渲染,并做记录-日志-UI 三方强校验",
+  "why": "Self-evolution iteration — see commit message + diff.",
+  "next": "为 evolve.sh 增加失败注入测试矩阵,并清理历史重复日志节",
+  "testStatus": "— 3147 passed, 0 failed —",
+  "commitSha": null
+}

@@ -1,5 +1,18 @@
 # Evolution Log
 
+## v0.5.258 — feat(evolution): 结构化版本真源
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.258`)_
+**Tag**: v0.5.258
+**Test status**: — 3147 passed, 0 failed —
+**Changed**:
+- feat(evolution): 结构化版本真源
+
+每版一份 JSON 记录,EVOLUTION.md 与 release notes 由记录渲染,并做记录-日志-UI 三方强校验
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: 为 evolve.sh 增加失败注入测试矩阵,并清理历史重复日志节
+
+
 ## v0.5.257 — feat(evolution): 闭环安全加固
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.257`)_
