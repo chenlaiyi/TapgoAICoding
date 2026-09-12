@@ -334,6 +334,7 @@ TapgoAICoding/
 - 模型级评测框架：`scripts/evolution-model-eval.py` 提供固定任务、参考解自检与可插拔 runner；真实模型运行必须显式提供 `EVOLVE_MODEL_RUNNER`，Codex 不会自动委派其它 agent。
 - 反馈回归注册表：`evolution/feedback/registry.json` 把 6 条真实用户反馈固定为最小复现检查，`scripts/evolution-feedback.py verify` 进入 benchmark。
 - 模型评测防线：`scripts/run-model-eval.sh` 必须显式确认消费额度并提供 runner；单任务超时、token/费用/总时长超限会中断，结果回写指标看板。
+- 反馈草稿：`scripts/evolution-feedback-draft.py discover` 扫描反馈快照关键词并去重写入 `drafts.json`；草稿需人工补最小复现 check 后才提升到正式 registry。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

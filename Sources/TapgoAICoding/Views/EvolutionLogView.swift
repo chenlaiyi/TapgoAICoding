@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.278", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.278",
+                    summary: "反馈草稿自动提取:扫描快照关键词并去重,草稿与正式回归表分离。",
+                    changes: [
+                        "新增 scripts/evolution-feedback-draft.py discover/list/render:扫描 Application Support/Tapgo AICoding/feedback 快照,按关键词提取候选,标题哈希去重写 evolution/feedback/drafts.json。",
+                        "drafts 与正式 registry 分离:草稿必须补最小复现 check 后人工提升,绝不自动进入 benchmark。",
+                        "新增 5 项回归(提取、二次 discover 去重、list、render);benchmark feedback 检查纳入 draft list。",
+                        "BACKLOG 顺序调整:EVO-024 多 runner A/B 置顶,EVO-021 操作者模型基线下移等待操作者 runner。",
+                        "EVO-023 完成。"
+                    ],
+                    why: "反馈快照此前只用于手工复制,没有自动沉淀;EVO-023 把快照转成候选草稿,同时保持正式回归表人工把关。",
+                    next: "EVO-024 多 runner/模型 A/B:同一任务集对比通过率、耗时与成本。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.277", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.277",
                     summary: "模型评测预算防线:超时/token/费用上限与操作者确认包装,结果回写指标看板。",
                     changes: [

@@ -69,7 +69,7 @@
     {
       "id": "feedback-regressions",
       "weight": 5,
-      "command": "python3 scripts/evolution-feedback.py verify >/dev/null"
+      "command": "python3 scripts/evolution-feedback.py verify >/dev/null && python3 scripts/evolution-feedback-draft.py list >/dev/null"
     }
   ]
 }

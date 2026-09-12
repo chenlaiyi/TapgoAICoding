@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.278 — feat(evolution): 反馈草稿自动提取
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.278`)_
+**Tag**: v0.5.278
+**Test status**: — 3266 passed, 0 failed —
+**Changed**:
+- 新增反馈草稿提取/去重/渲染工具,草稿与正式 registry 分离
+- backlog 顺序调整,EVO-024 置顶
+
+扫描反馈快照生成去重草稿,人工补 check 后提升正式回归
+**Why**: 反馈快照只用于手工复制,没有自动沉淀为候选回归
+**Next**: EVO-024 多 runner/模型 A/B: 同一任务集对比不同 runner 的通过率、耗时与成本
+
+
 ## v0.5.277 — feat(evolution): 模型评测预算防线
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.277`)_
