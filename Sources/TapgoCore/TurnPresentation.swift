@@ -109,7 +109,6 @@ public enum TurnPresentation {
     public static func compactBlocks(_ items: [TurnItem]) -> [TurnPresentationBlock] {
         var blocks: [TurnPresentationBlock] = []
         var searchGroup: TurnActivityRollup?
-        var reasoningGroup: TurnActivityRollup?
         // v0.5.245: ZCode executeGroup —— 连续命令折叠成一行。
         var commandGroup: [CommandExecution] = []
         var files: [FileChange] = []
@@ -119,13 +118,6 @@ public enum TurnPresentation {
                 blocks.append(.activity(group))
             }
             searchGroup = nil
-        }
-
-        func flushReasoning() {
-            if let group = reasoningGroup {
-                blocks.append(.activity(group))
-            }
-            reasoningGroup = nil
         }
 
         func flushFiles() {
@@ -153,13 +145,11 @@ public enum TurnPresentation {
             && !item.isWorktreeStatsSnapshot {
             switch item {
             case .fileChange(let file):
-                flushReasoning()
                 flushSearches()
                 flushCommands()
                 files.append(file)
 
             case .toolCall(let call):
-                flushReasoning()
                 flushFiles()
                 flushCommands()
                 if Self.isSearchToolCall(.toolCall(call)) {
@@ -174,25 +164,17 @@ public enum TurnPresentation {
                 }
 
             case .reasoning, .reasoningSummary:
-                // 连续 reasoning / reasoningSummary 合并到同一行：点开后才看得到
-                // 完整正文，避免一次回合里出现 5–10 行灰色 "思考中"。
-                flushSearches()
-                flushFiles()
-                flushCommands()
-                if reasoningGroup == nil {
-                    reasoningGroup = TurnActivityRollup(firstItem: item)
-                } else {
-                    reasoningGroup?.append(item)
-                }
+                // v0.5.252: 对齐 Codex —— reasoning 不渲染成独立行(Codex 实测
+                // 消息流里没有「思考」行),也**不**打断命令聚合,让相邻命令
+                // 能正常折叠成一行。原文仍在 Turn.items 里保留。
+                continue
 
             case .commandExecution(let cmd):
-                flushReasoning()
                 flushSearches()
                 flushFiles()
                 commandGroup.append(cmd)
 
             default:
-                flushReasoning()
                 flushSearches()
                 flushFiles()
                 flushCommands()
@@ -200,7 +182,6 @@ public enum TurnPresentation {
             }
         }
 
-        flushReasoning()
         flushSearches()
         flushFiles()
         flushCommands()
@@ -393,14 +374,16 @@ public enum TurnPresentation {
         let failed = execution.status == .failed || execution.status == .denied
         let command = execution.command.replacingOccurrences(of: "\n", with: " ")
 
-        // ZCode 参考样式：运行中是「正在执行 <命令>」，完成后变成「终端 <命令>」
-        // 的安静回顾行；标签与命令之间只有空格，不加「·」。
+        // v0.5.252: 对齐 Codex 桌面端实测 —— 工具行只给概括动词短语
+        // (「运行了命令」),不再把原始命令行铺进消息流;完整命令仍在
+        // TurnItem 里保留,供展开详情/导出/诊断使用。
+        _ = command
         return semantic(
             key: "command",
             kind: .command,
-            activeText: "正在运行 " + command,
-            completedText: failed ? "已运行 " + command + " · 执行失败" : "已运行 " + command,
-            continuationText: "已运行 " + command,
+            activeText: "正在运行命令",
+            completedText: failed ? "运行了命令 · 执行失败" : "运行了命令",
+            continuationText: "运行了命令",
             icon: "terminal",
             running: running,
             failed: failed

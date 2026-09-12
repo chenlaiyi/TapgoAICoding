@@ -45,19 +45,17 @@ public enum ConversationPresentation {
     }
 
     public static func workTitle(status: Turn.Status, duration: TimeInterval?) -> String {
-        // v0.5.243: 对齐 ZCode 源码(chat.history.*)——进行中「工作中 {duration}」
-        // (workingFor)、完成「已工作 {duration}」(workedFor)、中断「已停止」(stopped);
-        // ZCode 无「· N 步」步数段。
+        // v0.5.252: 对齐 Codex 桌面端实测文案 —— 进行中固定「正在思考」(不带时长),
+        // 完成后「已处理 {duration}」,中断「已停止」。
         switch status {
         case .pending, .running:
-            guard let duration, duration.isFinite, duration >= 1, duration < Double(Int.max / 2) else { return "工作中" }
-            return "工作中 " + DurationFormatter.string(seconds: duration)
+            return "正在思考"
         case .awaitingApproval: return "等待确认"
         case .failed: return "处理未完成"
         case .interrupted: return "已停止"
         case .completed:
-            guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "已工作" }
-            return "已工作 " + DurationFormatter.string(seconds: duration)
+            guard let duration, duration.isFinite, duration >= 0, duration < Double(Int.max / 2) else { return "已处理" }
+            return "已处理 " + DurationFormatter.string(seconds: duration)
         }
     }
 

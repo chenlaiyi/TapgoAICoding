@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.252", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.252",
+                    summary: "对话消息渲染对齐 Codex:工具行概括化、去掉思考行、回合摘要改「已处理」。",
+                    changes: [
+                        "TurnPresentation.commandSemantic:命令工具行从「已运行 <完整命令行>」改为 Codex 式概括短语「运行了命令」(运行中「正在运行命令」,失败追加「· 执行失败」);原始命令行不再铺进消息流,仍保留在 TurnItem 供展开/导出/诊断。",
+                        "TurnPresentation.compactBlocks:reasoning / reasoningSummary 不再渲染成独立行(Codex 实测消息流无「思考」行),同时**不再打断命令聚合** —— 这是旧实现里 commandGroup 折叠永不触发的根因;移除 reasoningGroup/flushReasoning。",
+                        "ConversationPresentation.workTitle:完成回合「已工作 {duration}」→「已处理 {duration}」;进行中「工作中 {duration}」→「正在思考」(Codex 实测文案,不带时长)。",
+                        "DurationFormatter:分钟单位「X 分」→「X 分钟」,与「X 秒」「X 小时」并列为 Codex 实测格式(如「1 分钟 24 秒」)。",
+                        "同步更新 ConversationPresentationTests / DurationFormatterTests / TurnPresentationTests 断言;新增「reasoning 夹在命令之间不再打断折叠」用例。",
+                        "App 版本号 0.5.251 → 0.5.252(MARKETING_VERSION + Info.plist + makeHistory + EVOLUTION.md 四源同步)。"
+                    ],
+                    why: "你指出对话消息渲染差异最大,且基准应是 Codex(本机 com.openai.codex)而非 ZCode;实测 Codex 工具行是概括动词短语、不渲染思考行、摘要用「已处理」。",
+                    next: "代码块样式(语言标题栏 + 复制按钮)已确认 Codex 有,Tapgo 待核对;右侧环境面板默认展开是否收起待定。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.251", date: "2026-09-11", commit: "见源码提交", tag: "v0.5.251",
                     summary: "模型切换菜单与设置页同源(ProviderRegistry);DeepSeek V4.1 改名后菜单即时同步。",
                     changes: [

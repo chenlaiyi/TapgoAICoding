@@ -18,8 +18,8 @@ func runTurnPresentationTests(_ t: TestRunner) {
         startedAt: Date()
     )
 
-    // ZCode-style transcript: every event keeps its own quiet row with the
-    // concrete command; prose messages do not collapse the rows around them.
+    // v0.5.252 对齐 Codex:reasoning 不渲染成行,也不打断命令聚合,
+    // 相邻命令折叠成一组;概括文案是「运行了命令」而不是原始命令行。
     let blocks = TurnPresentation.compactBlocks([
         .userMessage(id: "user", text: "修复"),
         .reasoning(id: "think-1", text: "先读文件"),
@@ -28,22 +28,20 @@ func runTurnPresentationTests(_ t: TestRunner) {
         .commandExecution(buildCommand),
         .assistantMessage(id: "milestone", text: "修跨模块依赖问题"),
     ])
-    t.expectEqual(blocks.count, 6, "each event is its own row; milestone stays a separate item block")
-    if case .activity(let reasoningRow) = blocks[1] {
-        let display = TurnPresentation.activityDisplay(for: reasoningRow, turnIsRunning: false)
-        t.expectEqual(display.text, "思考", "completed reasoning reads as a plain 思考 row")
+    t.expectEqual(blocks.count, 3, "user + folded command group + assistant; reasoning rows are gone")
+    if case .commandGroup(let cmds) = blocks[1] {
+        t.expectEqual(cmds.count, 2, "reasoning between commands no longer breaks the fold")
     } else {
-        t.expect(false, "second block is reasoning")
+        t.expect(false, "middle block is a folded command group")
     }
-    if case .activity(let commandRow) = blocks[2] {
-        let display = TurnPresentation.activityDisplay(for: commandRow, turnIsRunning: false)
-        t.expectEqual(display.text, "已运行 head SettingsView.swift", "terminal row shows the concrete command")
+    if case .item(.assistantMessage(_, let text)) = blocks[2] {
+        t.expectEqual(text, "修跨模块依赖问题", "assistant milestone stays its own item block")
     } else {
-        t.expect(false, "third block is command")
+        t.expect(false, "third block is the assistant message")
     }
 
     let runningBuild = TurnPresentation.activityDisplay(for: .commandExecution(buildCommand))
-    t.expectEqual(runningBuild.text, "正在运行 swift build", "running terminal row shows the live command")
+    t.expectEqual(runningBuild.text, "正在运行命令", "running terminal row uses the Codex verb phrase")
 
     // Consecutive search-like tool calls group into one 查阅 row with counts.
     let searchOne = ToolCall(id: "s-1", name: "web_search", arguments: "", status: .succeeded)
@@ -93,7 +91,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     ])
     if case .activity(let failedRow) = failedBlocks[0] {
         let display = TurnPresentation.activityDisplay(for: failedRow, turnIsRunning: false)
-        t.expect(display.text.contains("已运行 git status --short"), "failed terminal row still shows the command")
+        t.expect(display.text.contains("运行了命令"), "failed terminal row uses the Codex verb phrase")
         t.expect(display.text.contains("执行失败"), "failed terminal row carries the failure suffix")
         t.expect(display.isFailure, "failed row is marked as failure")
     } else {
@@ -107,8 +105,8 @@ func runTurnPresentationTests(_ t: TestRunner) {
         .fileChange(file1),
         .fileChange(file2),
     ])
-    t.expectEqual(files.count, 2, "file changes remain a separate user-relevant batch")
-    if case .fileBatch(let batch) = files[1] {
+    t.expectEqual(files.count, 1, "file changes remain a separate user-relevant batch")
+    if case .fileBatch(let batch) = files[0] {
         t.expectEqual(batch.count, 2, "consecutive file changes still merge")
     } else {
         t.expect(false, "file batch remains visible")
@@ -119,7 +117,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     )
     let search = TurnPresentation.activityDisplay(for: .commandExecution(searchCommand))
     t.expectEqual(search.kind, .command, "rg stays a terminal command row")
-    t.expectEqual(search.text, "正在运行 rg -n foo Sources", "terminal search shows the live command")
+    t.expectEqual(search.text, "正在运行命令", "terminal search uses the Codex verb phrase")
 
     let reasoning = TurnPresentation.activityDisplay(
         for: .reasoning(id: "reasoning", text: "分析中\nInvestigating editor refresh")
@@ -127,7 +125,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expectEqual(reasoning.text, "思考", "a plain reasoning read shows the quiet label")
     t.expectEqual(reasoning.summaryText, "分析中\nInvestigating editor refresh", "single reasoning still carries summary text for expansion")
 
-    // 多段连续 reasoning 合并为一个 rollup，渲染成 "思考 · N 字符"。
+    // v0.5.252: reasoning 不再产生可见行(对齐 Codex),连续多段也整体跳过。
     let multiReasoning = TurnPresentation.compactBlocks([
         .userMessage(id: "u", text: "修复"),
         .reasoning(id: "r1", text: "先看 SettingsView 的字体逻辑"),
@@ -135,45 +133,26 @@ func runTurnPresentationTests(_ t: TestRunner) {
         .reasoningSummary(id: "r3", text: "结论: 段落 lineSpacing 从 3 → 2.5"),
         .assistantMessage(id: "m", text: "改完了"),
     ])
-    t.expectEqual(multiReasoning.count, 3, "user + grouped reasoning + assistant = 3 blocks")
-    if case .activity(let rollup) = multiReasoning[1] {
-        let display = TurnPresentation.activityDisplay(for: rollup, turnIsRunning: false)
-        t.expect(display.text.contains("思考"), "folded reasoning shows 思考 label")
-        t.expect(display.text.contains("字符"), "folded reasoning carries character count")
-        t.expectNotNil(display.summaryText, "folded reasoning exposes joined text")
-        if let joined = display.summaryText {
-            t.expect(joined.contains("先看 SettingsView"), "joined text preserves the first reasoning body")
-            t.expect(joined.contains("结论"), "joined text preserves the summary body")
-        }
-        t.expectEqual(rollup.events.count, 3, "rollup aggregates exactly the three reasoning events")
-    } else {
-        t.expect(false, "second block is a reasoning rollup")
-    }
+    t.expectEqual(multiReasoning.count, 2, "reasoning rows are hidden; only user + assistant remain")
+    t.expect(multiReasoning.allSatisfy { if case .activity = $0 { return false }; return true },
+             "no activity rows survive for pure reasoning spans")
 
-    // 同理: reasoning 紧跟一条 commandExecution 必须断开合并，每段都各自成单事件活动。
+    // v0.5.252: reasoning 不再打断命令聚合 —— 夹在命令之间的 reasoning 会被跳过,
+    // 相邻命令因此能正常折叠(这是旧实现里折叠失效的根因)。
     let interruptedReasoning = TurnPresentation.compactBlocks([
-        .reasoning(id: "r1", text: "看代码"),
         .commandExecution(CommandExecution(
             id: "c1", command: "rg foo", status: .succeeded, startedAt: Date()
         )),
-        .reasoning(id: "r2", text: "执行后"),
+        .reasoning(id: "r1", text: "看代码"),
+        .commandExecution(CommandExecution(
+            id: "c2", command: "git status", status: .succeeded, startedAt: Date()
+        )),
     ])
-    t.expectEqual(interruptedReasoning.count, 3, "r1 / cmd / r2 are three independent activity rollups")
-    if case .activity(let reasoningOnly) = interruptedReasoning[0] {
-        t.expectEqual(reasoningOnly.events.count, 1, "first reasoning stays a single-event rollup")
+    t.expectEqual(interruptedReasoning.count, 1, "two commands with reasoning between fold into one group")
+    if case .commandGroup(let cmds) = interruptedReasoning[0] {
+        t.expectEqual(cmds.count, 2, "folded group keeps both commands")
     } else {
-        t.expect(false, "first block is reasoning")
-    }
-    if case .activity(let commandRollup) = interruptedReasoning[1] {
-        let display = TurnPresentation.activityDisplay(for: commandRollup, turnIsRunning: false)
-        t.expect(display.text.contains("已运行 rg foo"), "commandExecution between reasonings stays its own row")
-    } else {
-        t.expect(false, "second block is the commandExecution rollup")
-    }
-    if case .activity(let trailingReasoning) = interruptedReasoning[2] {
-        t.expectEqual(trailingReasoning.events.count, 1, "r2 stays a single-event rollup after the command")
-    } else {
-        t.expect(false, "third block is a reasoning rollup")
+        t.expect(false, "single folded command group")
     }
 
     // v0.5.211: 图像文件阅读对齐 Codex 「查看图像」标签。
@@ -230,9 +209,9 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expect(!completedDel.contains("+") && !completedDel.contains(" -"),
               "delete without diff has no stats suffix")
 
-    // v0.5.223: 完成回合工作时长文案「用时」（对齐 Codex 实机）。
+    // v0.5.252: 完成回合文案对齐 Codex 实机「已处理 {X 分钟 Y 秒}」。
     t.expectEqual(ConversationPresentation.workTitle(status: .completed, duration: 65),
-                  "已工作 1 分 5 秒", "completed with valid duration uses 用时")
+                  "已处理 1 分钟 5 秒", "completed with valid duration uses 已处理")
 
     // v0.5.222: `.tool` 默认 fallback 完成态对齐 Codex 实机「已使用 <name>」。
     var toolCompletedBase: String {
@@ -249,7 +228,7 @@ func runTurnPresentationTests(_ t: TestRunner) {
     t.expectEqual(toolCompletedBase, "已使用 browser_check",
                   ".tool completed uses past tense 已使用")
 
-    // v0.5.219: `.command` 完成态对齐 Codex 实机「已运行 cmd」。
+    // v0.5.252: `.command` 完成态对齐 Codex 实机「运行了命令」(不再铺原始命令行)。
     var cmdCompleted: String = ""
     let cmdEvents: [TurnItem] = [
         .commandExecution(CommandExecution(
@@ -262,8 +241,8 @@ func runTurnPresentationTests(_ t: TestRunner) {
             cmdCompleted = TurnPresentation.activityDisplay(for: a, turnIsRunning: false).text
         }
     }
-    t.expect(cmdCompleted.hasPrefix("已运行 "), "command completed uses past tense 已运行")
-    t.expect(cmdCompleted.contains("git status --short"), "command completed keeps command body")
+    t.expectEqual(cmdCompleted, "运行了命令", "command completed uses the Codex verb phrase")
+    t.expect(!cmdCompleted.contains("git status"), "raw command line is no longer rendered")
     t.expect(!toolCompletedBase.contains("执行失败"),
               ".tool completed without failure has no suffix")
 
@@ -292,8 +271,8 @@ func runTurnPresentationTests(_ t: TestRunner) {
         }
         return ""
     }
-    t.expect(cmdActive.contains("正在运行 "), "command active contains 正在运行")
-    t.expect(cmdActive.contains("swift build"), "command active keeps command body")
+    t.expectEqual(cmdActive, "正在运行命令", "command active uses the Codex verb phrase")
+    t.expect(!cmdActive.contains("swift build"), "active row no longer renders the raw command line")
 
     // v0.5.216: .search 活动态按工具名派生动词（find→查找）。
     var searchFindActive: String {

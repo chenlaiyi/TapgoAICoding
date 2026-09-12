@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.252 — fix(ui): 对话消息渲染对齐 Codex(工具行概括化 / 去思考行 / 摘要「已处理」)
+**Date**: 2026-09-12
+**Tag**: v0.5.252
+**Test status**: 待回归
+**Changed**:
+- `TurnPresentation.swift`:命令工具行由「已运行 <完整命令行>」改为 Codex 式概括短语「运行了命令」(运行中「正在运行命令」,失败「运行了命令 · 执行失败」);原始命令行不再进入消息流,仍保留在 `TurnItem`。
+- `TurnPresentation.swift`:`reasoning` / `reasoningSummary` 不再渲染独立行(对齐 Codex 实测),并**不再打断命令聚合** —— 这是 v0.5.245 的 `commandGroup` 折叠在真实回合里永不触发的根因;移除 `reasoningGroup` / `flushReasoning`。
+- `ConversationPresentation.swift`:完成「已工作 {duration}」→「已处理 {duration}」;进行中「工作中 {duration}」→「正在思考」。
+- `DurationFormatter.swift`:分钟单位「X 分」→「X 分钟」(「1 分钟 24 秒」)。
+- 同步测试断言,并新增「reasoning 夹在命令之间不打断折叠」用例。
+- 版本号 0.5.251 → 0.5.252(四源同步)。
+
+**Why**: 你指出对话消息渲染差异最大,且基准应是 Codex(本机 `/Applications/ChatGPT.app`,bundle id `com.openai.codex`)而非 ZCode。实测 Codex:工具行是概括动词短语、不渲染思考行、完成摘要为「已处理 X 分钟 Y 秒」。
+**Next**: 代码块语言标题栏 + 复制按钮待核对;右侧环境面板默认展开待定。
+
 ## v0.5.251 — fix(model): 模型切换菜单与设置页同源,V4.1 改名即时同步
 **Date**: 2026-09-11
 **Tag**: v0.5.251

@@ -13,12 +13,12 @@ public enum DurationFormatter {
         if total < 60 { return "\(total) 秒" }
         let m = total / 60
         let s = total % 60
-        if m < 60 { return "\(m) 分 \(s) 秒" }
+        if m < 60 { return "\(m) 分钟 \(s) 秒" }
         let h = m / 60
         let mm = m % 60
         if mm == 0 && s == 0 { return "\(h) 小时" }
         if mm == 0 { return "\(h) 小时 \(s) 秒" }
-        if s == 0 { return "\(h) 小时 \(mm) 分" }
-        return "\(h) 小时 \(mm) 分 \(s) 秒"
+        if s == 0 { return "\(h) 小时 \(mm) 分钟" }
+        return "\(h) 小时 \(mm) 分钟 \(s) 秒"
     }
 }
