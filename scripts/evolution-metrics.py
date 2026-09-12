@@ -104,6 +104,8 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
 
     test_runs = collect_test_runs(test_history_path) if test_history_path else []
     model_eval_path = test_history_path.parent / "model_eval_history.jsonl" if test_history_path else None
+    rollback_path = test_history_path.parent / "rollback_drill_history.jsonl" if test_history_path else None
+    rollback_runs = load_history(rollback_path) if rollback_path else []
     model_eval_runs = load_history(model_eval_path) if model_eval_path else []
     model_eval_scores = [float(r.get("score", 0)) for r in model_eval_runs]
     flaky_sections = set()
@@ -151,6 +153,9 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "modelEvalLastTokens": model_eval_runs[-1].get("totalTokens") if model_eval_runs else None,
         "modelEvalLastCostUSD": model_eval_runs[-1].get("totalCostUSD") if model_eval_runs else None,
         "modelEvalLastDuration": model_eval_runs[-1].get("totalDurationSeconds") if model_eval_runs else None,
+        "rollbackDrillRuns": len(rollback_runs),
+        "lastRollbackDrillTag": rollback_runs[-1].get("tag") if rollback_runs else None,
+        "lastRollbackDrillPassed": rollback_runs[-1].get("passed") if rollback_runs else None,
     }
 
 
@@ -194,6 +199,7 @@ def main() -> int:
     print(f"test runs:         {metrics['testRuns']} (last {metrics['lastTestStatus'] or 'n/a'})")
     print(f"flaky sections:    {metrics['flakyCount']}")
     print(f"model eval:        runs={metrics['modelEvalRuns']} latest={metrics['modelEvalLatestScore']} best={metrics['modelEvalBestScore']}")
+    print(f"rollback drill:    runs={metrics['rollbackDrillRuns']} last={metrics['lastRollbackDrillTag']} passed={metrics['lastRollbackDrillPassed']}")
     return 0
 
 

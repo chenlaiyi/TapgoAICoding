@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.284 — feat(evolution): 回滚演练
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.284`)_
+**Tag**: v0.5.284
+**Test status**: — 3303 passed, 0 failed —
+**Changed**:
+- 新增回滚演练脚本与历史指标
+- benchmark/回归纳入 rollback drill
+
+远端 tag+Release zip+health-check+clean worktree 可执行演练并留痕
+**Why**: 回滚此前只有 git checkout 命令,从未验证归档和 clean checkout 真可恢复
+**Next**: EVO-030 指标归档: 按月归档 state history，控制运行态文件增长
+
+
 ## v0.5.283 — feat(evolution): 发布 canary/灰度
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.283`)_

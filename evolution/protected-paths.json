@@ -17,6 +17,7 @@
     "scripts/evolution-remote-lock.sh",
     "scripts/run-model-eval.sh",
     "scripts/canary-promote.sh",
+    "scripts/rollback-drill.sh",
     "evolution/model-eval/**",
     "evolution/feedback/**",
     "evolution/benchmark.json",

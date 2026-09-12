@@ -49,6 +49,12 @@
 ## P6 — 发布韧性与长期维护
 
 - [x] **EVO-028 发布 canary/灰度**：draft release → 单机部署验证 → 发布 appcast → 部署其余机器（v0.5.283）
-- [ ] **EVO-029 回滚演练**：定期从上一 tag 回滚并跑 health-check，验证可恢复性
+- [x] **EVO-029 回滚演练**：远端 tag + Release zip + health-check + clean worktree，记录 drill 历史（v0.5.284）
 - [ ] **EVO-030 指标归档**：按月归档 state history，控制运行态文件增长
+
+## P7 — 运维自动化
+
+- [ ] **EVO-031 远程触发回滚演练**：H5/手机端提供只读“演练”按钮并显示最近结果
+- [ ] **EVO-032 月度维护自动化**：定期跑回滚演练与指标归档，异常才通知
+
 - [ ] **EVO-021 操作者模型基线**：用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）

@@ -63,6 +63,8 @@ func runEvolutionMetrics(_ t: TestRunner) {
         to: state.appendingPathComponent("test_run_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"score\":50}\n{\"score\":80}\n".write(
         to: state.appendingPathComponent("model_eval_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "{\"tag\":\"v0.5.1\",\"passed\":true}\n".write(
+        to: state.appendingPathComponent("rollback_drill_history.jsonl"), atomically: true, encoding: .utf8)
     try? "- [ ] load test\n".write(to: tmp.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = TapgoCore.EvolutionMetrics.load(projectRoot: tmp, stateDirectory: state)
     t.expectEqual(loaded.recordCount, 1, "metrics: load record count")
@@ -73,4 +75,7 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(loaded.modelEvalRuns, 2, "metrics: load model eval runs")
     t.expectEqual(loaded.modelEvalLatestScore, 80, "metrics: load model eval latest")
     t.expectEqual(loaded.modelEvalBestScore, 80, "metrics: load model eval best")
+    t.expectEqual(loaded.rollbackDrillRuns, 1, "metrics: load rollback drill runs")
+    t.expectEqual(loaded.lastRollbackDrillTag, "v0.5.1", "metrics: load rollback drill tag")
+    t.expectEqual(loaded.lastRollbackDrillPassed, true, "metrics: load rollback drill passed")
 }

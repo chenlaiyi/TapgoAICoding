@@ -33,7 +33,7 @@
     },
     {
       "id": "protected-manifest",
-      "weight": 10,
+      "weight": 5,
       "command": "python3 -c 'import json; d=json.load(open(\"evolution/protected-paths.json\")); assert d[\"version\"]>=1 and len(d[\"paths\"])>=10'"
     },
     {
@@ -80,6 +80,11 @@
       "id": "canary-scripts",
       "weight": 5,
       "command": "test -x scripts/canary-promote.sh && test -x scripts/deploy-fleet.sh"
+    },
+    {
+      "id": "rollback-drill-helper",
+      "weight": 5,
+      "command": "test -x scripts/rollback-drill.sh && bash scripts/tests/rollback-drill-test.sh >/dev/null"
     }
   ]
 }

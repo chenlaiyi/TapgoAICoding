@@ -340,6 +340,7 @@ TapgoAICoding/
 - 草稿建议：`evolution-feedback-draft.py suggest` 按类别匹配现有测试 section，生成候选最小复现命令模板，人工确认后才提升 registry。
 - 多机锁：publish 前通过远端 `refs/heads/evolution-lock` 原子互斥；冲突显示持有者与 age，只有显式 `--break-remote-lock` 才可抢占陈旧锁。
 - 灰度发布：`evolve.sh --publish --canary [--canary-host jkmacmini]` 先创建 draft release 并只部署一台；验证通过后 `canary-promote.sh` 发布 appcast、解除 draft 并部署其余机器。
+- 回滚演练：`scripts/rollback-drill.sh --tag vX.Y.Z` 校验远端 tag、下载/定位 Release zip、跑 health-check 并验证 clean worktree，结果写 `rollback_drill_history.jsonl`。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

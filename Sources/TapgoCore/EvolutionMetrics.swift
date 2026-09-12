@@ -120,6 +120,9 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let modelEvalRuns: Int
     public let modelEvalLatestScore: Double?
     public let modelEvalBestScore: Double?
+    public let rollbackDrillRuns: Int
+    public let lastRollbackDrillTag: String?
+    public let lastRollbackDrillPassed: Bool?
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
@@ -134,7 +137,10 @@ public struct EvolutionMetricsSnapshot: Equatable {
         lastBenchmarkScore: Int? = nil,
         modelEvalRuns: Int = 0,
         modelEvalLatestScore: Double? = nil,
-        modelEvalBestScore: Double? = nil
+        modelEvalBestScore: Double? = nil,
+        rollbackDrillRuns: Int = 0,
+        lastRollbackDrillTag: String? = nil,
+        lastRollbackDrillPassed: Bool? = nil
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -163,6 +169,9 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.modelEvalRuns = modelEvalRuns
         self.modelEvalLatestScore = modelEvalLatestScore
         self.modelEvalBestScore = modelEvalBestScore
+        self.rollbackDrillRuns = rollbackDrillRuns
+        self.lastRollbackDrillTag = lastRollbackDrillTag
+        self.lastRollbackDrillPassed = lastRollbackDrillPassed
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -383,6 +392,13 @@ public enum EvolutionMetrics {
         let testHistoryText = (try? String(contentsOf: stateDirectory.appendingPathComponent("test_run_history.jsonl"), encoding: .utf8)) ?? ""
         let modelEvalText = (try? String(contentsOf: stateDirectory.appendingPathComponent("model_eval_history.jsonl"), encoding: .utf8)) ?? ""
         let modelScores = parseModelEval(modelEvalText)
+        let rollbackText = (try? String(contentsOf: stateDirectory.appendingPathComponent("rollback_drill_history.jsonl"), encoding: .utf8)) ?? ""
+        let rollbackRecords = rollbackText.components(separatedBy: .newlines).compactMap { line -> [String: Any]? in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }
+        let lastRollback = rollbackRecords.last
         var snapshot = compute(
             records: records,
             history: parseHistory(historyText),
@@ -405,7 +421,10 @@ public enum EvolutionMetrics {
             lastBenchmarkScore: snapshot.lastBenchmarkScore,
             modelEvalRuns: modelScores.count,
             modelEvalLatestScore: modelScores.last,
-            modelEvalBestScore: modelScores.max()
+            modelEvalBestScore: modelScores.max(),
+            rollbackDrillRuns: rollbackRecords.count,
+            lastRollbackDrillTag: lastRollback?["tag"] as? String,
+            lastRollbackDrillPassed: lastRollback?["passed"] as? Bool
         )
         return snapshot
     }

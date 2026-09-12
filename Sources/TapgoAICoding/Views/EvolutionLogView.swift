@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.284", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.284",
+                    summary: "回滚演练:远端 tag + Release zip + health-check + clean worktree,历史可查。",
+                    changes: [
+                        "新增 scripts/rollback-drill.sh:默认取上一 tag,校验远端 tag,定位本地 dist zip 或 gh release download,解包跑 health-check,并用 detached worktree 验证 tag 干净(可选 --full-build)。",
+                        "每次演练写 rollback_drill_history.jsonl(tag/ranAt/passed/archiveSource/fullBuild);失败同样留痕。",
+                        "evolution-metrics(Python/Swift)读取 drill 历史,指标详情新增 rollback PASS/FAIL;Swift 指标测试扩到 33 项。",
+                        "新增 5 项 rollback drill 回归(成功、health 失败、缺归档);benchmark 新增 rollback-drill-helper,总分仍 100。",
+                        "真实演练 v0.5.282:health 6 项通过 + worktree 干净;EVO-029 完成,新增 P7 EVO-031 远程触发与 EVO-032 月度维护自动化。"
+                    ],
+                    why: "此前回滚只写了 git checkout 命令,从未验证发布归档和 clean checkout 真的可恢复;EVO-029 把回滚变成可执行、可留痕的演练。",
+                    next: "EVO-030 指标归档:按月归档 state history,控制运行态文件增长。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.283", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.283",
                     summary: "发布 canary/灰度:draft release → 单机验证 → appcast 全量 → 其余机器。",
                     changes: [

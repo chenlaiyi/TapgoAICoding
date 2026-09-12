@@ -176,6 +176,7 @@ struct EvolutionMetricsDetailView: View {
                 card("worktree", "\(metrics.worktreePassedCount)/\(metrics.worktreePassedCount + metrics.worktreeFailedCount)")
                 card("benchmark", metrics.lastBenchmarkScore.map { "\($0)/100" } ?? "—")
                 card("model eval", metrics.modelEvalBestScore.map { String(format: "%.0f/100", $0) } ?? "—")
+                card("rollback", metrics.lastRollbackDrillPassed.map { $0 ? "PASS" : "FAIL" } ?? "—")
             }
 
             Divider()
