@@ -60,6 +60,19 @@ func runEvolutionLogSync(_ t: TestRunner) {
     t.expect(iosLog.contains("## v1.0.0 (iOS)"), "evolution-sync: iOS 日志含 v1.0.0")
     t.expect(iosLog.contains("## v1.0.1 (iOS)"), "evolution-sync: iOS 日志含 v1.0.1")
 
+    let archiveLog = (try? String(contentsOfFile: rootPath + "/evolution/archive/EVOLUTION-pre-0.5.5.md", encoding: .utf8)) ?? ""
+    let oldMainVersions = orderedEvoVersions.filter { version in
+        let parts = version.dropFirst().split(separator: ".").compactMap { Int($0) }
+        guard parts.count == 3 else { return false }
+        return (parts[0], parts[1], parts[2]) < (0, 5, 5)
+    }
+    t.expect(oldMainVersions.isEmpty, "evolution-sync: 主日志不得含 v0.5.5 之前版本（实际 \(oldMainVersions)）")
+    t.expect(archiveLog.contains("## v0.5.4"), "evolution-sync: 归档含 v0.5.4")
+    t.expect(archiveLog.contains("## v0.3.0"), "evolution-sync: 归档含 v0.3.0")
+    let archiveVersionCount = archiveLog.components(separatedBy: .newlines)
+        .filter { $0.hasPrefix("## v") }.count
+    t.expect(archiveVersionCount >= 10, "evolution-sync: 归档至少含 10 个版本节（实际 \(archiveVersionCount)）")
+
     t.expect(!evoVersions.isEmpty, "evolution-sync: EVOLUTION.md 解析到至少 1 个版本")
     t.expect(!viewVersions.isEmpty, "evolution-sync: makeHistory 解析到至少 1 个版本")
     t.expect(duplicateMacVersions.isEmpty,

@@ -1,0 +1,16 @@
+{
+  "version": "0.5.270",
+  "tag": "v0.5.270",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 早期日志归档",
+  "changes": [
+    "v0.5.5 之前 11 节移入独立归档",
+    "补主日志/归档双向不变量并修复 MakeHistoryParity"
+  ],
+  "details": "主日志只保留 v0.5.5 之后,早期历史完整移入 evolution/archive/",
+  "why": "主日志 274KB/3399 行,早期历史与现役版本混排,影响阅读与解析",
+  "next": "EVO-015 worktree 隔离: 分支隔离后的强化项，每轮在独立 git worktree 执行，主 checkout 零改动",
+  "testStatus": "— 3226 passed, 0 failed —",
+  "commitSha": null
+}

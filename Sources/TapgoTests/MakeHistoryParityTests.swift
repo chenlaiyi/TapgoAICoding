@@ -16,6 +16,8 @@ func runMakeHistoryParityTests(_ t: TestRunner) {
         .appendingPathComponent("Sources/TapgoAICoding/Views/EvolutionLogView.swift")
     let evolutionURL = repoRoot
         .appendingPathComponent("EVOLUTION.md")
+    let archiveURL = repoRoot
+        .appendingPathComponent("evolution/archive/EVOLUTION-pre-0.5.5.md")
     let plistURL = repoRoot
         .appendingPathComponent("AppBuilder/Info.plist")
     let projectYML = repoRoot
@@ -23,11 +25,13 @@ func runMakeHistoryParityTests(_ t: TestRunner) {
 
     let viewSource: String
     let evolutionSource: String
+    let archiveSource: String
     let plistSource: String
     let projectSource: String
     do {
         viewSource = try String(contentsOf: viewURL, encoding: .utf8)
         evolutionSource = try String(contentsOf: evolutionURL, encoding: .utf8)
+        archiveSource = try String(contentsOf: archiveURL, encoding: .utf8)
         plistSource = try String(contentsOf: plistURL, encoding: .utf8)
         projectSource = try String(contentsOf: projectYML, encoding: .utf8)
     } catch {
@@ -82,9 +86,20 @@ func runMakeHistoryParityTests(_ t: TestRunner) {
             return v
         }
     )
-    let missingInEvolution = versions.filter { !evolutionSet.contains($0) }
+    let archiveSet: Set<String> = Set(
+        archiveSource.components(separatedBy: "\n").compactMap { line in
+            guard line.hasPrefix("## v") else { return nil }
+            let token = line.dropFirst(3).split(separator: " ").first.map(String.init) ?? ""
+            return token.range(of: #"^v[0-9]+\.[0-9]+\.[0-9]+$"#, options: .regularExpression) != nil ? token : nil
+        }
+    )
+    let missingInEvolution = versions.filter { version in
+        let parts = version.dropFirst().split(separator: ".").compactMap { Int($0) }
+        let isOld = parts.count == 3 && (parts[0], parts[1], parts[2]) < (0, 5, 5)
+        return isOld ? !archiveSet.contains(version) : !evolutionSet.contains(version)
+    }
     t.expect(missingInEvolution.isEmpty,
-              "makeHistory 每个版本都必须在 EVOLUTION.md 出现，缺失：\(missingInEvolution.prefix(10).joined(separator: ", "))")
+              "makeHistory 每个版本都必须在 EVOLUTION.md 或 pre-0.5.5 归档出现，缺失：\(missingInEvolution.prefix(10).joined(separator: ", "))")
     let missingInMakeHistory = evolutionSet.subtracting(makeHistorySet).sorted()
     t.expect(missingInMakeHistory.isEmpty,
               "EVOLUTION.md 每个版本都必须在 makeHistory 出现，缺失：\(missingInMakeHistory.prefix(10).joined(separator: ", "))")

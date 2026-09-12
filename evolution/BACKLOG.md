@@ -23,5 +23,5 @@
 - [x] **EVO-011 自进化进度 UI**：9 阶段进度、停止请求、Token/用时、diff 审阅接入会话横幅（v0.5.267）
 - [x] **EVO-012 自改门禁**：受保护路径变更需精确内容 token 审批，未审批拒绝启动（v0.5.268）
 - [x] **EVO-013 iOS 版本序列分离**：iOS 1.0.x 历史移入 `evolution/ios/EVOLUTION.md`，主日志仅留指针（v0.5.269）
-- [ ] **EVO-014 旧日志归档**：把 v0.5.5 之前与 iOS 历史移入 `evolution/archive/`，主日志保持可读
+- [x] **EVO-014 旧日志归档**：v0.5.5 之前 11 节移入 `evolution/archive/EVOLUTION-pre-0.5.5.md`，主日志只留 v0.5.5+（v0.5.270）
 - [ ] **EVO-015 worktree 隔离**：分支隔离后的强化项，每轮在独立 git worktree 执行，主 checkout 零改动

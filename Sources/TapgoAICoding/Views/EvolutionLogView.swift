@@ -333,6 +333,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.270", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.270",
+                    summary: "旧日志归档:v0.5.5 之前 11 个版本节移入 evolution/archive/,主日志只留 v0.5.5+。",
+                    changes: [
+                        "把主 EVOLUTION.md 中 11 个 v0.5.5 之前版本节(v0.3.0..v0.5.4)完整移入 evolution/archive/EVOLUTION-pre-0.5.5.md。",
+                        "主日志新增「历史归档(v0.5.5 之前)」指针节;当前主日志含 0 个早期版本节。",
+                        "EvolutionLogSyncTests 增加归档不变量:主日志不得含 <0.5.5 版本、归档必须含 v0.3.0/v0.5.4 且至少 10 个版本节;当前 53 项断言全过。",
+                        "EVO-014 标记完成;backlog 只剩 EVO-015(worktree 隔离)。"
+                    ],
+                    why: "主日志已达 274KB、3399 行,早期历史与现役版本混排,影响阅读与解析;EVO-014 把 v0.5.5 之前历史归档,主日志只保留仍参与 makeHistory 与发布校验的版本。",
+                    next: "EVO-015 每轮在独立 git worktree 执行,主 checkout 零改动。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.269", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.269",
                     summary: "iOS 序列分离:1.0.x 历史移入 evolution/ios/EVOLUTION.md,主日志只留指针。",
                     changes: [
