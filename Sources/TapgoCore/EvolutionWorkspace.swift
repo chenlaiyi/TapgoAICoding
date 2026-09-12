@@ -22,12 +22,42 @@ public enum EvolutionWorkspace {
             && fm.fileExists(atPath: url.appendingPathComponent("AGENTS.md").path)
     }
 
-    /// 在 home 下定位本项目根目录。多机部署（本机 / JKmacmini /
-    /// fafamacmini）都把仓库放在 `~/TapgoAICoding`，这是约定路径；
-    /// 找不到时返回 nil，调用方据此禁用独立开发入口并提示。
+    /// 定位本项目根目录。v0.5.255 起不再只认 `~/TapgoAICoding` ——
+    /// 其他用户从 GitHub clone 时目录名/位置各不相同,这里按优先级探测:
+    ///
+    ///   1. `TAPGO_PROJECT_ROOT` 环境变量(显式指定,最高优先)
+    ///   2. 约定的 `~/TapgoAICoding`
+    ///   3. 常见变体:`~/TapgoAICoding-main`、`~/tapgo-aicoding`、
+    ///      `~/dev/TapgoAICoding`、`~/Projects/TapgoAICoding`、`~/src/...`
+    ///
+    /// 找到即返回;都不像项目根时返回 nil,调用方据此禁用独立开发入口。
     public static func locateProjectRoot(home: URL) -> URL? {
-        let candidate = home.appendingPathComponent("TapgoAICoding", isDirectory: true)
-        return looksLikeProjectRoot(candidate) ? candidate : nil
+        let fm = FileManager.default
+
+        // 1) 显式指定
+        if let raw = ProcessInfo.processInfo.environment["TAPGO_PROJECT_ROOT"],
+           !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let expanded = (raw as NSString).expandingTildeInPath
+            let url = URL(fileURLWithPath: expanded, isDirectory: true)
+            if looksLikeProjectRoot(url) { return url }
+        }
+
+        // 2) 约定 + 常见变体
+        // 注:刻意不检查 cwd —— GUI app 的 cwd 通常是 `/`,而且该探测会让
+        // 「home 下没有项目」的判定失真(调用方依赖 nil 来禁用入口)。
+        let candidates = [
+            home.appendingPathComponent("TapgoAICoding", isDirectory: true),
+            home.appendingPathComponent("TapgoAICoding-main", isDirectory: true),
+            home.appendingPathComponent("tapgo-aicoding", isDirectory: true),
+            home.appendingPathComponent("tapgo", isDirectory: true),
+            home.appendingPathComponent("dev/TapgoAICoding", isDirectory: true),
+            home.appendingPathComponent("Projects/TapgoAICoding", isDirectory: true),
+            home.appendingPathComponent("src/TapgoAICoding", isDirectory: true),
+        ]
+        for candidate in candidates where looksLikeProjectRoot(candidate) {
+            return candidate
+        }
+        return nil
     }
 
     /// 自进化会话的标题（固定，不参与 auto-title：hasDefaultTitle 只

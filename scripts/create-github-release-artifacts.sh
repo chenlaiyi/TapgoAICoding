@@ -14,7 +14,20 @@ APP="$ROOT/Tapgo AICoding.app"
 DIST="$ROOT/AppBuilder/dist/$TAG"
 ARCHIVE="Tapgo-AICoding-${VERSION}.zip"
 SPARKLE_BIN="$ROOT/.build/artifacts/sparkle/Sparkle/bin"
-DOWNLOAD_PREFIX="https://github.com/chenlaiyi/TapgoAICoding/releases/download/$TAG/"
+
+# v0.5.255: 仓库归属不再硬编码 —— 优先 TAPGO_REPO_SLUG,否则从 git remote
+# (upstream 优先,其次 origin)推断。fork 用户发布到自己仓库时无需改脚本。
+# shellcheck source=scripts/tapgo-repo-slug.sh
+source "$ROOT/scripts/tapgo-repo-slug.sh"
+REPO_SLUG="$(tapgo_repo_slug || true)"
+if [[ -z "$REPO_SLUG" ]]; then
+  echo "ERROR: 无法解析仓库归属。请设置 TAPGO_REPO_SLUG=owner/repo 后重试。" >&2
+  echo "       当前 git remotes:" >&2
+  git remote -v | sed 's/^/         /' >&2
+  exit 8
+fi
+echo "==> Target repo: ${REPO_SLUG}"
+DOWNLOAD_PREFIX="https://github.com/${REPO_SLUG}/releases/download/$TAG/"
 
 if [[ ! -x "$SPARKLE_BIN/generate_appcast" ]]; then
   echo "ERROR: Sparkle tools are missing; run swift package resolve first." >&2
@@ -75,7 +88,7 @@ fi
   --account com.tapgo.aicoding \
   ${KEY_FILE_OPT[@]+"${KEY_FILE_OPT[@]}"} \
   --download-url-prefix "$DOWNLOAD_PREFIX" \
-  --link "https://github.com/chenlaiyi/TapgoAICoding/releases/tag/$TAG" \
+  --link "https://github.com/${REPO_SLUG}/releases/tag/$TAG" \
   --embed-release-notes \
   --maximum-versions 3 \
   -o "$WORK/appcast.xml" \
@@ -138,4 +151,4 @@ elif [[ -f "$ROOT/appcast.xml" ]]; then
 fi
 
 echo
-echo "==> Done. Release: https://github.com/chenlaiyi/TapgoAICoding/releases/tag/$TAG"
+echo "==> Done. Release: https://github.com/${REPO_SLUG}/releases/tag/$TAG"

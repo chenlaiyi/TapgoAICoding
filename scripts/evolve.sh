@@ -2,15 +2,21 @@
 # evolve.sh — One-command self-evolution cycle.
 #
 # Usage:
-#   ./scripts/evolve.sh <version-bump> "<commit message>" "<evolution summary>"
+#   ./scripts/evolve.sh [--local|--publish] [--dry-run] <version-bump> "<commit message>" "<evolution summary>"
 #
 # Examples:
-#   ./scripts/evolve.sh patch "fix: sidebar crash on empty workspace" \
-#     "Crash when SidebarView renders with 0 projects; root cause ..."
-#   ./scripts/evolve.sh minor "feat: dark mode for ChatView" \
-#     "Add system-appearance-aware colors throughout chat rendering"
-#   ./scripts/evolve.sh major "BREAKING: rework approval flow" \
-#     "Replace modal with inline ApprovalRow (see ADR-007)"
+#   ./scripts/evolve.sh patch "fix: sidebar crash" "root cause ..."
+#   ./scripts/evolve.sh --publish minor "feat: dark mode" "colors throughout chat"
+#   ./scripts/evolve.sh --dry-run patch "wip" "just show me the plan"
+#
+# Modes (v0.5.255):
+#   --local    (默认) 任何人可用。版本对齐上游后,只 commit + tag 到**本地**,
+#              build .app。不 push、不发 Release、不动 appcast。
+#              适合「我只想给自己定制」的副本。
+#   --publish  仅维护者。保留完整闭环:push origin main + tag、
+#              GitHub Release、刷新 appcast(客户端据此自动更新)。
+#              需要对该仓库有写权限 + Sparkle 私钥在 keychain。
+#   --dry-run  只打印将要发生的事(版本号/模式/步骤),不修改任何文件。
 #
 # Bump types:
 #   patch — 0.3.0 → 0.3.1  (default; bug fixes, small polish)
@@ -61,19 +67,39 @@ SWIFT=(xcrun -sdk "$TAPGO_SDK" swift)
 echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 
 # ---------- Args ----------
-BUMP="${1:-patch}"
-MSG="${2:-"chore: evolve"}"
-SUMMARY="${3:-_no_summary_}"
-
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${2:-}" == "-h" || "${2:-}" == "--help" ]]; then
-  sed -n '2,45p' "$0"
-  exit 0
-fi
+# v0.5.255: 位置参数之前允许 --local / --publish / --dry-run。
+# 默认 --local(安全默认):别的用户 clone 下来演进不会误推上游。
+MODE="local"
+DRY_RUN=""
+BUMP=""; MSG=""; SUMMARY=""
+for arg in "$@"; do
+  case "$arg" in
+    --local)   MODE="local" ;;
+    --publish) MODE="publish" ;;
+    --dry-run) DRY_RUN="1" ;;
+    -h|--help) sed -n '2,52p' "$0"; exit 0 ;;
+    *)
+      if   [[ -z "$BUMP"    ]]; then BUMP="$arg"
+      elif [[ -z "$MSG"     ]]; then MSG="$arg"
+      elif [[ -z "$SUMMARY" ]]; then SUMMARY="$arg"
+      fi
+      ;;
+  esac
+done
+BUMP="${BUMP:-patch}"
+MSG="${MSG:-chore: evolve}"
+SUMMARY="${SUMMARY:-_no_summary_}"
 
 case "$BUMP" in
   patch|minor|major) ;;
   *) echo "ERROR: bump must be patch|minor|major (got: $BUMP)" >&2; exit 2 ;;
 esac
+
+# ---------- 仓库归属(共享解析) ----------
+# shellcheck source=scripts/tapgo-repo-slug.sh
+source "$ROOT/scripts/tapgo-repo-slug.sh"
+REPO_SLUG="$(tapgo_repo_slug || true)"
+UPSTREAM_REMOTE="$(tapgo_upstream_remote)"
 
 # ---------- 0. Sanity ----------
 # Soft sanity check: warn if there are uncommitted changes, but don't
@@ -91,7 +117,15 @@ HELPER_PLIST="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
 # Source the version from the LATEST git tag (if any), falling back to
 # Info.plist. This way manually-tagged baselines (e.g. v0.3.1 introduced
 # before evolve.sh existed) don't get re-used by the script.
-LATEST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+# v0.5.255: 先感知上游 tag 再算版本,避免多人并行演进撞号。
+# fetch 失败(离线/fork 无 upstream)不阻断,降级为本地 tag。
+if git fetch --tags "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
+  echo "==> Fetched tags from ${UPSTREAM_REMOTE}"
+else
+  echo "==> NOTE: fetch ${UPSTREAM_REMOTE} 失败,版本基准退回本地 tag" >&2
+fi
+LATEST_TAG="$(git describe --tags --abbrev=0 "${UPSTREAM_REMOTE}/main" 2>/dev/null \
+  || git describe --tags --abbrev=0 2>/dev/null || true)"
 if [[ "$LATEST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
   MAJ="${BASH_REMATCH[1]}"
   MIN="${BASH_REMATCH[2]}"
@@ -102,13 +136,31 @@ else
   MAJ="${MAJ:-0}"; MIN="${MIN:-0}"; PAT="${PAT:-0}"
 fi
 
+OLD_VERSION="${MAJ}.${MIN}.${PAT}"
 case "$BUMP" in
   major) MAJ=$((MAJ+1)); MIN=0; PAT=0 ;;
   minor) MIN=$((MIN+1)); PAT=0 ;;
   patch) PAT=$((PAT+1)) ;;
 esac
 NEW_VERSION="${MAJ}.${MIN}.${PAT}"
-echo "==> Version: ${MAJ}.${MIN}.${PAT} → ${NEW_VERSION}  (${BUMP})"
+echo "==> Version: ${OLD_VERSION} → ${NEW_VERSION}  (${BUMP})"
+
+if [[ -n "$DRY_RUN" ]]; then
+  echo
+  echo "=== DRY RUN(不修改任何文件)==="
+  echo "  模式:      ${MODE}$( [[ "$MODE" == "local" ]] && echo '  (本地演进,不 push / 不发布)' || echo '  (维护者发布,含 push + Release + appcast)' )"
+  echo "  仓库:      ${REPO_SLUG:-未解析到}"
+  echo "  上游远端:  ${UPSTREAM_REMOTE}"
+  echo "  版本:      ${NEW_VERSION}"
+  echo "  commit:    ${MSG} (v${NEW_VERSION})"
+  echo "  将执行:    改版本号 → release build → 全量测试 → 追加 EVOLUTION.md → commit → tag"
+  if [[ "$MODE" == "publish" ]]; then
+    echo "             → push ${UPSTREAM_REMOTE} main + tag → GitHub Release → 刷新 appcast"
+  else
+    echo "             → 仅本地 commit + tag,再重建并安装 .app"
+  fi
+  exit 0
+fi
 
 # ---------- 2. Patch Info.plist ----------
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$PLIST" >/dev/null
@@ -208,26 +260,41 @@ git tag -a "v${NEW_VERSION}" -m "${MSG} (v${NEW_VERSION})"
 
 echo "==> Commit + tag created locally: ${SHA} → v${NEW_VERSION}"
 
-# ---------- 7. Push ----------
-echo "==> Pushing to origin (main + tag v${NEW_VERSION})"
-# Push main + ONLY the new tag (avoid duplicates like a local v0.5.82 pointing
-# to a different commit than origin/v0.5.82 -- --tags rejects those).
-if ! git push origin HEAD:main "v${NEW_VERSION}"; then
-  echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
-  echo "Re-run with network to retry, or:  git push origin HEAD:main v${NEW_VERSION}" >&2
-  exit 6
-fi
+# ---------- 7. Push + 发布(仅 --publish) ----------
+# v0.5.255: 默认 --local 只做本地 commit + tag。别的用户 clone 后演进
+# 不应该(也没有权限)推上游、发 Release、改 appcast。
+if [[ "$MODE" == "publish" ]]; then
+  echo "==> Pushing to ${UPSTREAM_REMOTE} (main + tag v${NEW_VERSION})"
+  # Push main + ONLY the new tag (avoid duplicates like a local v0.5.82 pointing
+  # to a different commit than origin/v0.5.82 -- --tags rejects those).
+  if ! git push "$UPSTREAM_REMOTE" HEAD:main "v${NEW_VERSION}"; then
+    echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
+    echo "Re-run with network to retry, or:  git push ${UPSTREAM_REMOTE} HEAD:main v${NEW_VERSION}" >&2
+    exit 6
+  fi
 
-echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
-if ! ./scripts/create-github-release-artifacts.sh; then
-  echo "WARN: create-github-release-artifacts.sh failed; release not published." >&2
-  echo "      Re-run later: ./scripts/create-github-release-artifacts.sh" >&2
-  echo "      Tag v${NEW_VERSION} is already pushed; clients cannot fetch the zip until release is created." >&2
+  echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
+  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" ./scripts/create-github-release-artifacts.sh; then
+    echo "WARN: create-github-release-artifacts.sh failed; release not published." >&2
+    echo "      Re-run later: ./scripts/create-github-release-artifacts.sh" >&2
+    echo "      Tag v${NEW_VERSION} is already pushed; clients cannot fetch the zip until release is created." >&2
+  fi
+else
+  echo "==> [local 模式] 跳过 push / GitHub Release / appcast"
+  echo "    本地 commit ${SHA} + tag v${NEW_VERSION} 已创建;App 仍会重建。"
+  echo "    若要让这个副本跟随自己的更新源,见 README「自进化」章节。"
 fi
 
 # ---------- 8. Rebuild .app ----------
 echo "==> Rebuilding .app bundle"
-./scripts/build-app.sh >/dev/null
+if [[ "$MODE" == "local" ]]; then
+  # 本地定制:关闭自动安装更新,避免用户的自定义被上游版本静默覆盖。
+  TAPGO_LOCAL_BUILD=1 ./scripts/build-app.sh >/dev/null
+  echo "    [local] .app 已重建(自动安装更新已关闭)"
+else
+  ./scripts/build-app.sh >/dev/null
+  echo "    [publish] .app 已重建(跟随上游 feed)"
+fi
 
 # ---------- 9. Write evolution_state.json ----------
 STATE_DIR="${HOME}/Library/Application Support/Tapgo AICoding/state"
@@ -262,7 +329,11 @@ echo
 echo "==================================================="
 echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"
 echo "==================================================="
-echo "  Tag pushed:     v${NEW_VERSION}"
+if [[ "$MODE" == "publish" ]]; then
+  echo "  Tag pushed:     v${NEW_VERSION}"
+else
+  echo "  Tag (local):    v${NEW_VERSION}   ← 未推送(publish 模式才推)"
+fi
 echo "  State file:     ${STATE_FILE}"
 echo "  App bundle:     ${ROOT}/Tapgo AICoding.app"
 echo "  Rollback:       git checkout v$((MAJ)).$((MIN)).$((PAT-1)) && ./scripts/build-app.sh"

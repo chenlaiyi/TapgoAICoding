@@ -283,6 +283,52 @@ TapgoAICoding/
 └── README_EN.md                   # English
 ```
 
+## 自进化
+
+自进化 = 让 AI 对 Tapgo AICoding 自身做迭代开发。App 内按 `⌥⌘E` 进入自进化会话，点「开始自进化」即可跑一轮「核对 → 选点 → 实现 → 全量回归 → 版本对齐」。
+
+### 两种模式
+
+| 模式 | 适用对象 | 行为 |
+| --- | --- | --- |
+| `--local`（默认） | 任何人 clone 下来的副本 | 版本先对齐上游，然后只 commit + tag 到**本地**：不 push、不发 Release、不动 appcast。构建出的 .app 会**关闭「自动安装更新」**，避免你的定制被上游版本静默覆盖。 |
+| `--publish` | 仓库维护者 | 完整闭环：push main + tag → GitHub Release → 刷新 appcast（已安装客户端据此自动更新）。需要仓库写权限，且 Sparkle 私钥在 keychain。 |
+
+```bash
+# 先看计划（不修改任何文件）
+./scripts/evolve.sh --dry-run patch "fix: 侧栏空工作区崩溃" "根因与改动说明"
+
+# 本地演进（默认模式，适合你自己的副本）
+./scripts/evolve.sh patch "fix: 侧栏空工作区崩溃" "根因与改动说明"
+
+# 维护者发布上线
+./scripts/evolve.sh --publish minor "feat: 深色模式" "说明"
+```
+
+### 跟上上游，同时保留你的改动
+
+本地演进几轮后，上游也会有新版本。直接 `git pull` 容易冲突或覆盖你的改动，用同步脚本更稳：
+
+```bash
+./scripts/sync-upstream.sh          # 预检：本地/上游各有多少 commit、分别是什么
+./scripts/sync-upstream.sh --apply  # 以 rebase 方式把本地演进叠到上游之上
+```
+
+### 相关环境变量
+
+| 变量 | 用途 |
+| --- | --- |
+| `TAPGO_REPO_SLUG` | 覆盖仓库归属（默认从 git remote 推断，格式 `owner/repo`）。fork 用户发布到自己仓库时无需改脚本。 |
+| `TAPGO_PROJECT_ROOT` | 指定项目根目录。默认探测 `~/TapgoAICoding`，以及 `TapgoAICoding-main`、`tapgo-aicoding`、`~/dev/...`、`~/Projects/...` 等常见位置。 |
+| `TAPGO_FEED_URL` | 本地定制构建时指定自己的更新源（配合 `--local` 使用）。 |
+
+### 回滚
+
+```bash
+git checkout v0.5.51   # 任意历史版本
+./scripts/build-app.sh
+```
+
 ## 发布与回滚
 
 版本演进记录在 [EVOLUTION.md](EVOLUTION.md)。正式发布应保持以下状态一致：

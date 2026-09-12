@@ -1,4 +1,21 @@
 # Evolution Log
+## v0.5.255 — feat(evolution): 自进化模块可移植化(仓库归属参数化 / 本地发布双模式 / 上游同步)
+**Date**: 2026-09-12
+**Tag**: v0.5.255
+**Test status**: 待回归
+**Changed**:
+- 新增 `scripts/tapgo-repo-slug.sh`:统一解析仓库归属(`TAPGO_REPO_SLUG` > `upstream` > `origin`),供自进化与发布脚本 source,消除硬编码。
+- `scripts/evolve.sh`:新增 `--local`(默认)/ `--publish` 双模式与 `--dry-run`;版本基准改为先 `fetch --tags` 上游、再从 `upstream/main` 的 tag 推算;修复「bump 后才打印导致 N→N」的显示 bug。
+- `scripts/build-app.sh`:`TAPGO_LOCAL_BUILD=1` 关闭「自动安装更新」并支持 `TAPGO_FEED_URL`,解决本地定制被上游静默覆盖。
+- `scripts/create-github-release-artifacts.sh`:发布 URL 与 `--link` 由仓库归属解析生成,fork 用户无需改脚本。
+- 新增 `scripts/sync-upstream.sh`:预检 + `--apply` rebase,冲突时停下给指引。
+- `EvolutionWorkspace.locateProjectRoot`:支持 `TAPGO_PROJECT_ROOT` 与多个常见 clone 路径。
+- `README.md` / `README_EN.md`:新增「自进化」章节(模式对照、命令、同步流程、环境变量)。
+- 版本号 0.5.254 → 0.5.255(四源同步)。
+
+**Why**: 其他用户要从 GitHub clone/更新才能用自进化,而原实现硬编码维护者仓库、直推 main、无同步机制;本地定制还会被上游更新静默覆盖。
+**Next**: 阶段二候选 —— 自进化默认落演进分支、`EVOLUTION.md` 拆为一版一文件(需同步改 `MakeHistoryParityTests`)。
+
 ## v0.5.254 — feat(ui): 对话渲染三次对齐 Codex(摘要行常显 + 分隔线 / 代码块着色 + 换行切换)
 **Date**: 2026-09-12
 **Tag**: v0.5.254

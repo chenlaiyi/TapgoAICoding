@@ -252,6 +252,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.255", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.255",
+                    summary: "自进化模块可移植化:仓库归属参数化、本地/发布双模式、上游同步脚本、项目根多候选。",
+                    changes: [
+                        "新增 scripts/tapgo-repo-slug.sh:统一解析仓库归属(TAPGO_REPO_SLUG > upstream remote > origin remote),把 support 各种 git URL 形式;供 evolve.sh 与 release 脚本 source。",
+                        "evolve.sh:新增 --local(默认)/--publish 双模式。local 模式只 commit + tag 到本地、不 push、不发 Release、不动 appcast;publish 模式保留完整发布闭环。新增 --dry-run 先看计划不改文件;修复「版本 bump 后才打印导致 N→N」的显示 bug。",
+                        "evolve.sh:版本基准先 git fetch --tags 上游,再从 upstream/main 的 tag 推算,避免多人并行演进撞版本号。",
+                        "build-app.sh:TAPGO_LOCAL_BUILD=1 时关闭「自动安装更新」(SUAutomaticallyUpdate=false),并支持 TAPGO_FEED_URL 指定自有更新源 —— 从根本上解决「本地定制被上游版本静默覆盖」。",
+                        "create-github-release-artifacts.sh:download-url-prefix / --link 不再硬编码维护者仓库,改由仓库归属解析生成;fork 用户发布到自己仓库无需改脚本。",
+                        "新增 scripts/sync-upstream.sh:预检(工作树干净校验 + 本地/上游 commit 差异清单)+ --apply(rebase 本地演进到上游之上),冲突时停下并给出 continue/abort 指引。",
+                        "EvolutionWorkspace.locateProjectRoot:不再只认 ~/TapgoAICoding,支持 TAPGO_PROJECT_ROOT 环境变量与 TapgoAICoding-main / tapgo-aicoding / ~/dev / ~/Projects 等常见位置。",
+                        "README.md 与 README_EN.md 新增「自进化」章节:两种模式对照表、命令示例、上游同步流程、环境变量说明。",
+                        "App 版本号 0.5.254 → 0.5.255(四源同步)。"
+                    ],
+                    why: "你指出其他用户要用自进化需从 GitHub clone/更新,而原实现硬编码维护者仓库、直推 main、无同步机制,别人跑不通;且本地定制会被上游更新静默覆盖。",
+                    next: "阶段二候选:自进化默认落演进分支、EVOLUTION.md 拆分为一版一文件以降低多人冲突(需同步改 MakeHistoryParityTests 的解析)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.254", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.254",
                     summary: "对话渲染三次对齐 Codex:回合摘要行常显 + 分隔线、代码块语法着色 + 换行切换。",
                     changes: [

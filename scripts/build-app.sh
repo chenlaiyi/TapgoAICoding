@@ -171,6 +171,25 @@ echo "  embedded SwiftPM resources: ${CORE_RESOURCE_BUNDLE_NAME}"
 cp "$PLIST_SRC" "$CONTENTS_DIR/Info.plist"
 cp "$PKGINFO_SRC" "$CONTENTS_DIR/PkgInfo"
 
+# v0.5.255: 本地定制构建(evolve.sh --local 默认走这条)。
+# 本地演进的副本如果继续跟随上游 appcast 并**自动安装**更新,
+# 用户的自定义会被静默覆盖 —— 这正是「更新覆盖本地」的根因。
+# 这里:关闭自动安装(保留手动「检查更新」),并允许用
+# TAPGO_FEED_URL 指定自己的更新源。
+if [[ "${TAPGO_LOCAL_BUILD:-}" == "1" ]]; then
+  BUILT_PLIST="$CONTENTS_DIR/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :SUAutomaticallyUpdate false" "$BUILT_PLIST" >/dev/null 2>&1 || true
+  if [[ -n "${TAPGO_FEED_URL:-}" ]]; then
+    if /usr/libexec/PlistBuddy -c "Set :SUFeedURL ${TAPGO_FEED_URL}" "$BUILT_PLIST" >/dev/null 2>&1; then
+      :
+    else
+      /usr/libexec/PlistBuddy -c "Add :SUFeedURL string ${TAPGO_FEED_URL}" "$BUILT_PLIST" >/dev/null 2>&1 || true
+    fi
+    echo "  local-custom: feed → ${TAPGO_FEED_URL}"
+  fi
+  echo "  local-custom: 已关闭「自动安装更新」(本地定制不会被上游静默覆盖)"
+fi
+
 if [[ -f "$ICNS_SRC" ]]; then
   cp "$ICNS_SRC" "${RESOURCES_DIR}/AppIcon.icns"
   cp "$ICNS_SRC" "${HELPER_RESOURCES_DIR}/AppIcon.icns"

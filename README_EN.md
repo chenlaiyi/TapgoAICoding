@@ -284,6 +284,25 @@ TapgoAICoding/
 └── README_EN.md                   # English
 ```
 
+## Self-evolution
+
+Self-evolution lets the AI iterate on Tapgo AICoding itself. Press `⌥⌘E` in the app to open the dedicated session.
+
+| Mode | For | Behaviour |
+| --- | --- | --- |
+| `--local` (default) | any cloned copy | Aligns the version with upstream, then commit + tag **locally only**: no push, no Release, no appcast changes. The built .app has **automatic update installation disabled** so your customisations are never silently overwritten. |
+| `--publish` | repository maintainer | Full loop: push main + tag → GitHub Release → refresh appcast. Requires write access and the Sparkle private key. |
+
+```bash
+./scripts/evolve.sh --dry-run patch "fix: x" "why"
+./scripts/evolve.sh patch "fix: x" "why"              # local
+./scripts/evolve.sh --publish minor "feat: x" "why"   # maintainer
+./scripts/sync-upstream.sh                            # preview divergence
+./scripts/sync-upstream.sh --apply                    # rebase local work onto upstream
+```
+
+Environment overrides: `TAPGO_REPO_SLUG`, `TAPGO_PROJECT_ROOT`, `TAPGO_FEED_URL`.
+
 ## Releases and rollback
 
 Release history lives in [EVOLUTION.md](EVOLUTION.md). A release should keep these states aligned:
