@@ -3,6 +3,33 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.288</title>
+            <pubDate>Sat, 12 Sep 2026 22:23:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.288</link>
+            <sparkle:version>0.5.288</sparkle:version>
+            <sparkle:shortVersionString>0.5.288</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.288
+
+fix(evolution): 月度维护安装路径
+
+## 变更
+
+- 修复 install-evolution-maintenance.sh：echo 里 $LABEL 后紧跟全角括号被 bash 3.2 并入变量名，真实安装直接 unbound variable（--print 路径不受影响）。
+- 安装器新增 EVOLVE_LAUNCH_AGENTS_DIR 与 --skip-launchctl，安装路径可在临时目录内验证，不再触碰真实 LaunchAgents。
+- 维护回归扩到 47 项：新增真实安装路径覆盖（plist 落盘 + plutil 校验 + 输出断言），并做负向验证确认能抓回该 bug。
+- 本机已注册 launchd 任务（每月 1 日 10:00，runs=0、RunAtLoad=false）并核验 program/path。
+
+修复安装脚本 unbound variable 并让安装路径进入回归
+
+## Next
+
+EVO-033 发布失败续跑: `--resume` 从失败阶段继续（push 成功但 release 失败时不再整轮重来）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.288/Tapgo-AICoding-0.5.288.zip" length="12630071" type="application/octet-stream" sparkle:edSignature="5lWCoEfIzxv28fIK54f6V7FyxbJ+jx+YrYneX1TL3DiWE5oNPkmFWOjc+EHhSdetvGV/lL8xKydCDgWIimwMCQ=="/>
+        </item>
+        <item>
             <title>0.5.287</title>
             <pubDate>Sat, 12 Sep 2026 22:15:53 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.287</link>
@@ -54,31 +81,6 @@ H5 自进化卡片只读显示最近 drill 的 PASS/FAIL/tag/时间
 EVO-032 月度维护自动化: 定期跑回滚演练与指标归档，异常才通知
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.286/Tapgo-AICoding-0.5.286.zip" length="12620564" type="application/octet-stream" sparkle:edSignature="tSRkKIE1VRtFLTFa6WO0Y46RziuvnTDMe7S8ZRFBcsM6W2yWbxDofvY5I6SBCOMD04N1kAC2h5q2QCx3TIb3CQ=="/>
-        </item>
-        <item>
-            <title>0.5.285</title>
-            <pubDate>Sat, 12 Sep 2026 21:51:37 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.285</link>
-            <sparkle:version>0.5.285</sparkle:version>
-            <sparkle:shortVersionString>0.5.285</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.285
-
-feat(evolution): 指标按月归档
-
-## 变更
-
-- 新增按月归档工具并在每轮收尾自动执行
-- 归档回归与 benchmark archive-helper
-
-过期 history 按月归档且不删除,保留近期记录
-
-## Next
-
-EVO-031 远程触发回滚演练: H5/手机端提供只读“演练”按钮并显示最近结果
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.285/Tapgo-AICoding-0.5.285.zip" length="12615096" type="application/octet-stream" sparkle:edSignature="bjyl0eWQsy0HNDm5JdyHNyNMN7tnkK53CYgjqbFfhjGEvwEeWUH/j983FJ+fbltebp/CwVjdyEXJAbvlNA51DA=="/>
         </item>
     </channel>
 </rss>
