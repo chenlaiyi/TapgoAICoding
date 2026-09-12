@@ -333,6 +333,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.269", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.269",
+                    summary: "iOS 序列分离:1.0.x 历史移入 evolution/ios/EVOLUTION.md,主日志只留指针。",
+                    changes: [
+                        "把 EVOLUTION.md 尾部的 iOS 历史移入 evolution/ios/EVOLUTION.md;3 个重复 v1.0.0 节收敛为 1 个 H2 与 2 个 H3 增量记录。",
+                        "主 EVOLUTION.md 仅保留「iOS 版本序列(独立编号)」指针节;Mac 0.x 解析/重复/顺序校验不再受 iOS 版本干扰。",
+                        "evolution-records.py 的 validate --require-rendered 按 scope 分流:mac → EVOLUTION.md,ios → evolution/ios/EVOLUTION.md。",
+                        "EvolutionLogSyncTests 解析主日志时跳过 (iOS) 版本,并断言主日志无 v1.*、iOS 归档含 v1.0.0/v1.0.1;当前 46 项断言全过。",
+                        "evolution-records-test 增至 14 项,新增 iOS scope 的渲染与缺失校验。",
+                        "EVO-013 标记完成;当前 backlog 顶部为 EVO-014(旧日志归档)。"
+                    ],
+                    why: "此前 iOS 1.0.0 在 EVOLUTION.md 重复 3 次,与 Mac 0.x 共用版本解析,形成重复版本歧义;EVO-013 按产品线分离版本序列。",
+                    next: "EVO-014 旧日志归档:把 v0.5.5 之前与 iOS 历史移入 evolution/archive/,主日志保持可读。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.268", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.268",
                     summary: "自改门禁:受保护路径变更需基于精确内容的审批 token,未审批拒绝启动。",
                     changes: [

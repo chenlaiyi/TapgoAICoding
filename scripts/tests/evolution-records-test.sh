@@ -71,5 +71,21 @@ RC=$?
 set -e
 assert_rc "$RC" 1 "check-current rejects stale plist/project"
 
+# iOS scope renders into evolution/ios/EVOLUTION.md, not the Mac log.
+ITMP="$(mktemp -d "${TMPDIR:-/tmp}/tapgo-evolution-ios-test.XXXXXX")"
+trap 'rm -rf "$ITMP"' EXIT
+mkdir -p "$ITMP/AppBuilder" "$ITMP/evolution/versions" "$ITMP/evolution/ios"
+printf '# iOS Evolution Log\n' > "$ITMP/evolution/ios/EVOLUTION.md"
+printf '# Evolution Log\n' > "$ITMP/EVOLUTION.md"
+python3 "$TOOL" add --root "$ITMP" --version 1.0.2 --scope ios --message "ios record" --next n >/dev/null
+set +e
+python3 "$TOOL" validate --root "$ITMP" --require-rendered >/dev/null 2>&1
+RC=$?
+set -e
+assert_rc "$RC" 1 "iOS record requires iOS rendered section"
+python3 "$TOOL" render-entry --root "$ITMP" --version 1.0.2 >> "$ITMP/evolution/ios/EVOLUTION.md"
+python3 "$TOOL" validate --root "$ITMP" --require-rendered >/dev/null
+ok
+
 echo "evolution-records tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

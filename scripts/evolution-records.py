@@ -207,6 +207,12 @@ def evo_headers(text: str) -> list[str]:
     return [m.group(1) for m in re.finditer(r"^## v(\d+\.\d+\.\d+)", text, re.M)]
 
 
+def rendered_log_path(root: Path, scope: str) -> Path:
+    if scope == "ios":
+        return root / "evolution" / "ios" / "EVOLUTION.md"
+    return root / "EVOLUTION.md"
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     root = repo_root(args.root)
     errors: list[str] = []
@@ -223,9 +229,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
     evo_text = evo_path.read_text(encoding="utf-8") if evo_path.exists() else ""
     headers = evo_headers(evo_text)
     if args.require_rendered:
-        for version in seen:
-            if version not in headers:
-                errors.append(f"EVOLUTION.md missing rendered section for v{version}")
+        by_scope: dict[str, list[str]] = {}
+        for _, record in records:
+            by_scope.setdefault(str(record.get("scope", "mac")), []).append(str(record.get("version", "")))
+        for scope, versions in by_scope.items():
+            log_path = rendered_log_path(root, scope)
+            log_text = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+            log_headers = evo_headers(log_text)
+            for version in versions:
+                if version not in log_headers:
+                    errors.append(f"{log_path.relative_to(root)} missing rendered section for v{version}")
 
     if args.check_current and records:
         mac_records = [r for _, r in records if r.get("scope", "mac") == "mac"]

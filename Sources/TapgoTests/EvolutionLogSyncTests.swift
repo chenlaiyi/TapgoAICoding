@@ -26,6 +26,8 @@ func runEvolutionLogSync(_ t: TestRunner) {
         let header = String(line.dropFirst(3))
         guard let version = header.split(separator: " ").first.map(String.init),
               version.range(of: "^v\\d+\\.\\d+\\.\\d+$", options: .regularExpression) != nil else { continue }
+        // iOS 1.0.x 独立序列，不参与 Mac 版本/重复/顺序校验。
+        if header.contains("(iOS)") { continue }
         orderedEvoVersions.append(version)
 
         // Mac 0.x 系列版本节必须全局唯一。v0.5.70/71/102/106/107/230/232
@@ -50,6 +52,13 @@ func runEvolutionLogSync(_ t: TestRunner) {
         guard parts.count == 3 else { return false }
         return (parts[0], parts[1], parts[2]) >= (0, 5, 5)
     }
+
+    let rootPath = FileManager.default.currentDirectoryPath
+    let iosLog = (try? String(contentsOfFile: rootPath + "/evolution/ios/EVOLUTION.md", encoding: .utf8)) ?? ""
+    t.expect(!evo.contains("## v1."), "evolution-sync: 主日志不得含 iOS 版本节")
+    t.expect(evo.contains("## iOS 版本序列"), "evolution-sync: 主日志必须指向 iOS 独立序列")
+    t.expect(iosLog.contains("## v1.0.0 (iOS)"), "evolution-sync: iOS 日志含 v1.0.0")
+    t.expect(iosLog.contains("## v1.0.1 (iOS)"), "evolution-sync: iOS 日志含 v1.0.1")
 
     t.expect(!evoVersions.isEmpty, "evolution-sync: EVOLUTION.md 解析到至少 1 个版本")
     t.expect(!viewVersions.isEmpty, "evolution-sync: makeHistory 解析到至少 1 个版本")
