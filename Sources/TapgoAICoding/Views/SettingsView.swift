@@ -645,10 +645,10 @@ struct SettingsView: View {
                     Divider()
 
                     settingsControlRow(
-                        title: "显示工作过程",
-                        description: "关闭后隐藏运行中和历史回合的过程入口、清单与工具详情；回复、必要确认和修改结果继续显示。"
+                        title: "工作过程默认展开",
+                        description: "关闭(推荐,对齐 Codex)时,回合只显示一行「用时/已处理」摘要,点箭头才展开思考与工具细节;开启后每个回合的过程细节默认全部展开,消息会明显变长。"
                     ) {
-                        Toggle("显示工作过程", isOn: $showWorkProcess)
+                        Toggle("工作过程默认展开", isOn: $showWorkProcess)
                             .labelsHidden()
                             .toggleStyle(.switch)
                     }

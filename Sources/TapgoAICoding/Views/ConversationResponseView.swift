@@ -279,16 +279,21 @@ private struct ConversationActivityRow: View {
 
 /// v0.5.188: 工作过程中的 assistantMessage 紧凑单行 + 可点击展开
 /// 完整 Markdown，跟 ConversationActivityRow 保持一致的交互样式。
-/// v0.5.253: 对齐 Codex —— 回合内的助手消息**也是正文**。
-/// 旧实现把它压成 12pt 单行截断 + 折叠箭头 + 展开后套一个背景框,
-/// 与 Codex 实机(过程消息与最终回复同为正常正文、无卡片)差异很大,
-/// 也是消息流"灰行+截断"观感的主因。现在直接以标准正文字号完整渲染。
+/// 回合内的助手过程消息。
+///
+/// v0.5.253 修掉了「压成 12pt 单行截断」的旧实现;
+/// v0.5.256 再补一层**视觉分层** —— 展开工作过程时,这些 agent 的
+/// 叙述性过程消息会与最终回复连续堆叠,若同样式会非常"费眼"。
+/// 现在过程消息用略小字号 + 次要透明度,最终回复保持 15pt 主色,
+/// 阅读时可以自然先抓结论、过程退到背景。
 private struct ConversationWorkAssistantRow: View {
     let text: String
     let running: Bool
 
     var body: some View {
         MarkdownMessageView(text, isStreaming: running)
+            .environment(\.conversationBodySize, 13.5)
+            .opacity(0.8)
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
