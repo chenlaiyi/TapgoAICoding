@@ -22,6 +22,8 @@
 # Remote lock (EVO-037): 跨机锁带 started 元数据，超过 EVOLVE_LOCK_TTL_SECONDS
 #   （默认 4h）的陈旧锁会被下一次 acquire 自动回收；--break-remote-lock 走
 #   reclaim（force-with-lease 覆盖），用于显式抢占仍在运行的锁。
+# Run cost (EVO-041): EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 优先;否则读 App 写的
+#   state/evolution_cost.json 取与上次发布记录的增量;都没有就留空(不估算)。
 # Runtime state schema (EVO-035): 预检后立即补齐/校验 state json/jsonl 的
 #   schemaVersion,发现未来版本以 13 退出;EVOLVE_SKIP_SCHEMA_CHECK=1 可跳过。
 #
@@ -169,6 +171,9 @@ NEW_VERSION=""
 WORKTREE_VERIFIED=""
 BENCHMARK_SCORE=""
 REMOTE_LOCK_SHA=""
+RUN_TOKENS=""
+RUN_COST=""
+RUN_COST_SOURCE=""
 REMOTE_LOCK_HELD=0
 ITER_BRANCH=""
 BRANCH_CREATED=0
@@ -271,7 +276,7 @@ write_state() {
   EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" EVO_CANARY="$CANARY_STATE" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   EVO_STARTED_AT="$PROGRESS_STARTED_AT" EVO_DURATION="$RUN_DURATION" \
-  EVO_TOKENS="${EVOLVE_RUN_TOKENS:-}" EVO_COST="${EVOLVE_RUN_COST_USD:-}" \
+  EVO_TOKENS="$RUN_TOKENS" EVO_COST="$RUN_COST" EVO_COST_SOURCE="$RUN_COST_SOURCE" \
   python3 - "$STATE_FILE" <<'PY'
 from __future__ import annotations
 
@@ -317,6 +322,7 @@ state = {
     "durationSeconds": _optional_int(os.environ.get("EVO_DURATION", "")),
     "tokens": _optional_int(os.environ.get("EVO_TOKENS", "")),
     "costUSD": _optional_float(os.environ.get("EVO_COST", "")),
+    "costSource": os.environ.get("EVO_COST_SOURCE") or None,
     "evolutionNote": os.environ["EVO_NOTE"],
     "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
     "threadToResume": None,
@@ -667,6 +673,49 @@ run_schema_gate() {
   echo "==> Runtime state schema: ok"
 }
 
+resolve_run_cost() {
+  RUN_TOKENS="${EVOLVE_RUN_TOKENS:-}"
+  RUN_COST="${EVOLVE_RUN_COST_USD:-}"
+  RUN_COST_SOURCE=""
+  if [[ -n "$RUN_TOKENS" || -n "$RUN_COST" ]]; then
+    RUN_COST_SOURCE="env"
+    return 0
+  fi
+  local snapshot="$STATE_DIR/evolution_cost.json"
+  [[ -f "$snapshot" ]] || return 0
+  local resolved
+  resolved="$(python3 - "$snapshot" "$STATE_FILE" <<'PYCOST'
+import json, sys
+snapshot_path, state_path = sys.argv[1], sys.argv[2]
+try:
+    snapshot = json.load(open(snapshot_path, encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(0)
+try:
+    current = int(snapshot.get("tokens") or 0)
+except (TypeError, ValueError):
+    raise SystemExit(0)
+previous = 0
+try:
+    previous = int(json.load(open(state_path, encoding="utf-8")).get("tokens") or 0)
+except (OSError, json.JSONDecodeError, TypeError, ValueError):
+    previous = 0
+if previous > current:
+    previous = 0
+delta = max(0, current - previous)
+if delta <= 0:
+    raise SystemExit(0)
+cost = snapshot.get("costUSD")
+print("%d %s" % (delta, "" if cost is None else cost))
+PYCOST
+)" || resolved=""
+  if [[ -n "$resolved" ]]; then
+    RUN_TOKENS="${resolved%% *}"
+    RUN_COST="${resolved#* }"
+    RUN_COST_SOURCE="app-snapshot-delta"
+  fi
+}
+
 # ---------- 0. Preflight: clean tree + no in-flight git operation ----------
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
   if [[ -f "$GIT_DIR_REAL/$marker" ]]; then
@@ -746,6 +795,7 @@ if [[ "$RESUME" == "1" ]]; then
   if ! run_schema_gate; then
     exit 13
   fi
+  resolve_run_cost
   write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
   publish_tail "$RESUME_STAGE"
   archive_state_history
@@ -779,6 +829,12 @@ fi
 # ---------- 1c. Runtime state schema gate (EVO-035) ----------
 if ! run_schema_gate; then
   exit 13
+fi
+
+# ---------- 1d. 单轮成本归因 (EVO-041) ----------
+resolve_run_cost
+if [[ -n "$RUN_COST_SOURCE" ]]; then
+  echo "==> Run cost source: ${RUN_COST_SOURCE} tokens=${RUN_TOKENS:-n/a} costUSD=${RUN_COST:-n/a}"
 fi
 
 if git rev-parse -q --verify "refs/tags/v${NEW_VERSION}" >/dev/null; then

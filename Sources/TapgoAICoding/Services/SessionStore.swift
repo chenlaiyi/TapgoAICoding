@@ -128,6 +128,10 @@ final class SessionStore: ObservableObject {
     /// Mirror of persisted threads (live turns in-memory only).
     @Published private(set) var liveThreads: [TapgoCore.Thread] = []
 
+    /// EVO-041：自进化会话成本快照的写入节流状态。
+    private var lastEvolutionCostTokens: Int?
+    private var lastEvolutionCostWriteAt: Date?
+
     /// composer 底栏与状态快照展示的模型 = 当前选中的模型
     /// （切模型对新建会话生效，进行中的会话保持创建时的模型）。
     /// 当前模型 API slug（额度查询、快照等按它路由）。
@@ -1901,12 +1905,53 @@ final class SessionStore: ObservableObject {
         // contract and `ExecEvent.isPersistenceTerminal` for which
         // events bypass debouncing. v0.5.70.
         threads.scheduleSave(liveThreads[threadIdx], immediate: event.isPersistenceTerminal)
+        if Self.eventCarriesUsage(event) {
+            persistEvolutionCostIfNeeded(threadId: threadId)
+        }
         switch event {
         case .commandCompleted, .fileChange, .planUpdated:
             scheduleWorktreeStatsRefresh(threadId: threadId, turnId: turnId)
         default:
             break
         }
+    }
+
+    /// 事件是否携带 token 用量（只有这些事件值得落一次成本快照）。
+    private static func eventCarriesUsage(_ event: ExecEvent) -> Bool {
+        switch event {
+        case .turnCompleted, .tokenUsageUpdated:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// EVO-041：把自进化会话的累计 token 用量写进 `state/evolution_cost.json`。
+    ///
+    /// 只对自进化线程（`evolutionMode` / `evo-` 前缀）生效；同一 token 值不重复写，
+    /// 5 秒内且增量不足 1000 也跳过，避免 live context tick 造成磁盘抖动。
+    /// 写失败一律忽略——成本归属不能影响会话主流程。
+    private func persistEvolutionCostIfNeeded(threadId: String) {
+        guard let idx = liveThreads.firstIndex(where: { $0.id == threadId }) else { return }
+        let thread = liveThreads[idx]
+        guard thread.mode == TapgoCore.Thread.evolutionMode || thread.id.hasPrefix("evo-") else { return }
+        let tokens = thread.usageTotal
+        guard tokens > 0 else { return }
+        if let last = lastEvolutionCostTokens, last == tokens { return }
+        let now = Date()
+        if let lastWrite = lastEvolutionCostWriteAt,
+           now.timeIntervalSince(lastWrite) < 5,
+           tokens - (lastEvolutionCostTokens ?? 0) < 1000 {
+            return
+        }
+        let written = EvolutionCostSnapshot.write(
+            tokens: tokens,
+            threadId: thread.id,
+            stateDirectory: EvolutionCostSnapshot.stateDirectory()
+        )
+        guard written != nil else { return }
+        lastEvolutionCostTokens = tokens
+        lastEvolutionCostWriteAt = now
     }
 
     private func scheduleWorktreeStatsRefresh(threadId: String, turnId: String) {

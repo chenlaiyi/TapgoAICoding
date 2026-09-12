@@ -544,5 +544,37 @@ assert_json "$BASE/s29-state/evolution_state.json" 'd["status"] == "published"' 
 assert_grep "$BASE/s29.log" "STALE RECLAIMED" "s29 auto-reclaim surfaced"
 assert_eq "$(git -C "$BASE/s29-origin.git" branch --list evolution-lock | wc -l | tr -d ' ')" 0 "s29 lock released after run"
 
+# ---------- S30: App 快照 → 单轮 token 增量归因（EVO-041）----------
+R30="$BASE/s30"; make_repo "$R30"
+mkdir -p "$BASE/s30-state"
+printf '%s\n' '{"schemaVersion":4,"status":"published","version":"0.5.1","tokens":1200}' \
+  > "$BASE/s30-state/evolution_state.json"
+printf '%s\n' '{"schemaVersion":1,"threadId":"evo-test","tokens":5000,"updatedAt":"2026-09-13T00:00:00Z"}' \
+  > "$BASE/s30-state/evolution_cost.json"
+run_evolve "$R30" "$BASE/s30-state" "$BASE/s30.log" --paths scripts patch "s30" "s30" --next n
+assert_json "$BASE/s30-state/evolution_state.json" 'd["tokens"] == 3800' "s30 records snapshot delta"
+assert_json "$BASE/s30-state/evolution_state.json" 'd["costSource"] == "app-snapshot-delta"' "s30 records cost source"
+assert_grep "$BASE/s30.log" "Run cost source: app-snapshot-delta" "s30 logs cost source"
+
+# ---------- S31: 快照未更新 → 不归因（不编造 0）----------
+R31="$BASE/s31"; make_repo "$R31"
+mkdir -p "$BASE/s31-state"
+printf '%s\n' '{"schemaVersion":4,"status":"published","version":"0.5.1","tokens":5000}' \
+  > "$BASE/s31-state/evolution_state.json"
+printf '%s\n' '{"schemaVersion":1,"threadId":"evo-test","tokens":5000,"updatedAt":"2026-09-13T00:00:00Z"}' \
+  > "$BASE/s31-state/evolution_cost.json"
+run_evolve "$R31" "$BASE/s31-state" "$BASE/s31.log" --paths scripts patch "s31" "s31" --next n
+assert_json "$BASE/s31-state/evolution_state.json" 'd["tokens"] is None' "s31 no attribution when snapshot unchanged"
+assert_json "$BASE/s31-state/evolution_state.json" 'd["costSource"] is None' "s31 cost source stays empty"
+
+# ---------- S32: 环境变量优先于 App 快照 ----------
+R32="$BASE/s32"; make_repo "$R32"
+mkdir -p "$BASE/s32-state"
+printf '%s\n' '{"schemaVersion":1,"threadId":"evo-test","tokens":5000,"updatedAt":"2026-09-13T00:00:00Z"}' \
+  > "$BASE/s32-state/evolution_cost.json"
+EVOLVE_RUN_TOKENS=777 run_evolve "$R32" "$BASE/s32-state" "$BASE/s32.log" --paths scripts patch "s32" "s32" --next n
+assert_json "$BASE/s32-state/evolution_state.json" 'd["tokens"] == 777' "s32 env tokens win"
+assert_json "$BASE/s32-state/evolution_state.json" 'd["costSource"] == "env"' "s32 records env source"
+
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

@@ -67,7 +67,7 @@
 - [x] **EVO-038 反馈闭环转化率**：新增 evolution-feedback-funnel.py（drafts→registered→shipped 转化率 + 等待时长 + 陈旧告警），registry 升级 v2 补 `registeredAt/origin/fixedIn` 真实 provenance（v0.5.294）
 - [x] **EVO-039 三机界面自动断言**：新增 evolution-ui-assert.sh（H5 /api/state 版本 + 骨架 + 资源标记 + 鉴权），deploy-fleet 远端经 ssh 管道执行、本地仅在重启后断言（v0.5.295）
 - [x] **EVO-040 依赖路径探测**：新增 evolution-deps.sh（SDK 偏好/回退链 + codex 候选链），13 处 SDK 硬编码与 3 处 codex 硬编码收敛到单点真源（v0.5.296）
-- [ ] **EVO-041 自进化成本归属**：App 把当前会话的 token/成本传给 evolve.sh（`EVOLVE_RUN_TOKENS`/`EVOLVE_RUN_COST_USD`），让单轮成本指标有真实数据
+- [x] **EVO-041 自进化成本归属**：App 把自进化会话的累计 token 写进 `state/evolution_cost.json`，evolve.sh 取增量并把来源记进 `costSource`（v0.5.297）
 - [ ] **EVO-042 反馈漏斗接入看板**：把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
 
 ## P9 — 待外部输入

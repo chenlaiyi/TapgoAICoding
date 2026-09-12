@@ -76,6 +76,7 @@ let allSections: [String] = [
     "Evolution: backlog parsing + prompt injection",
     "Evolution: metrics aggregation",
     "Evolution: progress protocol",
+    "Evolution: cost attribution",
     "TapgoModel: catalog & provider mapping",
     "GLMQuota: quota/limit 解析与映射",
     "DeepSeekQuota: balance 解析与映射",
@@ -388,6 +389,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "Evolution: progress protocol") {
             runEvolutionProgress(runner)
+        }
+        await runIfInScope(runner, "Evolution: cost attribution") {
+            runEvolutionCost(runner)
         }
         await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
             runModelCatalog(runner)
