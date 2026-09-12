@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.268 — feat(evolution): 自改门禁
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.268`)_
+**Tag**: v0.5.268
+**Test status**: — 3212 passed, 0 failed —
+**Changed**:
+- 新增受保护路径清单与内容绑定审批 token
+- evolve.sh --approve-protected 门禁与失败注入 59 项
+
+受保护路径变更需精确内容 token 审批,未审批拒绝启动
+**Why**: agent 可在同一轮修改 evolve.sh/测试/AGENTS.md 绕过门禁,缺少可见审批点
+**Next**: EVO-013 iOS 版本序列分离: EVOLUTION.md 中 iOS 1.0.x 独立分区，消除与 Mac 0.x 的历史重复歧义
+
+
 ## v0.5.267 — feat(evolution): 运行态进度与 diff 审阅
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.267`)_

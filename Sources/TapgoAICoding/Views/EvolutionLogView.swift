@@ -333,6 +333,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.268", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.268",
+                    summary: "自改门禁:受保护路径变更需基于精确内容的审批 token,未审批拒绝启动。",
+                    changes: [
+                        "新增 evolution/protected-paths.json 与 scripts/evolution-protect.py:status/token/check 三个子命令;覆盖 evolve.sh、测试、健康检查、部署、记录工具与 AGENTS.md。",
+                        "审批 token = 受保护路径当前内容排序哈希前 16 位;任何后续改动都会使 token 失效,防止审批后偷换内容。",
+                        "evolve.sh 新增 --approve-protected;受保护变更未审批时退出码 9,审批通过后把 protectedGate 写入 evolution_state.json。",
+                        "dry-run 会显示 PROTECT blocked 与所需 token,但保持零修改。",
+                        "新增 5 项 protect 回归;失败注入矩阵扩到 59 项,包含未审批拒绝与审批通过两条路径。",
+                        "EVO-012 标记完成;当前 backlog 顶部为 EVO-013(iOS 版本序列分离)。"
+                    ],
+                    why: "此前 agent 可以在同一轮修改 evolve.sh/测试/AGENTS.md 来绕过门禁,没有可见的审批点。EVO-012 让自改门禁成为显式、可审计、内容绑定的操作。",
+                    next: "EVO-013 iOS 版本序列分离:EVOLUTION.md 中 iOS 1.0.x 独立分区,消除与 Mac 0.x 的重复歧义。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.267", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.267",
                     summary: "自进化进度 UI:9 阶段进度、停止、Token/用时与 diff 审阅接入会话横幅。",
                     changes: [

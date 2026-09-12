@@ -1,0 +1,16 @@
+{
+  "version": "0.5.268",
+  "tag": "v0.5.268",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 自改门禁",
+  "changes": [
+    "新增受保护路径清单与内容绑定审批 token",
+    "evolve.sh --approve-protected 门禁与失败注入 59 项"
+  ],
+  "details": "受保护路径变更需精确内容 token 审批,未审批拒绝启动",
+  "why": "agent 可在同一轮修改 evolve.sh/测试/AGENTS.md 绕过门禁,缺少可见审批点",
+  "next": "EVO-013 iOS 版本序列分离: EVOLUTION.md 中 iOS 1.0.x 独立分区，消除与 Mac 0.x 的历史重复歧义",
+  "testStatus": "— 3212 passed, 0 failed —",
+  "commitSha": null
+}

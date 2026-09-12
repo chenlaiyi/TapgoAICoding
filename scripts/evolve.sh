@@ -45,6 +45,7 @@ RECORDS_TOOL="${EVOLVE_RECORDS_TOOL:-$ROOT/scripts/evolution-records.py}"
 BACKLOG_TOOL="${EVOLVE_BACKLOG_TOOL:-$ROOT/scripts/evolution-backlog.py}"
 HEALTH_SCRIPT="${EVOLVE_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
 TEST_REPORT_TOOL="${EVOLVE_TEST_REPORT_TOOL:-$ROOT/scripts/test-failure-report.py}"
+PROTECT_TOOL="${EVOLVE_PROTECT_TOOL:-$ROOT/scripts/evolution-protect.py}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -52,7 +53,7 @@ FLEET_STATUS="skipped"
 # ---------- Args ----------
 MODE="local"
 DRY_RUN=""
-BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""; WHY_ACTION=""
+BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""; WHY_ACTION=""; PROTECT_APPROVAL=""
 ALLOWED_PATHS=()
 CHANGES=()
 while [[ "$#" -gt 0 ]]; do
@@ -62,6 +63,10 @@ while [[ "$#" -gt 0 ]]; do
     --dry-run) DRY_RUN="1" ;;
     --next)    NEXT_ACTION="${2:-}"; shift ;;
     --why)     WHY_ACTION="${2:-}"; shift ;;
+    --approve-protected)
+      [[ -n "${2:-}" ]] || { echo "ERROR: --approve-protected needs a token" >&2; exit 2; }
+      PROTECT_APPROVAL="$2"; shift
+      ;;
     --change)
       [[ -n "${2:-}" ]] || { echo "ERROR: --change needs a value" >&2; exit 2; }
       CHANGES+=("$2")
@@ -255,6 +260,27 @@ if git rev-parse -q --verify "refs/tags/v${NEW_VERSION}" >/dev/null; then
   exit 3
 fi
 
+# ---------- Protected-path gate ----------
+PROTECT_STATUS="clean"
+if [[ -n "$LATEST_TAG" ]]; then
+  PROTECT_JSON="$(python3 "$PROTECT_TOOL" status --base "$LATEST_TAG" 2>/dev/null || echo '{}')"
+  PROTECT_CHANGED="$(python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("changed", [])))' <<< "$PROTECT_JSON" 2>/dev/null || echo 0)"
+  PROTECT_TOKEN="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("token", ""))' <<< "$PROTECT_JSON" 2>/dev/null || true)"
+  if [[ "$PROTECT_CHANGED" != "0" ]]; then
+    if [[ -n "$PROTECT_APPROVAL" ]] && python3 "$PROTECT_TOOL" check --base "$LATEST_TAG" --approve "$PROTECT_APPROVAL" >/dev/null 2>&1; then
+      PROTECT_STATUS="approved:${PROTECT_APPROVAL}"
+      echo "==> Protected paths approved (${PROTECT_CHANGED} file(s), token=${PROTECT_APPROVAL})"
+    elif [[ -n "$DRY_RUN" ]]; then
+      PROTECT_STATUS="blocked:${PROTECT_TOKEN}"
+      echo "==> NOTE: dry-run — protected paths changed; real run needs --approve-protected ${PROTECT_TOKEN}" >&2
+    else
+      echo "==> Protected path changes require explicit approval:" >&2
+      python3 "$PROTECT_TOOL" check --base "$LATEST_TAG" --approve "" >&2 || true
+      exit 9
+    fi
+  fi
+fi
+
 UPSTREAM_HEAD="$(git rev-parse "${UPSTREAM_REMOTE}/main" 2>/dev/null || true)"
 if [[ "$MODE" == "publish" ]]; then
   if [[ -z "$UPSTREAM_HEAD" || "$START_HEAD" != "$UPSTREAM_HEAD" ]]; then
@@ -277,6 +303,7 @@ if [[ -n "$DRY_RUN" ]]; then
   echo "  version:   ${NEW_VERSION}"
   echo "  commit:    ${MSG} (v${NEW_VERSION})"
   echo "  branch:    codex/evolution-v${NEW_VERSION} (${BRANCH} only fast-forward)"
+  echo "  protect:   ${PROTECT_STATUS}"
   echo "  steps:     lock → prepend EVOLUTION.md → tests → build .app → notes"
   echo "             → git add <allowlist> → commit + tag"
   if [[ "$MODE" == "publish" ]]; then
@@ -501,6 +528,7 @@ write_state() {
   EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
   EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
+  EVO_PROTECT="$PROTECT_STATUS" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -521,6 +549,7 @@ state = {
     "iterationBranch": os.environ.get("EVO_ITER_BRANCH", ""),
     "healthCheck": os.environ.get("EVO_HEALTH", ""),
     "fleetDeploy": os.environ.get("EVO_FLEET", ""),
+    "protectedGate": os.environ.get("EVO_PROTECT", ""),
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),

@@ -324,6 +324,7 @@ TapgoAICoding/
 - App 内看板：「自进化日志」顶部展示成功率、迭代/失败数、中位周期、backlog 与最近 10 次周期迷你趋势。
 - 测试 flaky 追踪：每次测试写入 `state/test_run_history.jsonl`；失败时自动重跑失败 section，区分 `environmentFailures` 与 `realFailures`，并可用 `scripts/test-failure-report.py flaky` 查看。
 - 运行态进度：`evolve.sh` 写 `state/evolution_progress.json`（9 阶段）；会话横幅显示进度条、Token/用时，支持停止请求与上一 tag → 当前的 diff 审阅。
+- 自改门禁：`evolution/protected-paths.json` 定义受保护路径；变更 evolve.sh/测试/AGENTS.md 等必须携带精确内容 token（`--approve-protected`），否则拒绝启动并写入 `protectedGate` 状态。
 - 待办单一入口：`evolution/BACKLOG.md`（EVO-001..014），每轮完成后更新状态。
 - 选点闭环：`scripts/evolution-backlog.py top` 取最高优先级未完成项；App 横幅显示「下一项」并注入 kickoff prompt，`evolve.sh` 未显式传 `--next` 时自动写入记录。
 

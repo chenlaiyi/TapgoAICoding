@@ -38,7 +38,9 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/tapgo-repo-slug.sh" "$dir/scripts/tapgo-repo-slug.sh"
   cp "$SOURCE_ROOT/scripts/evolution-backlog.py" "$dir/scripts/evolution-backlog.py"
   cp "$SOURCE_ROOT/scripts/test-failure-report.py" "$dir/scripts/test-failure-report.py"
-  chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py"
+  cp "$SOURCE_ROOT/scripts/evolution-protect.py" "$dir/scripts/evolution-protect.py"
+  cp "$SOURCE_ROOT/evolution/protected-paths.json" "$dir/evolution/protected-paths.json"
+  chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py"
   cat > "$dir/evolution/BACKLOG.md" <<'MD'
 # Backlog
 ## P0
@@ -131,6 +133,7 @@ run_evolve() {
     export EVOLVE_RECORDS_TOOL="$repo/scripts/evolution-records.py"
     export EVOLVE_HEALTH_SCRIPT="$repo/scripts/health-check.sh"
     export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
+    export EVOLVE_PROTECT_TOOL="$repo/scripts/evolution-protect.py"
     export EVOLVE_TEST_HISTORY="$state/test_run_history.jsonl"
     export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
     export EVOLVE_STATE_DIR="$state"
@@ -253,6 +256,17 @@ set +e; run_evolve "$R11" "$BASE/s11-state" "$BASE/s11.log" --paths scripts patc
 assert_eq "$RC" 9 "s11 exit 9 on stop request"
 assert_eq "$(git -C "$R11" rev-list --count HEAD)" 1 "s11 no commit"
 assert_grep "$BASE/s11-state/evolution_progress.json" '"status": "stopped"' "s11 stopped status preserved"
+
+# ---------- S12: protected-path change requires approval ----------
+R12="$BASE/s12"; make_repo "$R12"
+printf '\n# protected change\n' >> "$R12/scripts/evolve.sh"
+set +e; run_evolve "$R12" "$BASE/s12-state" "$BASE/s12.log" --paths scripts patch "s12" "s12" --next n; RC=$?; set -e
+assert_eq "$RC" 9 "s12 exit 9 without protected approval"
+assert_eq "$(git -C "$R12" rev-list --count HEAD)" 1 "s12 no commit without approval"
+TOKEN12="$(python3 "$R12/scripts/evolution-protect.py" --root "$R12" token --base v0.5.1)"
+run_evolve "$R12" "$BASE/s12-state" "$BASE/s12.log" --approve-protected "$TOKEN12" --paths scripts patch "s12" "s12" --next n
+assert_eq "$(git -C "$R12" rev-list --count HEAD)" 2 "s12 approved protected change committed"
+assert_json "$BASE/s12-state/evolution_state.json" 'd["protectedGate"] == "approved:" + "'"$TOKEN12"'"' "s12 state records approval"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

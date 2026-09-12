@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "paths": [
+    "AGENTS.md",
+    "scripts/evolve.sh",
+    "scripts/health-check.sh",
+    "scripts/deploy-fleet.sh",
+    "scripts/evolution-lib.sh",
+    "scripts/evolution-backlog.py",
+    "scripts/evolution-metrics.py",
+    "scripts/evolution-records.py",
+    "scripts/evolution-protect.py",
+    "scripts/test-failure-report.py",
+    "scripts/tests/**"
+  ]
+}
