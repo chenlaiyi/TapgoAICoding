@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.266 — feat(evolution): 测试 flaky 追踪
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.266`)_
+**Tag**: v0.5.266
+**Test status**: — 3197 passed, 0 failed —
+**Changed**:
+- 新增失败解析/重跑/分类/运行历史工具链
+- 失败注入扩到 50 项并验证真实回归分类
+
+失败 section 自动重跑并分类环境/真实回归,运行历史永久留痕
+**Why**: 测试失败只有一句 TESTS FAILED,失败用例、环境因素与重跑结果全部丢失,无法区分 flaky/环境/真实回归
+**Next**: EVO-011 自进化进度 UI: 阶段进度（核对→实现→测试→构建→发布）、停止、diff 审阅、成本/token
+
+
 ## v0.5.265 — feat(evolution): 日志页指标看板
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.265`)_

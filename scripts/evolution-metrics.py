@@ -59,7 +59,11 @@ def parse_passed(value: str) -> int:
     return int(match.group(1)) if match else 0
 
 
-def collect_metrics(root: Path, history_path: Path) -> dict:
+def collect_test_runs(path: Path) -> list[dict]:
+    return load_history(path)
+
+
+def collect_metrics(root: Path, history_path: Path, test_history_path: Path | None = None) -> dict:
     records = load_records(root)
     history = load_history(history_path)
 
@@ -98,6 +102,15 @@ def collect_metrics(root: Path, history_path: Path) -> dict:
             test_total += passed
             test_versions += 1
 
+    test_runs = collect_test_runs(test_history_path) if test_history_path else []
+    flaky_sections = set()
+    for record in test_runs:
+        failed_sections = {item.get("section") for item in record.get("failedSections", [])}
+        for rerun in record.get("reruns", []):
+            if rerun.get("section") in failed_sections and rerun.get("passed"):
+                flaky_sections.add(rerun.get("section"))
+    last_test = test_runs[-1] if test_runs else {}
+
     backlog_path = root / "evolution" / "BACKLOG.md"
     backlog_text = backlog_path.read_text(encoding="utf-8") if backlog_path.exists() else ""
     open_backlog = len(re.findall(r"^- \[ \] ", backlog_text, re.M))
@@ -123,6 +136,12 @@ def collect_metrics(root: Path, history_path: Path) -> dict:
         "testVersions": test_versions,
         "openBacklog": open_backlog,
         "doneBacklog": done_backlog,
+        "testRuns": len(test_runs),
+        "lastTestStatus": last_test.get("status"),
+        "flakyCount": len(flaky_sections),
+        "flakySections": sorted(flaky_sections),
+        "lastEnvironmentFailures": last_test.get("environmentFailures", 0),
+        "lastRealFailures": last_test.get("realFailures", 0),
     }
 
 
@@ -130,6 +149,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=None)
     parser.add_argument("--history", default=None)
+    parser.add_argument("--test-history", default=None)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -137,7 +157,10 @@ def main() -> int:
     history_path = Path(args.history).expanduser() if args.history else (
         Path.home() / "Library" / "Application Support" / "Tapgo AICoding" / "state" / "evolution_state_history.jsonl"
     )
-    metrics = collect_metrics(root, history_path)
+    test_history_path = Path(args.test_history).expanduser() if args.test_history else (
+        history_path.parent / "test_run_history.jsonl"
+    )
+    metrics = collect_metrics(root, history_path, test_history_path)
 
     if args.json:
         print(json.dumps(metrics, ensure_ascii=False, indent=2))
@@ -159,6 +182,8 @@ def main() -> int:
     print(f"median cycle:      {cycle_text}")
     print(f"tests (last-state): {metrics['testPassedTotal']} across {metrics['testVersions']} versions")
     print(f"backlog:           {metrics['openBacklog']} open / {metrics['doneBacklog']} done")
+    print(f"test runs:         {metrics['testRuns']} (last {metrics['lastTestStatus'] or 'n/a'})")
+    print(f"flaky sections:    {metrics['flakyCount']}")
     return 0
 
 

@@ -1,0 +1,16 @@
+{
+  "version": "0.5.266",
+  "tag": "v0.5.266",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 测试 flaky 追踪",
+  "changes": [
+    "新增失败解析/重跑/分类/运行历史工具链",
+    "失败注入扩到 50 项并验证真实回归分类"
+  ],
+  "details": "失败 section 自动重跑并分类环境/真实回归,运行历史永久留痕",
+  "why": "测试失败只有一句 TESTS FAILED,失败用例、环境因素与重跑结果全部丢失,无法区分 flaky/环境/真实回归",
+  "next": "EVO-011 自进化进度 UI: 阶段进度（核对→实现→测试→构建→发布）、停止、diff 审阅、成本/token",
+  "testStatus": "— 3197 passed, 0 failed —",
+  "commitSha": null
+}

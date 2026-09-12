@@ -333,6 +333,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.266", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.266",
+                    summary: "测试 flaky 追踪:失败 section 自动重跑,环境失败与真实回归分离并永久留痕。",
+                    changes: [
+                        "新增 scripts/test-failure-report.py:parse 解析 TapgoTests 的 passed/failed、[FAIL] section、✗ 用例与 file:line;record 追加运行历史;flaky 汇总重跑后恢复的 section。",
+                        "失败分类:auth.json/sshFailed/超时/连接拒绝等归为 environment,其余归为 real;重复失败保留原始证据。",
+                        "evolve.sh 失败分支自动重跑最多 3 个失败 section(--filter),把重跑结果写入 test_run_history.jsonl 后再回滚;成功分支也记录一条 pass。",
+                        "evolution-metrics.py 新增 testRuns/lastTestStatus/flakyCount/flakySections/lastEnvironmentFailures/lastRealFailures 字段。",
+                        "新增 8 项 test-failure-report 回归;失败注入矩阵扩到 50 项,验证失败记录、真实回归分类与成功运行留痕。",
+                        "EVO-010 标记完成;当前 backlog 顶部为 EVO-011(自进化进度 UI)。"
+                    ],
+                    why: "此前测试失败只有一句 TESTS FAILED,失败用例名、环境因素与重跑结果全部丢失;无法判断是 flaky、环境问题还是真实回归。EVO-010 把失败证据结构化留痕。",
+                    next: "EVO-011 自进化进度 UI:阶段进度(核对→实现→测试→构建→发布)、停止、diff 审阅与成本/token 展示。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.265", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.265",
                     summary: "指标看板:成功率/失败/周期趋势/backlog 接入日志页,Swift 与 CLI 同源计算。",
                     changes: [

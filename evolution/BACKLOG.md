@@ -16,12 +16,12 @@
 - [x] **EVO-007 发布前健康门禁**：Bundle 版本/结构/签名 6 项检查，失败停在 commit 前并回滚（v0.5.264）
 - [x] **EVO-008 三机部署纳入闭环**：publish 成功后自动 `deploy-fleet.sh` 并回读版本/PID，失败写 `health_failed`（v0.5.264）
 - [x] **EVO-009 迭代指标看板**：成功率、失败/回滚、周期趋势与 backlog 接入 `EvolutionLogView`（v0.5.265）
-- [ ] **EVO-010 测试 flaky 追踪**：记录失败用例名与重跑结果，区分环境失败与真实回归
+- [x] **EVO-010 测试 flaky 追踪**：解析失败 section/用例，自动重跑失败 section，区分环境失败与真实回归并写运行历史（v0.5.266）
 
 ## P2 — 体验与安全
 
-- [ ] **EVO-015 worktree 隔离**：分支隔离后的强化项，每轮在独立 git worktree 执行，主 checkout 零改动
 - [ ] **EVO-011 自进化进度 UI**：阶段进度（核对→实现→测试→构建→发布）、停止、diff 审阅、成本/token
 - [ ] **EVO-012 自改门禁**：受保护路径（evolve.sh/测试/AGENTS.md）checksum 与独立审批
 - [ ] **EVO-013 iOS 版本序列分离**：EVOLUTION.md 中 iOS 1.0.x 独立分区，消除与 Mac 0.x 的历史重复歧义
 - [ ] **EVO-014 旧日志归档**：把 v0.5.5 之前与 iOS 历史移入 `evolution/archive/`，主日志保持可读
+- [ ] **EVO-015 worktree 隔离**：分支隔离后的强化项，每轮在独立 git worktree 执行，主 checkout 零改动

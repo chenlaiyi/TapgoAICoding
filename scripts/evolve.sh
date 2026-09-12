@@ -44,6 +44,7 @@ RELEASE_SCRIPT="${EVOLVE_RELEASE_SCRIPT:-$ROOT/scripts/create-github-release-art
 RECORDS_TOOL="${EVOLVE_RECORDS_TOOL:-$ROOT/scripts/evolution-records.py}"
 BACKLOG_TOOL="${EVOLVE_BACKLOG_TOOL:-$ROOT/scripts/evolution-backlog.py}"
 HEALTH_SCRIPT="${EVOLVE_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
+TEST_REPORT_TOOL="${EVOLVE_TEST_REPORT_TOOL:-$ROOT/scripts/test-failure-report.py}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -105,6 +106,7 @@ PROJECT_YML="${ROOT}/AppBuilder/project.yml"
 EVOLUTION="${ROOT}/EVOLUTION.md"
 STATE_DIR="${EVOLVE_STATE_DIR:-$HOME/Library/Application Support/Tapgo AICoding/state}"
 STATE_FILE="${STATE_DIR}/evolution_state.json"
+TEST_HISTORY="${EVOLVE_TEST_HISTORY:-$STATE_DIR/test_run_history.jsonl}"
 NOTES_FILE=""
 NEW_VERSION=""
 ITER_BRANCH=""
@@ -301,8 +303,31 @@ fi
 echo "==> Running shell + Swift regression via ${TESTS_SCRIPT}"
 TEST_LOG="$(mktemp -t tapgo-evolve-tests.XXXXXX)"
 if ! env "${TEST_ENV[@]}" "$TESTS_SCRIPT" 2>&1 | tee "$TEST_LOG"; then
-  echo "TESTS FAILED — rolling back version edits" >&2
+  echo "TESTS FAILED — collecting failure evidence" >&2
+  PARSED="$(python3 "$TEST_REPORT_TOOL" parse --log "$TEST_LOG" 2>/dev/null || echo '{}')"
+  RERUN_ARGS=()
+  if [[ "${EVOLVE_SKIP_RERUN:-}" != "1" && -n "$PARSED" ]]; then
+    while IFS= read -r section; do
+      [[ -n "$section" ]] || continue
+      if env "${TEST_ENV[@]}" "$TESTS_SCRIPT" --filter "$section" >/dev/null 2>&1; then
+        RERUN_ARGS+=("$section" "1")
+      else
+        RERUN_ARGS+=("$section" "0")
+      fi
+    done < <(python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(s["section"] for s in d.get("failedSections", [])[:3]))' <<< "$PARSED" 2>/dev/null || true)
+  fi
+  RERUN_JSON="$(python3 - "${RERUN_ARGS[@]+"${RERUN_ARGS[@]}"}" <<'PY'
+import json, sys
+args = sys.argv[1:]
+print(json.dumps([{"section": args[i], "passed": args[i + 1] == "1"} for i in range(0, len(args), 2)], ensure_ascii=False))
+PY
+)"
+  python3 "$TEST_REPORT_TOOL" record --log "$TEST_LOG" --history "$TEST_HISTORY" \
+    --version "$NEW_VERSION" --status fail --reruns "$RERUN_JSON" >/dev/null 2>&1 || true
+  FLAKY_SUMMARY="$(python3 "$TEST_REPORT_TOOL" flaky --history "$TEST_HISTORY" 2>/dev/null || true)"
+  echo "==> Failure evidence: ${FLAKY_SUMMARY//$'\n'/ }" >&2
   rm -f "$TEST_LOG"
+  echo "TESTS FAILED — rolling back version edits" >&2
   exit 5
 fi
 TEST_LINE="$(grep -E '— [0-9]+ passed, [0-9]+ failed —' "$TEST_LOG" | tail -1 || true)"
@@ -310,6 +335,8 @@ if [[ -z "$TEST_LINE" ]]; then
   TEST_LINE="$(grep -E 'passed=[0-9]+ failed=[0-9]+' "$TEST_LOG" | tail -1 || true)"
 fi
 [[ -n "$TEST_LINE" ]] || TEST_LINE="see test log"
+python3 "$TEST_REPORT_TOOL" record --log "$TEST_LOG" --history "$TEST_HISTORY" \
+  --version "$NEW_VERSION" --status pass >/dev/null 2>&1 || true
 rm -f "$TEST_LOG"
 echo "==> Tests: ${TEST_LINE}"
 

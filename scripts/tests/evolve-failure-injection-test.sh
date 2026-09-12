@@ -37,7 +37,8 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/evolution-records.py" "$dir/scripts/evolution-records.py"
   cp "$SOURCE_ROOT/scripts/tapgo-repo-slug.sh" "$dir/scripts/tapgo-repo-slug.sh"
   cp "$SOURCE_ROOT/scripts/evolution-backlog.py" "$dir/scripts/evolution-backlog.py"
-  chmod +x "$dir/scripts/evolution-backlog.py"
+  cp "$SOURCE_ROOT/scripts/test-failure-report.py" "$dir/scripts/test-failure-report.py"
+  chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py"
   cat > "$dir/evolution/BACKLOG.md" <<'MD'
 # Backlog
 ## P0
@@ -67,8 +68,15 @@ PLIST
   cat > "$dir/scripts/tests/run-all.sh" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "${FAKE_TESTS_RC:-0}" != "0" ]]; then
+  echo "[run] fake regression [START]"
+  echo "  ✗ expected 1, got 0  (/tmp/FakeTests.swift:1)"
+  echo "[end] fake regression  [FAIL]  passed=0 failed=1"
+  echo "— 0 passed, 1 failed —"
+  exit 1
+fi
 echo "— 10 passed, 0 failed —"
-exit "${FAKE_TESTS_RC:-0}"
+exit 0
 FAKE
   cat > "$dir/scripts/build-app.sh" <<'FAKE'
 #!/usr/bin/env bash
@@ -122,6 +130,8 @@ run_evolve() {
     export EVOLVE_RELEASE_SCRIPT="$repo/scripts/create-github-release-artifacts.sh"
     export EVOLVE_RECORDS_TOOL="$repo/scripts/evolution-records.py"
     export EVOLVE_HEALTH_SCRIPT="$repo/scripts/health-check.sh"
+    export EVOLVE_TEST_REPORT_TOOL="$repo/scripts/test-failure-report.py"
+    export EVOLVE_TEST_HISTORY="$state/test_run_history.jsonl"
     export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
     export EVOLVE_STATE_DIR="$state"
     bash "$repo/scripts/evolve.sh" "$@"
@@ -144,6 +154,8 @@ assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R2
 assert_eq "$(grep -c '^## v0.5.2' "$R2/EVOLUTION.md" || true)" 0 "s2 EVOLUTION rolled back"
 assert_no_file "$R2/evolution/versions/v0.5.2.json" "s2 record removed"
 assert_eq "$(git -C "$R2" branch --list 'codex/evolution-v0.5.2' | wc -l | tr -d ' ')" 0 "s2 iteration branch removed"
+assert_grep "$BASE/s2-state/test_run_history.jsonl" '"status": "fail"' "s2 failure recorded"
+assert_grep "$BASE/s2-state/test_run_history.jsonl" '"realFailures": 1' "s2 real failure classified"
 
 # ---------- S3: build fails -> full rollback ----------
 R3="$BASE/s3"; make_repo "$R3"
@@ -170,6 +182,7 @@ assert_json "$BASE/s4-state/evolution_state.json" '"EVO-999" in d["nextActions"]
 assert_json "$BASE/s4-state/evolution_state.json" 'd["status"]' "s4 state status"
 assert_json "$BASE/s4-state/evolution_state.json" 'd["healthCheck"]' "s4 health passed"
 assert_json "$BASE/s4-state/evolution_state.json" 'd["fleetDeploy"]' "s4 fleet skipped locally"
+assert_grep "$BASE/s4-state/test_run_history.jsonl" '"status": "pass"' "s4 pass recorded"
 assert_grep "$R4/EVOLUTION.md" "## v0.5.2 — s4 message" "s4 rendered log"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R4/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s4 built app version"
 
