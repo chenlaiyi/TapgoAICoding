@@ -118,14 +118,14 @@ RECORD_STATUS="ok"; [[ "$FAILED" -eq 0 ]] || RECORD_STATUS="failed"
 
 python3 - "$HISTORY" "$RECORD_STATUS" "$DRILL_STATUS" "$DRILL_TAG" "$DRILL_REASON" \
   "$ARCHIVE_STATUS" "$ARCHIVE_MOVED" "$ARCHIVE_REASON" "$KEEP_DAYS" "$DURATION" \
-  "$RUN_DRILL" "$RUN_ARCHIVE" <<'PY'
+  "$RUN_DRILL" "$RUN_ARCHIVE" "$FULL_BUILD" <<'PY'
 from __future__ import annotations
 
 import datetime, json, os, sys
 
 (path, status, drill_status, drill_tag, drill_reason,
  archive_status, archive_moved, archive_reason, keep_days, duration,
- run_drill, run_archive) = sys.argv[1:13]
+ run_drill, run_archive, full_build) = sys.argv[1:14]
 
 def passed(value: str) -> bool | None:
     return True if value == "passed" else False if value == "failed" else None
@@ -141,6 +141,8 @@ record = {
         "passed": passed(drill_status),
         "tag": drill_tag or None,
         "reason": drill_reason or None,
+        # EVO-049：这次演练是否包含 clean-checkout 重建（月度任务用 --full-build）
+        "fullBuild": full_build == "1",
     },
     "archive": {
         "ran": run_archive == "1",

@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.308", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.308",
+                    summary: "月度维护验证可重建:演练额外做一次 clean-checkout 重编译。",
+                    changes: [
+                        "现状:过去 4 次回滚演练全是 fullBuild=False——只验证了归档能解包 + health-check + tag 工作树干净,从未验证过该 tag 现在是否还能从源码编译出来。",
+                        "月度 launchd 任务改为带 --full-build(plist 模板固化);维护脚本把 drill.fullBuild 写进维护历史,便于审计与指标展示。",
+                        "evolution-metrics 新增 lastRollbackDrillFullBuild,文本输出 rollback drill ... fullBuild=yes/no。",
+                        "真机实跑:./scripts/evolution-maintenance.sh --full-build 用时 109s 通过(drill v0.5.307),drill 历史 fullBuild=True、source=local-dist。",
+                        "重装 launchd 任务使月度执行带上新参数(已装 plist 参数为 script + --verbose + --full-build;重装会重置 runs 计数器,历史文件不受影响)。",
+                        "测试:维护回归 51→57 项(full-build 透传 + 历史留痕 + 浅层不传 + plist 固化),metrics 断言 27→28。"
+                    ],
+                    why: "「可回滚」如果只验证归档解压,遇到归档损坏或依赖/SDK 变化时才发现真相就太晚了;重建验证把这条底气变成每次月度维护的例行证据。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮候选:fixture 内真跑 evolve.sh --canary 全链路。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.307", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.307",
                     summary: "维护任务真实触发成功,默认告警分支补回归并实发一条测试通知。",
                     changes: [

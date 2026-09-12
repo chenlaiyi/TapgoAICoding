@@ -63,6 +63,7 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 - `scripts/evolution-preflight.sh` 是发布前环境预检（EVO-034）：工具链、SDK、磁盘、仓库布局、受保护清单、state 目录、origin 可达、HEAD==origin/main、gh 认证、三机 SSH、tag 冲突；失败以 12 退出且不改任何文件。
 - `evolve.sh` 在算出新版本号后立即跑预检（`EVOLVE_SKIP_PREFLIGHT=1` 可跳过，`EVOLVE_PREFLIGHT_SKIP_SSH=1` 只跳过三机连通性）；`--publish --resume` 同样先过预检（tag 用 `--expect-existing-tag`）。
 - 三机部署目标在 `scripts/fleet-hosts.sh` 维护唯一真源，`deploy-fleet.sh` 与预检共用，避免主机清单漂移。
+- 月度维护默认带 `--full-build`（EVO-049）：演练除了校验归档可解包 + health-check + tag 工作树干净，还会在 detached worktree 里做一次 `swift build -c release`——「可恢复」不只是归档能解压，还要证明该 tag 现在仍能从源码编译。维护历史写 `drill.fullBuild`，`evolution-metrics.py` 输出 `rollback drill: … fullBuild=yes/no`。
 - 月度维护触发与验证：`launchctl kickstart -k gui/$(id -u)/com.tapgo.aicoding.evolution-maintenance` 可手动跑一次（等价于每月 1 日 10:00 的定时任务）；验证三件事——`launchctl print` 的 `runs`/`last exit code`、`state/maintenance_history.jsonl` 新记录、`~/Library/Logs/TapgoAICoding/evolution-maintenance.log` 输出。
 - 维护告警链路：失败时 `evolution-maintenance.sh` 默认走 `osascript display notification`（可用 `EVOLVE_MAINTENANCE_NOTIFY` 换成 Bark/webhook 包装脚本）。回归里用假 osascript 校验 `display notification "<原因>" with title "Tapgo 自进化维护失败"` 的转义与内容。
 - 发布中断后用 `./scripts/evolve.sh --publish --resume` 续跑：从 `evolution_state.json` 的失败阶段（verify/push/release/deploy）继续，不重做版本号、记录、测试、构建与 commit；`--resume-from <stage>` 可显式指定入口。

@@ -75,6 +75,7 @@
 - [x] **EVO-046 canary 提升演练**：`canary-promote-test.sh`（31 项）在 fixture 仓库真跑「推 appcast → 解除 draft → 部署其余机器」，并把硬编码 `origin` 改为 `tapgo_upstream_remote`，失败分支显式分级（4 推送/5 draft/6 部署）（v0.5.304）
 - [x] **EVO-047 手机端指标补齐**：`evolution-metrics.py --out` 写 `state/evolution_metrics_summary.json`，手机端自进化卡片新增「周期 p95 / MTTR / 单轮时长 / tokens / 成本 / 本机 App 落后」一行（v0.5.305）
 - [x] **EVO-048 维护任务真实触发 + 通知链路**：launchd 任务从"从未跑过"变为真实执行（runs=1/exit 0/新历史），osascript 默认告警分支补回归（维护测试 51 项）（v0.5.307）
+- [x] **EVO-049 月度维护验证可重建**：月度 launchd 任务改为 `--full-build`（clean-checkout 重编译），维护历史记录 `drill.fullBuild`，指标新增 `lastRollbackDrillFullBuild`；真机实跑 109s 通过（v0.5.307）（v0.5.308）
 
 ## P9 — 待外部输入
 

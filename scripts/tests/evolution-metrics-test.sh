@@ -83,5 +83,6 @@ for key in ("p95CycleSeconds", "mttrMedianSeconds", "mttrSamples", "runDurationM
             "runTokensTotal", "runCostUSDTotal"):
     assert key in snap, (key, sorted(snap))
 assert "localApp" in snap and snap["localApp"]["stale"] is True, snap.get("localApp")
-print("evolution-metrics assertions: 27 passed, 0 failed")
+assert m["lastRollbackDrillFullBuild"] is None, m   # fixture 无 drill 历史
+print("evolution-metrics assertions: 28 passed, 0 failed")
 PY

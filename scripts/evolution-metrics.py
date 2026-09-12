@@ -284,6 +284,7 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "rollbackDrillRuns": len(rollback_runs),
         "lastRollbackDrillTag": rollback_runs[-1].get("tag") if rollback_runs else None,
         "lastRollbackDrillPassed": rollback_runs[-1].get("passed") if rollback_runs else None,
+        "lastRollbackDrillFullBuild": rollback_runs[-1].get("fullBuild") if rollback_runs else None,
         "localAppInstalled": (latest_entry.get("localApp") or {}).get("installed"),
         "localAppRunning": (latest_entry.get("localApp") or {}).get("running"),
         "localAppStale": (latest_entry.get("localApp") or {}).get("stale"),
@@ -381,7 +382,10 @@ def main() -> int:
     print(f"test runs:         {metrics['testRuns']} (last {metrics['lastTestStatus'] or 'n/a'})")
     print(f"flaky sections:    {metrics['flakyCount']}")
     print(f"model eval:        runs={metrics['modelEvalRuns']} latest={metrics['modelEvalLatestScore']} best={metrics['modelEvalBestScore']}")
-    print(f"rollback drill:    runs={metrics['rollbackDrillRuns']} last={metrics['lastRollbackDrillTag']} passed={metrics['lastRollbackDrillPassed']}")
+    full_build = metrics["lastRollbackDrillFullBuild"]
+    full_text = "" if full_build is None else (" fullBuild=" + ("yes" if full_build else "no"))
+    print(f"rollback drill:    runs={metrics['rollbackDrillRuns']} last={metrics['lastRollbackDrillTag']} "
+          f"passed={metrics['lastRollbackDrillPassed']}{full_text}")
     print(f"maintenance:       runs={metrics['maintenanceRuns']} last={metrics['lastMaintenanceStatus']} at={metrics['lastMaintenanceAt']}")
     if metrics["localAppRunning"] is not None:
         stale = metrics["localAppStale"]

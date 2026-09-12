@@ -1,5 +1,22 @@
 # Evolution Log
 
+## v0.5.308 — feat(evolution): 月度维护验证可重建
+**Date**: 2026-09-13
+**Commit**: _(see `git log -1 v0.5.308`)_
+**Tag**: v0.5.308
+**Test status**: — 3438 passed, 0 failed —
+**Changed**:
+- 现状：过去 4 次回滚演练全是 fullBuild=False——只验证了归档能解包 + health-check + tag 工作树干净，从未验证该 tag 现在是否还能从源码编译。
+- 月度 launchd 任务改为带 --full-build（plist 模板固化）；维护脚本把 drill.fullBuild 写进维护历史，便于审计与指标展示。
+- evolution-metrics 新增 lastRollbackDrillFullBuild，文本输出 rollback drill … fullBuild=yes/no。
+- 真机实跑：./scripts/evolution-maintenance.sh --full-build 用时 109s 通过（drill v0.5.307），drill 历史 fullBuild=True、source=local-dist。
+- 重装 launchd 任务使月度执行带上新参数；维护回归 51→57 项，metrics 断言 27→28。
+
+回滚演练增加 clean-checkout 重编译并留痕
+**Why**: 「可回滚」如果只验证归档解压，遇到归档损坏或依赖/SDK 变化时才发现真相就太晚了；重建验证把这条底气变成每次月度维护的例行证据。
+**Next**: EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+
+
 ## v0.5.307 — test(evolution): 维护任务真实触发与告警链路
 **Date**: 2026-09-13
 **Commit**: _(see `git log -1 v0.5.307`)_

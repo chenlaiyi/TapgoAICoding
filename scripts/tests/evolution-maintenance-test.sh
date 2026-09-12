@@ -210,5 +210,24 @@ expect_grep "osascript branch: invoked with display notification" "display notif
 expect_grep "osascript branch: carries reason" "remote tag v0.5.9 not found" "$OSA"
 expect_grep "osascript branch: carries title" "Tapgo 自进化维护失败" "$OSA"
 
+# 10. --full-build 透传 + 历史留痕（EVO-049：月度任务要证明 tag 能重建）
+HIST_FB="$TMP/state/fullbuild.jsonl"
+rm -f "$DRILL_CALLS"
+run_tool "$HIST_FB" "$TMP/fullbuild" --full-build --no-notify
+REC="$(last_record "$HIST_FB")"
+expect_eq "full-build: exit 0" "0" "$TOOL_RC"
+expect_grep "full-build: passed to drill" "--full-build" "$DRILL_CALLS"
+expect_eq "full-build: recorded in history" "true" "$(json_path "$REC" drill.fullBuild)"
+
+rm -f "$DRILL_CALLS"
+HIST_SHALLOW="$TMP/state/shallow.jsonl"
+run_tool "$HIST_SHALLOW" "$TMP/shallow" --no-notify
+REC="$(last_record "$HIST_SHALLOW")"
+expect_no_grep "shallow: no --full-build passed" "--full-build" "$DRILL_CALLS"
+expect_eq "shallow: recorded as false" "false" "$(json_path "$REC" drill.fullBuild)"
+
+# 月度 launchd 任务必须开 full-build（模板层面固化）
+expect_grep "plist: monthly job passes --full-build" "--full-build" "$ROOT/scripts/launchd/com.tapgo.aicoding.evolution-maintenance.plist"
+
 echo "evolution-maintenance tests: $PASSED passed, $FAILED failed"
 [[ "$FAILED" -eq 0 ]]

@@ -6,6 +6,8 @@
   行为：
     - StartCalendarInterval：每月 1 日 10:00 本地时间跑一次维护
       （回滚演练 + 指标归档，成功静默、失败才通知）。
+    - --full-build：月度演练额外做一次 clean-checkout 重建——"可恢复"不只是
+      归档能解压，还要证明该 tag 现在仍能从源码编译出来。
     - RunAtLoad=false：加载/重启不立即跑，避免集中在登录时执行重活。
     - 维护失败由脚本自行发通知（macOS 通知中心，可用
       EVOLVE_MAINTENANCE_NOTIFY 换成 Bark/webhook 包装脚本），
@@ -32,6 +34,7 @@
     <array>
         <string>__MAINTENANCE_SCRIPT__</string>
         <string>--verbose</string>
+        <string>--full-build</string>
     </array>
 
     <key>WorkingDirectory</key>
