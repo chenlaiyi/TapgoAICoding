@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.295", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.295",
+                    summary: "三机界面自动断言:版本到位之外,再证明界面真的可用且是新版本。",
+                    changes: [
+                        "新增 scripts/evolution-ui-assert.sh:不依赖 GUI 截图权限,用 App 自带 H5 服务断言——读 UserDefaults token、lsof 找 PID 监听端口、/api/state 的 appVersion 必须等于期望版本、/r/<token> 骨架引用 app.js、/r/<token>/assets/app.js 含 evolutionCard 标记、无 token 请求必须 403/404。",
+                        "退出码分级 21 无进程/22 无 token/23 无端口/24 状态接口失败/25 版本不一致/26 骨架异常/27 资源缺标记/28 鉴权回归,--json 可机读。",
+                        "deploy-fleet.sh 远端安装重启后用 ssh 管道执行该断言脚本(不依赖远端仓库版本),失败即部署失败;本地仅在 --restart-local 时断言,否则显式记 skipped;EVOLVE_SKIP_UI_ASSERT=1 可跳过。",
+                        "真实反例:本机 /Applications 已是 0.5.294 但运行中的进程仍是 0.5.256,断言以 25 精确报出「版本到位≠界面可用」,这正是此前只回读版本/PID 抓不到的失效模式。",
+                        "新增 23 项 UI 断言回归(真实 HTTP 桩服务覆盖 OK/版本不一致/缺标记/骨架异常/鉴权回归/无端口/无进程/无 token/参数校验),并在 jkmacmini 与 chenlaiyi-mbp 真机实测通过。",
+                        "顺手补一道测试门禁 scripts/tests/app-sources-parse-test.sh:swift run TapgoTests 不编译 App target,本轮就有一个被 ASCII 引号截断的字符串躲过全部单测、直到 build 阶段才炸掉整轮发布;现在用 1.7s 的 swiftc -parse 把它提前到测试阶段(含截断字符串的负向对照)。"
+                    ],
+                    why: "此前部署只回读版本与 PID:进程起来就算成功,界面渲染失败、H5 资源缺失或跑着旧进程都发现不了。EVO-039 把「版本到位」升级为「界面可用且是新版本」。",
+                    next: "EVO-040 依赖路径探测:SDK 与 codex/gh 等路径自动探测,替换硬编码。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.294", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.294",
                     summary: "反馈闭环转化率:drafts→registered→shipped 转化率与等待时长可量化。",
                     changes: [

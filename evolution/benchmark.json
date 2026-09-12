@@ -39,12 +39,12 @@
     {
       "id": "machinery-executable",
       "weight": 5,
-      "command": "test -x scripts/worktree-verify.sh && test -x scripts/preview-evolution-ui.sh && test -x scripts/deploy-fleet.sh && test -x scripts/test-failure-report.py && test -x scripts/evolution-schema.py"
+      "command": "test -x scripts/worktree-verify.sh && test -x scripts/preview-evolution-ui.sh && test -x scripts/deploy-fleet.sh && test -x scripts/test-failure-report.py && test -x scripts/evolution-schema.py && test -x scripts/evolution-ui-assert.sh"
     },
     {
       "id": "test-suite-present",
       "weight": 5,
-      "command": "test -x scripts/tests/run-all.sh && test -x scripts/tests/evolve-failure-injection-test.sh && test -x scripts/tests/evolution-ui-snapshot-test.sh"
+      "command": "test -x scripts/tests/run-all.sh && test -x scripts/tests/evolve-failure-injection-test.sh && test -x scripts/tests/evolution-ui-snapshot-test.sh && bash scripts/tests/evolution-ui-assert-test.sh >/dev/null && bash scripts/tests/app-sources-parse-test.sh >/dev/null"
     },
     {
       "id": "state-schema",

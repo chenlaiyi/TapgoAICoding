@@ -10,6 +10,11 @@
 # re-signs ad-hoc on the target when the original signature is not portable,
 # restarts the app, then reads back version + PID. It never builds or pulls.
 #
+# EVO-039：版本/PID 回读之后还会跑一遍界面断言（scripts/evolution-ui-assert.sh，
+# 经 ssh stdin 管道执行，不依赖远端仓库版本）：H5 /api/state 的 appVersion 必须
+# 等于部署版本、H5 骨架与 app.js 标记齐全、无 token 请求仍被拒绝。
+# 失败即视为部署失败（版本到位 ≠ 界面可用）。EVOLVE_SKIP_UI_ASSERT=1 可跳过。
+#
 # Usage:
 #   ./scripts/deploy-fleet.sh                 # version from AppBuilder/Info.plist
 #   ./scripts/deploy-fleet.sh 0.5.257
@@ -80,6 +85,16 @@ install_local() {
   echo "==> [local] installed version=${got} (restart deferred)"
   if [[ -n "$RESTART_LOCAL" ]]; then
     ./scripts/restart-and-resume.sh
+    if [[ "${EVOLVE_SKIP_UI_ASSERT:-}" == "1" ]]; then
+      echo "==> [local] UI assert skipped (EVOLVE_SKIP_UI_ASSERT=1)"
+    elif ! "$ROOT/scripts/evolution-ui-assert.sh" --expect-version "$VERSION"; then
+      echo "ERROR: [local] 界面断言失败：版本到位但界面不可用" >&2
+      return 1
+    else
+      echo "==> [local] UI assert passed (H5 state + assets + auth)"
+    fi
+  else
+    echo "==> [local] UI assert skipped（本地 App 未重启；加 --restart-local 才断言）"
   fi
 }
 
@@ -93,7 +108,7 @@ install_remote() {
   local remote_unpack="/tmp/tapgo-fleet-unpack-${VERSION}"
   echo "==> [${host}] installing v${VERSION}"
   if [[ -n "$DRY_RUN" ]]; then
-    echo "    [dry-run] copy bundle to ${host}${repo}, install /Applications, restart, verify"
+    echo "    [dry-run] copy bundle to ${host}${repo}, install /Applications, restart, verify version/PID + UI assert"
     rm -f "$zip"
     return 0
   fi
@@ -134,6 +149,18 @@ echo "PID=${PID:-none}"
 [[ -n "$PID" ]]
 REMOTE
   echo "==> [${host}] restart + version ${VERSION} verified"
+
+  if [[ "${EVOLVE_SKIP_UI_ASSERT:-}" == "1" ]]; then
+    echo "==> [${host}] UI assert skipped (EVOLVE_SKIP_UI_ASSERT=1)"
+    return 0
+  fi
+  # 把本机的最新断言脚本喂给远端 bash，避免依赖远端仓库版本。
+  if ! ssh -o BatchMode=yes "$host" bash -s -- --expect-version "$VERSION" \
+       < "$ROOT/scripts/evolution-ui-assert.sh"; then
+    echo "ERROR: [${host}] 界面断言失败：版本到位但界面不可用（H5 状态/资源/鉴权）" >&2
+    return 1
+  fi
+  echo "==> [${host}] UI assert passed (H5 state + assets + auth)"
 }
 
 [[ "$INCLUDE_LOCAL" -eq 1 ]] && install_local
