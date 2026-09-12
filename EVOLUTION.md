@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.277 — feat(evolution): 模型评测预算防线
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.277`)_
+**Tag**: v0.5.277
+**Test status**: — 3263 passed, 0 failed —
+**Changed**:
+- 新增超时/token/费用/总时长上限与中止语义
+- 操作者确认包装与结果回写指标看板,并修复 progress 测试时间依赖
+
+单任务超时与预算超限中断,操作者显式确认后结果回写看板
+**Why**: 模型评测消耗真实额度与时间,没有上限和显式确认会失控
+**Next**: EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+
+
 ## v0.5.276 — feat(evolution): 用户反馈回归注册表
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.276`)_

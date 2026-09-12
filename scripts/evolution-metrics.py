@@ -103,6 +103,9 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
             test_versions += 1
 
     test_runs = collect_test_runs(test_history_path) if test_history_path else []
+    model_eval_path = test_history_path.parent / "model_eval_history.jsonl" if test_history_path else None
+    model_eval_runs = load_history(model_eval_path) if model_eval_path else []
+    model_eval_scores = [float(r.get("score", 0)) for r in model_eval_runs]
     flaky_sections = set()
     for record in test_runs:
         failed_sections = {item.get("section") for item in record.get("failedSections", [])}
@@ -142,6 +145,12 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "flakySections": sorted(flaky_sections),
         "lastEnvironmentFailures": last_test.get("environmentFailures", 0),
         "lastRealFailures": last_test.get("realFailures", 0),
+        "modelEvalRuns": len(model_eval_runs),
+        "modelEvalLatestScore": model_eval_scores[-1] if model_eval_scores else None,
+        "modelEvalBestScore": max(model_eval_scores) if model_eval_scores else None,
+        "modelEvalLastTokens": model_eval_runs[-1].get("totalTokens") if model_eval_runs else None,
+        "modelEvalLastCostUSD": model_eval_runs[-1].get("totalCostUSD") if model_eval_runs else None,
+        "modelEvalLastDuration": model_eval_runs[-1].get("totalDurationSeconds") if model_eval_runs else None,
     }
 
 
@@ -184,6 +193,7 @@ def main() -> int:
     print(f"backlog:           {metrics['openBacklog']} open / {metrics['doneBacklog']} done")
     print(f"test runs:         {metrics['testRuns']} (last {metrics['lastTestStatus'] or 'n/a'})")
     print(f"flaky sections:    {metrics['flakyCount']}")
+    print(f"model eval:        runs={metrics['modelEvalRuns']} latest={metrics['modelEvalLatestScore']} best={metrics['modelEvalBestScore']}")
     return 0
 
 

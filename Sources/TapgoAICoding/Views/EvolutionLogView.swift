@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.277", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.277",
+                    summary: "模型评测预算防线:超时/token/费用上限与操作者确认包装,结果回写指标看板。",
+                    changes: [
+                        "evolution-model-eval.py run 新增 timeout/token/cost/duration 上限;超时任务计失败,预算超限中止后续任务并 exit 3;记录 limits/aborted/completedTasks。",
+                        "新增 scripts/run-model-eval.sh 操作者包装:必须 --i-understand-this-spends-model-credits 且提供 EVOLVE_MODEL_RUNNER,否则拒绝;打印策略并写 model_eval_history.jsonl。",
+                        "模型评测回归扩到 10 项:超时切断、token 预算中止、wrapper 缺确认拒绝。",
+                        "metrics(Python/Swift)读取 model_eval_history,指标详情新增 model eval 分数;Swift 指标测试扩到 30 项。",
+                        "EVO-022 完成;EVO-021 仍待操作者提供真实 runner;新增 EVO-024 多 runner/模型 A/B。"
+                    ],
+                    why: "模型评测消耗真实额度与时间,没有上限和显式确认会失控;EVO-022 加上防线并把结果回写看板。",
+                    next: "EVO-021 由操作者提供真实 runner 记录首份基线;EVO-024 多 runner A/B 对比。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.276", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.276",
                     summary: "用户反馈回归注册表:6 条真实问题固定为最小复现检查,进入 benchmark。",
                     changes: [

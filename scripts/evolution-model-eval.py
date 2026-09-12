@@ -93,7 +93,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     results = []
     total_weight = sum(int(t["weight"]) for t in tasks)
     earned = 0
+    spent_tokens = 0
+    spent_cost = 0.0
+    aborted_reason = None
+    wall_started = time.monotonic()
+
     for task in tasks:
+        if args.max_duration_seconds > 0 and time.monotonic() - wall_started > args.max_duration_seconds:
+            aborted_reason = "max_duration"
+            break
+        if args.max_tokens > 0 and spent_tokens > args.max_tokens:
+            aborted_reason = "max_tokens"
+            break
+        if args.max_cost_usd > 0 and spent_cost > args.max_cost_usd:
+            aborted_reason = "max_cost"
+            break
+
         workdir = stage_task(root, task)
         env = os.environ.copy()
         env.update({
@@ -102,15 +117,26 @@ def cmd_run(args: argparse.Namespace) -> int:
             "EVO_EVAL_PROMPT": task["prompt"],
         })
         started = time.monotonic()
-        proc = subprocess.run(["bash", "-c", runner], env=env, capture_output=True, text=True)
+        timed_out = False
+        try:
+            proc = subprocess.run(
+                ["bash", "-c", runner], env=env, capture_output=True, text=True,
+                timeout=args.timeout_seconds if args.timeout_seconds > 0 else None,
+            )
+            runner_exit = proc.returncode
+            stdout = proc.stdout or ""
+        except subprocess.TimeoutExpired as exc:
+            timed_out = True
+            runner_exit = -1
+            stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
         duration = time.monotonic() - started
         checks = run_checks(task, workdir)
-        passed = all(c["passed"] for c in checks) and proc.returncode == 0
+        passed = (not timed_out) and runner_exit == 0 and all(c["passed"] for c in checks)
         if passed:
             earned += int(task["weight"])
         tokens = None
         cost = None
-        for line in reversed((proc.stdout or "").splitlines()):
+        for line in reversed(stdout.splitlines()):
             try:
                 payload = json.loads(line)
                 tokens = payload.get("total_tokens", tokens)
@@ -118,12 +144,15 @@ def cmd_run(args: argparse.Namespace) -> int:
                 break
             except json.JSONDecodeError:
                 continue
+        spent_tokens += tokens or 0
+        spent_cost += cost or 0
         results.append({
             "taskId": task["id"],
             "passed": passed,
             "weight": int(task["weight"]),
             "durationSeconds": round(duration, 3),
-            "runnerExit": proc.returncode,
+            "runnerExit": runner_exit,
+            "timedOut": timed_out,
             "tokens": tokens,
             "costUSD": cost,
             "checks": checks,
@@ -139,6 +168,15 @@ def cmd_run(args: argparse.Namespace) -> int:
         "totalDurationSeconds": round(sum(r["durationSeconds"] for r in results), 3),
         "totalTokens": sum(r["tokens"] or 0 for r in results) or None,
         "totalCostUSD": sum(r["costUSD"] or 0 for r in results) or None,
+        "limits": {
+            "timeoutSeconds": args.timeout_seconds,
+            "maxTokens": args.max_tokens,
+            "maxCostUSD": args.max_cost_usd,
+            "maxDurationSeconds": args.max_duration_seconds,
+        },
+        "aborted": aborted_reason,
+        "completedTasks": len(results),
+        "totalTasks": len(tasks),
         "tasks": results,
     }
     if args.out:
@@ -151,10 +189,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(json.dumps({
         "score": record["score"],
         "failed": [r["taskId"] for r in results if not r["passed"]],
+        "aborted": record["aborted"],
+        "completedTasks": record["completedTasks"],
+        "totalTasks": record["totalTasks"],
         "totalDurationSeconds": record["totalDurationSeconds"],
         "totalTokens": record["totalTokens"],
         "totalCostUSD": record["totalCostUSD"],
     }, ensure_ascii=False))
+    if aborted_reason:
+        return 3
     if args.fail_under is not None and score < args.fail_under:
         return 1
     return 0
@@ -188,6 +231,10 @@ def main() -> int:
     p.add_argument("--out", default=None)
     p.add_argument("--version", default="")
     p.add_argument("--fail-under", type=float, default=None)
+    p.add_argument("--timeout-seconds", type=float, default=300)
+    p.add_argument("--max-tokens", type=int, default=200000)
+    p.add_argument("--max-cost-usd", type=float, default=5.0)
+    p.add_argument("--max-duration-seconds", type=float, default=1800)
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("report"); p.add_argument("--history", required=True); p.set_defaults(func=cmd_report)
     args = parser.parse_args()

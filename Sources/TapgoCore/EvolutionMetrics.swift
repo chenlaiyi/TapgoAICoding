@@ -117,6 +117,9 @@ public struct EvolutionMetricsSnapshot: Equatable {
     public let cyclePoints: [EvolutionCyclePoint]
     public let iterations: [EvolutionIterationPoint]
     public let lastBenchmarkScore: Int?
+    public let modelEvalRuns: Int
+    public let modelEvalLatestScore: Double?
+    public let modelEvalBestScore: Double?
 
     public init(
         recordCount: Int, iterationCount: Int, publishedCount: Int, failedCount: Int,
@@ -128,7 +131,10 @@ public struct EvolutionMetricsSnapshot: Equatable {
         flakySections: [String] = [], environmentFailureCount: Int = 0,
         realFailureCount: Int = 0, failureReasons: [String: Int] = [:],
         cyclePoints: [EvolutionCyclePoint] = [], iterations: [EvolutionIterationPoint] = [],
-        lastBenchmarkScore: Int? = nil
+        lastBenchmarkScore: Int? = nil,
+        modelEvalRuns: Int = 0,
+        modelEvalLatestScore: Double? = nil,
+        modelEvalBestScore: Double? = nil
     ) {
         self.recordCount = recordCount
         self.iterationCount = iterationCount
@@ -154,6 +160,9 @@ public struct EvolutionMetricsSnapshot: Equatable {
         self.cyclePoints = cyclePoints
         self.iterations = iterations
         self.lastBenchmarkScore = lastBenchmarkScore
+        self.modelEvalRuns = modelEvalRuns
+        self.modelEvalLatestScore = modelEvalLatestScore
+        self.modelEvalBestScore = modelEvalBestScore
     }
 
     public var hasData: Bool { recordCount > 0 || iterationCount > 0 }
@@ -347,6 +356,18 @@ public enum EvolutionMetrics {
         return entries
     }
 
+    public static func parseModelEval(_ text: String) -> [Double] {
+        var scores: [Double] = []
+        for line in text.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let score = object["score"] as? Double else { continue }
+            scores.append(score)
+        }
+        return scores
+    }
+
     public static func load(projectRoot: URL, stateDirectory: URL) -> EvolutionMetricsSnapshot {
         let records = parseRecords(directory: projectRoot.appendingPathComponent("evolution/versions"))
         let historyURL = stateDirectory.appendingPathComponent("evolution_state_history.jsonl")
@@ -360,12 +381,33 @@ public enum EvolutionMetrics {
         }
         let backlogText = (try? String(contentsOf: projectRoot.appendingPathComponent("evolution/BACKLOG.md"), encoding: .utf8)) ?? ""
         let testHistoryText = (try? String(contentsOf: stateDirectory.appendingPathComponent("test_run_history.jsonl"), encoding: .utf8)) ?? ""
-        return compute(
+        let modelEvalText = (try? String(contentsOf: stateDirectory.appendingPathComponent("model_eval_history.jsonl"), encoding: .utf8)) ?? ""
+        let modelScores = parseModelEval(modelEvalText)
+        var snapshot = compute(
             records: records,
             history: parseHistory(historyText),
             backlogText: backlogText,
             testRuns: parseTestRuns(testHistoryText)
         )
+        snapshot = EvolutionMetricsSnapshot(
+            recordCount: snapshot.recordCount, iterationCount: snapshot.iterationCount,
+            publishedCount: snapshot.publishedCount, failedCount: snapshot.failedCount,
+            successRate: snapshot.successRate, medianCycleSeconds: snapshot.medianCycleSeconds,
+            cycleDurations: snapshot.cycleDurations, testPassedTotal: snapshot.testPassedTotal,
+            testVersionCount: snapshot.testVersionCount, openBacklog: snapshot.openBacklog,
+            doneBacklog: snapshot.doneBacklog, healthPassedCount: snapshot.healthPassedCount,
+            healthFailedCount: snapshot.healthFailedCount, worktreePassedCount: snapshot.worktreePassedCount,
+            worktreeFailedCount: snapshot.worktreeFailedCount, testRunCount: snapshot.testRunCount,
+            lastTestStatus: snapshot.lastTestStatus, flakySections: snapshot.flakySections,
+            environmentFailureCount: snapshot.environmentFailureCount,
+            realFailureCount: snapshot.realFailureCount, failureReasons: snapshot.failureReasons,
+            cyclePoints: snapshot.cyclePoints, iterations: snapshot.iterations,
+            lastBenchmarkScore: snapshot.lastBenchmarkScore,
+            modelEvalRuns: modelScores.count,
+            modelEvalLatestScore: modelScores.last,
+            modelEvalBestScore: modelScores.max()
+        )
+        return snapshot
     }
 
     private static func passedCount(in testStatus: String?) -> Int {

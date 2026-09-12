@@ -13,6 +13,7 @@
     "scripts/evolution-benchmark.py",
     "scripts/evolution-model-eval.py",
     "scripts/evolution-feedback.py",
+    "scripts/run-model-eval.sh",
     "evolution/model-eval/**",
     "evolution/feedback/**",
     "evolution/benchmark.json",

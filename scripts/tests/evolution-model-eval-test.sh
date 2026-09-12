@@ -43,4 +43,47 @@ PY
 REPORT="$("$TOOL" report --history "$HISTORY")"
 [[ "$REPORT" == *"best=100"* ]] || { echo "FAIL report: $REPORT" >&2; exit 1; }
 
-echo "evolution-model-eval tests: 6 passed, 0 failed"
+# Timeout guard: a slow runner must be cut off and fail the task.
+cat > "$TMP/slow-runner.sh" <<'RUNNER'
+#!/usr/bin/env bash
+sleep 5
+RUNNER
+chmod +x "$TMP/slow-runner.sh"
+set +e
+SLOW="$(EVOLVE_MODEL_RUNNER="$TMP/slow-runner.sh" "$TOOL" run --root "$ROOT" --tasks fix-off-by-one --timeout-seconds 1)"
+SLOW_RC=$?
+set -e
+[[ "$SLOW_RC" -eq 0 ]] || { echo "FAIL slow rc=$SLOW_RC" >&2; exit 1; }
+python3 - "$SLOW" <<'PY'
+import json, sys
+r = json.loads(sys.argv[1])
+assert r["score"] == 0, r
+assert r["failed"] == ["fix-off-by-one"], r
+PY
+
+# Budget guard: token overrun aborts remaining tasks with exit 3.
+cat > "$TMP/token-runner.sh" <<'RUNNER'
+#!/usr/bin/env bash
+printf '{"total_tokens": 999}\n'
+RUNNER
+chmod +x "$TMP/token-runner.sh"
+set +e
+BUDGET="$(EVOLVE_MODEL_RUNNER="$TMP/token-runner.sh" "$TOOL" run --root "$ROOT" --max-tokens 100)"
+BUDGET_RC=$?
+set -e
+[[ "$BUDGET_RC" -eq 3 ]] || { echo "FAIL budget rc=$BUDGET_RC" >&2; exit 1; }
+python3 - "$BUDGET" <<'PY'
+import json, sys
+r = json.loads(sys.argv[1])
+assert r["aborted"] == "max_tokens", r
+assert r["completedTasks"] == 1, r
+PY
+
+# Operator wrapper refuses without explicit confirmation.
+set +e
+"$ROOT/scripts/run-model-eval.sh" >/dev/null 2>&1
+WRAP_RC=$?
+set -e
+[[ "$WRAP_RC" -eq 2 ]] || { echo "FAIL wrapper rc=$WRAP_RC" >&2; exit 1; }
+
+echo "evolution-model-eval tests: 10 passed, 0 failed"

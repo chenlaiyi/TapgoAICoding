@@ -8,11 +8,12 @@ func runEvolutionProgress(_ t: TestRunner) {
     defer { try? FileManager.default.removeItem(at: tmp) }
     try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
 
+    let freshTimestamp = ISO8601DateFormatter().string(from: Date())
     let progress = TapgoCore.EvolutionProgress(
         version: "0.5.267", phase: "tests", phaseIndex: 3, phaseCount: 9,
         status: "running", message: "3197 passed",
         iterationBranch: "codex/evolution-v0.5.267",
-        startedAt: "2026-09-12T12:00:00Z", updatedAt: "2026-09-12T12:01:00Z"
+        startedAt: freshTimestamp, updatedAt: freshTimestamp
     )
     let encoded = try? JSONEncoder().encode(progress)
     try? encoded?.write(to: tmp.appendingPathComponent(TapgoCore.EvolutionProgress.progressFileName))

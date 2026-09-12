@@ -61,6 +61,8 @@ func runEvolutionMetrics(_ t: TestRunner) {
         to: state.appendingPathComponent("evolution_state_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"status\":\"fail\",\"failedSections\":[{\"section\":\"P\"}],\"reruns\":[{\"section\":\"P\",\"passed\":true}],\"environmentFailures\":0,\"realFailures\":1}\n".write(
         to: state.appendingPathComponent("test_run_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "{\"score\":50}\n{\"score\":80}\n".write(
+        to: state.appendingPathComponent("model_eval_history.jsonl"), atomically: true, encoding: .utf8)
     try? "- [ ] load test\n".write(to: tmp.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = TapgoCore.EvolutionMetrics.load(projectRoot: tmp, stateDirectory: state)
     t.expectEqual(loaded.recordCount, 1, "metrics: load record count")
@@ -68,4 +70,7 @@ func runEvolutionMetrics(_ t: TestRunner) {
     t.expectEqual(loaded.openBacklog, 1, "metrics: load backlog")
     t.expectEqual(loaded.healthPassedCount, 1, "metrics: load health")
     t.expectEqual(loaded.flakySections, ["P"], "metrics: load flaky")
+    t.expectEqual(loaded.modelEvalRuns, 2, "metrics: load model eval runs")
+    t.expectEqual(loaded.modelEvalLatestScore, 80, "metrics: load model eval latest")
+    t.expectEqual(loaded.modelEvalBestScore, 80, "metrics: load model eval best")
 }
