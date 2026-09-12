@@ -1,0 +1,19 @@
+{
+  "version": "0.5.314",
+  "tag": "v0.5.314",
+  "date": "2026-09-13",
+  "scope": "mac",
+  "message": "feat(evolution): 本机版本漂移可老化可查询",
+  "changes": [
+    "新增 scripts/evolution-drift.py（EVO-055）作为漂移真源：releasesBehind（结构化记录里 running < v <= installed 的条数，running 早于最早记录时给 null 而非偏小的错数）、firstSeenAt 跨轮继承、seenRuns 按 run-id 去重（一轮内多次写 state 只算一次）、remediation 与一行可读文案。",
+    "evolve.sh 接入：write_state 计算并写进 state.localApp.drift（installed/running/stale 保持原位，派生元数据收在 drift 子对象；此时当前版本记录已落盘，计数才准）；漂移时把重启命令作为第一条 nextActions；总结行升级为「运行 x / 已安装 y（落后 N 个版本，自 … 起，已累计 K 轮）」。helper 不可用时回退旧形状，发布流程不会因它中断。",
+    "新增 check 子命令：python3 scripts/evolution-drift.py check 一行查询，退出码表达（漂移 1 / 一致 0 / state 不可读 2）；旧 state 形状（无 drift 块）降级成通用提示行而不是误判为已对齐。",
+    "新增 scripts/tests/evolution-drift-test.sh 27 项断言（一致/落后、计数、记录不覆盖时 null、跨轮继承、同 run-id 去重、无进程降级、旧形状降级、state 不可读退出 2）；失败注入新增 S36 覆盖 evolve.sh → state 的集成（漂移元数据、待办动作、WARN），全套 169 项；两者接入 run-all.sh。",
+    "边界：漂移元数据是只读计算，不重启任何进程——重启会终止当前会话，收敛动作仍由操作者执行；本轮保证的是它不会被忘记、有年龄、可被下一轮自动捞起。"
+  ],
+  "details": "漂移从一次性 WARN 变成跨轮延续的待办",
+  "why": "三轮发布下来，本机运行进程一直停在 0.5.299，而机制只会在发布日志里叹一口气：state 里一个 stale 布尔不会老化、不能随时查询、下一轮就没人记得。让它有 firstSeenAt 和 seenRuns，就是把「记得住」从人的注意力换成机器的状态。",
+  "next": "EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）",
+  "testStatus": "— 3488 passed, 0 failed —",
+  "commitSha": null
+}

@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.314", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.314",
+                    summary: "本机版本漂移从一次性 WARN 变成可老化、可查询、可延续的待办。",
+                    changes: [
+                        "取证:连续两轮发布后本机 /Applications 已是 0.5.313,运行进程却一直停在 0.5.299;state 里只有一个 stale 布尔,不会老化、不能随时查、下一轮没人记得,总结里那行提示读过就没了。",
+                        "新增 scripts/evolution-drift.py 作为漂移真源:releasesBehind(结构化记录里 (running, installed] 的条数;running 早于最早记录时给 null——记录只覆盖 v0.5.258+,宁可说未知也不给偏小的错数)、firstSeenAt 跨轮继承、seenRuns 按 run-id 去重(一轮内多次写 state 只算一次)、remediation 单一收敛动作、line 一行可读。",
+                        "evolve.sh 接入:write_state 里算(此时当前版本记录已落盘,计数才准)并写进 state.localApp.drift;漂移时把重启命令作为第一条 nextActions,下一轮读 state 就知道欠这个动作;总结行从“running x (stale)”升级成“运行 0.5.299 / 已安装 0.5.313(落后 14 个版本,自 2026-09-12 起,已累计 N 轮):./scripts/restart-and-resume.sh”。",
+                        "新增 check 子命令:python3 scripts/evolution-drift.py check 一行查询,以退出码表达(有漂移 1/一致 0/state 不可读 2),任何会话或自动化都能直接判断,不必跑一轮发布。",
+                        "新增 scripts/tests/evolution-drift-test.sh 22 项断言:一致/落后判定、计数、记录不覆盖时 null、跨轮继承 firstSeenAt、同 run-id 去重、无进程降级文案、check 退出码;接入 run-all.sh 单绿门禁。",
+                        "边界:漂移元数据是只读计算,不重启任何进程——重启会终止当前会话,收敛动作仍由操作者执行,这里保证的是它不会被忘记、有年龄、可被下一轮自动捞起。"
+                    ],
+                    why: "自进化模块里唯一反复出现却没被收敛的缺口就是本机版本漂移:三轮发布它都在,机制却只会在发布日志里叹一口气。让它有 firstSeenAt 和 seenRuns,就是把“记得住”从人的注意力换成机器的状态。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.313", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.313",
                     summary: "H5 渲染执行级测试:补上「键名对得上但逻辑写错」的最后一段盲区。",
                     changes: [

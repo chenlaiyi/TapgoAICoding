@@ -24,6 +24,8 @@
 #   reclaim（force-with-lease 覆盖），用于显式抢占仍在运行的锁。
 # Local app (EVO-043): 发布不重启本机 App,但会探测"正在运行的版本"并写进 state
 #   (localApp.installed/running/stale),落后时打 WARN 并在总结里提示重启命令。
+#   EVO-055: 落后时额外写入可老化的漂移元数据 (releasesBehind/firstSeenAt/
+#   seenRuns/remediation),并把重启动作放进 nextActions,便于随时查询与跨轮延续。
 # Run cost (EVO-041): EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 优先;否则读 App 写的
 #   state/evolution_cost.json 取与上次发布记录的增量;都没有就留空(不估算)。
 # Runtime state schema (EVO-035): 预检后立即补齐/校验 state json/jsonl 的
@@ -72,6 +74,7 @@ BACKLOG_TOOL="${EVOLVE_BACKLOG_TOOL:-$ROOT/scripts/evolution-backlog.py}"
 HEALTH_SCRIPT="${EVOLVE_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
 TEST_REPORT_TOOL="${EVOLVE_TEST_REPORT_TOOL:-$ROOT/scripts/test-failure-report.py}"
 PROTECT_TOOL="${EVOLVE_PROTECT_TOOL:-$ROOT/scripts/evolution-protect.py}"
+DRIFT_TOOL="${EVOLVE_DRIFT_TOOL:-$ROOT/scripts/evolution-drift.py}"
 WORKTREE_VERIFY_SCRIPT="${EVOLVE_WORKTREE_VERIFY_SCRIPT:-$ROOT/scripts/worktree-verify.sh}"
 BENCHMARK_TOOL="${EVOLVE_BENCHMARK_TOOL:-$ROOT/scripts/evolution-benchmark.py}"
 REMOTE_LOCK_SCRIPT="${EVOLVE_REMOTE_LOCK_SCRIPT:-$ROOT/scripts/evolution-remote-lock.sh}"
@@ -181,6 +184,8 @@ RUN_COST=""
 RUN_COST_SOURCE=""
 LOCAL_APP_RUNNING=""
 LOCAL_APP_STALE=""
+LOCAL_APP_JSON=""
+LOCAL_APP_DRIFT_LINE=""
 REMOTE_LOCK_HELD=0
 ITER_BRANCH=""
 BRANCH_CREATED=0
@@ -275,6 +280,23 @@ write_state() {
   # EVO-036：单轮墙钟时长 + 可选的 token/成本（由 harness/操作者通过环境变量提供）。
   local RUN_DURATION="$(( $(date +%s) - RUN_START_EPOCH ))"
   mkdir -p "$STATE_DIR"
+  # EVO-055：漂移真源在 write_state 计算（此时当前版本的记录已落盘，计数才准）。
+  LOCAL_APP_JSON=""
+  local PENDING_ACTION=""
+  LOCAL_APP_DRIFT_LINE=""
+  if [[ -n "$LOCAL_APP_RUNNING" && -x "$DRIFT_TOOL" ]]; then
+    LOCAL_APP_JSON="$(python3 "$DRIFT_TOOL" compute --running "$LOCAL_APP_RUNNING" \
+      --installed "$NEW_VERSION" --root "$ROOT" --state "$STATE_FILE" \
+      --run-id "$PROGRESS_STARTED_AT" 2>/dev/null || true)"
+    PENDING_ACTION="$(printf '%s' "$LOCAL_APP_JSON" | python3 -c \
+      'import json,sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    d = {}
+print(d.get("line", "") if d.get("stale") else "")' 2>/dev/null || true)"
+    LOCAL_APP_DRIFT_LINE="$PENDING_ACTION"
+  fi
   EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
   EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
@@ -285,6 +307,7 @@ write_state() {
   EVO_STARTED_AT="$PROGRESS_STARTED_AT" EVO_DURATION="$RUN_DURATION" \
   EVO_TOKENS="$RUN_TOKENS" EVO_COST="$RUN_COST" EVO_COST_SOURCE="$RUN_COST_SOURCE" \
   EVO_LOCAL_RUNNING="$LOCAL_APP_RUNNING" EVO_LOCAL_STALE="$LOCAL_APP_STALE" \
+  EVO_LOCAL_APP_JSON="$LOCAL_APP_JSON" EVO_PENDING_ACTION="$PENDING_ACTION" \
   python3 - "$STATE_FILE" <<'PY'
 from __future__ import annotations
 
@@ -293,7 +316,32 @@ path = sys.argv[1]
 version = os.environ["EVO_VERSION"]
 prev = os.environ.get("EVO_PREV") or "(none)"
 next_action = os.environ.get("EVO_NEXT", "").strip()
+pending = os.environ.get("EVO_PENDING_ACTION", "").strip()
 mode = os.environ["EVO_MODE"]
+def _local_app(installed: str) -> dict:
+    """EVO-055: 有漂移真源就用它（含 releasesBehind/firstSeenAt/seenRuns），否则回退旧形状。"""
+    raw = os.environ.get("EVO_LOCAL_APP_JSON", "").strip()
+    if raw:
+        try:
+            parsed = json.loads(raw)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict) and "stale" in parsed:
+            # installed/running/stale 保持原有位置（兼容既有消费者），
+            # 派生出来的漂移元数据收在 localApp.drift 里（无漂移时为 None）。
+            return {
+                "installed": parsed.get("installed", installed),
+                "running": parsed.get("running"),
+                "stale": parsed.get("stale"),
+                "drift": parsed if parsed.get("stale") else None,
+            }
+    return {
+        "installed": installed,
+        "running": os.environ.get("EVO_LOCAL_RUNNING") or None,
+        "stale": {"yes": True, "no": False}.get(os.environ.get("EVO_LOCAL_STALE", ""), None),
+    }
+
+
 def _optional_int(raw: str) -> int | None:
     return int(raw) if raw.strip().isdigit() else None
 
@@ -331,15 +379,11 @@ state = {
     "tokens": _optional_int(os.environ.get("EVO_TOKENS", "")),
     "costUSD": _optional_float(os.environ.get("EVO_COST", "")),
     "costSource": os.environ.get("EVO_COST_SOURCE") or None,
-    "localApp": {
-        "installed": version,
-        "running": os.environ.get("EVO_LOCAL_RUNNING") or None,
-        "stale": {"yes": True, "no": False}.get(os.environ.get("EVO_LOCAL_STALE", ""), None),
-    },
+    "localApp": _local_app(version),
     "evolutionNote": os.environ["EVO_NOTE"],
     "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
     "threadToResume": None,
-    "nextActions": [
+    "nextActions": ([pending] if pending else []) + [
         next_action or "Read EVOLUTION.md and evolution_state.json, then pick the next highest-value real problem.",
         "Inspect this iteration diff: git diff %s..v%s" % (prev, version),
         "Re-run scripts/evolve.sh --dry-run before the next iteration.",
@@ -648,7 +692,11 @@ echo "  Mode:           ${MODE}"
 echo "  Iteration:      ${ITER_BRANCH}"
 if [[ -n "$LOCAL_APP_RUNNING" ]]; then
   if [[ "$LOCAL_APP_STALE" == "yes" ]]; then
-    echo "  Local app:      running ${LOCAL_APP_RUNNING} (stale; restart with ./scripts/restart-and-resume.sh)"
+    if [[ -n "${LOCAL_APP_DRIFT_LINE:-}" ]]; then
+      echo "  Local app:      ${LOCAL_APP_DRIFT_LINE}"
+    else
+      echo "  Local app:      running ${LOCAL_APP_RUNNING} (stale; restart with ./scripts/restart-and-resume.sh)"
+    fi
   else
     echo "  Local app:      running ${LOCAL_APP_RUNNING}"
   fi

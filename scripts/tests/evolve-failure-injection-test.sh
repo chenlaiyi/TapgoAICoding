@@ -46,6 +46,7 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/canary-promote.sh" "$dir/scripts/canary-promote-real.sh"
   cp "$SOURCE_ROOT/scripts/fleet-hosts.sh" "$dir/scripts/fleet-hosts.sh"
   cp "$SOURCE_ROOT/scripts/evolution-ui-assert.sh" "$dir/scripts/evolution-ui-assert.sh"
+  cp "$SOURCE_ROOT/scripts/evolution-drift.py" "$dir/scripts/evolution-drift.py"
   cp "$SOURCE_ROOT/evolution/protected-paths.json" "$dir/evolution/protected-paths.json"
   chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py" "$dir/scripts/evolution-remote-lock.sh"
   chmod +x "$dir/scripts/evolution-schema.py"
@@ -689,6 +690,32 @@ assert_eq "$(git -C "$R35" rev-list --count origin/main)" 3 "s35 origin main adv
 [[ -f "$R35/appcast.xml" ]] && ok || bad "s35 appcast published to repo root"
 assert_grep "$BASE/s35.log" "CANARY staged" "s35 release stub staged canary appcast"
 assert_not_grep "$BASE/s35.log" "ERROR:" "s35 no errors in log"
+
+# ---------- S36: 本机版本漂移元数据（EVO-055）----------
+# 本机运行版本落后时，state 里必须有可老化的漂移对象，并把重启动作放进 nextActions
+# ——否则「没人记得重启」这个缺口会静默回来。
+R36="$BASE/s36"; make_repo "$R36"
+# 桩脚本必须放在仓库外：仓库内新增未跟踪文件会被 --paths 预检拦下（exit 9）。
+mkdir -p "$BASE/s36-bin"
+cat > "$BASE/s36-bin/ui-old.sh" <<'F36'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-running-version" ]]; then echo "0.5.1"; exit 0; fi
+echo "UI ASSERT OK stub"
+F36
+chmod +x "$BASE/s36-bin/ui-old.sh"
+EVOLVE_UI_ASSERT_SCRIPT="$BASE/s36-bin/ui-old.sh" \
+  run_evolve "$R36" "$BASE/s36-state" "$BASE/s36.log" --paths scripts \
+    patch "s36 drift" "s36 drift"
+
+assert_json "$BASE/s36-state/evolution_state.json" 'd["localApp"]["stale"] is True' "s36 stale recorded"
+assert_json "$BASE/s36-state/evolution_state.json" 'd["localApp"]["drift"]["running"] == "0.5.1"' "s36 drift records running version"
+# 假仓库的记录只覆盖 v0.5.2，而运行版本是 0.5.1（早于最早记录）：此时必须给 null
+# 而不是 0/1 这种偏小的错数（计数本身的精度由 evolution-drift-test.sh 覆盖）。
+assert_json "$BASE/s36-state/evolution_state.json" 'd["localApp"]["drift"]["releasesBehind"] is None' "s36 drift refuses a wrong count"
+assert_json "$BASE/s36-state/evolution_state.json" 'd["localApp"]["drift"]["seenRuns"] >= 1' "s36 drift is aged"
+assert_json "$BASE/s36-state/evolution_state.json" '"restart-and-resume.sh" in d["localApp"]["drift"]["remediation"]' "s36 drift names remediation"
+assert_json "$BASE/s36-state/evolution_state.json" '"\u672c\u673a App \u843d\u540e" in d["nextActions"][0]' "s36 drift becomes a pending action"
+assert_grep "$BASE/s36.log" "WARN: 本机正在运行的 App 是 0.5.1" "s36 warns about running version"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

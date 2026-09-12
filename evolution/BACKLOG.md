@@ -81,6 +81,7 @@
 - [x] **EVO-052 双实现指标一致性**：新增 Swift 测试用同一份 fixture 同时跑 `evolution-metrics.py` 与 `EvolutionMetrics`，逐项比对 16 个关键指标；当场抓出并修掉 `canary_failed` 只在一侧计入失败的长期分叉（v0.5.311）
 - [x] **EVO-053 H5/App 字段契约**：新增契约测试对照「App 真实序列化的 JSON」与「app.js 真实读取的键」；当场抓出 **app.js 读扁平 funnel 键、而 Swift 序列化的是嵌套文件形状**（手机端漏斗行永远不显示）（v0.5.312）
 - [x] **EVO-054 H5 渲染执行级测试**：用最小 DOM stub 在 node 里跑真实 `app.js`（真实 fetch 回调 → 真实 refresh/render → 断言 DOM 文案与 hidden），40 项断言覆盖完整 evolution 渲染、evolution 消失后恢复、漏斗/指标为空边界、CSS `hidden` 不变量；变异验证有牙（改回修复前漏斗形状 → 5 项失败，边界条件写成 `>=` → 1 项失败）。Swift 侧同时校验共享 fixture 仍是合法服务器 payload（v0.5.313）
+- [x] **EVO-055 本机版本漂移可老化/可查询**：新增 `scripts/evolution-drift.py` 作为漂移真源——算 `releasesBehind`（结构化记录里 (running, installed] 的条数，记录不覆盖时给 null 不给错数）、跨轮继承 `firstSeenAt`、`seenRuns` 按 run-id 去重（一轮内多次写 state 只算一次）；`evolve.sh` 把元数据写进 `state.localApp.drift` 并把收敛命令放进 `nextActions`，总结行直接给出「落后 N 个版本 / 自 X 起 / 已累计 K 轮」；`check` 子命令随时一行查询并以退出码表达（22 项断言）（v0.5.314）
 
 ## P9 — 待外部输入
 
