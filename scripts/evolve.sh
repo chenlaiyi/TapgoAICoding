@@ -5,11 +5,16 @@
 #   ./scripts/evolve.sh [--local|--publish] [--dry-run] [--next "..."] \
 #       <version-bump> "<commit message>" "<evolution summary>"
 #
+#   ./scripts/evolve.sh --publish --resume [--resume-from <stage>]
+#       (续跑未完成的发布；stage = verify|push|release|deploy)
+#
 # Modes:
 #   --local    (默认) 只 commit + tag 到本地,构建并安装本机 .app。
 #   --publish  维护者完整闭环: 清理树预检 → 测试 → App 构建 → commit + tag
 #              → push main + tag → GitHub Release + appcast。
 #   --dry-run  只打印计划,不修改任何文件。
+#   --resume   读 evolution_state.json,从失败的发布阶段继续:跳过版本号/记录/
+#              测试/构建/commit,直接重跑 worktree 验证、push、release、部署。
 #
 # Safety contract (v0.5.257):
 #   1. 工作树/索引必须干净,否则拒绝启动(避免把无关改动卷进自进化 commit)。
@@ -60,6 +65,11 @@ MODE="local"
 DRY_RUN=""
 BREAK_REMOTE_LOCK=0
 CANARY=0
+RESUME=0
+RESUME_FROM=""
+RESUME_STAGE=""
+PUSHED_TAG=""
+TAG_COMMIT=""
 CANARY_HOST="jkmacmini"
 BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""; WHY_ACTION=""; PROTECT_APPROVAL=""
 ALLOWED_PATHS=()
@@ -70,6 +80,11 @@ while [[ "$#" -gt 0 ]]; do
     --publish) MODE="publish" ;;
     --dry-run) DRY_RUN="1" ;;
     --break-remote-lock) BREAK_REMOTE_LOCK=1 ;;
+    --resume) RESUME=1 ;;
+    --resume-from)
+      [[ -n "${2:-}" ]] || { echo "ERROR: --resume-from needs a stage (verify|push|release|deploy)" >&2; exit 2; }
+      RESUME=1; RESUME_FROM="$2"; shift
+      ;;
     --canary) CANARY=1 ;;
     --canary-host) CANARY_HOST="${2:-jkmacmini}"; shift ;;
     --next)    NEXT_ACTION="${2:-}"; shift ;;
@@ -221,6 +236,353 @@ check_stop() {
   fi
 }
 
+write_state() {
+  local status="$1"
+  local CANARY_STATE=""
+  [[ "$CANARY" == "1" ]] && CANARY_STATE="$CANARY_HOST"
+  mkdir -p "$STATE_DIR"
+  EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
+  EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
+  EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
+  EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
+  EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
+  EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" EVO_CANARY="$CANARY_STATE" \
+  EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
+  python3 - "$STATE_FILE" <<'PY'
+import json, os, sys, datetime
+path = sys.argv[1]
+version = os.environ["EVO_VERSION"]
+prev = os.environ.get("EVO_PREV") or "(none)"
+next_action = os.environ.get("EVO_NEXT", "").strip()
+mode = os.environ["EVO_MODE"]
+state = {
+    "schemaVersion": 2,
+    "status": os.environ["EVO_STATUS"],
+    "version": version,
+    "commitSha": os.environ["EVO_SHA"],
+    "tag": "v" + version,
+    "mode": mode,
+    "branch": os.environ["EVO_BRANCH"],
+    "originalBranch": os.environ["EVO_BRANCH"],
+    "iterationBranch": os.environ.get("EVO_ITER_BRANCH", ""),
+    "healthCheck": os.environ.get("EVO_HEALTH", ""),
+    "fleetDeploy": os.environ.get("EVO_FLEET", ""),
+    "protectedGate": os.environ.get("EVO_PROTECT", ""),
+    "worktreeVerified": os.environ.get("EVO_WORKTREE_VERIFIED", ""),
+    "benchmarkScore": int(os.environ["EVO_BENCHMARK"]) if os.environ.get("EVO_BENCHMARK", "").strip().isdigit() else None,
+    "remoteLock": os.environ.get("EVO_REMOTE_LOCK") or None,
+    "canary": os.environ.get("EVO_CANARY") or None,
+    "repoRoot": os.environ["EVO_ROOT"],
+    "startHead": os.environ["EVO_START_HEAD"],
+    "testStatus": os.environ.get("EVO_TEST_LINE", ""),
+    "builtAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "evolutionNote": os.environ["EVO_NOTE"],
+    "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
+    "threadToResume": None,
+    "nextActions": [
+        next_action or "Read EVOLUTION.md and evolution_state.json, then pick the next highest-value real problem.",
+        "Inspect this iteration diff: git diff %s..v%s" % (prev, version),
+        "Re-run scripts/evolve.sh --dry-run before the next iteration.",
+    ],
+    "stopConditions": [
+        "Tests and .app build must be green before any commit.",
+        "A new tag is only valid after clean-tree preflight, tests, and a matching .app build.",
+        "Iteration commits live on codex/evolution-vX.Y.Z; the original branch only fast-forwards.",
+        "Publish must pass a clean-checkout git worktree build before any push.",
+        "Do not start the next iteration until this state is terminal (local_built or published).",
+        "Never edit ~/.codex/ — only the isolated Application Support tree.",
+        "Never bump major without explicit user approval.",
+    ],
+}
+tmp = path + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(state, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+os.chmod(tmp, 0o600)
+os.replace(tmp, path)
+PY
+
+  # Append every state transition to JSONL so metrics can distinguish
+  # published / failed / retried iterations instead of only seeing the last one.
+  STATE_HISTORY="${EVOLVE_STATE_HISTORY:-$STATE_DIR/evolution_state_history.jsonl}"
+  python3 - "$STATE_FILE" "$STATE_HISTORY" <<'PY'
+import json, os, sys
+state_path, history_path = sys.argv[1], sys.argv[2]
+with open(state_path, encoding="utf-8") as fh:
+    state = json.load(fh)
+parent = os.path.dirname(history_path)
+if parent:
+    os.makedirs(parent, exist_ok=True)
+with open(history_path, "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(state, ensure_ascii=False) + "\n")
+    fh.flush()
+    os.fsync(fh.fileno())
+os.chmod(history_path, 0o600)
+PY
+}
+
+publish_verify() {
+  echo "==> Clean-checkout worktree verification for v${NEW_VERSION}"
+  if ! "$WORKTREE_VERIFY_SCRIPT" "v${NEW_VERSION}"; then
+    write_state "worktree_verify_failed"
+    echo "WORKTREE VERIFY FAILED — commit/tag retained locally; nothing pushed." >&2
+    exit 10
+  fi
+  WORKTREE_VERIFIED="yes"
+  write_state "committed"
+}
+
+publish_push() {
+  check_stop 5 "push"
+  write_progress "push" 6 "running" "pushing main + audit branch"
+  echo "==> Pushing iteration branch ${ITER_BRANCH} for audit"
+  if ! git push "$UPSTREAM_REMOTE" "$ITER_BRANCH"; then
+    write_state "push_failed"
+    echo "PUSH FAILED (branch) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
+    exit 6
+  fi
+  echo "==> Pushing to ${UPSTREAM_REMOTE} (main fast-forward + tag v${NEW_VERSION})"
+  if ! git push "$UPSTREAM_REMOTE" HEAD:main "v${NEW_VERSION}"; then
+    write_state "push_failed"
+    echo "PUSH FAILED (main) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
+    exit 6
+  fi
+  write_progress "push" 6 "done" "main + audit branch pushed"
+}
+
+publish_release() {
+  check_stop 6 "release"
+  write_progress "release" 7 "running" "building signed zip + GitHub Release"
+  echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
+  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" TAPGO_CANARY="${CANARY}" "$RELEASE_SCRIPT" "$NOTES_FILE"; then
+    write_state "release_failed"
+    echo "WARN: tag pushed but release/appcast publish failed; state=release_failed." >&2
+    exit 7
+  fi
+
+  write_progress "release" 7 "done" "release + appcast published"
+}
+
+publish_deploy() {
+  check_stop 7 "deploy"
+  write_progress "deploy" 8 "running" "deploying three-Mac fleet"
+  if [[ "${EVOLVE_SKIP_DEPLOY:-}" == "1" ]]; then
+    FLEET_STATUS="skipped"
+    echo "==> [health] fleet deploy skipped (EVOLVE_SKIP_DEPLOY=1)"
+  elif [[ "$CANARY" == "1" ]]; then
+    echo "==> [canary] deploying v${NEW_VERSION} to canary host ${CANARY_HOST} only"
+    if ! "$DEPLOY_SCRIPT" --only "$CANARY_HOST" "$NEW_VERSION"; then
+      FLEET_STATUS="canary_failed"
+      write_state "canary_failed"
+      echo "CANARY FAILED: draft release retained; appcast not published." >&2
+      exit 10
+    fi
+    echo "==> [canary] promoting appcast + deploying remaining hosts"
+    if ! "$CANARY_PROMOTE_SCRIPT" "$NEW_VERSION" "$CANARY_HOST"; then
+      FLEET_STATUS="canary_failed"
+      write_state "canary_failed"
+      echo "CANARY PROMOTE FAILED: appcast may already be public; inspect and roll back if needed." >&2
+      exit 10
+    fi
+    FLEET_STATUS="passed"
+    write_progress "deploy" 8 "done" "canary ${CANARY_HOST} promoted; fleet verified"
+  else
+    echo "==> [health] deploying v${NEW_VERSION} to the three-Mac fleet"
+    if ! "$DEPLOY_SCRIPT" "$NEW_VERSION"; then
+      FLEET_STATUS="failed"
+      write_state "health_failed"
+      echo "HEALTH FAILED: release is published but fleet deploy/readback failed." >&2
+      echo "Rollback: git checkout ${LATEST_TAG:-${START_HEAD}} && ./scripts/build-app.sh" >&2
+      exit 10
+    fi
+    FLEET_STATUS="passed"
+    write_progress "deploy" 8 "done" "fleet version/PID verified"
+  fi
+}
+
+# publish_tail <verify|push|release|deploy> — 从指定阶段一路跑到 published。
+# 正常一轮发布从 verify 开始；--resume 会按失败阶段直接进入对应阶段，
+# 跳过已完成的工作（版本/记录/测试/构建/commit）。
+publish_tail() {
+  local stage="${1:-verify}"
+
+  if [[ "$stage" == "verify" ]]; then
+    publish_verify
+    stage="push"
+  else
+    echo "==> [stage-skip] worktree verification already done (resume)"
+  fi
+
+  if [[ "$stage" == "push" ]]; then
+    publish_push
+    stage="release"
+  fi
+
+  if [[ "$stage" == "release" ]]; then
+    publish_release
+    stage="deploy"
+  fi
+
+  if [[ "$stage" == "deploy" ]]; then
+    publish_deploy
+  fi
+
+  write_state "published"
+  write_progress "done" 9 "done" "v${NEW_VERSION} published"
+}
+
+# ---------- Self-evolution resume (EVO-033) ----------
+# state_field <key> — 读运行态 JSON 的单个字段；缺失/None 打印空串。
+state_field() {
+  python3 -c 'import json,sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+v = d.get(sys.argv[2])
+print("" if v is None else v)' "$STATE_FILE" "${1:-}"
+}
+
+# record_field <record-path> <key>
+record_field() {
+  python3 -c 'import json,sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+v = d.get(sys.argv[2])
+print("" if v is None else v)' "$1" "$2"
+}
+
+# resume_prepare — 从 evolution_state.json 续跑未完成的发布：
+# 校验 tag/HEAD/记录，设置 publish 尾段所需变量，并按失败阶段决定入口。
+resume_prepare() {
+  [[ -f "$STATE_FILE" ]] || {
+    echo "ERROR: --resume needs an existing state file: $STATE_FILE" >&2
+    echo "       run a normal evolve.sh --publish first (or drop --resume)." >&2
+    exit 3
+  }
+  local r_version r_status r_iter r_bench r_protect r_canary
+  r_version="$(state_field version)"
+  r_status="$(state_field status)"
+  r_iter="$(state_field iterationBranch)"
+  r_bench="$(state_field benchmarkScore)"
+  r_protect="$(state_field protectedGate)"
+  r_canary="$(state_field canary)"
+
+  [[ -n "$r_version" ]] || { echo "ERROR: state file has no version; cannot resume." >&2; exit 3; }
+  case "$r_status" in
+    published)
+      echo "==> NOTE: v${r_version} is already published; nothing to resume."
+      exit 0 ;;
+    committed|worktree_verify_failed|push_failed|release_failed|canary_failed|health_failed|local_built) ;;
+    *)
+      echo "ERROR: state status '${r_status}' is not a resumable publish state." >&2
+      echo "       resumable: committed / worktree_verify_failed / push_failed / release_failed /" >&2
+      echo "                  canary_failed / health_failed / local_built" >&2
+      exit 3 ;;
+  esac
+
+  NEW_VERSION="$r_version"
+  ITER_BRANCH="${r_iter:-codex/evolution-v${NEW_VERSION}}"
+  local tag="v${NEW_VERSION}"
+  TAG_COMMIT="$(git rev-parse "${tag}^{commit}" 2>/dev/null || true)"
+  [[ -n "$TAG_COMMIT" ]] || {
+    echo "ERROR: tag ${tag} not found locally; nothing to resume from." >&2
+    exit 3
+  }
+  if [[ "$(git rev-parse HEAD)" != "$TAG_COMMIT" ]]; then
+    echo "ERROR: HEAD is not at ${tag}; resume needs the tagged iteration checked out." >&2
+    echo "       git checkout main && git reset --hard ${tag}   (or git checkout ${tag})" >&2
+    exit 3
+  fi
+
+  local record="$ROOT/evolution/versions/v${NEW_VERSION}.json"
+  [[ -f "$record" ]] || { echo "ERROR: version record missing: $record" >&2; exit 3; }
+
+  LATEST_TAG="$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)"
+  SHA="$(git rev-parse --short HEAD)"
+  FULL_SHA="$TAG_COMMIT"
+  COMMITTED=1
+  MUTATED=0
+  WORKTREE_VERIFIED="$(state_field worktreeVerified)"
+  BENCHMARK_SCORE="$r_bench"
+  PROTECT_STATUS="$r_protect"
+  TEST_LINE="$(record_field "$record" testStatus)"
+  MSG="$(record_field "$record" message)"
+  SUMMARY="$(record_field "$record" details)"
+  RESOLVED_NEXT="$(record_field "$record" next)"
+  NOTES_FILE="${ROOT}/AppBuilder/release-notes-${NEW_VERSION}.md"
+  if [[ ! -f "$NOTES_FILE" ]]; then
+    python3 "$RECORDS_TOOL" render-notes --version "$NEW_VERSION" > "$NOTES_FILE"
+    echo "==> [resume] regenerated release notes: ${NOTES_FILE#"$ROOT"/}"
+  fi
+
+  if [[ "$CANARY" != "1" && -n "$r_canary" ]]; then
+    CANARY=1
+    CANARY_HOST="$r_canary"
+    echo "==> [resume] inherited canary host: ${CANARY_HOST}"
+  fi
+
+  PUSHED_TAG=""
+  if git ls-remote --tags "$UPSTREAM_REMOTE" "refs/tags/${tag}" 2>/dev/null | grep -q .; then
+    PUSHED_TAG="yes"
+  fi
+
+  if [[ -n "$RESUME_FROM" ]]; then
+    RESUME_STAGE="$RESUME_FROM"
+  else
+    case "$r_status" in
+      health_failed|canary_failed) RESUME_STAGE="deploy" ;;
+      release_failed)              RESUME_STAGE="release" ;;
+      push_failed)                 RESUME_STAGE="push" ;;
+      *)                           RESUME_STAGE="verify" ;;
+    esac
+  fi
+  case "$RESUME_STAGE" in
+    verify|push|release|deploy) ;;
+    *) echo "ERROR: unknown resume stage '${RESUME_STAGE}' (verify|push|release|deploy)" >&2; exit 2 ;;
+  esac
+  if [[ -z "$PUSHED_TAG" && ( "$RESUME_STAGE" == "release" || "$RESUME_STAGE" == "deploy" ) ]]; then
+    echo "==> [resume] remote tag ${tag} missing; falling back to push stage" >&2
+    RESUME_STAGE="push"
+  fi
+  if [[ "$RESUME_STAGE" != "verify" && -z "$WORKTREE_VERIFIED" ]]; then
+    echo "WARN: state has no worktreeVerified; re-running clean-checkout verification" >&2
+    RESUME_STAGE="verify"
+  fi
+
+  echo "==> RESUME: v${NEW_VERSION} (state=${r_status}) → stage=${RESUME_STAGE}"
+  echo "    tag:        ${tag} @ ${SHA}"
+  if [[ -n "$PUSHED_TAG" ]]; then
+    echo "    remote tag: pushed"
+  else
+    echo "    remote tag: not-pushed"
+  fi
+  echo "    benchmark:  ${BENCHMARK_SCORE:-n/a}"
+}
+
+# ---------- Monthly archive + final summary (shared by normal and resume runs) ----------
+archive_state_history() {
+  if [[ -x "$ARCHIVE_TOOL" || -f "$ARCHIVE_TOOL" ]]; then
+    if ! python3 "$ARCHIVE_TOOL" archive --state-dir "$STATE_DIR" --keep-days "${EVOLVE_ARCHIVE_KEEP_DAYS:-90}" >/dev/null 2>&1; then
+      echo "WARN: state history archive failed; live files left untouched." >&2
+    fi
+  fi
+}
+
+print_summary() {
+echo
+echo "==================================================="
+echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"
+echo "==================================================="
+echo "  Mode:           ${MODE}"
+echo "  Iteration:      ${ITER_BRANCH}"
+echo "  State file:     ${STATE_FILE}"
+echo "  App bundle:     ${ROOT}/Tapgo AICoding.app"
+if [[ -n "$LATEST_TAG" ]]; then
+  echo "  Rollback:       git checkout ${LATEST_TAG} && ./scripts/build-app.sh"
+else
+  echo "  Rollback:       git checkout ${START_HEAD} && ./scripts/build-app.sh"
+fi
+echo "  Restart+resume: ./scripts/restart-and-resume.sh"
+echo "==================================================="
+}
+
 # ---------- 0. Preflight: clean tree + no in-flight git operation ----------
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
   if [[ -f "$GIT_DIR_REAL/$marker" ]]; then
@@ -276,6 +638,29 @@ if [[ "$MODE" == "publish" && -z "$DRY_RUN" ]]; then
   echo "==> Remote evolution lock acquired: ${REMOTE_LOCK_SHA}"
 elif [[ "$MODE" == "publish" ]]; then
   echo "==> Remote evolution lock skipped (dry-run)"
+fi
+
+# ---------- Resume dispatch (continue an incomplete publish) ----------
+if [[ "$RESUME" == "1" ]]; then
+  if [[ "$MODE" != "publish" ]]; then
+    echo "ERROR: --resume only applies to publish mode; use --publish --resume." >&2
+    exit 2
+  fi
+  resume_prepare
+  if [[ -n "$DRY_RUN" ]]; then
+    echo
+    echo "=== DRY RUN (resume) ==="
+    echo "  version: ${NEW_VERSION}"
+    echo "  stage:   ${RESUME_STAGE}"
+    echo "  tag:     v${NEW_VERSION} @ ${SHA}"
+    echo "  steps:   resume at ${RESUME_STAGE} → ... → published → fleet deploy"
+    exit 0
+  fi
+  write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
+  publish_tail "$RESUME_STAGE"
+  archive_state_history
+  print_summary
+  exit 0
 fi
 
 # ---------- 1. Compute next version from semantic max of reachable tags ----------
@@ -571,186 +956,15 @@ if [[ "$(git rev-parse --abbrev-ref HEAD)" == "$ITER_BRANCH" ]]; then
 fi
 write_progress "commit" 5 "done" "tag v${NEW_VERSION} @ ${SHA}"
 
-write_state() {
-  local status="$1"
-  mkdir -p "$STATE_DIR"
-  EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
-  EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
-  EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
-  EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
-  EVO_PROTECT="$PROTECT_STATUS" EVO_WORKTREE_VERIFIED="$WORKTREE_VERIFIED" \
-  EVO_BENCHMARK="$BENCHMARK_SCORE" EVO_REMOTE_LOCK="$REMOTE_LOCK_SHA" EVO_CANARY="${CANARY:+$CANARY_HOST}" \
-  EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
-  python3 - "$STATE_FILE" <<'PY'
-import json, os, sys, datetime
-path = sys.argv[1]
-version = os.environ["EVO_VERSION"]
-prev = os.environ.get("EVO_PREV") or "(none)"
-next_action = os.environ.get("EVO_NEXT", "").strip()
-mode = os.environ["EVO_MODE"]
-state = {
-    "schemaVersion": 2,
-    "status": os.environ["EVO_STATUS"],
-    "version": version,
-    "commitSha": os.environ["EVO_SHA"],
-    "tag": "v" + version,
-    "mode": mode,
-    "branch": os.environ["EVO_BRANCH"],
-    "originalBranch": os.environ["EVO_BRANCH"],
-    "iterationBranch": os.environ.get("EVO_ITER_BRANCH", ""),
-    "healthCheck": os.environ.get("EVO_HEALTH", ""),
-    "fleetDeploy": os.environ.get("EVO_FLEET", ""),
-    "protectedGate": os.environ.get("EVO_PROTECT", ""),
-    "worktreeVerified": os.environ.get("EVO_WORKTREE_VERIFIED", ""),
-    "benchmarkScore": int(os.environ["EVO_BENCHMARK"]) if os.environ.get("EVO_BENCHMARK", "").strip().isdigit() else None,
-    "remoteLock": os.environ.get("EVO_REMOTE_LOCK") or None,
-    "canary": os.environ.get("EVO_CANARY") or None,
-    "repoRoot": os.environ["EVO_ROOT"],
-    "startHead": os.environ["EVO_START_HEAD"],
-    "testStatus": os.environ.get("EVO_TEST_LINE", ""),
-    "builtAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "evolutionNote": os.environ["EVO_NOTE"],
-    "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
-    "threadToResume": None,
-    "nextActions": [
-        next_action or "Read EVOLUTION.md and evolution_state.json, then pick the next highest-value real problem.",
-        "Inspect this iteration diff: git diff %s..v%s" % (prev, version),
-        "Re-run scripts/evolve.sh --dry-run before the next iteration.",
-    ],
-    "stopConditions": [
-        "Tests and .app build must be green before any commit.",
-        "A new tag is only valid after clean-tree preflight, tests, and a matching .app build.",
-        "Iteration commits live on codex/evolution-vX.Y.Z; the original branch only fast-forwards.",
-        "Publish must pass a clean-checkout git worktree build before any push.",
-        "Do not start the next iteration until this state is terminal (local_built or published).",
-        "Never edit ~/.codex/ — only the isolated Application Support tree.",
-        "Never bump major without explicit user approval.",
-    ],
-}
-tmp = path + ".tmp"
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(state, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-
-  # Append every state transition to JSONL so metrics can distinguish
-  # published / failed / retried iterations instead of only seeing the last one.
-  STATE_HISTORY="${EVOLVE_STATE_HISTORY:-$STATE_DIR/evolution_state_history.jsonl}"
-  python3 - "$STATE_FILE" "$STATE_HISTORY" <<'PY'
-import json, os, sys
-state_path, history_path = sys.argv[1], sys.argv[2]
-with open(state_path, encoding="utf-8") as fh:
-    state = json.load(fh)
-parent = os.path.dirname(history_path)
-if parent:
-    os.makedirs(parent, exist_ok=True)
-with open(history_path, "a", encoding="utf-8") as fh:
-    fh.write(json.dumps(state, ensure_ascii=False) + "\n")
-    fh.flush()
-    os.fsync(fh.fileno())
-os.chmod(history_path, 0o600)
-PY
-}
-
 # ---------- 10. Publish (optional) ----------
 if [[ "$MODE" == "publish" ]]; then
-  echo "==> Clean-checkout worktree verification for v${NEW_VERSION}"
-  if ! "$WORKTREE_VERIFY_SCRIPT" "v${NEW_VERSION}"; then
-    write_state "worktree_verify_failed"
-    echo "WORKTREE VERIFY FAILED — commit/tag retained locally; nothing pushed." >&2
-    exit 10
-  fi
-  WORKTREE_VERIFIED="yes"
-  write_state "committed"
-  check_stop 5 "push"
-  write_progress "push" 6 "running" "pushing main + audit branch"
-  echo "==> Pushing iteration branch ${ITER_BRANCH} for audit"
-  if ! git push "$UPSTREAM_REMOTE" "$ITER_BRANCH"; then
-    write_state "push_failed"
-    echo "PUSH FAILED (branch) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
-    exit 6
-  fi
-  echo "==> Pushing to ${UPSTREAM_REMOTE} (main fast-forward + tag v${NEW_VERSION})"
-  if ! git push "$UPSTREAM_REMOTE" HEAD:main "v${NEW_VERSION}"; then
-    write_state "push_failed"
-    echo "PUSH FAILED (main) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
-    exit 6
-  fi
-  write_progress "push" 6 "done" "main + audit branch pushed"
-  check_stop 6 "release"
-  write_progress "release" 7 "running" "building signed zip + GitHub Release"
-  echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
-  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" TAPGO_CANARY="${CANARY}" "$RELEASE_SCRIPT" "$NOTES_FILE"; then
-    write_state "release_failed"
-    echo "WARN: tag pushed but release/appcast publish failed; state=release_failed." >&2
-    exit 7
-  fi
-
-  write_progress "release" 7 "done" "release + appcast published"
-  check_stop 7 "deploy"
-  write_progress "deploy" 8 "running" "deploying three-Mac fleet"
-  if [[ "${EVOLVE_SKIP_DEPLOY:-}" == "1" ]]; then
-    FLEET_STATUS="skipped"
-    echo "==> [health] fleet deploy skipped (EVOLVE_SKIP_DEPLOY=1)"
-  elif [[ "$CANARY" == "1" ]]; then
-    echo "==> [canary] deploying v${NEW_VERSION} to canary host ${CANARY_HOST} only"
-    if ! "$DEPLOY_SCRIPT" --only "$CANARY_HOST" "$NEW_VERSION"; then
-      FLEET_STATUS="canary_failed"
-      write_state "canary_failed"
-      echo "CANARY FAILED: draft release retained; appcast not published." >&2
-      exit 10
-    fi
-    echo "==> [canary] promoting appcast + deploying remaining hosts"
-    if ! "$CANARY_PROMOTE_SCRIPT" "$NEW_VERSION" "$CANARY_HOST"; then
-      FLEET_STATUS="canary_failed"
-      write_state "canary_failed"
-      echo "CANARY PROMOTE FAILED: appcast may already be public; inspect and roll back if needed." >&2
-      exit 10
-    fi
-    FLEET_STATUS="passed"
-    write_progress "deploy" 8 "done" "canary ${CANARY_HOST} promoted; fleet verified"
-  else
-    echo "==> [health] deploying v${NEW_VERSION} to the three-Mac fleet"
-    if ! "$DEPLOY_SCRIPT" "$NEW_VERSION"; then
-      FLEET_STATUS="failed"
-      write_state "health_failed"
-      echo "HEALTH FAILED: release is published but fleet deploy/readback failed." >&2
-      echo "Rollback: git checkout ${LATEST_TAG:-${START_HEAD}} && ./scripts/build-app.sh" >&2
-      exit 10
-    fi
-    FLEET_STATUS="passed"
-    write_progress "deploy" 8 "done" "fleet version/PID verified"
-  fi
-  write_state "published"
-  write_progress "done" 9 "done" "v${NEW_VERSION} published"
+  publish_tail "verify"
 else
   write_state "local_built"
   echo "==> [local] skipped push / GitHub Release / appcast"
   write_progress "done" 9 "done" "v${NEW_VERSION} local_built"
 fi
 
-# ---------- 11. Archive old state history (monthly, non-destructive) ----------
-if [[ -x "$ARCHIVE_TOOL" || -f "$ARCHIVE_TOOL" ]]; then
-  if ! python3 "$ARCHIVE_TOOL" archive --state-dir "$STATE_DIR" --keep-days "${EVOLVE_ARCHIVE_KEEP_DAYS:-90}" >/dev/null 2>&1; then
-    echo "WARN: state history archive failed; live files left untouched." >&2
-  fi
-fi
-
 # ---------- 12. Summary ----------
-echo
-echo "==================================================="
-echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"
-echo "==================================================="
-echo "  Mode:           ${MODE}"
-echo "  Iteration:      ${ITER_BRANCH}"
-echo "  State file:     ${STATE_FILE}"
-echo "  App bundle:     ${ROOT}/Tapgo AICoding.app"
-if [[ -n "$LATEST_TAG" ]]; then
-  echo "  Rollback:       git checkout ${LATEST_TAG} && ./scripts/build-app.sh"
-else
-  echo "  Rollback:       git checkout ${START_HEAD} && ./scripts/build-app.sh"
-fi
-echo "  Restart+resume: ./scripts/restart-and-resume.sh"
-echo "==================================================="
+archive_state_history
+print_summary

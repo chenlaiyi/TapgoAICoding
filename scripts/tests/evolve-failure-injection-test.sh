@@ -254,6 +254,7 @@ run_evolve "$R7" "$BASE/s7-state" "$BASE/s7.log" --publish --paths scripts patch
 assert_json "$BASE/s7-state/evolution_state.json" 'd["status"]' "s7 published state"
 assert_json "$BASE/s7-state/evolution_state.json" 'd["fleetDeploy"]' "s7 fleet passed"
 assert_json "$BASE/s7-state/evolution_state.json" 'd["worktreeVerified"]' "s7 worktree verified"
+assert_json "$BASE/s7-state/evolution_state.json" 'd["canary"] is None' "s7 non-canary run records no canary host"
 assert_eq "$(git -C "$BASE/s7-origin.git" branch --list evolution-lock | wc -l | tr -d ' ')" 0 "s7 remote lock released"
 assert_eq "$(git -C "$BASE/s7-origin.git" tag --list v0.5.2)" v0.5.2 "s7 remote tag"
 assert_eq "$(git -C "$R7" rev-list --count origin/main)" 2 "s7 origin main advanced"
@@ -356,6 +357,76 @@ assert_json "$BASE/s17c-state/evolution_state.json" 'd["status"]' "s17c publishe
 assert_json "$BASE/s17c-state/evolution_state.json" 'd["canary"]' "s17c canary host recorded"
 assert_grep "$BASE/s17c-state/deploy.log" "deploy --only jkmacmini" "s17c canary host deployed first"
 assert_grep "$BASE/s17c-state/deploy.log" "promote 0.5.2 jkmacmini" "s17c promotion ran"
+
+# ---------- S18: release 失败后用 --resume 续跑，不重做测试/提交 ----------
+R18="$BASE/s18"; make_repo "$R18"
+git -C "$R18" init -q --bare "$BASE/s18-origin.git"
+git -C "$R18" remote add origin "$BASE/s18-origin.git"
+git -C "$R18" push -q -u origin main --tags
+set +e; FAKE_RELEASE_RC=1 run_evolve "$R18" "$BASE/s18-state" "$BASE/s18.log" --publish --paths scripts patch "s18" "s18" --next n; RC=$?; set -e
+assert_eq "$RC" 7 "s18 exit 7 on release failure"
+assert_json "$BASE/s18-state/evolution_state.json" 'd["status"] == "release_failed"' "s18 state release_failed"
+SHA18="$(git -C "$R18" rev-parse HEAD)"
+TESTS18="$(wc -l < "$BASE/s18-state/test_run_history.jsonl" | tr -d ' ')"
+run_evolve "$R18" "$BASE/s18-state" "$BASE/s18.resume.log" --publish --resume
+assert_json "$BASE/s18-state/evolution_state.json" 'd["status"] == "published"' "s18 resume reaches published"
+assert_eq "$(git -C "$R18" rev-parse HEAD)" "$SHA18" "s18 resume reuses existing commit (no new commit)"
+assert_eq "$(wc -l < "$BASE/s18-state/test_run_history.jsonl" | tr -d ' ')" "$TESTS18" "s18 resume does not re-run tests"
+assert_grep "$BASE/s18.resume.log" "RESUME: v0.5.2" "s18 resume banner printed"
+assert_grep "$BASE/s18.resume.log" "stage=release" "s18 resumed at release stage"
+assert_grep "$BASE/s18.resume.log" "stage-skip" "s18 skipped worktree verification"
+assert_grep "$BASE/s18-state/deploy.log" "deploy 0.5.2" "s18 resume deployed the fleet"
+assert_json "$BASE/s18-state/evolution_state.json" 'd["fleetDeploy"] == "passed"' "s18 resume fleet passed"
+
+# ---------- S19: push 失败后用 --resume 续跑 ----------
+R19="$BASE/s19"; make_repo "$R19"
+git -C "$R19" init -q --bare "$BASE/s19-origin.git"
+git -C "$R19" remote add origin "$BASE/s19-origin.git"
+git -C "$R19" push -q -u origin main --tags
+cat > "$BASE/s19-origin.git/hooks/pre-receive" <<'HOOK'
+#!/usr/bin/env bash
+while read -r old new ref; do
+  if [[ "$ref" == "refs/heads/main" ]]; then
+    echo "main push rejected by test hook" >&2
+    exit 1
+  fi
+done
+exit 0
+HOOK
+chmod +x "$BASE/s19-origin.git/hooks/pre-receive"
+set +e; run_evolve "$R19" "$BASE/s19-state" "$BASE/s19.log" --publish --paths scripts patch "s19" "s19" --next n; RC=$?; set -e
+assert_eq "$RC" 6 "s19 exit 6 on push failure"
+assert_json "$BASE/s19-state/evolution_state.json" 'd["status"] == "push_failed"' "s19 state push_failed"
+assert_eq "$(git -C "$BASE/s19-origin.git" tag --list v0.5.2)" "" "s19 remote tag absent after rejected push"
+rm -f "$BASE/s19-origin.git/hooks/pre-receive"
+run_evolve "$R19" "$BASE/s19-state" "$BASE/s19.resume.log" --publish --resume
+assert_json "$BASE/s19-state/evolution_state.json" 'd["status"] == "published"' "s19 resume reaches published"
+assert_grep "$BASE/s19.resume.log" "stage=push" "s19 resumed at push stage"
+assert_eq "$(git -C "$BASE/s19-origin.git" tag --list v0.5.2)" v0.5.2 "s19 resume pushed the tag"
+assert_eq "$(git -C "$R19" rev-list --count origin/main)" 2 "s19 resume advanced origin main"
+
+# ---------- S20: worktree verify 失败后用 --resume 续跑 ----------
+R20="$BASE/s20"; make_repo "$R20"
+git -C "$R20" init -q --bare "$BASE/s20-origin.git"
+git -C "$R20" remote add origin "$BASE/s20-origin.git"
+git -C "$R20" push -q -u origin main --tags
+set +e; FAKE_WORKTREE_RC=1 run_evolve "$R20" "$BASE/s20-state" "$BASE/s20.log" --publish --paths scripts patch "s20" "s20" --next n; RC=$?; set -e
+assert_eq "$RC" 10 "s20 exit 10 on worktree verify failure"
+assert_json "$BASE/s20-state/evolution_state.json" 'd["status"] == "worktree_verify_failed"' "s20 state worktree_verify_failed"
+run_evolve "$R20" "$BASE/s20-state" "$BASE/s20.resume.log" --publish --resume
+assert_json "$BASE/s20-state/evolution_state.json" 'd["status"] == "published"' "s20 resume reaches published"
+assert_grep "$BASE/s20.resume.log" "stage=verify" "s20 resumed at verify stage"
+assert_json "$BASE/s20-state/evolution_state.json" 'd["worktreeVerified"] == "yes"' "s20 resume verified worktree"
+
+# ---------- S21: 已发布状态 resume 是空操作 ----------
+set +e; run_evolve "$R18" "$BASE/s18-state" "$BASE/s21.log" --publish --resume; RC=$?; set -e
+assert_eq "$RC" 0 "s21 resume on published state exits 0"
+assert_grep "$BASE/s21.log" "already published" "s21 reports nothing to resume"
+
+# ---------- S22: --resume 不带 --publish 被拒绝 ----------
+set +e; run_evolve "$R18" "$BASE/s18-state" "$BASE/s22.log" --resume; RC=$?; set -e
+assert_eq "$RC" 2 "s22 resume without publish rejected"
+assert_grep "$BASE/s22.log" "only applies to publish mode" "s22 explains publish requirement"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]
