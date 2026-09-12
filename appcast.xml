@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.301</title>
+            <pubDate>Sun, 13 Sep 2026 01:56:56 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.301</link>
+            <sparkle:version>0.5.301</sparkle:version>
+            <sparkle:shortVersionString>0.5.301</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.301
+
+feat(evolution): UI 快照基线比对
+
+## 变更
+
+- 新增 scripts/evolution-ui-diff.py：字节相同直接通过；否则用 Pillow 逐像素比较，按「通道差 > 8 的像素占比 ≤ 0.1%」判定，输出差异 bbox/最大通道差，--json 可机读，--diff-out 落差异图。
+- 缺 Pillow 且两份快照字节不同时以 exit 3 明确报告无法比对，不假装通过（Pillow 是用户级安装，不能假设每台机器都有）。
+- 新增基线 evolution/ui-baseline/evolution-ui.png：实测两次渲染逐字节一致（1800x1960, 199893B），像素门禁在同机稳定。
+- evolution-ui-snapshot-test.sh 升级：渲染后与基线比对并加两个负向对照（sips 改尺寸、200x20 条带局部改动），--update-baseline 刷新基线。
+- 测试从 3 项扩到 9 项；benchmark 的 machinery-executable 追加基线文件断言。
+
+离屏渲染与基线做像素门禁，布局回归可拦截
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.301/Tapgo-AICoding-0.5.301.zip" length="12699049" type="application/octet-stream" sparkle:edSignature="TjtK9OekoEJVxKMrAjYZ7OgxpCkM9v3bc98xuD15NgVkjfCLOLlAltrzStLBIblvUNrBY/Ho0y7g49nDT4m9CQ=="/>
+        </item>
+        <item>
             <title>0.5.300</title>
             <pubDate>Sun, 13 Sep 2026 01:43:37 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.300</link>
@@ -57,32 +85,6 @@ feat(evolution): 反馈漏斗接入看板
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.299/Tapgo-AICoding-0.5.299.zip" length="12697662" type="application/octet-stream" sparkle:edSignature="74AXs+fylDNQ09dHyATIolQeQ0EzMMMDLCJ6+JqUdpFpIx+J+UgPTa4J1tY+0fGuz3wdHipqupW55SKaUIMuCQ=="/>
-        </item>
-        <item>
-            <title>0.5.298</title>
-            <pubDate>Sun, 13 Sep 2026 01:14:28 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.298</link>
-            <sparkle:version>0.5.298</sparkle:version>
-            <sparkle:shortVersionString>0.5.298</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.298
-
-fix(evolution): state schema 版本漂移
-
-## 变更
-
-- 修正 evolve.sh write_state 写出的 schemaVersion：EVO-041 把注册表升到 v4（新增 costSource）但漏改写入方，导致新记录仍标 v3；validate 把 v3 当 legacy 放过，正是 EVO-035 要消灭的静默漂移。
-- evolution-schema 回归新增漂移守卫：从注册表读 evolution_state.json 的版本、从 evolve.sh write_state 段读写入字面量，两者必须相等；负向验证（写回 3）确认守卫会失败。
-- 本机现有 state 已带 costSource 字段，本轮发布起落盘 schemaVersion=4。
-
-写入方版本号对齐注册表并加守卫
-
-## Next
-
-EVO-042 反馈漏斗接入看板: 把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.298/Tapgo-AICoding-0.5.298.zip" length="12660883" type="application/octet-stream" sparkle:edSignature="FrkUMWls96FL1MVS37kymI7h2TOXmy06IrI7eanEZTfsO5c1/hr8dMSb82uMTdpOnQPYNng7wuZXL8QBAngmBA=="/>
         </item>
     </channel>
 </rss>
