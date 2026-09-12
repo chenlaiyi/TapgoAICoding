@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.306</title>
+            <pubDate>Sun, 13 Sep 2026 03:05:46 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.306</link>
+            <sparkle:version>0.5.306</sparkle:version>
+            <sparkle:shortVersionString>0.5.306</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.306
+
+fix(evolution): 指标摘要契约
+
+## 变更
+
+- 真机发现：evolution-metrics 只写扁平键 localAppRunning/Installed/Stale，而 App 的 EvolutionMetricsSummary 读嵌套 localApp.*——手写 Swift fixture 恰好是嵌套形状，于是单测全绿、真实产物却读不出本机漂移。
+- 生产侧同时输出嵌套 localApp{installed,running,stale}（脚本用扁平键、App 用嵌套），两边同源。
+- 读取侧改嵌套优先、扁平兜底，老快照不会因此失效。
+- metrics 回归新增跨语言契约断言：真实 --out 产物必须含 p95CycleSeconds/mttrMedianSeconds/mttrSamples/runDurationMedianSeconds/runTokensTotal/runCostUSDTotal 与嵌套 localApp.stale。
+- 真机端到端复验：把真实摘要放到 jkmacmini 的 state 后，其 /api/state 的 evolution.metricsSummary 返回 12 个键（p95=1158.7 / mttr=855 / runDuration=500 / stale=true），验证完即清理。
+
+生产侧补嵌套 localApp + 跨语言契约断言
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.306/Tapgo-AICoding-0.5.306.zip" length="12733694" type="application/octet-stream" sparkle:edSignature="2G4rmqpKamPGtEIeU5r+C+1RrgU0MQpW5zuaiseGE6xPPccllz9r4hvfnmzfr3r9Arm3sNnp04xZ9HWj4U2PBQ=="/>
+        </item>
+        <item>
             <title>0.5.305</title>
             <pubDate>Sun, 13 Sep 2026 02:53:13 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.305</link>
@@ -56,35 +84,6 @@ test(evolution): canary 提升演练
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.304/Tapgo-AICoding-0.5.304.zip" length="12701568" type="application/octet-stream" sparkle:edSignature="jCeNNrGsfsSwW19uyCmskzYIUT9BkduPza2waMseZGSyzrzjEbfH1lLuQHudg+6wCt63lQQ/vmANN4oivuUxDg=="/>
-        </item>
-        <item>
-            <title>0.5.303</title>
-            <pubDate>Sun, 13 Sep 2026 02:25:50 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.303</link>
-            <sparkle:version>0.5.303</sparkle:version>
-            <sparkle:shortVersionString>0.5.303</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.303
-
-fix(evolution): 部署参数经 ssh 拼接失真
-
-## 变更
-
-- 改用非空哨兵：本地传 "${REMOTE_APP_OVERRIDE:--}"，远端 "APP=${4:--}" 且 - 映射回 /Applications/Tapgo AICoding.app（默认路径留在远端脚本内，不再经 ssh 传递）。
-- 远端新增守卫：APP 必须以 .app 结尾、WAIT 必须是整数，配置失真立刻报错而不是装到莫名其妙的位置。
-- EVOLVE_FLEET_REMOTE_APP 含空格直接在本地拒绝并说明原因（ssh 会重新分词）。
-- 演练升级：fake ssh 忠实模拟参数拼接，新增哨兵静态断言、非 .app 路径拒绝、ssh 参数留痕；测试 32→42 项。
-- 安全护栏：演练在临时目录外直接拒绝运行，并断言所有安装目标都在 TMP 内（测试曾尝试写真实 /Applications，现已不可能）。
-- 真机复验：v0.5.302 补跑部署 → 两台远端 PID 正常且 UI ASSERT OK。
-
-哨兵值 + 远端守卫，真机部署恢复正常
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.303/Tapgo-AICoding-0.5.303.zip" length="12701194" type="application/octet-stream" sparkle:edSignature="aShvjrth3osJa21lcdTqhQB3tBBk+al5FG3SFXYNwHOLVJN1cSEMtkG7ur1d0hknt7EYxcGx8ubBK7U0PVHlBA=="/>
         </item>
     </channel>
 </rss>
