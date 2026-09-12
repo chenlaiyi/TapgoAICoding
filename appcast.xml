@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.292</title>
+            <pubDate>Sat, 12 Sep 2026 23:34:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.292</link>
+            <sparkle:version>0.5.292</sparkle:version>
+            <sparkle:shortVersionString>0.5.292</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.292
+
+feat(evolution): 度量扩展
+
+## 变更
+
+- evolve.sh 每次写状态记录 startedAt/durationSeconds（墙钟），并接受 EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 写入 tokens/costUSD；state schema 升到 v3。
+- evolution-metrics.py 新增 p95CycleSeconds/maxCycleSeconds、MTTR（mttrMedianSeconds/mttrP95Seconds/mttrSamples/unrecoveredFailures/lastRecoverySeconds）与单轮汇总（runDuration*/runTokens*/runCostUSD*）。
+- MTTR 定义：失败状态 → 其后第一个终端成功（同版本 --resume 续跑或下一版发布）；未恢复失败单独计数、不计入采样。
+- Swift EvolutionMetricsSnapshot 同步 P95/MTTR/单轮时长成本字段并补齐 failedStatuses（worktree_verify_failed/benchmark_regressed/canary_failed），指标详情新增「周期 P95 / MTTR / 单轮时长」卡片。
+- 测试：Python 指标断言扩到 21 项、Swift 新增 9 项（3353 passed）、失败注入扩到 135 项（时长/token/成本落盘）。
+
+新增周期 P95、MTTR 与单轮时长/成本指标
+
+## Next
+
+EVO-037 远端锁 TTL: 崩溃后锁按 TTL 自动回收，保留显式抢占入口
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.292/Tapgo-AICoding-0.5.292.zip" length="12643904" type="application/octet-stream" sparkle:edSignature="dMDqZ90HIyGUBsB/13/QoXTcv+DsAlB3Z3yRi1RR52SNZbFceIjkbHGvnIy3gxlhgOLkuK4dih387ktmySYhDQ=="/>
+        </item>
+        <item>
             <title>0.5.291</title>
             <pubDate>Sat, 12 Sep 2026 23:15:11 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.291</link>
@@ -57,34 +85,6 @@ gh/SDK/磁盘/远端/三机/tag 统一预检，失败零改动退出
 EVO-035 运行态 schemaVersion: state json/jsonl 加版本字段与迁移，防止字段演进静默失真
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.290/Tapgo-AICoding-0.5.290.zip" length="12631029" type="application/octet-stream" sparkle:edSignature="+4NRKQlnmtLOuDxk+Gh2ZFGif7ODimUnENSAiq1AjFj6qm0lhJPvvSF1Ms5o5sKRLzKSNvTJp9VQVFKLEfyEDA=="/>
-        </item>
-        <item>
-            <title>0.5.289</title>
-            <pubDate>Sat, 12 Sep 2026 22:40:56 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.289</link>
-            <sparkle:version>0.5.289</sparkle:version>
-            <sparkle:shortVersionString>0.5.289</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.289
-
-feat(evolution): 发布失败续跑
-
-## 变更
-
-- evolve.sh 把 publish 尾段拆成 publish_verify/push/release/deploy + publish_tail(stage)，正常流程行为不变（失败注入 79 项原样通过）。
-- 新增 --publish --resume 与 --resume-from <verify|push|release|deploy>：读 evolution_state.json 的失败状态，校验 tag/HEAD/版本记录后从对应阶段续跑，跳过版本号/记录/测试/构建/commit。
-- 远端真相优先：远端 tag 缺失时 release/deploy 自动回退到 push；state 无 worktreeVerified 时回退到 verify；canary 运行继承 canary host。
-- 顺带修复 state.canary：此前 CANARY=0 也是非空字符串，导致每次普通发布都被记成 canary 运行。
-- 失败注入矩阵扩到 106 项：新增 release/push/worktree 三类续跑、已发布状态空操作、--resume 缺 --publish 拒绝等断言。
-
-发布中断后 --resume 从失败阶段继续，不再整轮重来
-
-## Next
-
-EVO-034 发布前环境预检: gh 认证 / SDK / python3 / 磁盘 / 远端可达 / tag 冲突统一预检后再启动
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.289/Tapgo-AICoding-0.5.289.zip" length="12630564" type="application/octet-stream" sparkle:edSignature="5r2rhQgRGtbIDOfNrMPHycEqwoCMBm8yqv/5gmH6gsGboEGs15hCkOaTGuuk3XafhsvrZC4OpMtV99oqP1wqAA=="/>
         </item>
     </channel>
 </rss>
