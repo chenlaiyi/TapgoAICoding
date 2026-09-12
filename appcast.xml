@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.299</title>
+            <pubDate>Sun, 13 Sep 2026 01:28:37 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.299</link>
+            <sparkle:version>0.5.299</sparkle:version>
+            <sparkle:shortVersionString>0.5.299</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.299
+
+feat(evolution): 反馈漏斗接入看板
+
+## 变更
+
+- evolution-feedback-funnel.py 新增 snapshot 子命令：原子写 state/feedback_funnel.json（带 schemaVersion/generatedAt），--out - 可打印 stdout，--quiet 静默。
+- evolve.sh 每轮收尾（含 --resume 路径）刷新该快照，失败只 WARN，不影响发布结果。
+- TapgoCore.FeedbackFunnelSnapshot：宽容解析（缺字段不崩、缺文件返回 nil），口径始终以 Python 工具为真源，App 不重复实现计算。
+- App 指标详情新增「反馈草稿 / 反馈转化 / 反馈等待」三张卡；手机端 H5 自进化卡片新增一行反馈漏斗摘要。
+- 测试：漏斗回归扩到 36 项（快照落盘/载荷/stdout/quiet），Swift 指标 +4、PhoneRemote 快照 +3、H5 页面 +3。
+
+反馈转化率与等待时长进入 App 指标详情与手机端卡片
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.299/Tapgo-AICoding-0.5.299.zip" length="12697662" type="application/octet-stream" sparkle:edSignature="74AXs+fylDNQ09dHyATIolQeQ0EzMMMDLCJ6+JqUdpFpIx+J+UgPTa4J1tY+0fGuz3wdHipqupW55SKaUIMuCQ=="/>
+        </item>
+        <item>
             <title>0.5.298</title>
             <pubDate>Sun, 13 Sep 2026 01:14:28 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.298</link>
@@ -55,34 +83,6 @@ App 写自进化会话 token 快照，evolve.sh 取增量并标注来源
 EVO-042 反馈漏斗接入看板: 把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.297/Tapgo-AICoding-0.5.297.zip" length="12660376" type="application/octet-stream" sparkle:edSignature="1L5zPvxnT3XAj9IZUi15RdiBq46w8R6N32+n2iiF9Cmj2vc8Qfv7xNrrt0iNnxlHV2mrCBakPfWzMP9r32xZBw=="/>
-        </item>
-        <item>
-            <title>0.5.296</title>
-            <pubDate>Sun, 13 Sep 2026 00:45:28 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.296</link>
-            <sparkle:version>0.5.296</sparkle:version>
-            <sparkle:shortVersionString>0.5.296</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.296
-
-feat(evolution): 依赖路径探测
-
-## 变更
-
-- 新增 scripts/evolution-deps.sh：evo_detect_sdk/evo_detect_codex/evo_require_tool/evo_deps_report，只定义函数、source 无副作用。
-- SDK 解析顺序：TAPGO_SDK 显式 → 偏好 EVOLVE_SDK_PREFERRED（默认 macosx26.5，装了就用）→ 本机最新已装 SDK → xcrun 默认；走非偏好分支打 WARNING，全部失败才报错并列出已装 SDK。
-- codex 解析顺序：EVOLVE_CODEX_BIN → PATH → /opt/homebrew/bin → /usr/local/bin → ~/.local/bin；找不到时明确报错。
-- 13 处 SDK 硬编码与 3 处 codex 硬编码收敛到该模块：launchd plist 改用 __CODEX_BIN__ 占位符由安装器替换，init-tapgo 复用 evo_detect_codex，反馈注册表 5 条检查去掉 -sdk 硬编码，预检新增 codex 解析行。
-- 新增 30 项 deps 回归（含静态守卫：无残留硬编码、可覆盖 ROOT 的脚本必须从 SCRIPT_DIR 加载模块）。
-
-SDK 与 codex 收敛到单点真源，升级机器不再硬失败
-
-## Next
-
-EVO-041 自进化成本归属: App 把当前会话的 token/成本传给 evolve.sh（`EVOLVE_RUN_TOKENS`/`EVOLVE_RUN_COST_USD`），让单轮成本指标有真实数据
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.296/Tapgo-AICoding-0.5.296.zip" length="12647637" type="application/octet-stream" sparkle:edSignature="/fuD4Dp/lsQ5j8983a3JlQrI4U3q/IkbkWy0Co4UByZXGrMOteROzvy3YxY2k2pqi8pGTCEbJQFwB/Jht67RCQ=="/>
         </item>
     </channel>
 </rss>
