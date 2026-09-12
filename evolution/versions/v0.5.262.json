@@ -1,0 +1,15 @@
+{
+  "version": "0.5.262",
+  "tag": "v0.5.262",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "fix(evolution): state 选点与 backlog 同源",
+  "changes": [
+    "state 改用 RESOLVED_NEXT 并补失败注入断言"
+  ],
+  "details": "记录与 state.nextActions 同时来自 backlog 顶部,补齐选点闭环",
+  "why": "v0.5.261 记录 next 已是 backlog 顶部,但 state.nextActions 仍落通用文案,两条路径未共用解析结果",
+  "next": "EVO-006 分支/worktree 隔离: 每轮在 `codex/evolution-vX.Y.Z` 工作树执行；publish 走 PR 或至少远端 fast-forward 校验",
+  "testStatus": "— 3171 passed, 0 failed —",
+  "commitSha": null
+}

@@ -1,5 +1,18 @@
 # Evolution Log
 
+## v0.5.262 — fix(evolution): state 选点与 backlog 同源
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.262`)_
+**Tag**: v0.5.262
+**Test status**: — 3171 passed, 0 failed —
+**Changed**:
+- state 改用 RESOLVED_NEXT 并补失败注入断言
+
+记录与 state.nextActions 同时来自 backlog 顶部,补齐选点闭环
+**Why**: v0.5.261 记录 next 已是 backlog 顶部,但 state.nextActions 仍落通用文案,两条路径未共用解析结果
+**Next**: EVO-006 分支/worktree 隔离: 每轮在 `codex/evolution-vX.Y.Z` 工作树执行；publish 走 PR 或至少远端 fast-forward 校验
+
+
 ## v0.5.261 — feat(evolution): backlog 驱动选点
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.261`)_

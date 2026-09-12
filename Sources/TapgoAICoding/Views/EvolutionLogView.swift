@@ -252,6 +252,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.262", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.262",
+                    summary: "修复 backlog 选点未写入 state.nextActions 的缺口,记录与状态共用同一解析结果。",
+                    changes: [
+                        "修正 evolve.sh write_state 使用 RESOLVED_NEXT(含 backlog 顶部解析结果),不再传原始 NEXT_ACTION,避免未显式 --next 时 state.nextActions[0] 落成通用文案。",
+                        "失败注入 S4 新增断言:结构化记录的 next 与 evolution_state.json 的 nextActions[0] 必须同时来自 backlog。",
+                        "EVO-005 的 state 路径修复补记到 backlog;当前顶部仍为 EVO-006。"
+                    ],
+                    why: "v0.5.261 记录的 next 已解析为 EVO-006,但发布后核验发现运行时 state.nextActions[0] 仍是通用文案;说明记录与状态两条路径没有共用同一解析结果,选点闭环只完成了一半。",
+                    next: "EVO-006:每轮在 codex/evolution-vX.Y.Z 分支隔离执行,main 只做 fast-forward;worktree 隔离与 EVO-008 三机部署闭环随后接入。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.261", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.261",
                     summary: "backlog 驱动选点:Python/Swift 双解析,面板显示下一项,prompt 与 nextActions 自动注入。",
                     changes: [

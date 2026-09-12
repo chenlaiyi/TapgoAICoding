@@ -8,7 +8,7 @@
 - [x] **EVO-002 结构化版本真源**：每版 JSON 记录，日志/release notes 由记录渲染（v0.5.258）
 - [x] **EVO-003 失败注入矩阵**：测试/构建/发布/脏路径/重复 tag 场景可重复验证（v0.5.259）
 - [x] **EVO-004 历史日志去重 + 指标**：清理 v0.5.70/71/102/106/107/230/232 重复节；状态历史 JSONL + 指标（v0.5.260）
-- [x] **EVO-005 backlog 驱动选点**：Python/Swift 双解析，面板显示下一项，prompt 与 `nextActions` 自动注入（v0.5.261）
+- [x] **EVO-005 backlog 驱动选点**：Python/Swift 双解析，面板显示下一项，prompt 与 `nextActions` 自动注入（v0.5.261；state.nextActions 修复见 v0.5.262）
 - [ ] **EVO-006 分支/worktree 隔离**：每轮在 `codex/evolution-vX.Y.Z` 工作树执行；publish 走 PR 或至少远端 fast-forward 校验
 
 ## P1 — 可观测与验证
