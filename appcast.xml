@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.259</title>
+            <pubDate>Sat, 12 Sep 2026 18:44:00 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.259</link>
+            <sparkle:version>0.5.259</sparkle:version>
+            <sparkle:shortVersionString>0.5.259</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.259
+
+feat(evolution): 失败注入矩阵与记录质量
+
+## 变更
+
+- 新增失败注入矩阵覆盖 7 场景 28 断言
+- evolve.sh 支持 why/change 入档并归一构建失败码
+
+真实 why/change 写入结构化记录;四类故障注入验证回滚与状态机
+
+## Next
+
+清理历史重复日志节并建立迭代指标
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.259/Tapgo-AICoding-0.5.259.zip" length="12386764" type="application/octet-stream" sparkle:edSignature="dU4Z4YwQYzEN8+wzMN3Z9r4D6+F64OGuyVuYrkt8rdUEqUw2VWc+5yRx2yL5u3AjNVIVBuISaS2lY41NB2+JBw=="/>
+        </item>
+        <item>
             <title>0.5.258</title>
             <pubDate>Sat, 12 Sep 2026 18:38:53 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.258</link>
@@ -49,42 +74,6 @@ feat(evolution): 闭环安全加固
 下一轮:统一结构化版本真源 + evolve.sh 失败注入测试
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.257/Tapgo-AICoding-0.5.257.zip" length="12385010" type="application/octet-stream" sparkle:edSignature="GJbss1fdHdmgYQg7qXDbkhZsNmro8/AN8ThdwuHUFdsleuam9Kjt7VldNZFXvz5IyESdmr6oJ5u/FlHZ9DVxCQ=="/>
-        </item>
-        <item>
-            <title>0.5.256</title>
-            <pubDate>Sat, 12 Sep 2026 15:46:18 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.256</link>
-            <sparkle:version>0.5.256</sparkle:version>
-            <sparkle:shortVersionString>0.5.256</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.5.256
-
-本次包含 0.5.255 与 0.5.256 两个未发布版本。
-
-## 0.5.256 — 消息渲染：过程细节不再"糊成一片"
-
-- **过程消息视觉降级**：回合内 agent 的叙述性过程（"我先读…继续看…"）改为 **13.5pt + 略低透明度**，最终回复保持 15pt 主色。展开工作过程时可以先抓结论，过程退到背景。
-- **设置语义澄清**：「显示工作过程」更名为「**工作过程默认展开**」。关闭时（推荐，对齐 Codex）回合只显示一行「用时/已处理」摘要，点箭头才展开；开启后细节全量展开、消息会明显变长。
-- 说明：这个开关同时会影响发给模型的指令 —— 关闭时模型被要求**省略日常过程播报**，所以关掉它不只是"少显示几行"，模型输出本身也会更精炼。
-
-## 0.5.255 — 自进化模块可移植化
-
-让任何 clone 这份代码的人都能跑通自进化，并且本地定制不会被上游更新覆盖。
-
-- **仓库归属参数化**：新增 `scripts/tapgo-repo-slug.sh`，按 `TAPGO_REPO_SLUG` → `upstream` → `origin` 解析；发布 URL 不再硬编码维护者仓库，fork 用户无需改脚本。
-- **本地 / 发布双模式**：`evolve.sh --local`（默认）只 commit + tag 到本地，不 push、不发 Release、不动 appcast；`--publish` 保留维护者完整发布闭环。新增 `--dry-run` 先看计划。
-- **防撞版本号**：先 `git fetch --tags` 上游，再从 `upstream/main` 的 tag 推算版本。
-- **防"更新覆盖本地"**：本地定制构建会自动**关闭「自动安装更新」**，可用 `TAPGO_FEED_URL` 指定自己的更新源。
-- **上游同步脚本**：新增 `scripts/sync-upstream.sh` —— 预检双方 commit 差异，`--apply` 以 rebase 方式把本地演进叠到上游之上，冲突时停下给指引。
-- **入口更宽容**：项目根定位支持 `TAPGO_PROJECT_ROOT` 及多个常见 clone 路径。
-- README 中英双版新增「自进化」章节。
-
-## 测试
-
-- 全量回归通过；剩余失败为存量环境项（SSH 集成使用保留网段假 IP、缺 auth.json 的集成跳过），与本批改动无关。
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.256/Tapgo-AICoding-0.5.256.zip" length="12383824" type="application/octet-stream" sparkle:edSignature="ZoOoXoNq0R+124BeJvrZHL48rKujVeiwXZlAYoXvx0imG5G3ABurONqZrWLea5etkeeZNRTE9Zi/hILljdg3AA=="/>
         </item>
     </channel>
 </rss>
