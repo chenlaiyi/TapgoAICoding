@@ -107,6 +107,11 @@ EVOLUTION="${ROOT}/EVOLUTION.md"
 STATE_DIR="${EVOLVE_STATE_DIR:-$HOME/Library/Application Support/Tapgo AICoding/state}"
 STATE_FILE="${STATE_DIR}/evolution_state.json"
 TEST_HISTORY="${EVOLVE_TEST_HISTORY:-$STATE_DIR/test_run_history.jsonl}"
+PROGRESS_FILE="${EVOLVE_PROGRESS_FILE:-$STATE_DIR/evolution_progress.json}"
+STOP_FILE="${EVOLVE_STOP_FILE:-$STATE_DIR/evolution_stop_request}"
+PROGRESS_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+PROGRESS_PHASE_INDEX=0
+STOPPED=0
 NOTES_FILE=""
 NEW_VERSION=""
 ITER_BRANCH=""
@@ -136,6 +141,9 @@ cleanup() {
         echo "WARN: rollback .app rebuild failed; rerun scripts/build-app.sh manually" >&2
     fi
   fi
+  if [[ "$rc" -ne 0 && "$STOPPED" -eq 0 ]]; then
+    write_progress "failed" "${PROGRESS_PHASE_INDEX:-1}" "failed" "exit=${rc}"
+  fi
   if [[ "$rc" -ne 0 && "$COMMITTED" -eq 0 && "$BRANCH_CREATED" -eq 1 ]]; then
     if [[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)" == "$ITER_BRANCH" ]]; then
       git checkout "$BRANCH" >/dev/null 2>&1 || true
@@ -145,6 +153,47 @@ cleanup() {
   evo_lock_release "$LOCK_DIR"
 }
 trap cleanup EXIT
+
+write_progress() {
+  local phase="$1" index="$2" status="${3:-running}" message="${4:-}"
+  PROGRESS_PHASE_INDEX="$index"
+  if [[ "${EVOLVE_SKIP_PROGRESS:-}" == "1" ]]; then return 0; fi
+  mkdir -p "$STATE_DIR"
+  EVO_P_VERSION="${NEW_VERSION:-pending}" EVO_P_PHASE="$phase" EVO_P_INDEX="$index" \
+  EVO_P_STATUS="$status" EVO_P_MESSAGE="$message" EVO_P_BRANCH="${ITER_BRANCH:-}" \
+  EVO_P_STARTED="$PROGRESS_STARTED_AT" python3 - "$PROGRESS_FILE" <<'PY'
+import datetime, json, os, sys
+path = sys.argv[1]
+state = {
+    "schemaVersion": 1,
+    "version": os.environ.get("EVO_P_VERSION", ""),
+    "phase": os.environ["EVO_P_PHASE"],
+    "phaseIndex": int(os.environ["EVO_P_INDEX"]),
+    "phaseCount": 9,
+    "status": os.environ["EVO_P_STATUS"],
+    "message": os.environ.get("EVO_P_MESSAGE", ""),
+    "iterationBranch": os.environ.get("EVO_P_BRANCH", ""),
+    "startedAt": os.environ.get("EVO_P_STARTED", ""),
+    "updatedAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+}
+tmp = path + ".tmp"
+with open(tmp, "w", encoding="utf-8") as fh:
+    json.dump(state, fh, ensure_ascii=False, indent=2)
+    fh.write("\n")
+os.replace(tmp, path)
+PY
+}
+
+check_stop() {
+  local index="$1" phase="$2"
+  if [[ -f "$STOP_FILE" ]]; then
+    rm -f "$STOP_FILE"
+    STOPPED=1
+    write_progress "stopped" "$index" "stopped" "用户请求停止（${phase}）"
+    echo "STOP REQUESTED before ${phase}; aborting self-evolution." >&2
+    exit 9
+  fi
+}
 
 # ---------- 0. Preflight: clean tree + no in-flight git operation ----------
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
@@ -181,6 +230,7 @@ if [[ -n "$DIRTY_STATUS" ]]; then
 else
   echo "==> Preflight: clean tree, branch=${BRANCH}, lock acquired"
 fi
+write_progress "preflight" 1 "running" "branch=${BRANCH}"
 
 # ---------- 1. Compute next version from semantic max of reachable tags ----------
 if git fetch --tags "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
@@ -289,8 +339,10 @@ evo_insert_evolution_entry "$EVOLUTION" "$ENTRY_FILE"
 rm -f "$ENTRY_FILE"
 python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
 echo "==> Structured record + EVOLUTION.md rendered for v${NEW_VERSION}"
+write_progress "record" 2 "done" "record + EVOLUTION rendered"
 
 # ---------- 5. Tests (before any commit) ----------
+check_stop 2 "tests"
 WITH_INTEGRATION="${WITH_INTEGRATION:-}"
 TEST_ENV=("TAPGO_EXPECTED_VERSION=${NEW_VERSION}")
 TEST_ARGS=()
@@ -339,6 +391,7 @@ python3 "$TEST_REPORT_TOOL" record --log "$TEST_LOG" --history "$TEST_HISTORY" \
   --version "$NEW_VERSION" --status pass >/dev/null 2>&1 || true
 rm -f "$TEST_LOG"
 echo "==> Tests: ${TEST_LINE}"
+write_progress "tests" 3 "done" "${TEST_LINE}"
 
 python3 "$RECORDS_TOOL" set-test-status --version "$NEW_VERSION" --value "$TEST_LINE"
 python3 - "$EVOLUTION" "$TEST_LINE" <<'PYEOF'
@@ -353,6 +406,8 @@ PYEOF
 python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
 
 # ---------- 6. Build the real .app before commit ----------
+check_stop 3 "build"
+write_progress "build" 4 "running" "building .app"
 echo "==> Building .app bundle"
 if [[ "$MODE" == "local" ]]; then
   if ! TAPGO_LOCAL_BUILD=1 "$BUILD_SCRIPT" >/dev/null; then
@@ -377,6 +432,7 @@ if ! "$HEALTH_SCRIPT" "$ROOT/Tapgo AICoding.app" "$NEW_VERSION"; then
   exit 4
 fi
 HEALTH_STATUS="passed"
+write_progress "build" 4 "done" "health check passed"
 
 
 # ---------- 7. Release notes (publish only; rendered from the record) ----------
@@ -388,6 +444,7 @@ if [[ "$MODE" == "publish" ]]; then
 fi
 
 # ---------- 8. Commit + tag on the iteration branch ----------
+check_stop 4 "commit"
 ALLOWED_PATHS+=("$PLIST" "$HELPER_PLIST" "$PROJECT_YML" "$EVOLUTION" "$ROOT/evolution")
 [[ -n "$NOTES_FILE" ]] && ALLOWED_PATHS+=("$NOTES_FILE")
 if [[ -n "$DIRTY_STATUS" ]]; then
@@ -435,6 +492,7 @@ if [[ "$(git rev-parse --abbrev-ref HEAD)" == "$ITER_BRANCH" ]]; then
   fi
   echo "==> ${BRANCH} fast-forwarded to ${SHA}; iteration branch retained"
 fi
+write_progress "commit" 5 "done" "tag v${NEW_VERSION} @ ${SHA}"
 
 write_state() {
   local status="$1"
@@ -514,6 +572,8 @@ PY
 # ---------- 10. Publish (optional) ----------
 if [[ "$MODE" == "publish" ]]; then
   write_state "committed"
+  check_stop 5 "push"
+  write_progress "push" 6 "running" "pushing main + audit branch"
   echo "==> Pushing iteration branch ${ITER_BRANCH} for audit"
   if ! git push "$UPSTREAM_REMOTE" "$ITER_BRANCH"; then
     write_state "push_failed"
@@ -526,6 +586,9 @@ if [[ "$MODE" == "publish" ]]; then
     echo "PUSH FAILED (main) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
     exit 6
   fi
+  write_progress "push" 6 "done" "main + audit branch pushed"
+  check_stop 6 "release"
+  write_progress "release" 7 "running" "building signed zip + GitHub Release"
   echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
   if ! TAPGO_REPO_SLUG="${REPO_SLUG}" "$RELEASE_SCRIPT" "$NOTES_FILE"; then
     write_state "release_failed"
@@ -533,6 +596,9 @@ if [[ "$MODE" == "publish" ]]; then
     exit 7
   fi
 
+  write_progress "release" 7 "done" "release + appcast published"
+  check_stop 7 "deploy"
+  write_progress "deploy" 8 "running" "deploying three-Mac fleet"
   if [[ "${EVOLVE_SKIP_DEPLOY:-}" == "1" ]]; then
     FLEET_STATUS="skipped"
     echo "==> [health] fleet deploy skipped (EVOLVE_SKIP_DEPLOY=1)"
@@ -546,11 +612,14 @@ if [[ "$MODE" == "publish" ]]; then
       exit 10
     fi
     FLEET_STATUS="passed"
+    write_progress "deploy" 8 "done" "fleet version/PID verified"
   fi
   write_state "published"
+  write_progress "done" 9 "done" "v${NEW_VERSION} published"
 else
   write_state "local_built"
   echo "==> [local] skipped push / GitHub Release / appcast"
+  write_progress "done" 9 "done" "v${NEW_VERSION} local_built"
 fi
 
 # ---------- 11. Summary ----------

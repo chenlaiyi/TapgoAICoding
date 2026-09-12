@@ -20,7 +20,7 @@
 
 ## P2 — 体验与安全
 
-- [ ] **EVO-011 自进化进度 UI**：阶段进度（核对→实现→测试→构建→发布）、停止、diff 审阅、成本/token
+- [x] **EVO-011 自进化进度 UI**：9 阶段进度、停止请求、Token/用时、diff 审阅接入会话横幅（v0.5.267）
 - [ ] **EVO-012 自改门禁**：受保护路径（evolve.sh/测试/AGENTS.md）checksum 与独立审批
 - [ ] **EVO-013 iOS 版本序列分离**：EVOLUTION.md 中 iOS 1.0.x 独立分区，消除与 Mac 0.x 的历史重复歧义
 - [ ] **EVO-014 旧日志归档**：把 v0.5.5 之前与 iOS 历史移入 `evolution/archive/`，主日志保持可读

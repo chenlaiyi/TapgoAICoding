@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.267 — feat(evolution): 运行态进度与 diff 审阅
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.267`)_
+**Tag**: v0.5.267
+**Test status**: — 3209 passed, 0 failed —
+**Changed**:
+- 新增进度协议与 9 阶段回写,阶段边界支持停止
+- 面板接入进度条/停止/Token 用时/diff 审阅
+
+9 阶段进度、停止请求、Token/用时与 diff 审阅进入自进化会话横幅
+**Why**: 会话横幅只显示轮数,无法知道脚本阶段、无法停止、看不到 diff 与成本
+**Next**: EVO-012 自改门禁: 受保护路径（evolve.sh/测试/AGENTS.md）checksum 与独立审批
+
+
 ## v0.5.266 — feat(evolution): 测试 flaky 追踪
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.266`)_

@@ -156,6 +156,7 @@ assert_no_file "$R2/evolution/versions/v0.5.2.json" "s2 record removed"
 assert_eq "$(git -C "$R2" branch --list 'codex/evolution-v0.5.2' | wc -l | tr -d ' ')" 0 "s2 iteration branch removed"
 assert_grep "$BASE/s2-state/test_run_history.jsonl" '"status": "fail"' "s2 failure recorded"
 assert_grep "$BASE/s2-state/test_run_history.jsonl" '"realFailures": 1' "s2 real failure classified"
+assert_grep "$BASE/s2-state/evolution_progress.json" '"status": "failed"' "s2 progress failed recorded"
 
 # ---------- S3: build fails -> full rollback ----------
 R3="$BASE/s3"; make_repo "$R3"
@@ -183,6 +184,7 @@ assert_json "$BASE/s4-state/evolution_state.json" 'd["status"]' "s4 state status
 assert_json "$BASE/s4-state/evolution_state.json" 'd["healthCheck"]' "s4 health passed"
 assert_json "$BASE/s4-state/evolution_state.json" 'd["fleetDeploy"]' "s4 fleet skipped locally"
 assert_grep "$BASE/s4-state/test_run_history.jsonl" '"status": "pass"' "s4 pass recorded"
+assert_grep "$BASE/s4-state/evolution_progress.json" '"status": "done"' "s4 progress done recorded"
 assert_grep "$R4/EVOLUTION.md" "## v0.5.2 — s4 message" "s4 rendered log"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R4/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s4 built app version"
 
@@ -242,6 +244,15 @@ set +e; FAKE_DEPLOY_RC=1 run_evolve "$R10" "$BASE/s10-state" "$BASE/s10.log" --p
 assert_eq "$RC" 10 "s10 exit 10 on fleet health failure"
 assert_json "$BASE/s10-state/evolution_state.json" 'd["status"]' "s10 health_failed state"
 assert_eq "$(git -C "$BASE/s10-origin.git" tag --list v0.5.2)" v0.5.2 "s10 release tag retained"
+
+# ---------- S11: stop request aborts before commit and keeps stopped status ----------
+R11="$BASE/s11"; make_repo "$R11"
+mkdir -p "$BASE/s11-state"
+printf 'stop' > "$BASE/s11-state/evolution_stop_request"
+set +e; run_evolve "$R11" "$BASE/s11-state" "$BASE/s11.log" --paths scripts patch "s11" "s11" --next n; RC=$?; set -e
+assert_eq "$RC" 9 "s11 exit 9 on stop request"
+assert_eq "$(git -C "$R11" rev-list --count HEAD)" 1 "s11 no commit"
+assert_grep "$BASE/s11-state/evolution_progress.json" '"status": "stopped"' "s11 stopped status preserved"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

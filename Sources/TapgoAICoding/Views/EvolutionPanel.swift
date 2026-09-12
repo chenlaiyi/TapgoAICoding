@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import TapgoCore
 
 /// 自进化会话的专属引导横幅（对话区顶部，位于消息列表之上）。
@@ -16,6 +17,10 @@ struct EvolutionPanel: View {
     let thread: TapgoCore.Thread
     /// 打开「自进化日志」sheet（sheet 挂在 ChatView 上）。
     let showLog: () -> Void
+    @State private var progress: TapgoCore.EvolutionProgress? = nil
+    @State private var showDiff = false
+
+    private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     private var isRunning: Bool {
         thread.turns.last?.status == .running || thread.turns.last?.status == .awaitingApproval
@@ -28,6 +33,28 @@ struct EvolutionPanel: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            mainRow
+            if let progress, shouldShowProgress(progress) {
+                progressRow(progress)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(DSHTheme.brand.opacity(0.08))
+        .onAppear { refreshProgress() }
+        .onReceive(timer) { _ in
+            if isRunning || progress?.isActive == true { refreshProgress() }
+        }
+        .sheet(isPresented: $showDiff) {
+            if let cwd = thread.cwd {
+                EvolutionDiffSheet(projectRoot: URL(fileURLWithPath: cwd))
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var mainRow: some View {
         HStack(spacing: 10) {
             ZStack {
                 Circle()
@@ -53,6 +80,14 @@ struct EvolutionPanel: View {
             }
             .controlSize(.small)
             Button {
+                showDiff = true
+            } label: {
+                Label("查看 diff", systemImage: "doc.text.magnifyingglass")
+            }
+            .controlSize(.small)
+            .disabled(thread.cwd == nil)
+            .help("查看上一 tag → 当前 HEAD 的改动统计与文件列表")
+            Button {
                 store.sendUserMessage(EvolutionWorkspace.kickoffPrompt(topBacklogItem: topBacklog))
             } label: {
                 Label(isRunning ? "自进化执行中…" : "开始自进化",
@@ -64,10 +99,76 @@ struct EvolutionPanel: View {
             .help(isRunning ? "当前自进化回合仍在执行" : "发出自进化指令：核对仓库 → 选定改进点 → 实现 → 全量回归 → 版本对齐")
             .accessibilityLabel(isRunning ? "自进化执行中" : "开始自进化")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(DSHTheme.brand.opacity(0.08))
-        .accessibilityElement(children: .contain)
+    }
+
+    private func shouldShowProgress(_ progress: TapgoCore.EvolutionProgress) -> Bool {
+        progress.isActive || progress.status == "failed" || progress.status == "stopped" || progress.phase != "done"
+    }
+
+    private func progressRow(_ progress: TapgoCore.EvolutionProgress) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                ProgressView(value: progress.progressFraction)
+                    .progressViewStyle(.linear)
+                    .tint(progressTint(progress))
+                    .frame(maxWidth: 220)
+                Text("\(progress.phaseIndex)/\(progress.phaseCount) \(progress.phaseLabel)")
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier).weight(.semibold))
+                    .foregroundStyle(progressTint(progress))
+                if progress.isStale {
+                    Text("可能已中断")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.orange)
+                }
+                Spacer()
+                if isRunning || progress.isActive {
+                    Button {
+                        requestStop()
+                    } label: {
+                        Label("停止", systemImage: "stop.fill")
+                    }
+                    .controlSize(.mini)
+                    .tint(.red)
+                    .help("请求停止本轮自进化；脚本会在阶段边界回滚未提交改动")
+                }
+            }
+            if let message = progress.message, !message.isEmpty {
+                Text(message)
+                    .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private func progressTint(_ progress: TapgoCore.EvolutionProgress) -> Color {
+        switch progress.status {
+        case "failed": return .red
+        case "stopped": return .orange
+        case "done": return .green
+        default: return DSHTheme.brand
+        }
+    }
+
+    private func requestStop() {
+        try? TapgoCore.EvolutionProgress.requestStop(stateDirectory: stateDirectory)
+        store.cancelTurn(threadID: thread.id)
+        refreshProgress()
+    }
+
+    private var stateDirectory: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Tapgo AICoding/state", isDirectory: true)
+    }
+
+    private func refreshProgress() {
+        progress = TapgoCore.EvolutionProgress.load(stateDirectory: stateDirectory)
+    }
+
+    private func usageText(_ value: Int) -> String {
+        if value >= 1_000_000 { return String(format: "%.1fM", Double(value) / 1_000_000) }
+        if value >= 1_000 { return String(format: "%.1fk", Double(value) / 1_000) }
+        return "\(value)"
     }
 
     private var hintText: String {
@@ -75,6 +176,8 @@ struct EvolutionPanel: View {
         let count = thread.turns.count
         let rounds = count == 0 ? "尚未开始" : "已 \(count) 轮"
         let next = topBacklog.map { " · 下一项 \($0.id)" } ?? ""
-        return "独立对话、独立开发\(cwd) · \(rounds)\(next)"
+        let usage = thread.usageTotal > 0 ? " · Token \(usageText(thread.usageTotal))" : ""
+        let duration = thread.durationTotalText.map { " · 用时 \($0)" } ?? ""
+        return "独立对话、独立开发\(cwd) · \(rounds)\(next)\(usage)\(duration)"
     }
 }

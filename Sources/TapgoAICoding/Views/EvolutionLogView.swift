@@ -333,6 +333,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.267", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.267",
+                    summary: "自进化进度 UI:9 阶段进度、停止、Token/用时与 diff 审阅接入会话横幅。",
+                    changes: [
+                        "新增 TapgoCore.EvolutionProgress:进度 schema、phaseLabel、progressFraction、30 分钟 stale 判定与 stop 请求读写;9 项 Swift 回归。",
+                        "evolve.sh 每个阶段写 evolution_progress.json(9 阶段);清理失败写 failed,阶段边界检查 stop 请求,用户停止保留 stopped 状态并回滚未提交改动。",
+                        "EvolutionPanel 新增阶段进度条、停止按钮、Token 累计与用时统计;运行时每 2 秒刷新。",
+                        "新增 EvolutionDiffSheet:用 git describe 定位上一 tag → 当前 tag,展示 diff --stat / name-status / commit log;面板新增「查看 diff」入口。",
+                        "失败注入矩阵扩到 55 项:新增进度 done/failed 断言与 S11 停止请求场景。",
+                        "EVO-011 标记完成;当前 backlog 顶部为 EVO-012(自改门禁)。"
+                    ],
+                    why: "此前会话横幅只显示轮数,无法知道脚本跑到哪个阶段、无法中断、看不到本轮 diff 与成本。EVO-011 补齐运行态可观测与中断能力。",
+                    next: "EVO-012 自改门禁:受保护路径(evolve.sh/测试/AGENTS.md)checksum 与独立审批。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.266", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.266",
                     summary: "测试 flaky 追踪:失败 section 自动重跑,环境失败与真实回归分离并永久留痕。",
                     changes: [
