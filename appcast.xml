@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.282</title>
+            <pubDate>Sat, 12 Sep 2026 21:25:48 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.282</link>
+            <sparkle:version>0.5.282</sparkle:version>
+            <sparkle:shortVersionString>0.5.282</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.282
+
+feat(evolution): 多机协调锁
+
+## 变更
+
+- 新增远端 evolution-lock 原子互斥与持有者状态
+- 冲突退出 9,显式 break 才能抢占,失败注入 S15
+
+publish 前远端原子互斥,冲突显示持有者/时长,显式 break 才可抢占
+
+## Next
+
+EVO-028 发布 canary/灰度: 先只让一台客户端升级，观察后再全量 appcast
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.282/Tapgo-AICoding-0.5.282.zip" length="12610683" type="application/octet-stream" sparkle:edSignature="0dXCUzoM/cfAkp6PECKHjRR8wLaFeVu5Sm0qFgBCMyt+VpGI3XWFO/3uENF8ZtS4E4e770Ap2ywsOKH/kDO7Dw=="/>
+        </item>
+        <item>
             <title>0.5.281</title>
             <pubDate>Sat, 12 Sep 2026 21:12:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.281</link>
@@ -51,31 +76,6 @@ PhoneRemote 快照与 H5 显示版本/进度/benchmark/模型评测/backlog
 EVO-026 草稿 check 建议: 为 `drafts.json` 自动生成候选最小复现命令模板，仍人工确认
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.280/Tapgo-AICoding-0.5.280.zip" length="12608490" type="application/octet-stream" sparkle:edSignature="hJUNODhnjXLvlxn9T9wjgGoK/X2FtnX+aE41QN28huPLfAeWccAPHxZdO2Pd27Whhd87Ai+Kj+ewEnVzGjvgDg=="/>
-        </item>
-        <item>
-            <title>0.5.279</title>
-            <pubDate>Sat, 12 Sep 2026 20:56:52 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.279</link>
-            <sparkle:version>0.5.279</sparkle:version>
-            <sparkle:shortVersionString>0.5.279</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.279
-
-feat(evolution): 多 runner A/B 对比
-
-## 变更
-
-- 新增多 runner A/B 对比与退化门禁
-- 共享预算/超时逻辑,回归扩到 13 项,backlog 顺序调整
-
-同一任务集对比通过率/耗时/成本,候选低于基线即失败
-
-## Next
-
-EVO-025 手机端自进化状态: PhoneRemote 状态快照暴露版本、进度、benchmark、模型评测与 backlog
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.279/Tapgo-AICoding-0.5.279.zip" length="12574393" type="application/octet-stream" sparkle:edSignature="+f/C/6sGuKBQXRJqKTCc+JRfpoXRihdRurK92hUj62XUbeg1bZwrqKnJvolLJysG4bEVU0cBv/801Pe6k5jTCw=="/>
         </item>
     </channel>
 </rss>
