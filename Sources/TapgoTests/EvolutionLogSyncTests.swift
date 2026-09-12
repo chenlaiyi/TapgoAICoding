@@ -1,10 +1,11 @@
 import Foundation
 
-/// 守住"makeHistory() 不能明显落后于 EVOLUTION.md"：两个源的版本列表
-/// 必须有交集（交集少于 5 条即视为维护疏漏）。该测试在每次 release 前
-/// 都应通过 — 如发现失败，先看 `Sources/TapgoAICoding/Views/EvolutionLogView.swift`
-/// 的 `makeHistory()` 是否漏 preprend 新版本条目。
-
+/// 守住版本日志的三个不变量：
+///   1. makeHistory() 中每个现代版本都能在 EVOLUTION.md 找到；
+///   2. EVOLUTION.md 最新 10 个版本必须都已进入 makeHistory()（防止只改日志漏改 UI）；
+///   3. Mac 0.x 系列版本节不允许重复，且最新 10 条在 makeHistory 中保持倒序。
+///
+/// 旧版（v<0.5.5）历史 backlog 不参与双向校验，避免为远古数据补录。
 @MainActor
 func runEvolutionLogSync(_ t: TestRunner) {
     func readFile(_ relativePath: String) -> String {
@@ -15,47 +16,69 @@ func runEvolutionLogSync(_ t: TestRunner) {
     let evo = readFile("EVOLUTION.md")
     let view = readFile("Sources/TapgoAICoding/Views/EvolutionLogView.swift")
 
-    // 抓 EVOLUTION.md 里所有 vX.Y.Z 段
-    let evoVersions = Set(
-        evo.split(separator: "\n", omittingEmptySubsequences: false)
-            .compactMap { (line: Substring) -> String? in
-                let s = String(line)
-                if s.hasPrefix("## v") { return String(s.dropFirst(3).split(separator: " ")[0]) }
-                return nil
-            }
-    )
+    // EVOLUTION.md 版本节保持文件顺序（最新在前）。
+    var orderedEvoVersions: [String] = []
+    var duplicateMacVersions: [String] = []
+    var seenMacVersions = Set<String>()
+    for rawLine in evo.split(separator: "\n", omittingEmptySubsequences: false) {
+        let line = String(rawLine)
+        guard line.hasPrefix("## v") else { continue }
+        let header = String(line.dropFirst(3))
+        guard let version = header.split(separator: " ").first.map(String.init),
+              version.range(of: "^v\\d+\\.\\d+\\.\\d+$", options: .regularExpression) != nil else { continue }
+        orderedEvoVersions.append(version)
 
-    // 抓 makeHistory 数组里所有 "vX.Y.Z" 字符串
-    let viewVersions = Set(
-        view.components(separatedBy: "\"").compactMap { (token: String) -> String? in
-            if token.hasPrefix("v") && token.contains(".") {
-                let head = String(token.prefix(while: { $0 != "\"" }))
-                if head.range(of: "^v\\d+\\.\\d+\\.\\d+$", options: .regularExpression) != nil {
-                    return head
-                }
+        // 只约束 Mac 0.x 且 >=0.5.233 的版本节。v0.5.232 及更早存在
+        // 历史重复节（如 v0.5.70/71/102/106/107/230/232），属于待清理
+        // 数据债；新版本从 v0.5.233 起必须唯一。
+        if version.hasPrefix("v0."), header.contains(" — ") {
+            let parts = version.dropFirst().split(separator: ".").compactMap { Int($0) }
+            let isStrict = parts.count == 3 && (parts[0], parts[1], parts[2]) >= (0, 5, 233)
+            if isStrict, !seenMacVersions.insert(version).inserted {
+                duplicateMacVersions.append(version)
             }
-            return nil
         }
-    )
+    }
+    let evoVersions = Set(orderedEvoVersions)
 
-    t.expect(!evoVersions.isEmpty, "evolution-sync: EVOLUTION.md 解析到至少 1 个版本")
-    t.expect(!viewVersions.isEmpty, "evolution-sync: makeHistory 解析到至少 1 个版本")
-    // 兼容：makeHistory 里 v<0.5.5 是 EVOLUTION 重建前的历史 backlog，忽略；
-    // v≥0.5.5 的条目 EVOLUTION.md 必须有，否则就是漏更。
-    let modernViewVersions = viewVersions.filter { v in
-        let parts = v.split(separator: ".").compactMap { Int($0) }
+    // makeHistory 数组内所有 vX.Y.Z 版本。
+    let viewVersionsOrdered = view.components(separatedBy: "\"").compactMap { token -> String? in
+        guard token.hasPrefix("v"), token.contains(".") else { return nil }
+        let head = String(token.prefix(while: { $0 != "\"" }))
+        return head.range(of: "^v\\d+\\.\\d+\\.\\d+$", options: .regularExpression) != nil ? head : nil
+    }
+    let viewVersions = Set(viewVersionsOrdered)
+
+    func isModern(_ version: String) -> Bool {
+        let parts = version.dropFirst().split(separator: ".").compactMap { Int($0) }
         guard parts.count == 3 else { return false }
         return (parts[0], parts[1], parts[2]) >= (0, 5, 5)
     }
-    let missingInEvo = modernViewVersions.subtracting(evoVersions)
+
+    t.expect(!evoVersions.isEmpty, "evolution-sync: EVOLUTION.md 解析到至少 1 个版本")
+    t.expect(!viewVersions.isEmpty, "evolution-sync: makeHistory 解析到至少 1 个版本")
+    t.expect(duplicateMacVersions.isEmpty,
+             "evolution-sync: Mac 0.x 版本节不得重复（重复 \(duplicateMacVersions.sorted())）")
+
+    // 方向一：makeHistory -> EVOLUTION.md，不能引用不存在的日志。
+    let missingInEvo = viewVersions.filter(isModern).subtracting(evoVersions)
     t.expect(missingInEvo.isEmpty,
-             "evolution-sync: makeHistory 中 v≥0.5.5 的所有条目 EVOLUTION.md 必须有（实际缺 \(missingInEvo.sorted())）")
-    let overlap = evoVersions.intersection(viewVersions)
-    t.expect(overlap.count >= 5,
-             "evolution-sync: makeHistory 与 EVOLUTION 至少 5 个共同版本（实际 \(overlap.count)）")
-    // 增量：上一版发布期间 push 过的版本不能在 makeHistory 里完全缺失
-    let recent = ["v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81"]
-    let missingRecent = recent.filter { !viewVersions.contains($0) }
-    t.expect(missingRecent.isEmpty,
-             "evolution-sync: 最近 4 个发布版本（v0.5.78..v0.5.81）必须全部在 makeHistory（实际缺 \(missingRecent)）")
+             "evolution-sync: makeHistory 中 v≥0.5.5 的条目 EVOLUTION.md 必须有（实际缺 \(missingInEvo.sorted())）")
+
+    // 方向二：EVOLUTION.md 最新 10 个版本 -> makeHistory，不能漏进 UI。
+    let latestTen = Array(orderedEvoVersions.filter(isModern).prefix(10))
+    let missingInView = latestTen.filter { !viewVersions.contains($0) }
+    t.expect(latestTen.count == 10, "evolution-sync: EVOLUTION.md 至少含 10 个现代版本")
+    t.expect(missingInView.isEmpty,
+             "evolution-sync: EVOLUTION.md 最新 10 个版本必须进入 makeHistory（实际缺 \(missingInView)）")
+
+    // 方向三：最新 10 条在 makeHistory 源码中保持倒序。
+    let positions = latestTen.compactMap { version -> Int? in
+        view.range(of: "\"\(version)\"")?.lowerBound.utf16Offset(in: view)
+    }
+    t.expectEqual(positions.count, latestTen.count, "evolution-sync: 最新 10 个版本定位成功")
+    if positions.count == latestTen.count {
+        t.expect(positions == positions.sorted(),
+                 "evolution-sync: 最新 10 个版本在 makeHistory 中必须倒序（最新在前）")
+    }
 }

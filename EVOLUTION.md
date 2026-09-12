@@ -1,4 +1,16 @@
 # Evolution Log
+
+## v0.5.257 — feat(evolution): 闭环安全加固
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.257`)_
+**Tag**: v0.5.257
+**Test status**: — 3143 passed, 0 failed —
+**Changed**:
+- feat(evolution): 闭环安全加固
+显式路径白名单、并发锁、语义化最高版本、提交前 App 构建、日志头插、分阶段 state 与三机部署脚本
+**Why**: Self-evolution iteration — see commit message + diff.
+**Next**: 下一轮:统一结构化版本真源 + evolve.sh 失败注入测试.
+
 ## v0.5.256 — fix(ui): 过程消息视觉降级 + 「工作过程默认展开」语义澄清
 **Date**: 2026-09-12
 **Tag**: v0.5.256

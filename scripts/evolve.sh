@@ -1,180 +1,208 @@
 #!/usr/bin/env bash
-# evolve.sh — One-command self-evolution cycle.
+# evolve.sh — One-command self-evolution cycle (hardened v0.5.257).
 #
 # Usage:
-#   ./scripts/evolve.sh [--local|--publish] [--dry-run] <version-bump> "<commit message>" "<evolution summary>"
+#   ./scripts/evolve.sh [--local|--publish] [--dry-run] [--next "..."] \
+#       <version-bump> "<commit message>" "<evolution summary>"
 #
-# Examples:
-#   ./scripts/evolve.sh patch "fix: sidebar crash" "root cause ..."
-#   ./scripts/evolve.sh --publish minor "feat: dark mode" "colors throughout chat"
-#   ./scripts/evolve.sh --dry-run patch "wip" "just show me the plan"
+# Modes:
+#   --local    (默认) 只 commit + tag 到本地,构建并安装本机 .app。
+#   --publish  维护者完整闭环: 清理树预检 → 测试 → App 构建 → commit + tag
+#              → push main + tag → GitHub Release + appcast。
+#   --dry-run  只打印计划,不修改任何文件。
 #
-# Modes (v0.5.255):
-#   --local    (默认) 任何人可用。版本对齐上游后,只 commit + tag 到**本地**,
-#              build .app。不 push、不发 Release、不动 appcast。
-#              适合「我只想给自己定制」的副本。
-#   --publish  仅维护者。保留完整闭环:push origin main + tag、
-#              GitHub Release、刷新 appcast(客户端据此自动更新)。
-#              需要对该仓库有写权限 + Sparkle 私钥在 keychain。
-#   --dry-run  只打印将要发生的事(版本号/模式/步骤),不修改任何文件。
-#
-# Bump types:
-#   patch — 0.3.0 → 0.3.1  (default; bug fixes, small polish)
-#   minor — 0.3.0 → 0.4.0  (new features, backwards-compatible)
-#   major — 0.3.0 → 1.0.0  (breaking changes)
-#
-# What this script does (in order, all atomic):
-#   1. Sanity-check the working tree (no uncommitted source changes
-#      OTHER than the ones this script itself creates).
-#   2. Compute the next version from the current tag (or Info.plist).
-#   3. Patch Info.plist's CFBundleShortVersionString + CFBundleVersion.
-#   4. swift build -c release --product TapgoAICoding  (must succeed; uses
-#      SDK 26.5 via xcrun — see scripts/build-app.sh for the rationale)
-#   5. swift run TapgoTests                         (must stay green)
-#   5. swift run TapgoTests                         (must stay green)
-#   6. Append a section to EVOLUTION.md.
-#   7. git add + commit + tag + push (origin main + tags).
-#   8. Rebuild the .app bundle so a restart picks up the new binary.
-#   9. Write ~/Library/Application Support/Tapgo AICoding/state/evolution_state.json
-#      so a restarted session knows where we are and what's next.
-#  10. Print a summary block + the rollback command.
-#
-# On ANY failure after step 4, the script:
-#   - resets Info.plist to HEAD
-#   - does NOT commit, tag, or push
-#   - exits non-zero so a caller (or you) knows it didn't take
-#
-# Rollback at any time:
-#   git checkout v0.3.5 && ./scripts/build-app.sh
-
+# Safety contract (v0.5.257):
+#   1. 工作树/索引必须干净,否则拒绝启动(避免把无关改动卷进自进化 commit)。
+#   2. 仓库级 mkdir 锁,防止同机两个 evolve 进程同时改版本。
+#   3. 版本号取 upstream/main 可达 tag 的语义化最高值,不再用 git describe
+#      的拓扑最近值,避免旧 hotfix 或其它版本序列造成版本回退/撞号。
+#   4. 测试与 .app 构建都在 commit 之前完成;失败自动恢复被改文件。
+#   5. 成功后 commit 使用 `git add -A`,新文件不会被漏掉。
+#   6. evolution_state.json 是分阶段状态机(committed / local_built /
+#      published / push_failed / release_failed),不再只写终态。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=scripts/evolution-lib.sh
+source "$ROOT/scripts/evolution-lib.sh"
 
 # ---------- SDK selection ----------
-# Match scripts/build-app.sh: pin to SDK 26.5 because macOS 27 SDK
-# dropped the SwiftUI macros plugin from CommandLineTools. Override
-# with TAPGO_SDK=macosx27.0 to opt back in.
 TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
 if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
   echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2
-  echo "  Installed SDKs:" >&2
-  ls -1 /Library/Developer/CommandLineTools/SDKs/ 2>/dev/null | sed "s/^/    /" >&2
   exit 7
 fi
 SWIFT=(xcrun -sdk "$TAPGO_SDK" swift)
 echo "==> Using SDK: $TAPGO_SDK (override via TAPGO_SDK=...)"
 
 # ---------- Args ----------
-# v0.5.255: 位置参数之前允许 --local / --publish / --dry-run。
-# 默认 --local(安全默认):别的用户 clone 下来演进不会误推上游。
 MODE="local"
 DRY_RUN=""
-BUMP=""; MSG=""; SUMMARY=""
-for arg in "$@"; do
-  case "$arg" in
+BUMP=""; MSG=""; SUMMARY=""; NEXT_ACTION=""
+ALLOWED_PATHS=()
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
     --local)   MODE="local" ;;
     --publish) MODE="publish" ;;
     --dry-run) DRY_RUN="1" ;;
-    -h|--help) sed -n '2,52p' "$0"; exit 0 ;;
+    --next)    NEXT_ACTION="${2:-}"; shift ;;
+    --paths)
+      [[ -n "${2:-}" ]] || { echo "ERROR: --paths needs a value" >&2; exit 2; }
+      IFS=',' read -r -a _paths <<< "$2"
+      for _p in "${_paths[@]+"${_paths[@]}"}"; do
+        [[ -n "$_p" ]] && ALLOWED_PATHS+=("$_p")
+      done
+      shift
+      ;;
+    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
     *)
-      if   [[ -z "$BUMP"    ]]; then BUMP="$arg"
-      elif [[ -z "$MSG"     ]]; then MSG="$arg"
-      elif [[ -z "$SUMMARY" ]]; then SUMMARY="$arg"
+      if   [[ -z "$BUMP"        ]]; then BUMP="$1"
+      elif [[ -z "$MSG"         ]]; then MSG="$1"
+      elif [[ -z "$SUMMARY"     ]]; then SUMMARY="$1"
+      else echo "ERROR: unexpected extra argument: $1" >&2; exit 2
       fi
       ;;
   esac
+  shift
 done
 BUMP="${BUMP:-patch}"
 MSG="${MSG:-chore: evolve}"
 SUMMARY="${SUMMARY:-_no_summary_}"
+case "$BUMP" in patch|minor|major) ;; *) echo "ERROR: bump must be patch|minor|major (got: $BUMP)" >&2; exit 2 ;; esac
 
-case "$BUMP" in
-  patch|minor|major) ;;
-  *) echo "ERROR: bump must be patch|minor|major (got: $BUMP)" >&2; exit 2 ;;
-esac
-
-# ---------- 仓库归属(共享解析) ----------
+# ---------- Repo identity ----------
 # shellcheck source=scripts/tapgo-repo-slug.sh
 source "$ROOT/scripts/tapgo-repo-slug.sh"
 REPO_SLUG="$(tapgo_repo_slug || true)"
 UPSTREAM_REMOTE="$(tapgo_upstream_remote)"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+START_HEAD="$(git rev-parse HEAD)"
 
-# ---------- 0. Sanity ----------
-# Soft sanity check: warn if there are uncommitted changes, but don't
-# block. A typical iteration edits README.md + sources together; the
-# pipeline commits them atomically. The user can always `git reset
-# HEAD~1` if they don't like what got committed.
-if ! git diff --quiet HEAD; then
-  echo "==> NOTE: working tree has uncommitted changes — will be included in this commit."
-  git status --short | sed 's/^/    /'
-fi
-
-# ---------- 1. Compute next version ----------
 PLIST="${ROOT}/AppBuilder/Info.plist"
 HELPER_PLIST="${ROOT}/AppBuilder/ComputerUseHelper-Info.plist"
-# Source the version from the LATEST git tag (if any), falling back to
-# Info.plist. This way manually-tagged baselines (e.g. v0.3.1 introduced
-# before evolve.sh existed) don't get re-used by the script.
-# v0.5.255: 先感知上游 tag 再算版本,避免多人并行演进撞号。
-# fetch 失败(离线/fork 无 upstream)不阻断,降级为本地 tag。
+PROJECT_YML="${ROOT}/AppBuilder/project.yml"
+EVOLUTION="${ROOT}/EVOLUTION.md"
+STATE_DIR="${HOME}/Library/Application Support/Tapgo AICoding/state"
+STATE_FILE="${STATE_DIR}/evolution_state.json"
+NOTES_FILE=""
+COMMITTED=0
+MUTATED=0
+
+GIT_DIR_REAL="$(git rev-parse --git-dir)"
+[[ "$GIT_DIR_REAL" = /* ]] || GIT_DIR_REAL="$ROOT/$GIT_DIR_REAL"
+LOCK_DIR="${GIT_DIR_REAL}/tapgo-evolve.lock"
+
+cleanup() {
+  local rc=$?
+  if [[ "$rc" -ne 0 && "$COMMITTED" -eq 0 && "$MUTATED" -eq 1 ]]; then
+    echo "==> ROLLBACK: restoring files modified by this failed run" >&2
+    git checkout -- "$PLIST" "$PROJECT_YML" "$EVOLUTION" 2>/dev/null || true
+    [[ -f "$HELPER_PLIST" ]] && git checkout -- "$HELPER_PLIST" 2>/dev/null || true
+    [[ -n "$NOTES_FILE" && -f "$NOTES_FILE" && "$NOTES_FILE" == */release-notes-* ]] && rm -f "$NOTES_FILE"
+    # The .app may already have been rebuilt with the failed version; rebuild
+    # HEAD so the installed bundle cannot silently mismatch the repo.
+    if [[ -d "${ROOT}/Tapgo AICoding.app" ]]; then
+      echo "==> ROLLBACK: rebuilding .app from HEAD" >&2
+      "${ROOT}/scripts/build-app.sh" >/dev/null 2>&1 || \
+        echo "WARN: rollback .app rebuild failed; rerun scripts/build-app.sh manually" >&2
+    fi
+  fi
+  evo_lock_release "$LOCK_DIR"
+}
+trap cleanup EXIT
+
+# ---------- 0. Preflight: clean tree + no in-flight git operation ----------
+for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
+  if [[ -f "$GIT_DIR_REAL/$marker" ]]; then
+    echo "ERROR: git operation in progress ($marker); finish it before evolving." >&2
+    exit 9
+  fi
+done
+if [[ -d "$GIT_DIR_REAL/rebase-merge" || -d "$GIT_DIR_REAL/rebase-apply" ]]; then
+  echo "ERROR: git rebase in progress; finish it before evolving." >&2
+  exit 9
+fi
+DIRTY_STATUS="$(git -c core.quotepath=false status --porcelain)"
+if [[ -n "$DIRTY_STATUS" ]]; then
+  if [[ -n "$DRY_RUN" ]]; then
+    echo "==> NOTE: dry-run continues with a dirty tree (no files will be modified)"
+  elif [[ "${#ALLOWED_PATHS[@]}" -eq 0 ]]; then
+    echo "ERROR: dirty tree + no --paths allowlist. Pass every iteration path, e.g." >&2
+    echo "       ./scripts/evolve.sh --paths Sources/TapgoCore/Foo.swift,scripts/evolve.sh ..." >&2
+    git status --short | sed 's/^/    /' >&2
+    exit 9
+  fi
+fi
+if ! evo_lock_acquire "$LOCK_DIR"; then
+  echo "ERROR: another evolve.sh run holds the lock ($LOCK_DIR)." >&2
+  exit 9
+fi
+echo "==> Preflight: clean tree, branch=${BRANCH}, lock acquired"
+
+# ---------- 1. Compute next version from semantic max of reachable tags ----------
 if git fetch --tags "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
   echo "==> Fetched tags from ${UPSTREAM_REMOTE}"
 else
-  echo "==> NOTE: fetch ${UPSTREAM_REMOTE} 失败,版本基准退回本地 tag" >&2
+  echo "==> NOTE: fetch ${UPSTREAM_REMOTE} failed; using local merged tags" >&2
 fi
-LATEST_TAG="$(git describe --tags --abbrev=0 "${UPSTREAM_REMOTE}/main" 2>/dev/null \
-  || git describe --tags --abbrev=0 2>/dev/null || true)"
-if [[ "$LATEST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-  MAJ="${BASH_REMATCH[1]}"
-  MIN="${BASH_REMATCH[2]}"
-  PAT="${BASH_REMATCH[3]}"
-else
-  CUR_VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" 2>/dev/null || echo "0.0.0")"
-  IFS='.' read -r MAJ MIN PAT <<< "$CUR_VERSION"
-  MAJ="${MAJ:-0}"; MIN="${MIN:-0}"; PAT="${PAT:-0}"
+MERGED_TAGS="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --merged "${UPSTREAM_REMOTE}/main" 2>/dev/null || true)"
+LATEST_TAG="$(printf '%s\n' "$MERGED_TAGS" | evo_max_version)"
+if [[ -z "$LATEST_TAG" ]]; then
+  MERGED_TAGS="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --merged HEAD 2>/dev/null || true)"
+  LATEST_TAG="$(printf '%s\n' "$MERGED_TAGS" | evo_max_version)"
+fi
+FALLBACK_VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" 2>/dev/null || echo "0.0.0")"
+OLD_VERSION="${LATEST_TAG#v}"
+[[ -n "$OLD_VERSION" ]] || OLD_VERSION="$FALLBACK_VERSION"
+NEW_VERSION="$(evo_next_version "$OLD_VERSION" "$BUMP")"
+echo "==> Version: ${OLD_VERSION} → ${NEW_VERSION}  (${BUMP})"
+
+if git rev-parse -q --verify "refs/tags/v${NEW_VERSION}" >/dev/null; then
+  echo "ERROR: tag v${NEW_VERSION} already exists; refusing to reuse it." >&2
+  exit 3
 fi
 
-OLD_VERSION="${MAJ}.${MIN}.${PAT}"
-case "$BUMP" in
-  major) MAJ=$((MAJ+1)); MIN=0; PAT=0 ;;
-  minor) MIN=$((MIN+1)); PAT=0 ;;
-  patch) PAT=$((PAT+1)) ;;
-esac
-NEW_VERSION="${MAJ}.${MIN}.${PAT}"
-echo "==> Version: ${OLD_VERSION} → ${NEW_VERSION}  (${BUMP})"
+UPSTREAM_HEAD="$(git rev-parse "${UPSTREAM_REMOTE}/main" 2>/dev/null || true)"
+if [[ "$MODE" == "publish" ]]; then
+  if [[ -z "$UPSTREAM_HEAD" || "$START_HEAD" != "$UPSTREAM_HEAD" ]]; then
+    echo "ERROR: publish requires local HEAD == ${UPSTREAM_REMOTE}/main." >&2
+    echo "       local:  ${START_HEAD}" >&2
+    echo "       upstream: ${UPSTREAM_HEAD:-unknown}" >&2
+    echo "       Run scripts/sync-upstream.sh --apply first." >&2
+    exit 3
+  fi
+elif [[ -n "$UPSTREAM_HEAD" && "$START_HEAD" != "$UPSTREAM_HEAD" ]]; then
+  echo "==> NOTE: local HEAD differs from ${UPSTREAM_REMOTE}/main (local mode continues)" >&2
+fi
 
 if [[ -n "$DRY_RUN" ]]; then
   echo
-  echo "=== DRY RUN(不修改任何文件)==="
-  echo "  模式:      ${MODE}$( [[ "$MODE" == "local" ]] && echo '  (本地演进,不 push / 不发布)' || echo '  (维护者发布,含 push + Release + appcast)' )"
-  echo "  仓库:      ${REPO_SLUG:-未解析到}"
-  echo "  上游远端:  ${UPSTREAM_REMOTE}"
-  echo "  版本:      ${NEW_VERSION}"
+  echo "=== DRY RUN (no files modified) ==="
+  echo "  mode:      ${MODE}"
+  echo "  repo:      ${REPO_SLUG:-unresolved}"
+  echo "  upstream:  ${UPSTREAM_REMOTE}"
+  echo "  version:   ${NEW_VERSION}"
   echo "  commit:    ${MSG} (v${NEW_VERSION})"
-  echo "  将执行:    改版本号 → release build → 全量测试 → 追加 EVOLUTION.md → commit → tag"
+  echo "  steps:     lock → prepend EVOLUTION.md → tests → build .app → notes"
+  echo "             → git add <allowlist> → commit + tag"
   if [[ "$MODE" == "publish" ]]; then
-    echo "             → push ${UPSTREAM_REMOTE} main + tag → GitHub Release → 刷新 appcast"
+    echo "             → push main + tag → GitHub Release → appcast"
   else
-    echo "             → 仅本地 commit + tag,再重建并安装 .app"
+    echo "             → local commit/tag only"
   fi
   exit 0
 fi
 
-# ---------- 2. Patch Info.plist ----------
+# ---------- 2. Patch version sources ----------
+MUTATED=1
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$PLIST" >/dev/null
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW_VERSION}" "$PLIST" >/dev/null
 if [[ -f "$HELPER_PLIST" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$HELPER_PLIST" >/dev/null
   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW_VERSION}" "$HELPER_PLIST" >/dev/null
 fi
-
-# Sync AppBuilder/project.yml so a future 'xcodegen' run picks up the new
-# MARKETING_VERSION / CURRENT_PROJECT_VERSION instead of a stale hardcode.
-PROJECT_YML="${ROOT}/AppBuilder/project.yml"
 if [[ -f "$PROJECT_YML" ]] && grep -q "MARKETING_VERSION" "$PROJECT_YML"; then
-  # Sync version so a future xcodegen run doesn't ship a stale spec.
   python3 - "$PROJECT_YML" "${NEW_VERSION}" <<'PY'
 import re, sys
 path, ver = sys.argv[1], sys.argv[2]
@@ -185,157 +213,208 @@ open(path, 'w').write(text)
 PY
 fi
 
-# ---------- 3. Build ----------
-echo "==> Building release"
-if ! "${SWIFT[@]}" build -c release --product TapgoAICoding; then
-  echo "BUILD FAILED — reverting Info.plist" >&2
-  git checkout -- "$PLIST" "$HELPER_PLIST"
-  exit 4
-fi
-
-# ---------- 4. Test ----------
-# By default we SKIP SSH-integration tests (they require a real remote
-# codex host at 203.0.113.10 which is RFC 5737 TEST-NET-3). Pass
-# --with-integration to include them.
-WITH_INTEGRATION="${WITH_INTEGRATION:-}"
-TEST_ENV=()
-TEST_ARGS=()
-if [[ -z "$WITH_INTEGRATION" ]]; then
-  TEST_ENV+=("TAPGO_SKIP_REMOTE_INTEGRATION=1")
-  echo "==> Running tests (skipping SSH-integration: TAPGO_SKIP_REMOTE_INTEGRATION=1)"
-else
-  echo "==> Running tests (WITH integration — needs real SSH host at 203.0.113.10)"
-fi
-# Info.plist 已经是即将发布的 ${NEW_VERSION}，但 git tag 还没打——
-# 让 AppUpdateDistributionTests 用我们预期的版本号而不是回退去匹配
-# 上一版 tag，避免假阳性 fail。
-TEST_ENV+=("TAPGO_EXPECTED_VERSION=${NEW_VERSION}")
-TEST_LOG="$(mktemp -t tapgo-evolve-tests.XXXXXX)"
-if ! env "${TEST_ENV[@]}" swift run TapgoTests ${TEST_ARGS[@]+"${TEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"; then
-  echo "TESTS FAILED — reverting Info.plist" >&2
-  git checkout -- "$PLIST" "$HELPER_PLIST"
-  rm -f "$TEST_LOG"
-  exit 5
-fi
-# Summary line: prefer the final "— N passed, M failed —" line; fall
-# back to the last "passed=" counter if present.
-TEST_LINE="$(grep -E '— [0-9]+ passed, [0-9]+ failed —' "$TEST_LOG" | tail -1 || echo "see test log")"
-if [[ -z "$TEST_LINE" ]]; then
-  TEST_LINE="$(grep -E 'passed=[0-9]+ failed=[0-9]+' "$TEST_LOG" | tail -1 || echo "see test log")"
-fi
-rm -f "$TEST_LOG"
-echo "==> Tests: ${TEST_LINE}"
-
-# ---------- 5. Append EVOLUTION.md ----------
+# ---------- 3. Prepend EVOLUTION.md (newest first; tests run against final log state) ----------
 TODAY="$(date +%Y-%m-%d)"
-ENTRY=$(cat <<ENTRY_EOF
-
+ENTRY_FILE="$(mktemp -t tapgo-evolution-entry.XXXXXX)"
+cat > "$ENTRY_FILE" <<ENTRY_EOF
 ## v${NEW_VERSION} — ${MSG}
 **Date**: ${TODAY}
 **Commit**: _(see \`git log -1 v${NEW_VERSION}\`)_
 **Tag**: v${NEW_VERSION}
-**Test status**: ${TEST_LINE}
+**Test status**: pending
 **Changed**:
 - ${MSG}
 ${SUMMARY}
 **Why**: Self-evolution iteration — see commit message + diff.
-**Next**: see \`~/Library/Application Support/Tapgo AICoding/state/evolution_state.json\`.
+**Next**: ${NEXT_ACTION:-see state file evolution_state.json}.
 ENTRY_EOF
-)
-printf '\n%s\n' "$ENTRY" >> EVOLUTION.md
+evo_insert_evolution_entry "$EVOLUTION" "$ENTRY_FILE"
+rm -f "$ENTRY_FILE"
 
-# ---------- 6. Commit + tag ----------
-# Stage all tracked-file modifications (README, scripts, sources…) PLUS
-# the script-managed EVOLUTION.md + Info.plist. -u won't pick up new
-# untracked files, so the user has to explicitly git add those if they
-# want them in this commit.
-git add -u
-git add EVOLUTION.md "$PLIST" "$HELPER_PLIST"
-git commit -m "${MSG} (v${NEW_VERSION})" >/dev/null
-SHA="$(git rev-parse --short HEAD)"
-# NOTE: The commit SHA is sourced from `git log -1 v${NEW_VERSION}`.
-#       Don't try to backfill it into EVOLUTION.md — chicken/egg.
-
-git tag -a "v${NEW_VERSION}" -m "${MSG} (v${NEW_VERSION})"
-
-echo "==> Commit + tag created locally: ${SHA} → v${NEW_VERSION}"
-
-# ---------- 7. Push + 发布(仅 --publish) ----------
-# v0.5.255: 默认 --local 只做本地 commit + tag。别的用户 clone 后演进
-# 不应该(也没有权限)推上游、发 Release、改 appcast。
-if [[ "$MODE" == "publish" ]]; then
-  echo "==> Pushing to ${UPSTREAM_REMOTE} (main + tag v${NEW_VERSION})"
-  # Push main + ONLY the new tag (avoid duplicates like a local v0.5.82 pointing
-  # to a different commit than origin/v0.5.82 -- --tags rejects those).
-  if ! git push "$UPSTREAM_REMOTE" HEAD:main "v${NEW_VERSION}"; then
-    echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
-    echo "Re-run with network to retry, or:  git push ${UPSTREAM_REMOTE} HEAD:main v${NEW_VERSION}" >&2
-    exit 6
-  fi
-
-  echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
-  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" ./scripts/create-github-release-artifacts.sh; then
-    echo "WARN: create-github-release-artifacts.sh failed; release not published." >&2
-    echo "      Re-run later: ./scripts/create-github-release-artifacts.sh" >&2
-    echo "      Tag v${NEW_VERSION} is already pushed; clients cannot fetch the zip until release is created." >&2
-  fi
+# ---------- 4. Tests (before any commit) ----------
+WITH_INTEGRATION="${WITH_INTEGRATION:-}"
+TEST_ENV=("TAPGO_EXPECTED_VERSION=${NEW_VERSION}")
+TEST_ARGS=()
+if [[ -z "$WITH_INTEGRATION" ]]; then
+  TEST_ENV+=("TAPGO_SKIP_REMOTE_INTEGRATION=1")
+  echo "==> Running tests (skipping SSH integration)"
 else
-  echo "==> [local 模式] 跳过 push / GitHub Release / appcast"
-  echo "    本地 commit ${SHA} + tag v${NEW_VERSION} 已创建;App 仍会重建。"
-  echo "    若要让这个副本跟随自己的更新源,见 README「自进化」章节。"
+  echo "==> Running tests (WITH SSH integration)"
 fi
+echo "==> Running evolution shell tests"
+./scripts/tests/evolution-lib-test.sh
 
-# ---------- 8. Rebuild .app ----------
-echo "==> Rebuilding .app bundle"
+TEST_LOG="$(mktemp -t tapgo-evolve-tests.XXXXXX)"
+if ! env "${TEST_ENV[@]}" "${SWIFT[@]}" run TapgoTests ${TEST_ARGS[@]+"${TEST_ARGS[@]}"} 2>&1 | tee "$TEST_LOG"; then
+  echo "TESTS FAILED — rolling back version edits" >&2
+  rm -f "$TEST_LOG"
+  exit 5
+fi
+TEST_LINE="$(grep -E '— [0-9]+ passed, [0-9]+ failed —' "$TEST_LOG" | tail -1 || true)"
+if [[ -z "$TEST_LINE" ]]; then
+  TEST_LINE="$(grep -E 'passed=[0-9]+ failed=[0-9]+' "$TEST_LOG" | tail -1 || true)"
+fi
+[[ -n "$TEST_LINE" ]] || TEST_LINE="see test log"
+rm -f "$TEST_LOG"
+echo "==> Tests: ${TEST_LINE}"
+
+python3 - "$EVOLUTION" "$TEST_LINE" <<'PYEOF'
+import sys
+path, status = sys.argv[1], sys.argv[2]
+text = open(path, encoding="utf-8").read()
+old = "**Test status**: pending"
+if old not in text:
+    raise SystemExit("new EVOLUTION entry has no pending test-status marker")
+open(path, "w", encoding="utf-8").write(text.replace(old, "**Test status**: " + status, 1))
+PYEOF
+
+# ---------- 5. Build the real .app before commit ----------
+echo "==> Building .app bundle"
 if [[ "$MODE" == "local" ]]; then
-  # 本地定制:关闭自动安装更新,避免用户的自定义被上游版本静默覆盖。
   TAPGO_LOCAL_BUILD=1 ./scripts/build-app.sh >/dev/null
-  echo "    [local] .app 已重建(自动安装更新已关闭)"
 else
   ./scripts/build-app.sh >/dev/null
-  echo "    [publish] .app 已重建(跟随上游 feed)"
+fi
+BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT/Tapgo AICoding.app/Contents/Info.plist" 2>/dev/null || true)"
+if [[ "$BUILT_VERSION" != "$NEW_VERSION" ]]; then
+  echo "BUILD FAILED — built version '${BUILT_VERSION}' != '${NEW_VERSION}'" >&2
+  exit 4
+fi
+echo "==> Built .app version: ${BUILT_VERSION}"
+
+
+# ---------- 6. Release notes (publish only; required by release script) ----------
+if [[ "$MODE" == "publish" ]]; then
+  NOTES_FILE="${ROOT}/AppBuilder/release-notes-${NEW_VERSION}.md"
+  if [[ ! -f "$NOTES_FILE" ]]; then
+    cat > "$NOTES_FILE" <<NOTES_EOF
+# v${NEW_VERSION}
+
+${MSG}
+
+## 变更
+
+- ${MSG}
+
+${SUMMARY}
+
+## Next
+
+${NEXT_ACTION:-继续自进化: 从真实代码问题与 state.nextActions 中选择下一项。}
+NOTES_EOF
+  fi
 fi
 
-# ---------- 9. Write evolution_state.json ----------
-STATE_DIR="${HOME}/Library/Application Support/Tapgo AICoding/state"
-mkdir -p "$STATE_DIR"
-STATE_FILE="${STATE_DIR}/evolution_state.json"
-cat > "$STATE_FILE" <<STATE_EOF
-{
-  "version": "${NEW_VERSION}",
-  "commitSha": "${SHA}",
-  "tag": "v${NEW_VERSION}",
-  "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "evolutionNote": "${MSG}",
-  "threadToResume": null,
-  "nextActions": [
-    "Read EVOLUTION.md to see the changelog up through v${NEW_VERSION}.",
-    "Read this file's evolutionNote + the latest commit for the 'why'.",
-    "Inspect the diff vs the previous tag: git diff v$((MAJ)).$((MIN)).$((PAT-1))..v${NEW_VERSION}",
-    "Continue self-evolution: pick the next highest-value change, run ./scripts/evolve.sh ..."
-  ],
-  "stopConditions": [
-    "Tests must be green (swift run TapgoTests) before any commit.",
-    "Each iteration MUST be tagged + pushed before the next begins.",
-    "Never edit ~/.codex/ — only the isolated Application Support tree.",
-    "Never bump major without explicit user approval."
-  ]
-}
-STATE_EOF
-chmod 600 "$STATE_FILE"
+# ---------- 7. Commit + tag (explicit allowlist; script-managed files auto-added) ----------
+ALLOWED_PATHS+=("$PLIST" "$HELPER_PLIST" "$PROJECT_YML" "$EVOLUTION")
+[[ -n "$NOTES_FILE" ]] && ALLOWED_PATHS+=("$NOTES_FILE")
+if [[ -n "$DIRTY_STATUS" ]]; then
+  while IFS= read -r dirty_line; do
+    [[ -n "$dirty_line" ]] || continue
+    dirty_path="${dirty_line:3}"
+    dirty_path="${dirty_path%% -> *}"
+    if ! evo_path_covered "$dirty_path" "${ALLOWED_PATHS[@]}"; then
+      echo "ERROR: dirty path is not covered by --paths: $dirty_path" >&2
+      exit 9
+    fi
+  done <<< "$DIRTY_STATUS"
+fi
+git add -A -- "${ALLOWED_PATHS[@]}"
+if git diff --cached --quiet; then
+  echo "ERROR: nothing staged; refusing to create an empty evolution tag." >&2
+  exit 8
+fi
+git commit -m "${MSG} (v${NEW_VERSION})" >/dev/null
+SHA="$(git rev-parse --short HEAD)"
+FULL_SHA="$(git rev-parse HEAD)"
+git tag -a "v${NEW_VERSION}" -m "${MSG} (v${NEW_VERSION})"
+COMMITTED=1
+echo "==> Commit + tag created locally: ${SHA} → v${NEW_VERSION}"
 
-# ---------- 10. Summary ----------
+write_state() {
+  local status="$1"
+  mkdir -p "$STATE_DIR"
+  EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
+  EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
+  EVO_NEXT="$NEXT_ACTION" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
+  EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
+  python3 - "$STATE_FILE" <<'PY'
+import json, os, sys, datetime
+path = sys.argv[1]
+version = os.environ["EVO_VERSION"]
+prev = os.environ.get("EVO_PREV") or "(none)"
+next_action = os.environ.get("EVO_NEXT", "").strip()
+mode = os.environ["EVO_MODE"]
+state = {
+    "schemaVersion": 2,
+    "status": os.environ["EVO_STATUS"],
+    "version": version,
+    "commitSha": os.environ["EVO_SHA"],
+    "tag": "v" + version,
+    "mode": mode,
+    "branch": os.environ["EVO_BRANCH"],
+    "repoRoot": os.environ["EVO_ROOT"],
+    "startHead": os.environ["EVO_START_HEAD"],
+    "testStatus": os.environ.get("EVO_TEST_LINE", ""),
+    "builtAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "evolutionNote": os.environ["EVO_NOTE"],
+    "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
+    "threadToResume": None,
+    "nextActions": [
+        next_action or "Read EVOLUTION.md and evolution_state.json, then pick the next highest-value real problem.",
+        "Inspect this iteration diff: git diff %s..v%s" % (prev, version),
+        "Re-run scripts/evolve.sh --dry-run before the next iteration.",
+    ],
+    "stopConditions": [
+        "Tests and .app build must be green before any commit.",
+        "A new tag is only valid after clean-tree preflight, tests, and a matching .app build.",
+        "Do not start the next iteration until this state is terminal (local_built or published).",
+        "Never edit ~/.codex/ — only the isolated Application Support tree.",
+        "Never bump major without explicit user approval.",
+    ],
+}
+tmp = path + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(state, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+os.chmod(tmp, 0o600)
+os.replace(tmp, path)
+PY
+}
+
+# ---------- 8. Publish (optional) ----------
+if [[ "$MODE" == "publish" ]]; then
+  write_state "committed"
+  echo "==> Pushing to ${UPSTREAM_REMOTE} (main + tag v${NEW_VERSION})"
+  if ! git push "$UPSTREAM_REMOTE" HEAD:main "v${NEW_VERSION}"; then
+    write_state "push_failed"
+    echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
+    exit 6
+  fi
+  echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
+  if ! TAPGO_REPO_SLUG="${REPO_SLUG}" ./scripts/create-github-release-artifacts.sh "$NOTES_FILE"; then
+    write_state "release_failed"
+    echo "WARN: tag pushed but release/appcast publish failed; state=release_failed." >&2
+    exit 7
+  fi
+  write_state "published"
+else
+  write_state "local_built"
+  echo "==> [local] skipped push / GitHub Release / appcast"
+fi
+
+# ---------- 9. Summary ----------
 echo
 echo "==================================================="
 echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"
 echo "==================================================="
-if [[ "$MODE" == "publish" ]]; then
-  echo "  Tag pushed:     v${NEW_VERSION}"
-else
-  echo "  Tag (local):    v${NEW_VERSION}   ← 未推送(publish 模式才推)"
-fi
+echo "  Mode:           ${MODE}"
 echo "  State file:     ${STATE_FILE}"
 echo "  App bundle:     ${ROOT}/Tapgo AICoding.app"
-echo "  Rollback:       git checkout v$((MAJ)).$((MIN)).$((PAT-1)) && ./scripts/build-app.sh"
+if [[ -n "$LATEST_TAG" ]]; then
+  echo "  Rollback:       git checkout ${LATEST_TAG} && ./scripts/build-app.sh"
+else
+  echo "  Rollback:       git checkout ${START_HEAD} && ./scripts/build-app.sh"
+fi
 echo "  Restart+resume: ./scripts/restart-and-resume.sh"
 echo "==================================================="

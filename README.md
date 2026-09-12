@@ -295,15 +295,23 @@ TapgoAICoding/
 | `--publish` | 仓库维护者 | 完整闭环：push main + tag → GitHub Release → 刷新 appcast（已安装客户端据此自动更新）。需要仓库写权限，且 Sparkle 私钥在 keychain。 |
 
 ```bash
-# 先看计划（不修改任何文件）
+# 先看计划（不修改任何文件，脏树也可运行）
 ./scripts/evolve.sh --dry-run patch "fix: 侧栏空工作区崩溃" "根因与改动说明"
 
-# 本地演进（默认模式，适合你自己的副本）
-./scripts/evolve.sh patch "fix: 侧栏空工作区崩溃" "根因与改动说明"
+# 本地演进：显式列出本轮修改路径，脚本只暂存这些路径
+./scripts/evolve.sh --paths Sources/TapgoCore/Foo.swift,scripts/evolve.sh   patch "fix: 侧栏空工作区崩溃" "根因与改动说明"
 
-# 维护者发布上线
-./scripts/evolve.sh --publish minor "feat: 深色模式" "说明"
+# 维护者发布上线（同样要求 --paths；上传前强制 HEAD == origin/main）
+./scripts/evolve.sh --publish --paths Sources/TapgoCore/Foo.swift   minor "feat: 深色模式" "说明"
 ```
+
+安全约束（v0.5.257 起）：
+
+- `--paths` 是显式暂存白名单，未覆盖的脏文件会让脚本拒绝运行，避免误提交无关改动。
+- 同机并发会被 `.git/tapgo-evolve.lock` 拒绝；版本号取 `origin/main` 可达 tag 的语义化最高值。
+- 测试与 `.app` 构建都在 commit 之前完成；失败会自动恢复被脚本改动的版本文件。
+- `evolution_state.json` 记录 `committed / local_built / published / push_failed / release_failed` 分阶段状态，可据此续跑或排障。
+- Shell 回归：`./scripts/tests/evolution-lib-test.sh`（已接入 evolve.sh 测试阶段）。
 
 ### 跟上上游，同时保留你的改动
 

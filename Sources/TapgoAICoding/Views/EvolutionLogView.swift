@@ -252,6 +252,23 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.257", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.257",
+                    summary: "自进化闭环安全加固:显式路径白名单、并发锁、语义化版本、提交前构建与分阶段状态。",
+                    changes: [
+                        "evolve.sh 引入 --paths 显式暂存白名单:未覆盖的脏文件直接拒绝运行,只 git add 白名单路径,不再 git add -A 卷走无关改动。",
+                        "新增 scripts/evolution-lib.sh + 17 项 shell 回归:语义化最高版本选择、版本递增、日志头插、路径覆盖、PID 锁;测试已接入 evolve.sh 测试阶段。",
+                        "版本基准改为 origin/main 可达 tag 的语义化最高值,不再用 git describe 的拓扑最近 tag;并在启动时拒绝已存在的同名 tag。",
+                        "测试与 .app 构建前移到 commit 之前;失败自动恢复 Info.plist / Helper plist / project.yml / EVOLUTION.md,并重建 HEAD 版本 App。",
+                        "EVOLUTION.md 改为新版本头插(此前脚本追加到文件尾部,与最新在前约定相反);提交前跑双向日志校验,防止 UI makeHistory 漏更。",
+                        "evolution_state.json 升级 schemaVersion=2:记录 committed / local_built / published / push_failed / release_failed 分阶段状态、测试结果与下一步;不再写 raw JSON 字符串。",
+                        "新增 scripts/deploy-fleet.sh:把同一份 .app 安装到本机、jkmacmini、Chenlaiyi.local,远程重签名、重启并回读版本与 PID。",
+                        "日志同步测试从硬编码 v0.5.78..81 改为动态双向校验:EVOLUTION.md 最新 10 条必须进入 makeHistory 且保持倒序;v0.5.233 起禁止重复版本节。",
+                        "修复 AppBuilder/ComputerUseHelper-Info.plist 版本长期落后主 App 的问题(0.5.251 → 0.5.257)。"
+                    ],
+                    why: "自进化自动脚本的 state 停在 v0.3.4,真实发布走手动链路;脚本本身存在脏树卷入、未跟踪新文件漏提交、日志尾部追加、失败回滚不完整、发布模式缺 release notes 等问题。本轮先把闭环的原子性和可验证性补齐,再谈自动选点与指标。",
+                    next: "P0 下一项:统一 tag / EVOLUTION.md / makeHistory / state 为仓库内结构化版本记录,并补 evolve.sh 失败注入测试;随后处理 v0.5.232 及更早的历史重复日志节。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.256", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.256",
                     summary: "过程消息视觉降级 + 「工作过程默认展开」语义澄清,解决展开态阅读疲劳。",
                     changes: [
