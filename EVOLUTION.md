@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.264 — feat(evolution): 发布健康门禁与三机闭环
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.264`)_
+**Tag**: v0.5.264
+**Test status**: — 3177 passed, 0 failed —
+**Changed**:
+- 新增 6 项 Bundle 健康检查并作为提交前门禁
+- 发布成功后自动三机部署并回读 PID,失败写 health_failed
+
+构建后健康检查阻断坏包;发布后自动部署三机并回读版本/PID
+**Why**: 此前只有版本号相等校验,缺少 Bundle 完整性/签名门禁;发布后三机部署靠手工,健康结果无法回写
+**Next**: EVO-009 迭代指标看板: 成功率、flaky、回滚次数、周期趋势接入 `EvolutionLogView`
+
+
 ## v0.5.263 — feat(evolution): 分支隔离与 fast-forward
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.263`)_

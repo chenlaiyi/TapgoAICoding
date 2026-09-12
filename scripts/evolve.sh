@@ -43,6 +43,10 @@ BUILD_SCRIPT="${EVOLVE_BUILD_SCRIPT:-$ROOT/scripts/build-app.sh}"
 RELEASE_SCRIPT="${EVOLVE_RELEASE_SCRIPT:-$ROOT/scripts/create-github-release-artifacts.sh}"
 RECORDS_TOOL="${EVOLVE_RECORDS_TOOL:-$ROOT/scripts/evolution-records.py}"
 BACKLOG_TOOL="${EVOLVE_BACKLOG_TOOL:-$ROOT/scripts/evolution-backlog.py}"
+HEALTH_SCRIPT="${EVOLVE_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
+DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
+HEALTH_STATUS="pending"
+FLEET_STATUS="skipped"
 
 # ---------- Args ----------
 MODE="local"
@@ -340,6 +344,12 @@ if [[ "$BUILT_VERSION" != "$NEW_VERSION" ]]; then
   exit 4
 fi
 echo "==> Built .app version: ${BUILT_VERSION}"
+echo "==> Bundle health check"
+if ! "$HEALTH_SCRIPT" "$ROOT/Tapgo AICoding.app" "$NEW_VERSION"; then
+  echo "HEALTH CHECK FAILED — rolling back version edits" >&2
+  exit 4
+fi
+HEALTH_STATUS="passed"
 
 
 # ---------- 7. Release notes (publish only; rendered from the record) ----------
@@ -405,7 +415,7 @@ write_state() {
   EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
   EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
-  EVO_ITER_BRANCH="$ITER_BRANCH" \
+  EVO_ITER_BRANCH="$ITER_BRANCH" EVO_HEALTH="$HEALTH_STATUS" EVO_FLEET="$FLEET_STATUS" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -424,6 +434,8 @@ state = {
     "branch": os.environ["EVO_BRANCH"],
     "originalBranch": os.environ["EVO_BRANCH"],
     "iterationBranch": os.environ.get("EVO_ITER_BRANCH", ""),
+    "healthCheck": os.environ.get("EVO_HEALTH", ""),
+    "fleetDeploy": os.environ.get("EVO_FLEET", ""),
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),
@@ -492,6 +504,21 @@ if [[ "$MODE" == "publish" ]]; then
     write_state "release_failed"
     echo "WARN: tag pushed but release/appcast publish failed; state=release_failed." >&2
     exit 7
+  fi
+
+  if [[ "${EVOLVE_SKIP_DEPLOY:-}" == "1" ]]; then
+    FLEET_STATUS="skipped"
+    echo "==> [health] fleet deploy skipped (EVOLVE_SKIP_DEPLOY=1)"
+  else
+    echo "==> [health] deploying v${NEW_VERSION} to the three-Mac fleet"
+    if ! "$DEPLOY_SCRIPT" "$NEW_VERSION"; then
+      FLEET_STATUS="failed"
+      write_state "health_failed"
+      echo "HEALTH FAILED: release is published but fleet deploy/readback failed." >&2
+      echo "Rollback: git checkout ${LATEST_TAG:-${START_HEAD}} && ./scripts/build-app.sh" >&2
+      exit 10
+    fi
+    FLEET_STATUS="passed"
   fi
   write_state "published"
 else

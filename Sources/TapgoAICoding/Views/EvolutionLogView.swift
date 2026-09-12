@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.264", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.264",
+                    summary: "发布健康门禁:Bundle 六项检查 + 发布后三机自动部署/PID 回读,失败进入 health_failed。",
+                    changes: [
+                        "新增 scripts/health-check.sh:校验 Info.plist 版本、Mach-O 主程序、Sparkle.framework、内嵌 computer-use helper、PhoneRemote 四资源与 code signature 共 6 项;HEALTH_SKIP_CODESIGN 供测试。",
+                        "evolve.sh 在 .app 构建后、commit 前运行健康检查;失败直接退出码 4 并走完整回滚。",
+                        "publish 成功后自动调用 scripts/deploy-fleet.sh 部署本机+jkmacmini+Chenlaiyi.local 并回读版本/PID;失败写 health_failed(退出码 10),保留已发布 tag 并打印回滚命令。",
+                        "evolution_state.json 新增 healthCheck / fleetDeploy 字段;evolution-metrics 将 health_failed 计入失败。",
+                        "失败注入矩阵扩到 47 项:新增 S9 健康检查失败回滚、S10 发布成功但三机健康检查失败两类场景。",
+                        "EVO-007/008 标记完成;当前 backlog 顶部为 EVO-009(迭代指标看板)。"
+                    ],
+                    why: "此前只有构建版本号相等校验,缺少 Bundle 完整性/签名门禁;发布后三机部署靠手工执行,健康结果无法回写状态。EVO-007/008 把发布前后的证据链接到一起。",
+                    next: "EVO-009 迭代指标看板:成功率、flaky、周期趋势接入 EvolutionLogView。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.263", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.263",
                     summary: "分支隔离:每轮提交在 codex/evolution-vX.Y.Z,原分支只 fast-forward,发布推送审计分支。",
                     changes: [

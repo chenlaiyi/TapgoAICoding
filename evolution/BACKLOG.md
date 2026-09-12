@@ -13,8 +13,8 @@
 
 ## P1 — 可观测与验证
 
-- [ ] **EVO-007 发布后健康检查**：启动 smoke、版本/进程/PID 回读、失败自动回滚
-- [ ] **EVO-008 三机部署纳入闭环**：`evolve.sh --publish` 后自动调用 `deploy-fleet.sh` 并汇总矩阵
+- [x] **EVO-007 发布前健康门禁**：Bundle 版本/结构/签名 6 项检查，失败停在 commit 前并回滚（v0.5.264）
+- [x] **EVO-008 三机部署纳入闭环**：publish 成功后自动 `deploy-fleet.sh` 并回读版本/PID，失败写 `health_failed`（v0.5.264）
 - [ ] **EVO-009 迭代指标看板**：成功率、flaky、回滚次数、周期趋势接入 `EvolutionLogView`
 - [ ] **EVO-010 测试 flaky 追踪**：记录失败用例名与重跑结果，区分环境失败与真实回归
 

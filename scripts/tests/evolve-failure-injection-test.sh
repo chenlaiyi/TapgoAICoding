@@ -89,7 +89,19 @@ set -euo pipefail
 echo "fake release: $*"
 exit "${FAKE_RELEASE_RC:-0}"
 FAKE
-  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh" "$dir/scripts/create-github-release-artifacts.sh"
+  cat > "$dir/scripts/health-check.sh" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "HEALTH OK fake $*"
+exit "${FAKE_HEALTH_RC:-0}"
+FAKE
+  cat > "$dir/scripts/deploy-fleet.sh" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "fake fleet deploy: $*"
+exit "${FAKE_DEPLOY_RC:-0}"
+FAKE
+  chmod +x "$dir/scripts/tests/run-all.sh" "$dir/scripts/build-app.sh"     "$dir/scripts/create-github-release-artifacts.sh" "$dir/scripts/health-check.sh"     "$dir/scripts/deploy-fleet.sh"
 
   git -C "$dir" init -q
   git -C "$dir" config user.email test@example.com
@@ -109,6 +121,8 @@ run_evolve() {
     export EVOLVE_BUILD_SCRIPT="$repo/scripts/build-app.sh"
     export EVOLVE_RELEASE_SCRIPT="$repo/scripts/create-github-release-artifacts.sh"
     export EVOLVE_RECORDS_TOOL="$repo/scripts/evolution-records.py"
+    export EVOLVE_HEALTH_SCRIPT="$repo/scripts/health-check.sh"
+    export EVOLVE_DEPLOY_SCRIPT="$repo/scripts/deploy-fleet.sh"
     export EVOLVE_STATE_DIR="$state"
     bash "$repo/scripts/evolve.sh" "$@"
   ) >"$log" 2>&1
@@ -154,6 +168,8 @@ assert_json "$R4/evolution/versions/v0.5.2.json" 'len(d["changes"])' "s4 changes
 assert_json "$R4/evolution/versions/v0.5.2.json" '"EVO-999" in d["next"]' "s4 next resolved from backlog"
 assert_json "$BASE/s4-state/evolution_state.json" '"EVO-999" in d["nextActions"][0]' "s4 state next resolved from backlog"
 assert_json "$BASE/s4-state/evolution_state.json" 'd["status"]' "s4 state status"
+assert_json "$BASE/s4-state/evolution_state.json" 'd["healthCheck"]' "s4 health passed"
+assert_json "$BASE/s4-state/evolution_state.json" 'd["fleetDeploy"]' "s4 fleet skipped locally"
 assert_grep "$R4/EVOLUTION.md" "## v0.5.2 — s4 message" "s4 rendered log"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R4/Tapgo AICoding.app/Contents/Info.plist")" 0.5.2 "s4 built app version"
 
@@ -185,6 +201,7 @@ git -C "$R7" remote add origin "$BASE/s7-origin.git"
 git -C "$R7" push -q -u origin main --tags
 run_evolve "$R7" "$BASE/s7-state" "$BASE/s7.log" --publish --paths scripts patch "s7" "s7" --next n
 assert_json "$BASE/s7-state/evolution_state.json" 'd["status"]' "s7 published state"
+assert_json "$BASE/s7-state/evolution_state.json" 'd["fleetDeploy"]' "s7 fleet passed"
 assert_eq "$(git -C "$BASE/s7-origin.git" tag --list v0.5.2)" v0.5.2 "s7 remote tag"
 assert_eq "$(git -C "$R7" rev-list --count origin/main)" 2 "s7 origin main advanced"
 assert_eq "$(git -C "$BASE/s7-origin.git" branch --list codex/evolution-v0.5.2 | wc -l | tr -d ' ')" 1 "s7 iteration branch pushed"
@@ -195,6 +212,23 @@ printf '# Evolution Log\n\n<!-- hand edit -->\n' > "$R8/EVOLUTION.md"
 run_evolve "$R8" "$BASE/s8-state" "$BASE/s8.log" --paths scripts patch "s8" "s8" --next n
 assert_eq "$(git -C "$R8" rev-list --count HEAD)" 2 "s8 committed with pre-dirty managed file"
 assert_grep "$R8/EVOLUTION.md" "hand edit" "s8 preserves pre-existing managed edit"
+
+# ---------- S9: bundle health check fails -> rollback ----------
+R9="$BASE/s9"; make_repo "$R9"
+set +e; FAKE_HEALTH_RC=1 run_evolve "$R9" "$BASE/s9-state" "$BASE/s9.log" --paths scripts patch "s9" "s9" --next n; RC=$?; set -e
+assert_eq "$RC" 4 "s9 exit 4 on health failure"
+assert_eq "$(git -C "$R9" rev-list --count HEAD)" 1 "s9 no commit"
+assert_no_file "$R9/evolution/versions/v0.5.2.json" "s9 record removed"
+
+# ---------- S10: publish succeeds but fleet health fails -> health_failed ----------
+R10="$BASE/s10"; make_repo "$R10"
+git -C "$R10" init -q --bare "$BASE/s10-origin.git"
+git -C "$R10" remote add origin "$BASE/s10-origin.git"
+git -C "$R10" push -q -u origin main --tags
+set +e; FAKE_DEPLOY_RC=1 run_evolve "$R10" "$BASE/s10-state" "$BASE/s10.log" --publish --paths scripts patch "s10" "s10" --next n; RC=$?; set -e
+assert_eq "$RC" 10 "s10 exit 10 on fleet health failure"
+assert_json "$BASE/s10-state/evolution_state.json" 'd["status"]' "s10 health_failed state"
+assert_eq "$(git -C "$BASE/s10-origin.git" tag --list v0.5.2)" v0.5.2 "s10 release tag retained"
 
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

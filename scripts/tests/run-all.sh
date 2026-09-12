@@ -6,6 +6,7 @@ cd "$ROOT"
 
 "$ROOT/scripts/tests/evolution-lib-test.sh"
 "$ROOT/scripts/tests/evolution-records-test.sh"
+"$ROOT/scripts/tests/health-check-test.sh"
 "$ROOT/scripts/tests/evolution-backlog-test.sh"
 "$ROOT/scripts/tests/evolution-metrics-test.sh"
 "$ROOT/scripts/tests/evolve-failure-injection-test.sh"
