@@ -1,5 +1,19 @@
 # Evolution Log
 
+## v0.5.286 — feat(evolution): 手机端回滚演练状态
+**Date**: 2026-09-12
+**Commit**: _(see `git log -1 v0.5.286`)_
+**Tag**: v0.5.286
+**Test status**: — 3318 passed, 0 failed —
+**Changed**:
+- EvolutionStatus 与 H5 增加只读回滚演练状态
+- PhoneRemote 回归扩到 52+68 断言
+
+H5 自进化卡片只读显示最近 drill 的 PASS/FAIL/tag/时间
+**Why**: 回滚演练结果只在 Mac 终端可见,手机端无法确认可恢复性
+**Next**: EVO-032 月度维护自动化: 定期跑回滚演练与指标归档，异常才通知
+
+
 ## v0.5.285 — feat(evolution): 指标按月归档
 **Date**: 2026-09-12
 **Commit**: _(see `git log -1 v0.5.285`)_

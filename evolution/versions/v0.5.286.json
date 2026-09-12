@@ -1,0 +1,16 @@
+{
+  "version": "0.5.286",
+  "tag": "v0.5.286",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 手机端回滚演练状态",
+  "changes": [
+    "EvolutionStatus 与 H5 增加只读回滚演练状态",
+    "PhoneRemote 回归扩到 52+68 断言"
+  ],
+  "details": "H5 自进化卡片只读显示最近 drill 的 PASS/FAIL/tag/时间",
+  "why": "回滚演练结果只在 Mac 终端可见,手机端无法确认可恢复性",
+  "next": "EVO-032 月度维护自动化: 定期跑回滚演练与指标归档，异常才通知",
+  "testStatus": "— 3318 passed, 0 failed —",
+  "commitSha": null
+}

@@ -297,7 +297,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
                                           status: "running", message: "— 3000 passed —",
                                           benchmarkScore: 100, modelEvalBestScore: 88,
                                           backlogOpen: 2, backlogTop: "EVO-026 草稿 check 建议",
-                                          updatedAt: "2026-09-12T12:00:00Z"),
+                                          updatedAt: "2026-09-12T12:00:00Z",
+                                          rollbackDrillRuns: 1, lastRollbackDrillTag: "v0.5.282",
+                                          lastRollbackDrillPassed: true, lastRollbackDrillAt: "2026-09-12T11:00:00Z"),
                                       now: now)
     t.expectEqual(snap.rev, 7, "snapshot: rev 透传")
     t.expectEqual(snap.hostname, "Chenlaiyi", "snapshot: hostname 透传")
@@ -331,6 +333,8 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
         to: stateDir.appendingPathComponent("evolution_progress.json"), atomically: true, encoding: .utf8)
     try? "{\"score\":100}\n".write(to: stateDir.appendingPathComponent("evolution_benchmark_history.jsonl"), atomically: true, encoding: .utf8)
     try? "{\"score\":70}\n{\"score\":88}\n".write(to: stateDir.appendingPathComponent("model_eval_history.jsonl"), atomically: true, encoding: .utf8)
+    try? "{\"tag\":\"v0.5.1\",\"passed\":true,\"ranAt\":\"2026-09-12T11:00:00Z\"}\n".write(
+        to: stateDir.appendingPathComponent("rollback_drill_history.jsonl"), atomically: true, encoding: .utf8)
     try? "# Backlog\n## P0\n- [ ] **EVO-026 草稿 check**：生成建议\n".write(
         to: rootDir.appendingPathComponent("evolution/BACKLOG.md"), atomically: true, encoding: .utf8)
     let loaded = PhoneRemote.loadEvolutionStatus(stateDirectory: stateDir, projectRoot: rootDir)
@@ -339,6 +343,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(loaded?.modelEvalBestScore, 88, "evolution-status: model eval best")
     t.expectEqual(loaded?.backlogOpen, 1, "evolution-status: backlog open")
     t.expectEqual(loaded?.backlogTop?.contains("EVO-026") ?? false, true, "evolution-status: backlog top")
+    t.expectEqual(loaded?.rollbackDrillRuns, 1, "evolution-status: rollback runs")
+    t.expectEqual(loaded?.lastRollbackDrillTag, "v0.5.1", "evolution-status: rollback tag")
+    t.expectEqual(loaded?.lastRollbackDrillPassed, true, "evolution-status: rollback passed")
     t.expectEqual(snap.model, "MiniMax-M3", "snapshot: model 透传")
     t.expectEqual(snap.models.count, 2, "snapshot: 模型白名单透传")
     t.expectEqual(snap.models.first?.selected, true, "snapshot: 当前模型标记")
@@ -351,6 +358,9 @@ func runPhoneRemoteSnapshot(_ t: TestRunner) {
     t.expectEqual(snap.evolution?.modelEvalBestScore, 88, "snapshot: model eval score")
     t.expectEqual(snap.evolution?.backlogOpen, 2, "snapshot: backlog open")
     t.expectEqual(snap.evolution?.backlogTop, "EVO-026 草稿 check 建议", "snapshot: backlog top")
+    t.expectEqual(snap.evolution?.rollbackDrillRuns, 1, "snapshot: rollback drill runs")
+    t.expectEqual(snap.evolution?.lastRollbackDrillTag, "v0.5.282", "snapshot: rollback drill tag")
+    t.expectEqual(snap.evolution?.lastRollbackDrillPassed, true, "snapshot: rollback drill passed")
 
     let cwdMatched = Thread(id: "th-cwd", title: "旧项目会话", createdAt: now,
                             updatedAt: now, cwd: "/tmp/a/subdir", turns: [])
@@ -569,7 +579,10 @@ func runPhoneRemotePage(_ t: TestRunner) {
     t.expect(appJS.contains("evolutionCard"), "page: app.js 含自进化卡片")
     t.expect(appJS.contains("renderEvolution"), "page: app.js 渲染自进化状态")
     t.expect(appJS.contains("backlogTop"), "page: app.js 渲染 backlog 下一项")
+    t.expect(appJS.contains("evolutionRollback"), "page: app.js 含回滚演练状态")
+    t.expect(appJS.contains("rollbackDrillRuns"), "page: app.js 渲染回滚演练结果")
     t.expect(appCSS.contains(".evolution-card"), "page: app.css 含自进化卡片样式")
+    t.expect(appCSS.contains(".evolution-rollback"), "page: app.css 含回滚演练样式")
 
 
     // H5 页面拆为骨架 + 静态资源；v0.5.96 全面重构 app.css 的移动端布局。

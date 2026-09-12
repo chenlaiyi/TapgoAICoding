@@ -124,6 +124,7 @@
               <div class="evolution-progress"><span id="evolutionBar"></span></div>
               <div class="evolution-meta" id="evolutionMeta"></div>
               <div class="evolution-next" id="evolutionNext"></div>
+              <div class="evolution-rollback" id="evolutionRollback" hidden></div>
             </div>
             <div class="mobile-section-heading">
               <div>
@@ -361,6 +362,17 @@
     if (evo.backlogOpen) meta.push("backlog " + evo.backlogOpen);
     $("evolutionMeta").textContent = meta.join(" · ");
     $("evolutionNext").textContent = evo.backlogTop ? "下一项：" + evo.backlogTop : "";
+    const rollback = $("evolutionRollback");
+    if (rollback) {
+      if (evo.rollbackDrillRuns > 0) {
+        rollback.hidden = false;
+        const state = evo.lastRollbackDrillPassed === true ? "PASS" : evo.lastRollbackDrillPassed === false ? "FAIL" : "未知";
+        rollback.textContent = `回滚演练：${state} ${evo.lastRollbackDrillTag || ""} · ${(evo.lastRollbackDrillAt || "").replace("T", " ").replace("Z", "")}`;
+        rollback.dataset.state = state.toLowerCase();
+      } else {
+        rollback.hidden = true;
+      }
+    }
   }
 
   function renderWorkspaces() {

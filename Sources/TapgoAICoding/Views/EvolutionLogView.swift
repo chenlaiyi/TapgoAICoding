@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.286", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.286",
+                    summary: "手机端回滚演练状态:快照与 H5 只读显示最近 drill 的 PASS/FAIL/tag/时间。",
+                    changes: [
+                        "PhoneRemote.EvolutionStatus 新增 rollbackDrillRuns/lastRollbackDrillTag/lastRollbackDrillPassed/lastRollbackDrillAt。",
+                        "loadEvolutionStatus 读取 rollback_drill_history.jsonl 最新记录;只有 drill 历史时也会显示自进化卡片。",
+                        "H5 app.js 自进化卡片新增回滚演练行(PASS/FAIL + tag + 时间),app.css 补成功/失败色。",
+                        "PhoneRemote 回归扩到快照 52 项 + H5 68 项,覆盖 drill 加载与 H5 展示。",
+                        "EVO-031 完成;下一项 EVO-032 月度维护自动化。"
+                    ],
+                    why: "回滚演练此前只能在 Mac 终端手动跑和查看;EVO-031 把最近结果同步到手机端,让可恢复性状态随时可见。",
+                    next: "EVO-032 月度维护自动化:定期跑回滚演练与指标归档,异常才通知。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.285", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.285",
                     summary: "指标归档:按月归档 history,保留 90 天近期记录,幂等且不删除历史。",
                     changes: [

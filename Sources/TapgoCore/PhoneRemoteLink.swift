@@ -707,6 +707,10 @@ public enum PhoneRemote {
         public var backlogOpen: Int
         public var backlogTop: String?
         public var updatedAt: String?
+        public var rollbackDrillRuns: Int
+        public var lastRollbackDrillTag: String?
+        public var lastRollbackDrillPassed: Bool?
+        public var lastRollbackDrillAt: String?
 
         public init(
             version: String? = nil, phase: String? = nil,
@@ -714,7 +718,11 @@ public enum PhoneRemote {
             status: String? = nil, message: String? = nil,
             benchmarkScore: Int? = nil, modelEvalBestScore: Double? = nil,
             backlogOpen: Int = 0, backlogTop: String? = nil,
-            updatedAt: String? = nil
+            updatedAt: String? = nil,
+            rollbackDrillRuns: Int = 0,
+            lastRollbackDrillTag: String? = nil,
+            lastRollbackDrillPassed: Bool? = nil,
+            lastRollbackDrillAt: String? = nil
         ) {
             self.version = version
             self.phase = phase
@@ -727,6 +735,10 @@ public enum PhoneRemote {
             self.backlogOpen = backlogOpen
             self.backlogTop = backlogTop
             self.updatedAt = updatedAt
+            self.rollbackDrillRuns = rollbackDrillRuns
+            self.lastRollbackDrillTag = lastRollbackDrillTag
+            self.lastRollbackDrillPassed = lastRollbackDrillPassed
+            self.lastRollbackDrillAt = lastRollbackDrillAt
         }
     }
 
@@ -867,7 +879,10 @@ public enum PhoneRemote {
                 backlogTop = items.first { !$0.done }?.promptLine
             }
         }
-        guard progress != nil || benchmarkScore != nil || modelEvalBest != nil || backlogTop != nil else {
+        let rollbackRecords = jsonLines(in: stateDirectory.appendingPathComponent("rollback_drill_history.jsonl"))
+        let lastRollback = rollbackRecords.last
+        guard progress != nil || benchmarkScore != nil || modelEvalBest != nil
+                || backlogTop != nil || lastRollback != nil else {
             return nil
         }
         return EvolutionStatus(
@@ -881,7 +896,11 @@ public enum PhoneRemote {
             modelEvalBestScore: modelEvalBest,
             backlogOpen: backlogOpen,
             backlogTop: backlogTop,
-            updatedAt: progress?.updatedAt
+            updatedAt: progress?.updatedAt,
+            rollbackDrillRuns: rollbackRecords.count,
+            lastRollbackDrillTag: lastRollback?["tag"] as? String,
+            lastRollbackDrillPassed: lastRollback?["passed"] as? Bool,
+            lastRollbackDrillAt: lastRollback?["ranAt"] as? String
         )
     }
 
