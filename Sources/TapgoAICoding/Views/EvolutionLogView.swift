@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.307", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.307",
+                    summary: "维护任务真实触发成功,默认告警分支补回归并实发一条测试通知。",
+                    changes: [
+                        "真实触发:launchd 任务此前从未执行过(runs=0),用 launchctl kickstart 跑了一次真实的月度维护——runs=1、last exit code=0、状态历史新增 drill=v0.5.306 passed + archive=passed(7s),launchd 日志完整落盘。",
+                        "告警链路补测:维护回归新增默认 osascript 分支(用假 osascript 记录 argv),断言 display notification 的标题与原因内容(含中文与路径)都正确转义——此前只有 EVOLVE_MAINTENANCE_NOTIFY 被覆盖,真实默认分支没人测。",
+                        "过程中的测试自身缺陷一并修掉:假 osascript 曾写成文件而非目录(PATH 注入失效,于是那次失败用例发了真实通知)、chmod 作用在目录上;两处都已修正。",
+                        "实发验证:用真实 osascript 发出一条测试通知(exit 0),确认通知中心链路在本机可用(已提示操作者留意横幅)。",
+                        "维护测试 47→51 项;README 补「手动触发一次维护并验证三处证据」的操作步骤。"
+                    ],
+                    why: "定时任务最危险的失败模式是「以为它在跑」:任务注册了但从没执行过(runs=0),或失败时告警静默失效。EVO-048 把这两条都变成有证据的事实。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.306", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.306",
                     summary: "修复指标摘要契约:生产侧补嵌套 localApp,并加跨语言契约断言。",
                     changes: [

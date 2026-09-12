@@ -183,5 +183,32 @@ expect_grep "install: banner printed" "已安装" "$TMP/install.out"
 expect_grep "install: monthly schedule in installed plist" "StartCalendarInterval" "$INSTALLED_PLIST"
 expect_grep "install: script path resolved" "scripts/evolution-maintenance.sh" "$INSTALLED_PLIST"
 
+# 9. 默认通知分支（osascript）：用假 osascript 记录 argv，验证转义与内容。
+#    这是真实告警链路唯一没被覆盖的分支：osascript 若被静默跳过，失败就没人知道。
+mkdir -p "$TMP/bin-osascript"   # 必须是目录，否则 PATH 注入失效会走真实 osascript
+cat > "$TMP/bin-osascript/osascript" <<'MOCK'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >> "$OSASCRIPT_LOG"
+MOCK
+chmod +x "$TMP/bin-osascript/osascript"
+OSA="$TMP/osascript.log"; : > "$OSA"
+rm -f "$NOTIFY_CALLS"
+set +e
+EVOLVE_MAINTENANCE_REPO_ROOT="$ROOT" \
+EVOLVE_MAINTENANCE_DRILL="$TMP/drill.sh" \
+EVOLVE_MAINTENANCE_ARCHIVE="$TMP/archive.py" \
+EVOLVE_STATE_DIR="$TMP/state" \
+EVOLVE_MAINTENANCE_HISTORY="$TMP/state/osa-history.jsonl" \
+EVOLVE_MAINTENANCE_LOG="$TMP/state/osa-maintenance.log" \
+PATH="$TMP/bin-osascript:$PATH" OSASCRIPT_LOG="$OSA" \
+DRILL_EXIT=1 ARCHIVE_EXIT=0 \
+  "$TOOL" > "$TMP/osa.out" 2>&1
+RC=$?
+set -e
+expect_eq "osascript branch: exit 1" "1" "$RC"
+expect_grep "osascript branch: invoked with display notification" "display notification" "$OSA"
+expect_grep "osascript branch: carries reason" "remote tag v0.5.9 not found" "$OSA"
+expect_grep "osascript branch: carries title" "Tapgo 自进化维护失败" "$OSA"
+
 echo "evolution-maintenance tests: $PASSED passed, $FAILED failed"
 [[ "$FAILED" -eq 0 ]]
