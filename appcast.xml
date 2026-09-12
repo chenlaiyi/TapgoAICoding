@@ -3,6 +3,34 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.296</title>
+            <pubDate>Sun, 13 Sep 2026 00:45:28 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.296</link>
+            <sparkle:version>0.5.296</sparkle:version>
+            <sparkle:shortVersionString>0.5.296</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.296
+
+feat(evolution): 依赖路径探测
+
+## 变更
+
+- 新增 scripts/evolution-deps.sh：evo_detect_sdk/evo_detect_codex/evo_require_tool/evo_deps_report，只定义函数、source 无副作用。
+- SDK 解析顺序：TAPGO_SDK 显式 → 偏好 EVOLVE_SDK_PREFERRED（默认 macosx26.5，装了就用）→ 本机最新已装 SDK → xcrun 默认；走非偏好分支打 WARNING，全部失败才报错并列出已装 SDK。
+- codex 解析顺序：EVOLVE_CODEX_BIN → PATH → /opt/homebrew/bin → /usr/local/bin → ~/.local/bin；找不到时明确报错。
+- 13 处 SDK 硬编码与 3 处 codex 硬编码收敛到该模块：launchd plist 改用 __CODEX_BIN__ 占位符由安装器替换，init-tapgo 复用 evo_detect_codex，反馈注册表 5 条检查去掉 -sdk 硬编码，预检新增 codex 解析行。
+- 新增 30 项 deps 回归（含静态守卫：无残留硬编码、可覆盖 ROOT 的脚本必须从 SCRIPT_DIR 加载模块）。
+
+SDK 与 codex 收敛到单点真源，升级机器不再硬失败
+
+## Next
+
+EVO-041 自进化成本归属: App 把当前会话的 token/成本传给 evolve.sh（`EVOLVE_RUN_TOKENS`/`EVOLVE_RUN_COST_USD`），让单轮成本指标有真实数据
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.296/Tapgo-AICoding-0.5.296.zip" length="12647637" type="application/octet-stream" sparkle:edSignature="/fuD4Dp/lsQ5j8983a3JlQrI4U3q/IkbkWy0Co4UByZXGrMOteROzvy3YxY2k2pqi8pGTCEbJQFwB/Jht67RCQ=="/>
+        </item>
+        <item>
             <title>0.5.295</title>
             <pubDate>Sun, 13 Sep 2026 00:31:23 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.295</link>
@@ -57,34 +85,6 @@ drafts→registered→shipped 转化率与等待时长可量化
 EVO-039 三机界面自动断言: 部署后截图/UI 断言，区分"版本到位"与"界面可用"
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.294/Tapgo-AICoding-0.5.294.zip" length="12645902" type="application/octet-stream" sparkle:edSignature="BWbI+a/JjmpqHiQgC6lVI8zCe2fYXPW2EzEuUcEvqQEvVkcEnQpm7En+Oh58FvNz3LllQXTe8xGCYitOVYf+Cw=="/>
-        </item>
-        <item>
-            <title>0.5.293</title>
-            <pubDate>Sat, 12 Sep 2026 23:52:17 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.293</link>
-            <sparkle:version>0.5.293</sparkle:version>
-            <sparkle:shortVersionString>0.5.293</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.293
-
-feat(evolution): 远端锁 TTL
-
-## 变更
-
-- evolution-remote-lock.sh 重构：抽 make_lock_commit/push_lock_lease/report_held，新增 --ttl（默认 EVOLVE_LOCK_TTL_SECONDS=14400）。
-- acquire 遇到 started 超过 TTL 的锁会打印 REMOTE LOCK STALE RECLAIMED 并自动接管；元数据读不出 started（例如手推 ref）时只报 HELD 且明确 auto-reclaim disabled，绝不自动接管。
-- 新增 reclaim 子命令：force-with-lease 覆盖当前锁，供 evolve.sh --break-remote-lock 使用（不再先删 ref 再抢，消除竞态窗口）。
-- status 增加 ttlSeconds/ageSeconds/remainingSeconds/stale 输出；--ttl 非整数直接拒绝（exit 2）。
-- 回归：锁测试 4→15 项，失败注入 135→138 项（S29 端到端陈旧锁自动回收后完成发布）；真实 GitHub 远端已实测 stale→自动回收→release→FREE。
-
-陈旧远端锁自动回收，reclaim 显式抢占
-
-## Next
-
-EVO-038 反馈闭环转化率: drafts → check → backlog → 版本的转化率与等待时长
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.293/Tapgo-AICoding-0.5.293.zip" length="12645198" type="application/octet-stream" sparkle:edSignature="rF5Jh2tTr9iqBKqeyac0K4rQFrIZqM5nZuXXp/Y7RvccrsbeGuVBxfSWTHnoyLE/yXg1ALPUQr840F7fkjBODA=="/>
         </item>
     </channel>
 </rss>
