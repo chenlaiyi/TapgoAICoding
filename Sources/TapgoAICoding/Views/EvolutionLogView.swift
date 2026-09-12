@@ -339,6 +339,18 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.288", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.288",
+                    summary: "修复月度维护安装路径的 unbound variable,并让安装路径可隔离验证。",
+                    changes: [
+                        "修复 install-evolution-maintenance.sh:echo 里 $LABEL 后紧跟全角括号被 bash 3.2 并入变量名,真实安装直接 unbound variable(--print 路径不受影响)。",
+                        "安装器新增 EVOLVE_LAUNCH_AGENTS_DIR 与 --skip-launchctl,安装路径可在临时目录里验证,不再触碰真实 LaunchAgents。",
+                        "维护回归扩到 47 项:新增真实安装路径覆盖(plist 落盘 + plutil 校验 + 输出断言),并做负向验证确认能抓回该 bug。",
+                        "本机已注册 launchd 任务(每月 1 日 10:00,runs=0、RunAtLoad=false)并核验 program/path。"
+                    ],
+                    why: "v0.5.287 只覆盖了 --print 路径,安装路径在真实运行时报 unbound variable;只跑一次的安装路径必须进回归,否则每个操作者第一次安装都会踩。",
+                    next: "EVO-033 发布失败续跑:--resume 从失败阶段继续,避免 push 成功后 release 失败就整轮重来。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.287", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.287",
                     summary: "月度维护自动化:定时跑回滚演练与指标归档,成功静默、异常才通知。",
                     changes: [

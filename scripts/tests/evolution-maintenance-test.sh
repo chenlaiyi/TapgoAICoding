@@ -163,5 +163,25 @@ expect_grep "installer: monthly schedule" "StartCalendarInterval" "$PLIST_OUT"
 expect_grep "installer: run at load disabled" "RunAtLoad" "$PLIST_OUT"
 expect_grep "installer: points at maintenance script" "evolution-maintenance.sh" "$PLIST_OUT"
 
+# 8. 真实安装路径（隔离 LaunchAgents 目录 + 跳过 launchctl）：
+#    覆盖 "变量后紧跟非 ASCII 字符被 bash 3.2 并入变量名" 这类只在
+#    运行期暴露的回归（v0.5.287 曾因此在 install 路径 unbound variable）。
+FAKE_HOME="$TMP/fake-home"
+mkdir -p "$FAKE_HOME"
+set +e
+HOME="$FAKE_HOME" EVOLVE_LAUNCH_AGENTS_DIR="$FAKE_HOME/LaunchAgents" \
+  "$ROOT/scripts/install-evolution-maintenance.sh" --skip-launchctl \
+  > "$TMP/install.out" 2> "$TMP/install.err"
+INSTALL_RC=$?
+set -e
+expect_eq "install: exit code" "0" "$INSTALL_RC"
+expect_eq "install: clean stderr" "" "$(cat "$TMP/install.err")"
+INSTALLED_PLIST="$FAKE_HOME/LaunchAgents/com.tapgo.aicoding.evolution-maintenance.plist"
+if [[ -f "$INSTALLED_PLIST" ]]; then ok; else bad "install: plist not written"; fi
+if plutil -lint "$INSTALLED_PLIST" >/dev/null 2>&1; then ok; else bad "install: written plist invalid"; fi
+expect_grep "install: banner printed" "已安装" "$TMP/install.out"
+expect_grep "install: monthly schedule in installed plist" "StartCalendarInterval" "$INSTALLED_PLIST"
+expect_grep "install: script path resolved" "scripts/evolution-maintenance.sh" "$INSTALLED_PLIST"
+
 echo "evolution-maintenance tests: $PASSED passed, $FAILED failed"
 [[ "$FAILED" -eq 0 ]]

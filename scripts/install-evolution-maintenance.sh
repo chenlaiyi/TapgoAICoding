@@ -6,6 +6,10 @@
 #   ./scripts/install-evolution-maintenance.sh --run-now     # 安装后立即跑一次维护
 #   ./scripts/install-evolution-maintenance.sh --print       # 只渲染 plist 到 stdout，不落盘
 #   ./scripts/install-evolution-maintenance.sh --uninstall   # 停止并删除 LaunchAgent
+#
+# 测试/CI 用变量：
+#   EVOLVE_LAUNCH_AGENTS_DIR=<dir>  改写 plist 落盘目录（默认 ~/Library/LaunchAgents）
+#   EVOLVE_LAUNCHCTL_SKIP=1         跳过 launchctl 调用，只落盘与自检
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,7 +19,8 @@ MAINTENANCE_SCRIPT="$REPO_ROOT/scripts/evolution-maintenance.sh"
 APP_SUPPORT="$HOME/Library/Application Support/Tapgo AICoding"
 STATE_DIR="$APP_SUPPORT/state"
 LOG_DIR="$HOME/Library/Logs/TapgoAICoding"
-LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
+LAUNCH_AGENTS="${EVOLVE_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
+SKIP_LAUNCHCTL="${EVOLVE_LAUNCHCTL_SKIP:-0}"
 PLIST_PATH="$LAUNCH_AGENTS/$LABEL.plist"
 PATH_VALUE="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
@@ -24,6 +29,7 @@ case "${1:-}" in
   --uninstall) MODE="uninstall" ;;
   --print) MODE="print" ;;
   --run-now) MODE="run-now" ;;
+  --skip-launchctl) MODE="install"; SKIP_LAUNCHCTL=1 ;;
   "") MODE="install" ;;
   -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
   *) echo "ERROR: unexpected arg: $1" >&2; exit 2 ;;
@@ -46,7 +52,9 @@ if [[ "$MODE" == "print" ]]; then
 fi
 
 if [[ "$MODE" == "uninstall" ]]; then
-  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+  if [[ "$SKIP_LAUNCHCTL" -eq 0 ]]; then
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+  fi
   rm -f "$PLIST_PATH"
   echo "已卸载：$LABEL"
   echo "  plist: $PLIST_PATH"
@@ -60,11 +68,13 @@ render > "$PLIST_PATH"
 chmod 0644 "$PLIST_PATH"
 plutil -lint "$PLIST_PATH" >/dev/null || { echo "ERROR: 渲染出的 plist 非法" >&2; exit 1; }
 
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
-launchctl enable "gui/$(id -u)/$LABEL" 2>/dev/null || true
+if [[ "$SKIP_LAUNCHCTL" -eq 0 ]]; then
+  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
+  launchctl enable "gui/$(id -u)/$LABEL" 2>/dev/null || true
+fi
 
-echo "已安装：$LABEL（每月 1 日 10:00）"
+echo "已安装：${LABEL}（每月 1 日 10:00）"
 echo "  plist:   $PLIST_PATH"
 echo "  script:  $MAINTENANCE_SCRIPT"
 echo "  history: $STATE_DIR/maintenance_history.jsonl"
@@ -72,8 +82,12 @@ echo "  logs:    $LOG_DIR/evolution-maintenance{,.err}.log"
 
 if [[ "$MODE" == "run-now" ]]; then
   echo "立即执行一次维护..."
-  launchctl kickstart -k "gui/$(id -u)/$LABEL"
-  echo "已触发；查看：tail -20 $LOG_DIR/evolution-maintenance.log"
+  if [[ "$SKIP_LAUNCHCTL" -eq 0 ]]; then
+    launchctl kickstart -k "gui/$(id -u)/$LABEL"
+    echo "已触发；查看：tail -20 $LOG_DIR/evolution-maintenance.log"
+  else
+    echo "已跳过 launchctl（--skip-launchctl）"
+  fi
 else
   echo "查看状态：launchctl print gui/\$(id -u)/$LABEL | head -20"
   echo "立即跑一次：./scripts/install-evolution-maintenance.sh --run-now"
