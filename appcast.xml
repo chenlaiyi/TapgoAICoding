@@ -3,6 +3,31 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.275</title>
+            <pubDate>Sat, 12 Sep 2026 20:23:05 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.275</link>
+            <sparkle:version>0.5.275</sparkle:version>
+            <sparkle:shortVersionString>0.5.275</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.275
+
+feat(evolution): 模型级评测框架
+
+## 变更
+
+- 新增固定任务+参考解自检+可插拔 runner 的模型评测框架
+- 真实模型运行需操作者显式提供 runner,自动流程只做参考解验证
+
+3 个固定任务与参考解自检进入 benchmark,真实模型运行由操作者显式触发
+
+## Next
+
+EVO-020 回归用例固化: 把真实用户反馈转成最小可复现 fixture，进入 benchmark
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.275/Tapgo-AICoding-0.5.275.zip" length="12572611" type="application/octet-stream" sparkle:edSignature="R+xmiTE0/UF6xWNmWcKJRxf1btSwLXl9t9Uir9X3j2ucb3iEZuoAQ4TLMliljnnHZnGC6kqirAt97hyI0/4tCQ=="/>
+        </item>
+        <item>
             <title>0.5.274</title>
             <pubDate>Sat, 12 Sep 2026 20:15:51 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.274</link>
@@ -51,31 +76,6 @@ feat(evolution): 指标趋势看板
 EVO-018 自进化评测基准: 给固定任务集跑前后对比，量化每轮进化是否真的提升
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.273/Tapgo-AICoding-0.5.273.zip" length="12570426" type="application/octet-stream" sparkle:edSignature="iXhOQ7DXFNk4CLAQ8wypyosIsVnKSBB/V+SPWTCGSm9W0JF4QkVit5xOGOAUUjPpQlOorDeLEU9S9f29MAAOCg=="/>
-        </item>
-        <item>
-            <title>0.5.272</title>
-            <pubDate>Sat, 12 Sep 2026 19:58:51 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.272</link>
-            <sparkle:version>0.5.272</sparkle:version>
-            <sparkle:shortVersionString>0.5.272</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.272
-
-feat(evolution): UI 离屏回归自动化
-
-## 变更
-
-- 抽出可复用组件并新增离屏渲染 UI 回归
-- 快照断言接入 run-all,preview 纳入受保护路径
-
-进度/指标/diff 组件离屏渲染 PNG 并自动断言,不重启当前会话
-
-## Next
-
-EVO-017 指标趋势看板: 把 flaky、健康检查、失败原因与周期趋势做成可钻取的图表
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.272/Tapgo-AICoding-0.5.272.zip" length="12509325" type="application/octet-stream" sparkle:edSignature="wzb1PLckeqBSajfeHBGj9IOKiR7Y04R1xC8BXTKtU489dzexzUzdqg07fRQ2YcTr1ll7K0NdCLxNwT2lVV4wAA=="/>
         </item>
     </channel>
 </rss>
