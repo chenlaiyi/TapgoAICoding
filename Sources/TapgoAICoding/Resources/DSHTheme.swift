@@ -84,6 +84,13 @@ enum DSHTheme {
     // MARK: Markdown
     static let codeBlockBg = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x1E1E1E)
     static let codeBlockBanner = Color.dynamic(lightHex: 0xF9FAFB, darkHex: 0x252525)
+
+    // MARK: Code syntax (v0.5.254: 对齐 Codex 代码块的语法着色,取 VS Code Dark+ 系)
+    static let syntaxKeyword = Color.dynamic(lightHex: 0xAF00DB, darkHex: 0xC586C0)
+    static let syntaxType    = Color.dynamic(lightHex: 0x267F99, darkHex: 0x4EC9B0)
+    static let syntaxString  = Color.dynamic(lightHex: 0xA31515, darkHex: 0xCE9178)
+    static let syntaxComment = Color.dynamic(lightHex: 0x008000, darkHex: 0x6A9955)
+    static let syntaxNumber  = Color.dynamic(lightHex: 0x098658, darkHex: 0xB5CEA8)
     /// Codex uses a muted grey patch behind inline code, never a brand tag.
     static let inlineCodeBg = Color.dynamic(lightHex: 0xEFEFF1, darkHex: 0x2E2E2F)
     static let fileChangeCardBg = Color.dynamic(lightHex: 0xF5F5F5, darkHex: 0x222222)

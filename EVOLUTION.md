@@ -1,4 +1,19 @@
 # Evolution Log
+## v0.5.254 — feat(ui): 对话渲染三次对齐 Codex(摘要行常显 + 分隔线 / 代码块着色 + 换行切换)
+**Date**: 2026-09-12
+**Tag**: v0.5.254
+**Test status**: 待回归
+**Changed**:
+- `ConversationResponseView.swift`:回合摘要行(「用时/已处理 {时长} ›」)不再受 `showWorkProcess` 门槛控制,每个回合都显示;`showWorkProcess` 语义收窄为「工作细节默认是否展开」。
+- `ConversationResponseView.swift`:`ConversationWorkDisclosure` 摘要行下方新增横贯整宽分隔线(`DSHTheme.border`);`items` 为空时不显示展开箭头。
+- 新增 `CodeSyntaxHighlighter.swift`:正则驱动的轻量语法着色(注释 → 字符串 → 关键字 → 数字,高优先规则占位以免错配),覆盖 swift/python/js/ts/shell/json/sql/go/rust/yaml 等关键字表,无第三方依赖。
+- `DSHTheme.swift`:新增 `syntaxKeyword` / `syntaxType` / `syntaxString` / `syntaxComment` / `syntaxNumber`(VS Code Dark+ 系,随明暗主题切换)。
+- `MarkdownMessageView.swift`:`CodeBlockView` 接入语法着色;标题栏新增「自动换行」切换(默认关,长行水平滚动),与 Codex 的两个按钮对齐。
+- 版本号 0.5.253 → 0.5.254(四源同步)。
+
+**Why**: 你要求继续对齐 Codex;核对后确认两处剩余差异 —— 摘要行应常显且下方有分隔线;代码块应有语法着色与换行切换。
+**Next**: 换行按钮图标语义若与 Codex 不一致,按实机微调。
+
 ## v0.5.253 — fix(ui): 对话渲染二次对齐 Codex(过程消息还原正文 / 摘要文案与格式 / 实时计时)
 **Date**: 2026-09-12
 **Tag**: v0.5.253

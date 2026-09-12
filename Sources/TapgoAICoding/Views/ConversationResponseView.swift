@@ -11,26 +11,22 @@ struct ConversationResponseView<Notices: View>: View {
     private var running: Bool { turn.status == .running || turn.status == .pending }
     var body: some View {
         let presentation = TurnResponsePresentation(turn)
-        // v0.5.187: 运行中始终显示 work items 单行（对齐 codex 桌面端），
-        // 完成后由 showWorkProcess 决定是否展开。
-        let showWork = showWorkProcess || running
-        let work = showWork ? presentation.work : []
-        VStack(alignment: .leading, spacing: 16) {
-            if showWork {
-                if let progress = TurnProgressSummary(turn: turn) {
-                    TaskPlanCard(progress: progress, status: turn.status)
-                }
-                if !work.isEmpty {
-                    ConversationWorkDisclosure(items: work, status: turn.status, duration: turn.duration, startedAt: turn.startedAt, defaultExpanded: showWorkProcess)
-                }
+        // v0.5.254: 对齐 Codex —— 每个回合都有一行摘要「用时/已处理 {时长} ›」,
+        // 工作细节默认收起(点箭头展开);showWorkProcess 现在只决定"默认是否展开",
+        // 不再决定"摘要行是否出现"。摘要行下方由 Disclosure 内部画横贯分隔线。
+        let work = presentation.work
+        VStack(alignment: .leading, spacing: 14) {
+            if let progress = TurnProgressSummary(turn: turn) {
+                TaskPlanCard(progress: progress, status: turn.status)
             }
+            ConversationWorkDisclosure(items: work, status: turn.status, duration: turn.duration, startedAt: turn.startedAt, defaultExpanded: showWorkProcess)
             notices()
             ForEach(presentation.messages) { item in
                 if case .assistantMessage(_, let text) = item {
                     AssistantResponseText(text: text, isStreaming: running && turn.items.last?.id == item.id)
                 }
             }
-            if running && (!showWorkProcess || work.isEmpty || !presentation.messages.isEmpty) {
+            if running && (work.isEmpty || !presentation.messages.isEmpty) {
                 ConversationWorkingIndicator(title: presentation.messages.isEmpty ? "工作中" : "正在生成回复")
             } else if turn.status == .awaitingApproval && presentation.notices.isEmpty {
                 ConversationWorkingIndicator(title: "等待确认", animated: false)
@@ -187,7 +183,10 @@ private struct ConversationWorkDisclosure: View {
                     } else {
                         Text(headerTitle)
                     }
-                    Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 10))
+                    // items 为空时没有可展开内容,不显示箭头(仅保留时长摘要)。
+                    if !items.isEmpty {
+                        Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 10))
+                    }
                 }
                 .font(.system(size: 13 * scale.multiplier))
                 .foregroundStyle(DSHTheme.labelDim)
@@ -213,6 +212,12 @@ private struct ConversationWorkDisclosure: View {
                 }
                 .padding(.leading, 1)
             }
+            // v0.5.254: Codex 的回合摘要在下方画一条横贯整宽的分隔线,
+            // 把「摘要」与后续正文/下一回合分开。
+            Rectangle()
+                .fill(DSHTheme.border)
+                .frame(height: 1)
+                .padding(.top, 2)
         }
         .onChange(of: active) { _, value in
             if !value && !defaultExpanded { expansionOverride = nil }

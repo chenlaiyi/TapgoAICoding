@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.254", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.254",
+                    summary: "对话渲染三次对齐 Codex:回合摘要行常显 + 分隔线、代码块语法着色 + 换行切换。",
+                    changes: [
+                        "ConversationResponseView:回合摘要行(用时/已处理 {时长} ›)不再受 showWorkProcess 门槛控制,每个回合都显示(对齐 Codex);showWorkProcess 语义收窄为「工作细节默认是否展开」。",
+                        "ConversationWorkDisclosure:摘要行下方新增横贯整宽的分隔线(DSHTheme.border),对齐 Codex 的回合分隔样式;items 为空时不显示展开箭头,只保留时长摘要。",
+                        "新增 CodeSyntaxHighlighter.swift:正则驱动的轻量语法着色(注释→字符串→关键字→数字,高优先规则占位、低优先不覆盖),支持 swift/python/js/ts/shell/json/sql/go/rust/yaml 等关键字表;不引入第三方依赖。",
+                        "DSHTheme 新增 syntaxKeyword/syntaxType/syntaxString/syntaxComment/syntaxNumber 五个配色 token(VS Code Dark+ 系,随明暗主题切换)。",
+                        "CodeBlockView:代码区接入语法着色;标题栏新增「自动换行」切换按钮(默认关,长行水平滚动保持列对齐),与 Codex 代码块的两个按钮对齐。",
+                        "App 版本号 0.5.253 → 0.5.254(四源同步)。"
+                    ],
+                    why: "你要求继续对齐 Codex;逐项核对后确认两处剩余差异:回合摘要行应常显且下方有分隔线,代码块应有语法着色与换行切换。",
+                    next: "若 Codex 的换行按钮图标语义与当前实现不同(当前为 text.alignleft ↔ arrow.left.and.right),按实机再微调。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.253", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.253",
                     summary: "对话渲染二次对齐 Codex:过程消息还原为正文、摘要文案与格式纠正、进行中实时计时。",
                     changes: [

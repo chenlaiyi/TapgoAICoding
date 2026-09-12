@@ -409,8 +409,15 @@ private struct CodeBlockView: View {
     let code: String
     let lang: String?
     @State private var copied = false
+    /// v0.5.254: Codex 代码块标题栏带「自动换行」切换(默认关,长行水平滚动)。
+    @State private var wrapLines = false
     @Environment(\.tapgoFontScale) private var appFontScale: AppFontScale
     @Environment(\.conversationBodySize) private var conversationBodySize
+
+    /// 语言标识(去掉 `swift:file.swift` 这类 hint 后缀)供语法着色用。
+    private var highlightLanguage: String? {
+        parseCodeBlockHint(lang)?.language ?? lang
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -451,6 +458,14 @@ private struct CodeBlockView: View {
                         .textSelection(.enabled)
                 }
                 Spacer()
+                Button { wrapLines.toggle() } label: {
+                    Image(systemName: wrapLines ? "arrow.left.and.right" : "text.alignleft")
+                        .font(AppFont.scaled(.caption2, multiplier: appFontScale.multiplier))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(wrapLines ? "关闭自动换行" : "自动换行")
+                .accessibilityLabel(wrapLines ? "关闭自动换行" : "自动换行")
                 Button {
                     copy(code)
                     copied = true
@@ -467,17 +482,26 @@ private struct CodeBlockView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(DSHTheme.codeBlockBanner)
-            // Long lines scroll horizontally instead of wrapping, so the
-            // code keeps its real column layout (like the harness block).
-            ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
-                    .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
-                    .foregroundStyle(DSHTheme.messageText)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
+            // v0.5.254: 对齐 Codex —— 代码做语法着色;长行默认水平滚动保持列对齐,
+            // 标题栏可切换为自动换行。
+            Group {
+                if wrapLines {
+                    CodeSyntaxHighlighter.highlighted(code, language: highlightLanguage)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        CodeSyntaxHighlighter.highlighted(code, language: highlightLanguage)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             }
+            .font(AppFont.monoScaled(size: 13, multiplier: appFontScale.multiplier))
+            .foregroundStyle(DSHTheme.messageText)
+            .textSelection(.enabled)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
         }
         .background(DSHTheme.codeBlockBg, in: RoundedRectangle(cornerRadius: 10))
         .clipShape(RoundedRectangle(cornerRadius: 10))
