@@ -224,6 +224,13 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
     open_backlog = len(re.findall(r"^- \[ \] ", backlog_text, re.M))
     done_backlog = len(re.findall(r"^- \[x\] ", backlog_text, re.M))
 
+    latest_entry = {}
+    if final:
+        latest_entry = max(
+            final.values(),
+            key=lambda e: parse_timestamp(str(e.get("builtAt", ""))) or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
+        )
+
     latest_record = None
     if records:
         latest = max(records, key=lambda r: tuple(int(x) for x in str(r["version"]).split(".")))
@@ -276,6 +283,9 @@ def collect_metrics(root: Path, history_path: Path, test_history_path: Path | No
         "rollbackDrillRuns": len(rollback_runs),
         "lastRollbackDrillTag": rollback_runs[-1].get("tag") if rollback_runs else None,
         "lastRollbackDrillPassed": rollback_runs[-1].get("passed") if rollback_runs else None,
+        "localAppInstalled": (latest_entry.get("localApp") or {}).get("installed"),
+        "localAppRunning": (latest_entry.get("localApp") or {}).get("running"),
+        "localAppStale": (latest_entry.get("localApp") or {}).get("stale"),
         "maintenanceRuns": len(maintenance_runs),
         "lastMaintenanceStatus": maintenance_runs[-1].get("status") if maintenance_runs else None,
         "lastMaintenanceAt": maintenance_runs[-1].get("ranAt") if maintenance_runs else None,
@@ -349,6 +359,11 @@ def main() -> int:
     print(f"model eval:        runs={metrics['modelEvalRuns']} latest={metrics['modelEvalLatestScore']} best={metrics['modelEvalBestScore']}")
     print(f"rollback drill:    runs={metrics['rollbackDrillRuns']} last={metrics['lastRollbackDrillTag']} passed={metrics['lastRollbackDrillPassed']}")
     print(f"maintenance:       runs={metrics['maintenanceRuns']} last={metrics['lastMaintenanceStatus']} at={metrics['lastMaintenanceAt']}")
+    if metrics["localAppRunning"] is not None:
+        stale = metrics["localAppStale"]
+        stale_text = "stale" if stale is True else ("fresh" if stale is False else "unknown")
+        print(f"local app:         running={metrics['localAppRunning']} "
+              f"installed={metrics['localAppInstalled']} ({stale_text})")
     return 0
 
 

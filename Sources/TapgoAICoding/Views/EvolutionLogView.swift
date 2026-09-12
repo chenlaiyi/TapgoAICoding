@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.300", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.300",
+                    summary: "本机 App 版本漂移留痕:不再「跳过就算过」,运行版本写进 state 并告警。",
+                    changes: [
+                        "evolution-ui-assert.sh 新增 --print-running-version:沿用同一套探针(进程/token/端口/API),只打印正在运行的 App 版本后退出,供流水线留痕。",
+                        "evolve.sh 新增 probe_local_app_version:发布与续跑两条路径都会探测本机运行版本,写进 state 的 localApp{installed,running,stale},落后时 WARN 并提示 ./scripts/restart-and-resume.sh。",
+                        "state schema 升到 v5(新增 localApp);schema 漂移守卫继续保证写入方与注册表一致。",
+                        "evolution-metrics.py 新增 local app 一行(running/installed/stale)与 localAppRunning/localAppInstalled/localAppStale 三个 JSON 字段。",
+                        "测试:ui-assert +4(打印版本/无服务时的失败码),失败注入扩到 151 项(S33 漂移 WARN+留痕、S34 一致时不告警),metrics 断言扩到 24 项。"
+                    ],
+                    why: "本机 App 不在发布中重启是既定约定,于是 /Applications 已是新版、用户实际看到的界面却可能是旧版:此前 deploy 只写 skipped,没有任何地方记录这件事,本机曾长期落后。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑真实问题(候选:自进化 UI 快照基线对比、fixture 内 E2E 部署演练)。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.299", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.299",
                     summary: "反馈漏斗接入看板:App 指标详情与手机端卡片显示转化率与等待时长。",
                     changes: [

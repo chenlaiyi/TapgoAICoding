@@ -125,11 +125,20 @@ run_tool "$TMP/auth.log" --expect-version 0.5.295
 expect_eq "auth regression: exit 28" "28" "$RC"
 expect_grep "auth regression: reason" "鉴权可能失效" "$TMP/auth.log"
 
+# 6b. --print-running-version：只探版本、不校验页面/资源/鉴权
+run_tool "$TMP/printv.log" --print-running-version
+expect_eq "print-version: exit 0" "0" "$RC"
+expect_eq "print-version: prints running version" "0.5.295" "$(cat "$TMP/printv.log")"
+
 # 7. H5 服务没起（端口不通）
 kill "$SERVER_PID"; wait "$SERVER_PID" 2>/dev/null || true; SERVER_PID=""
 run_tool "$TMP/noport.log" --expect-version 0.5.295
 expect_eq "no server: exit 24" "24" "$RC"
 expect_grep "no server: reason" "取不到" "$TMP/noport.log"
+
+run_tool "$TMP/printv-down.log" --print-running-version
+expect_eq "print-version without server: non-zero" "24" "$RC"
+expect_grep "print-version without server: reason on stderr" "取不到" "$TMP/printv-down.log"
 
 # 8. 进程/token 缺失与参数校验
 cat > "$TMP/fail-pgrep" <<'MOCK'

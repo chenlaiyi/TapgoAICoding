@@ -22,6 +22,8 @@
 # Remote lock (EVO-037): 跨机锁带 started 元数据，超过 EVOLVE_LOCK_TTL_SECONDS
 #   （默认 4h）的陈旧锁会被下一次 acquire 自动回收；--break-remote-lock 走
 #   reclaim（force-with-lease 覆盖），用于显式抢占仍在运行的锁。
+# Local app (EVO-043): 发布不重启本机 App,但会探测"正在运行的版本"并写进 state
+#   (localApp.installed/running/stale),落后时打 WARN 并在总结里提示重启命令。
 # Run cost (EVO-041): EVOLVE_RUN_TOKENS/EVOLVE_RUN_COST_USD 优先;否则读 App 写的
 #   state/evolution_cost.json 取与上次发布记录的增量;都没有就留空(不估算)。
 # Runtime state schema (EVO-035): 预检后立即补齐/校验 state json/jsonl 的
@@ -78,6 +80,7 @@ ARCHIVE_TOOL="${EVOLVE_ARCHIVE_TOOL:-$ROOT/scripts/evolution-archive.py}"
 PREFLIGHT_SCRIPT="${EVOLVE_PREFLIGHT_SCRIPT:-$ROOT/scripts/evolution-preflight.sh}"
 SCHEMA_TOOL="${EVOLVE_SCHEMA_TOOL:-$ROOT/scripts/evolution-schema.py}"
 FUNNEL_TOOL="${EVOLVE_FUNNEL_TOOL:-$ROOT/scripts/evolution-feedback-funnel.py}"
+UI_ASSERT_SCRIPT="${EVOLVE_UI_ASSERT_SCRIPT:-$ROOT/scripts/evolution-ui-assert.sh}"
 DEPLOY_SCRIPT="${EVOLVE_DEPLOY_SCRIPT:-$ROOT/scripts/deploy-fleet.sh}"
 HEALTH_STATUS="pending"
 FLEET_STATUS="skipped"
@@ -175,6 +178,8 @@ REMOTE_LOCK_SHA=""
 RUN_TOKENS=""
 RUN_COST=""
 RUN_COST_SOURCE=""
+LOCAL_APP_RUNNING=""
+LOCAL_APP_STALE=""
 REMOTE_LOCK_HELD=0
 ITER_BRANCH=""
 BRANCH_CREATED=0
@@ -278,6 +283,7 @@ write_state() {
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   EVO_STARTED_AT="$PROGRESS_STARTED_AT" EVO_DURATION="$RUN_DURATION" \
   EVO_TOKENS="$RUN_TOKENS" EVO_COST="$RUN_COST" EVO_COST_SOURCE="$RUN_COST_SOURCE" \
+  EVO_LOCAL_RUNNING="$LOCAL_APP_RUNNING" EVO_LOCAL_STALE="$LOCAL_APP_STALE" \
   python3 - "$STATE_FILE" <<'PY'
 from __future__ import annotations
 
@@ -299,7 +305,7 @@ def _optional_float(raw: str) -> float | None:
 
 
 state = {
-    "schemaVersion": 4,
+    "schemaVersion": 5,
     "status": os.environ["EVO_STATUS"],
     "version": version,
     "commitSha": os.environ["EVO_SHA"],
@@ -324,6 +330,11 @@ state = {
     "tokens": _optional_int(os.environ.get("EVO_TOKENS", "")),
     "costUSD": _optional_float(os.environ.get("EVO_COST", "")),
     "costSource": os.environ.get("EVO_COST_SOURCE") or None,
+    "localApp": {
+        "installed": version,
+        "running": os.environ.get("EVO_LOCAL_RUNNING") or None,
+        "stale": {"yes": True, "no": False}.get(os.environ.get("EVO_LOCAL_STALE", ""), None),
+    },
     "evolutionNote": os.environ["EVO_NOTE"],
     "evolutionSummary": os.environ.get("EVO_SUMMARY", ""),
     "threadToResume": None,
@@ -628,6 +639,13 @@ echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"
 echo "==================================================="
 echo "  Mode:           ${MODE}"
 echo "  Iteration:      ${ITER_BRANCH}"
+if [[ -n "$LOCAL_APP_RUNNING" ]]; then
+  if [[ "$LOCAL_APP_STALE" == "yes" ]]; then
+    echo "  Local app:      running ${LOCAL_APP_RUNNING} (stale; restart with ./scripts/restart-and-resume.sh)"
+  else
+    echo "  Local app:      running ${LOCAL_APP_RUNNING}"
+  fi
+fi
 echo "  State file:     ${STATE_FILE}"
 echo "  App bundle:     ${ROOT}/Tapgo AICoding.app"
 if [[ -n "$LATEST_TAG" ]]; then
@@ -725,6 +743,29 @@ PYCOST
   fi
 }
 
+# probe_local_app_version — EVO-043：记录本机**正在运行**的 App 版本。
+# 本机 App 按约定不在发布中重启（重启会终止当前会话），于是 /Applications 已经
+# 是新版、用户实际看到的界面却可能还是旧版；这里把它显式留痕，不再"跳过就算过"。
+probe_local_app_version() {
+  LOCAL_APP_RUNNING=""
+  LOCAL_APP_STALE=""
+  [[ -x "$UI_ASSERT_SCRIPT" ]] || return 0
+  local running=""
+  running="$("$UI_ASSERT_SCRIPT" --print-running-version 2>/dev/null || true)"
+  if [[ -z "$running" ]]; then
+    LOCAL_APP_RUNNING="none"
+    LOCAL_APP_STALE="unknown"
+    return 0
+  fi
+  LOCAL_APP_RUNNING="$running"
+  if [[ "$running" == "$NEW_VERSION" ]]; then
+    LOCAL_APP_STALE="no"
+  else
+    LOCAL_APP_STALE="yes"
+    echo "WARN: 本机正在运行的 App 是 ${running}，与已安装的 ${NEW_VERSION} 不一致（重启后生效：./scripts/restart-and-resume.sh）" >&2
+  fi
+}
+
 # ---------- 0. Preflight: clean tree + no in-flight git operation ----------
 for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
   if [[ -f "$GIT_DIR_REAL/$marker" ]]; then
@@ -805,6 +846,7 @@ if [[ "$RESUME" == "1" ]]; then
     exit 13
   fi
   resolve_run_cost
+  probe_local_app_version
   write_progress "push" 6 "running" "resume from ${RESUME_STAGE}"
   publish_tail "$RESUME_STAGE"
   archive_state_history
@@ -843,6 +885,7 @@ fi
 
 # ---------- 1d. 单轮成本归因 (EVO-041) ----------
 resolve_run_cost
+probe_local_app_version
 if [[ -n "$RUN_COST_SOURCE" ]]; then
   echo "==> Run cost source: ${RUN_COST_SOURCE} tokens=${RUN_TOKENS:-n/a} costUSD=${RUN_COST:-n/a}"
 fi

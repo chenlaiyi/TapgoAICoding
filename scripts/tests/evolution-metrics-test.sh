@@ -22,7 +22,7 @@ cat > "$TMP/history.jsonl" <<'JSONL'
 {"schemaVersion":3,"status":"published","version":"0.5.1","mode":"publish","builtAt":"2026-09-01T00:00:00Z","testStatus":"— 100 passed, 0 failed —","durationSeconds":600,"tokens":1000,"costUSD":0.5}
 {"status":"committed","version":"0.5.2","mode":"publish","builtAt":"2026-09-02T00:00:00Z","testStatus":"— 200 passed, 0 failed —"}
 {"status":"release_failed","version":"0.5.2","mode":"publish","builtAt":"2026-09-02T01:00:00Z","testStatus":"— 200 passed, 0 failed —"}
-{"schemaVersion":3,"status":"published","version":"0.5.3","mode":"publish","builtAt":"2026-09-03T01:00:00Z","testStatus":"— 300 passed, 0 failed —","durationSeconds":900,"tokens":2000,"costUSD":1.5}
+{"schemaVersion":5,"status":"published","version":"0.5.3","mode":"publish","builtAt":"2026-09-03T01:00:00Z","testStatus":"— 300 passed, 0 failed —","durationSeconds":900,"tokens":2000,"costUSD":1.5,"localApp":{"installed":"0.5.3","running":"0.5.1","stale":true}}
 JSONL
 
 cat > "$TMP/maintenance_history.jsonl" <<'JSONL'
@@ -62,5 +62,8 @@ assert m["runTokensTotal"] == 3000, m
 assert m["runTokensMedian"] == 1500, m
 assert abs(m["runCostUSDTotal"] - 2.0) < 1e-6, m
 assert abs(m["lastRunCostUSD"] - 1.5) < 1e-6, m
-print("evolution-metrics assertions: 21 passed, 0 failed")
+assert m["localAppRunning"] == "0.5.1", m
+assert m["localAppInstalled"] == "0.5.3", m
+assert m["localAppStale"] is True, m
+print("evolution-metrics assertions: 24 passed, 0 failed")
 PY

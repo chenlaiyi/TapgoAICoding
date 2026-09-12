@@ -17,6 +17,7 @@
 # 用法：
 #   ./scripts/evolution-ui-assert.sh --expect-version 0.5.294
 #   ssh host bash -s -- --expect-version 0.5.294 < scripts/evolution-ui-assert.sh
+#   ./scripts/evolution-ui-assert.sh --print-running-version   # 只打印运行中版本（供漂移留痕）
 #
 # 退出码：21 无进程 / 22 无 token / 23 无监听端口 / 24 状态接口失败 /
 #         25 版本不一致 / 26 H5 骨架异常 / 27 资源缺少标记 / 28 鉴权回归
@@ -36,6 +37,7 @@ TOKEN="${EVOLVE_UI_TOKEN:-}"
 TIMEOUT="${EVOLVE_UI_TIMEOUT:-5}"
 ATTEMPTS="${EVOLVE_UI_ATTEMPTS:-6}"
 JSON=0
+PRINT_VERSION=0
 
 PGREP_BIN="${EVOLVE_UI_PGREP:-pgrep}"
 DEFAULTS_BIN="${EVOLVE_UI_DEFAULTS:-defaults}"
@@ -50,6 +52,7 @@ while [[ "$#" -gt 0 ]]; do
     --port) PORT="${2:-}"; shift ;;
     --timeout) TIMEOUT="${2:-}"; shift ;;
     --json) JSON=1 ;;
+    --print-running-version) PRINT_VERSION=1 ;;
     -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
     *) echo "ERROR: unexpected arg: $1" >&2; exit 2 ;;
   esac
@@ -127,6 +130,10 @@ print("%s|%s" % (data.get("hostname") or "", data.get("rev")))
 [[ "$HOSTNAME_SEEN" == *"|"* ]] || fail 24 "/api/state 缺 hostname/rev 字段"
 if [[ -n "$EXPECT_VERSION" && "$APP_VERSION" != "$EXPECT_VERSION" ]]; then
   fail 25 "运行中的界面版本 ${APP_VERSION} != 期望 ${EXPECT_VERSION}（App 未真正重启）"
+fi
+if [[ "$PRINT_VERSION" -eq 1 ]]; then
+  printf '%s\n' "$APP_VERSION"
+  exit 0
 fi
 result "version" "$APP_VERSION"
 result "pid" "$PID"

@@ -576,5 +576,32 @@ EVOLVE_RUN_TOKENS=777 run_evolve "$R32" "$BASE/s32-state" "$BASE/s32.log" --path
 assert_json "$BASE/s32-state/evolution_state.json" 'd["tokens"] == 777' "s32 env tokens win"
 assert_json "$BASE/s32-state/evolution_state.json" 'd["costSource"] == "env"' "s32 records env source"
 
+# ---------- S33/S34: 本机 App 运行版本漂移留痕（EVO-043）----------
+R33="$BASE/s33"; make_repo "$R33"
+cat > "$BASE/s33-ui.sh" <<'FAKE'
+#!/usr/bin/env bash
+[[ "${1:-}" == "--print-running-version" ]] && { echo "0.5.1"; exit 0; }
+exit 0
+FAKE
+chmod +x "$BASE/s33-ui.sh"
+EVOLVE_UI_ASSERT_SCRIPT="$BASE/s33-ui.sh" \
+  run_evolve "$R33" "$BASE/s33-state" "$BASE/s33.log" --paths scripts patch "s33" "s33" --next n
+assert_json "$BASE/s33-state/evolution_state.json" 'd["localApp"]["running"] == "0.5.1"' "s33 records running app version"
+assert_json "$BASE/s33-state/evolution_state.json" 'd["localApp"]["installed"] == "0.5.2"' "s33 records installed version"
+assert_json "$BASE/s33-state/evolution_state.json" 'd["localApp"]["stale"] is True' "s33 flags stale local app"
+assert_grep "$BASE/s33.log" "本机正在运行的 App 是 0.5.1" "s33 warns about drift"
+
+R34="$BASE/s34"; make_repo "$R34"
+cat > "$BASE/s34-ui.sh" <<'FAKE'
+#!/usr/bin/env bash
+[[ "${1:-}" == "--print-running-version" ]] && { echo "0.5.2"; exit 0; }
+exit 0
+FAKE
+chmod +x "$BASE/s34-ui.sh"
+EVOLVE_UI_ASSERT_SCRIPT="$BASE/s34-ui.sh" \
+  run_evolve "$R34" "$BASE/s34-state" "$BASE/s34.log" --paths scripts patch "s34" "s34" --next n
+assert_json "$BASE/s34-state/evolution_state.json" 'd["localApp"]["stale"] is False' "s34 marks fresh local app"
+assert_not_grep "$BASE/s34.log" "不一致" "s34 no drift warning"
+
 echo "evolve failure-injection tests: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

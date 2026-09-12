@@ -6,6 +6,7 @@ model-eval、rollback-drill.sh、maintenance.sh），字段演进时读者只能
 这里给每个 artifact 登记当前 schema 版本：
 
   * 新记录必须自带 schemaVersion（各写入方负责写入）；
+  * v5 起记录 localApp{installed,running,stale}：本机实际在跑的 App 版本与漂移；
   * v4 起 evolution_state*.json 记录 costSource（env / app-snapshot-delta / 空），
     说明 tokens/costUSD 的来源；
   * v3 起 evolution_state*.json 额外记录 startedAt/durationSeconds/tokens/costUSD
@@ -39,9 +40,9 @@ class Artifact:
 
 
 ARTIFACTS: dict[str, Artifact] = {
-    "evolution_state.json": Artifact(4, "json", ("status", "version")),
+    "evolution_state.json": Artifact(5, "json", ("status", "version")),
     "evolution_state_history.jsonl": Artifact(
-        4, "jsonl", ("status", "version", "healthCheck", "worktreeVerified")),
+        5, "jsonl", ("status", "version", "healthCheck", "worktreeVerified")),
     "evolution_progress.json": Artifact(1, "json", ("phase", "phaseIndex", "status")),
     "test_run_history.jsonl": Artifact(1, "jsonl", ("status", "ranAt")),
     "evolution_benchmark_history.jsonl": Artifact(1, "jsonl", ("score", "ranAt")),

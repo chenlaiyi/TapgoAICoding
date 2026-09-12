@@ -1,5 +1,22 @@
 # Evolution Log
 
+## v0.5.300 — feat(evolution): 本机 App 漂移留痕
+**Date**: 2026-09-13
+**Commit**: _(see `git log -1 v0.5.300`)_
+**Tag**: v0.5.300
+**Test status**: — 3404 passed, 0 failed —
+**Changed**:
+- evolution-ui-assert.sh 新增 --print-running-version：沿用同一套探针（进程/token/端口/API），只打印正在运行的 App 版本后退出，供流水线留痕。
+- evolve.sh 新增 probe_local_app_version：发布与续跑两条路径都探测本机运行版本，写进 state 的 localApp{installed,running,stale}，落后时 WARN 并提示 ./scripts/restart-and-resume.sh。
+- state schema 升到 v5（新增 localApp），schema 漂移守卫继续保证写入方与注册表一致。
+- evolution-metrics.py 新增 local app 一行（running/installed/stale）与三个 JSON 字段。
+- 测试：ui-assert +4、失败注入扩到 151 项（S33 漂移 WARN+留痕、S34 一致时不告警）、metrics 断言 24 项。
+
+记录正在运行的本机 App 版本，落后时告警并提示重启
+**Why**: 本机 App 不在发布中重启是既定约定，于是 /Applications 已是新版、用户实际看到的界面却可能是旧版：此前 deploy 只写 skipped，没有任何地方记录这件事，本机曾长期落后。
+**Next**: EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+
+
 ## v0.5.299 — feat(evolution): 反馈漏斗接入看板
 **Date**: 2026-09-13
 **Commit**: _(see `git log -1 v0.5.299`)_

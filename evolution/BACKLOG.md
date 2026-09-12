@@ -69,6 +69,7 @@
 - [x] **EVO-040 依赖路径探测**：新增 evolution-deps.sh（SDK 偏好/回退链 + codex 候选链），13 处 SDK 硬编码与 3 处 codex 硬编码收敛到单点真源（v0.5.296）
 - [x] **EVO-041 自进化成本归属**：App 把自进化会话的累计 token 写进 `state/evolution_cost.json`，evolve.sh 取增量并把来源记进 `costSource`（v0.5.297）
 - [x] **EVO-042 反馈漏斗接入看板**：漏斗工具新增 `snapshot` 写 `state/feedback_funnel.json`，App 指标详情新增三张卡、H5 自进化卡片新增一行（v0.5.299）
+- [x] **EVO-043 本机运行版本漂移留痕**：evolve.sh 探测"正在运行"的 App 版本写入 `localApp{installed,running,stale}`，落后时 WARN + 总结提示重启命令（v0.5.300）
 
 ## P9 — 待外部输入
 
