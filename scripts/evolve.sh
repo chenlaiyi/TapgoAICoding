@@ -103,6 +103,8 @@ STATE_DIR="${EVOLVE_STATE_DIR:-$HOME/Library/Application Support/Tapgo AICoding/
 STATE_FILE="${STATE_DIR}/evolution_state.json"
 NOTES_FILE=""
 NEW_VERSION=""
+ITER_BRANCH=""
+BRANCH_CREATED=0
 COMMITTED=0
 MUTATED=0
 
@@ -128,6 +130,12 @@ cleanup() {
         echo "WARN: rollback .app rebuild failed; rerun scripts/build-app.sh manually" >&2
     fi
   fi
+  if [[ "$rc" -ne 0 && "$COMMITTED" -eq 0 && "$BRANCH_CREATED" -eq 1 ]]; then
+    if [[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)" == "$ITER_BRANCH" ]]; then
+      git checkout "$BRANCH" >/dev/null 2>&1 || true
+    fi
+    git branch -D "$ITER_BRANCH" >/dev/null 2>&1 || true
+  fi
   evo_lock_release "$LOCK_DIR"
 }
 trap cleanup EXIT
@@ -141,6 +149,10 @@ for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
 done
 if [[ -d "$GIT_DIR_REAL/rebase-merge" || -d "$GIT_DIR_REAL/rebase-apply" ]]; then
   echo "ERROR: git rebase in progress; finish it before evolving." >&2
+  exit 9
+fi
+if [[ "$BRANCH" == "HEAD" ]]; then
+  echo "ERROR: detached HEAD is not supported for self-evolution; checkout a branch first." >&2
   exit 9
 fi
 DIRTY_STATUS="$(git -c core.quotepath=false status --porcelain)"
@@ -208,6 +220,7 @@ if [[ -n "$DRY_RUN" ]]; then
   echo "  upstream:  ${UPSTREAM_REMOTE}"
   echo "  version:   ${NEW_VERSION}"
   echo "  commit:    ${MSG} (v${NEW_VERSION})"
+  echo "  branch:    codex/evolution-v${NEW_VERSION} (${BRANCH} only fast-forward)"
   echo "  steps:     lock → prepend EVOLUTION.md → tests → build .app → notes"
   echo "             → git add <allowlist> → commit + tag"
   if [[ "$MODE" == "publish" ]]; then
@@ -218,7 +231,17 @@ if [[ -n "$DRY_RUN" ]]; then
   exit 0
 fi
 
-# ---------- 2. Patch version sources ----------
+# ---------- 2. Create the iteration branch (main only ever fast-forwards) ----------
+ITER_BRANCH="codex/evolution-v${NEW_VERSION}"
+if git show-ref --verify --quiet "refs/heads/$ITER_BRANCH"; then
+  echo "ERROR: iteration branch already exists: $ITER_BRANCH" >&2
+  exit 3
+fi
+git checkout -b "$ITER_BRANCH" >/dev/null
+BRANCH_CREATED=1
+echo "==> Iteration branch: ${ITER_BRANCH} (from ${BRANCH}@${START_HEAD:0:8})"
+
+# ---------- 3. Patch version sources ----------
 MUTATED=1
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${NEW_VERSION}" "$PLIST" >/dev/null
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW_VERSION}" "$PLIST" >/dev/null
@@ -261,7 +284,7 @@ rm -f "$ENTRY_FILE"
 python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
 echo "==> Structured record + EVOLUTION.md rendered for v${NEW_VERSION}"
 
-# ---------- 4. Tests (before any commit) ----------
+# ---------- 5. Tests (before any commit) ----------
 WITH_INTEGRATION="${WITH_INTEGRATION:-}"
 TEST_ENV=("TAPGO_EXPECTED_VERSION=${NEW_VERSION}")
 TEST_ARGS=()
@@ -298,7 +321,7 @@ open(path, "w", encoding="utf-8").write(text.replace(old, "**Test status**: " + 
 PYEOF
 python3 "$RECORDS_TOOL" validate --require-rendered --check-current >/dev/null
 
-# ---------- 5. Build the real .app before commit ----------
+# ---------- 6. Build the real .app before commit ----------
 echo "==> Building .app bundle"
 if [[ "$MODE" == "local" ]]; then
   if ! TAPGO_LOCAL_BUILD=1 "$BUILD_SCRIPT" >/dev/null; then
@@ -319,7 +342,7 @@ fi
 echo "==> Built .app version: ${BUILT_VERSION}"
 
 
-# ---------- 6. Release notes (publish only; rendered from the record) ----------
+# ---------- 7. Release notes (publish only; rendered from the record) ----------
 if [[ "$MODE" == "publish" ]]; then
   NOTES_FILE="${ROOT}/AppBuilder/release-notes-${NEW_VERSION}.md"
   if [[ ! -f "$NOTES_FILE" ]]; then
@@ -327,7 +350,7 @@ if [[ "$MODE" == "publish" ]]; then
   fi
 fi
 
-# ---------- 7. Commit + tag (explicit allowlist; script-managed files auto-added) ----------
+# ---------- 8. Commit + tag on the iteration branch ----------
 ALLOWED_PATHS+=("$PLIST" "$HELPER_PLIST" "$PROJECT_YML" "$EVOLUTION" "$ROOT/evolution")
 [[ -n "$NOTES_FILE" ]] && ALLOWED_PATHS+=("$NOTES_FILE")
 if [[ -n "$DIRTY_STATUS" ]]; then
@@ -360,7 +383,21 @@ SHA="$(git rev-parse --short HEAD)"
 FULL_SHA="$(git rev-parse HEAD)"
 git tag -a "v${NEW_VERSION}" -m "${MSG} (v${NEW_VERSION})"
 COMMITTED=1
-echo "==> Commit + tag created locally: ${SHA} → v${NEW_VERSION}"
+echo "==> Commit + tag created on ${ITER_BRANCH}: ${SHA} → v${NEW_VERSION}"
+
+if [[ "$(git rev-parse --abbrev-ref HEAD)" == "$ITER_BRANCH" ]]; then
+  if [[ "$(git rev-parse "$BRANCH")" != "$START_HEAD" ]]; then
+    echo "ERROR: ${BRANCH} moved during the iteration; refusing non-fast-forward merge." >&2
+    echo "       iteration commit/tag retained on ${ITER_BRANCH}." >&2
+    exit 8
+  fi
+  git checkout "$BRANCH" >/dev/null
+  if ! git merge --ff-only "$ITER_BRANCH" >/dev/null; then
+    echo "ERROR: failed to fast-forward ${BRANCH} to ${ITER_BRANCH}; branch retained." >&2
+    exit 8
+  fi
+  echo "==> ${BRANCH} fast-forwarded to ${SHA}; iteration branch retained"
+fi
 
 write_state() {
   local status="$1"
@@ -368,6 +405,7 @@ write_state() {
   EVO_STATUS="$status" EVO_VERSION="$NEW_VERSION" EVO_SHA="$SHA" \
   EVO_MODE="$MODE" EVO_NOTE="$MSG" EVO_SUMMARY="$SUMMARY" \
   EVO_NEXT="$RESOLVED_NEXT" EVO_PREV="${LATEST_TAG}" EVO_BRANCH="$BRANCH" \
+  EVO_ITER_BRANCH="$ITER_BRANCH" \
   EVO_ROOT="$ROOT" EVO_START_HEAD="$START_HEAD" EVO_TEST_LINE="$TEST_LINE" \
   python3 - "$STATE_FILE" <<'PY'
 import json, os, sys, datetime
@@ -384,6 +422,8 @@ state = {
     "tag": "v" + version,
     "mode": mode,
     "branch": os.environ["EVO_BRANCH"],
+    "originalBranch": os.environ["EVO_BRANCH"],
+    "iterationBranch": os.environ.get("EVO_ITER_BRANCH", ""),
     "repoRoot": os.environ["EVO_ROOT"],
     "startHead": os.environ["EVO_START_HEAD"],
     "testStatus": os.environ.get("EVO_TEST_LINE", ""),
@@ -399,6 +439,7 @@ state = {
     "stopConditions": [
         "Tests and .app build must be green before any commit.",
         "A new tag is only valid after clean-tree preflight, tests, and a matching .app build.",
+        "Iteration commits live on codex/evolution-vX.Y.Z; the original branch only fast-forwards.",
         "Do not start the next iteration until this state is terminal (local_built or published).",
         "Never edit ~/.codex/ — only the isolated Application Support tree.",
         "Never bump major without explicit user approval.",
@@ -431,13 +472,19 @@ os.chmod(history_path, 0o600)
 PY
 }
 
-# ---------- 8. Publish (optional) ----------
+# ---------- 10. Publish (optional) ----------
 if [[ "$MODE" == "publish" ]]; then
   write_state "committed"
-  echo "==> Pushing to ${UPSTREAM_REMOTE} (main + tag v${NEW_VERSION})"
+  echo "==> Pushing iteration branch ${ITER_BRANCH} for audit"
+  if ! git push "$UPSTREAM_REMOTE" "$ITER_BRANCH"; then
+    write_state "push_failed"
+    echo "PUSH FAILED (branch) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
+    exit 6
+  fi
+  echo "==> Pushing to ${UPSTREAM_REMOTE} (main fast-forward + tag v${NEW_VERSION})"
   if ! git push "$UPSTREAM_REMOTE" HEAD:main "v${NEW_VERSION}"; then
     write_state "push_failed"
-    echo "PUSH FAILED — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
+    echo "PUSH FAILED (main) — local commit ${SHA} and tag v${NEW_VERSION} retained." >&2
     exit 6
   fi
   echo "==> Building signed zip + publishing GitHub Release + refreshing appcast"
@@ -452,12 +499,13 @@ else
   echo "==> [local] skipped push / GitHub Release / appcast"
 fi
 
-# ---------- 9. Summary ----------
+# ---------- 11. Summary ----------
 echo
 echo "==================================================="
 echo "  EVOLUTION COMPLETE: v${NEW_VERSION}  (${SHA})"
 echo "==================================================="
 echo "  Mode:           ${MODE}"
+echo "  Iteration:      ${ITER_BRANCH}"
 echo "  State file:     ${STATE_FILE}"
 echo "  App bundle:     ${ROOT}/Tapgo AICoding.app"
 if [[ -n "$LATEST_TAG" ]]; then

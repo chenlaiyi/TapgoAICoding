@@ -252,6 +252,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.263", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.263",
+                    summary: "分支隔离:每轮提交在 codex/evolution-vX.Y.Z,原分支只 fast-forward,发布推送审计分支。",
+                    changes: [
+                        "evolve.sh 在改版本前创建 codex/evolution-vX.Y.Z 分支;版本修改、测试、App 构建、提交与 tag 全部在该分支完成。",
+                        "提交后校验原分支仍等于 startHead,再执行 git merge --ff-only 回原分支;原分支移动或无法 fast-forward 时拒绝并保留迭代分支。",
+                        "publish 先推送审计分支,再推送 main fast-forward + tag;local 模式同样 fast-forward 原分支并保留分支。",
+                        "失败回滚切回原分支并删除空迭代分支;detached HEAD 在 preflight 直接拒绝。",
+                        "evolution_state.json 新增 originalBranch / iterationBranch,stopConditions 增加分支约束。",
+                        "失败注入矩阵新增分支存在/清理/远端推送断言,共 38 项全绿;worktree 隔离拆为 EVO-015。"
+                    ],
+                    why: "此前每轮直接在主分支 commit/tag,失败或需要审计时只能靠 tag 追溯,主分支也暴露在迭代事故中。EVO-006 要求分支隔离与 main 只 fast-forward;完整 worktree 隔离独立为 EVO-015。",
+                    next: "EVO-007 发布后健康检查:启动 smoke、版本/进程/PID 回读、失败自动回滚。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.262", date: "2026-09-12", commit: "见源码提交", tag: "v0.5.262",
                     summary: "修复 backlog 选点未写入 state.nextActions 的缺口,记录与状态共用同一解析结果。",
                     changes: [

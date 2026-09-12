@@ -1,0 +1,16 @@
+{
+  "version": "0.5.263",
+  "tag": "v0.5.263",
+  "date": "2026-09-12",
+  "scope": "mac",
+  "message": "feat(evolution): 分支隔离与 fast-forward",
+  "changes": [
+    "每轮在 codex/evolution-vX.Y.Z 提交,原分支只 fast-forward",
+    "publish 推送审计分支并校验 main fast-forward"
+  ],
+  "details": "提交隔离到迭代分支,原分支只 fast-forward,发布保留审计分支",
+  "why": "每轮直接在主分支 commit/tag,失败或审计时只能靠 tag 追溯,主分支暴露在迭代事故中",
+  "next": "EVO-007 发布后健康检查: 启动 smoke、版本/进程/PID 回读、失败自动回滚",
+  "testStatus": "— 3174 passed, 0 failed —",
+  "commitSha": null
+}

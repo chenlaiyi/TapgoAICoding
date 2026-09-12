@@ -129,6 +129,7 @@ assert_eq "$(git -C "$R2" rev-list --count HEAD)" 1 "s2 no commit"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R2/AppBuilder/Info.plist")" 0.5.1 "s2 plist rolled back"
 assert_eq "$(grep -c '^## v0.5.2' "$R2/EVOLUTION.md" || true)" 0 "s2 EVOLUTION rolled back"
 assert_no_file "$R2/evolution/versions/v0.5.2.json" "s2 record removed"
+assert_eq "$(git -C "$R2" branch --list 'codex/evolution-v0.5.2' | wc -l | tr -d ' ')" 0 "s2 iteration branch removed"
 
 # ---------- S3: build fails -> full rollback ----------
 R3="$BASE/s3"; make_repo "$R3"
@@ -137,6 +138,7 @@ assert_eq "$RC" 4 "s3 exit 4 on build failure"
 assert_eq "$(git -C "$R3" rev-list --count HEAD)" 1 "s3 no commit"
 assert_eq "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$R3/AppBuilder/Info.plist")" 0.5.1 "s3 plist rolled back"
 assert_no_file "$R3/evolution/versions/v0.5.2.json" "s3 record removed"
+assert_eq "$(git -C "$R3" branch --list 'codex/evolution-v0.5.2' | wc -l | tr -d ' ')" 0 "s3 iteration branch removed"
 
 # ---------- S4: success local -> commit/tag/record/state ----------
 R4="$BASE/s4"; make_repo "$R4"
@@ -145,6 +147,8 @@ run_evolve "$R4" "$BASE/s4-state" "$BASE/s4.log" --paths scripts \
   patch "s4 message" "s4 details"
 assert_eq "$(git -C "$R4" rev-list --count HEAD)" 2 "s4 committed"
 assert_eq "$(git -C "$R4" tag --list v0.5.2)" v0.5.2 "s4 tagged"
+assert_eq "$(git -C "$R4" rev-parse HEAD)" "$(git -C "$R4" rev-parse codex/evolution-v0.5.2)" "s4 main fast-forwards iteration branch"
+assert_eq "$(python3 -c 'import json;print(json.load(open("'"$BASE"'/s4-state/evolution_state.json"))["iterationBranch"])')" codex/evolution-v0.5.2 "s4 state records iteration branch"
 assert_json "$R4/evolution/versions/v0.5.2.json" 'd["why"]' "s4 why stored"
 assert_json "$R4/evolution/versions/v0.5.2.json" 'len(d["changes"])' "s4 changes stored"
 assert_json "$R4/evolution/versions/v0.5.2.json" '"EVO-999" in d["next"]' "s4 next resolved from backlog"
@@ -172,6 +176,7 @@ assert_eq "$RC" 7 "s6 exit 7 on release failure"
 assert_eq "$(git -C "$R6" tag --list v0.5.2)" v0.5.2 "s6 local tag retained"
 assert_eq "$(git -C "$BASE/s6-origin.git" tag --list v0.5.2)" v0.5.2 "s6 remote tag pushed"
 assert_json "$BASE/s6-state/evolution_state.json" 'd["status"]' "s6 release_failed state"
+assert_eq "$(git -C "$BASE/s6-origin.git" branch --list codex/evolution-v0.5.2 | wc -l | tr -d ' ')" 1 "s6 iteration branch pushed"
 
 # ---------- S7: publish success -> published ----------
 R7="$BASE/s7"; make_repo "$R7"
@@ -182,6 +187,7 @@ run_evolve "$R7" "$BASE/s7-state" "$BASE/s7.log" --publish --paths scripts patch
 assert_json "$BASE/s7-state/evolution_state.json" 'd["status"]' "s7 published state"
 assert_eq "$(git -C "$BASE/s7-origin.git" tag --list v0.5.2)" v0.5.2 "s7 remote tag"
 assert_eq "$(git -C "$R7" rev-list --count origin/main)" 2 "s7 origin main advanced"
+assert_eq "$(git -C "$BASE/s7-origin.git" branch --list codex/evolution-v0.5.2 | wc -l | tr -d ' ')" 1 "s7 iteration branch pushed"
 
 # ---------- S8: pre-dirty auto-managed EVOLUTION.md is covered ----------
 R8="$BASE/s8"; make_repo "$R8"

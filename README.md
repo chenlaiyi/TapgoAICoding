@@ -315,6 +315,7 @@ TapgoAICoding/
 
 - `--paths` 是显式暂存白名单，未覆盖的脏文件会让脚本拒绝运行，避免误提交无关改动。
 - 同机并发会被 `.git/tapgo-evolve.lock` 拒绝；版本号取 `origin/main` 可达 tag 的语义化最高值。
+- 每轮在 `codex/evolution-vX.Y.Z` 分支提交；原分支只做 fast-forward，publish 会额外推送该审计分支。
 - 测试与 `.app` 构建都在 commit 之前完成；失败会自动恢复被脚本改动的版本文件。
 - `evolution_state.json` 记录 `committed / local_built / published / push_failed / release_failed` 分阶段状态，可据此续跑或排障。
 - Shell 回归：`./scripts/tests/run-all.sh`（lib + records + metrics + 失败注入矩阵，已接入 evolve.sh 测试阶段）。
