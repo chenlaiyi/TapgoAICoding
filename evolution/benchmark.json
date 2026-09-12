@@ -44,7 +44,7 @@
     {
       "id": "test-suite-present",
       "weight": 5,
-      "command": "test -x scripts/tests/run-all.sh && test -x scripts/tests/evolve-failure-injection-test.sh && test -x scripts/tests/evolution-ui-snapshot-test.sh && bash scripts/tests/evolution-ui-assert-test.sh >/dev/null && bash scripts/tests/app-sources-parse-test.sh >/dev/null && bash scripts/tests/evolution-deps-test.sh >/dev/null && bash scripts/tests/deploy-fleet-test.sh >/dev/null && bash scripts/tests/canary-promote-test.sh >/dev/null"
+      "command": "test -x scripts/tests/run-all.sh && test -x scripts/tests/evolve-failure-injection-test.sh && test -x scripts/tests/evolution-ui-snapshot-test.sh && bash scripts/tests/evolution-ui-assert-test.sh >/dev/null && bash scripts/tests/app-sources-parse-test.sh >/dev/null && bash scripts/tests/evolution-deps-test.sh >/dev/null && bash scripts/tests/deploy-fleet-test.sh >/dev/null && bash scripts/tests/canary-promote-test.sh >/dev/null && bash scripts/tests/evolution-maintenance-selftest-test.sh >/dev/null"
     },
     {
       "id": "state-schema",

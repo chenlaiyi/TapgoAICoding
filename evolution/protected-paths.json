@@ -35,6 +35,7 @@
     "scripts/evolution-ui-assert.sh",
     "scripts/evolution-deps.sh",
     "scripts/evolution-ui-diff.py",
-    "evolution/ui-baseline/**"
+    "evolution/ui-baseline/**",
+    "scripts/evolution-maintenance-selftest.sh"
   ]
 }

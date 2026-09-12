@@ -77,6 +77,7 @@
 - [x] **EVO-048 维护任务真实触发 + 通知链路**：launchd 任务从"从未跑过"变为真实执行（runs=1/exit 0/新历史），osascript 默认告警分支补回归（维护测试 51 项）（v0.5.307）
 - [x] **EVO-049 月度维护验证可重建**：月度 launchd 任务改为 `--full-build`（clean-checkout 重编译），维护历史记录 `drill.fullBuild`，指标新增 `lastRollbackDrillFullBuild`；真机实跑 109s 通过（v0.5.307）（v0.5.308）
 - [x] **EVO-050 canary 全链路演练**：失败注入矩阵新增 S35，把真实 `canary-promote.sh` + 真实 `deploy-fleet.sh` 接进 evolve 的 canary 阶段，验证「灰度单机 → 发 appcast → 解除 draft → 其余机器」（162 项断言）（v0.5.309）
+- [x] **EVO-051 维护告警 launchd 自检**：`evolution-maintenance-selftest.sh` 用独立 Label 在真实 launchd 上下文跑一次失败维护（注入必失败演练桩 + 通知捕获 + 临时 state），验证「launchd + 失败 → 告警」这条组合；生产任务与 state 不受影响（v0.5.310）
 
 ## P9 — 待外部输入
 

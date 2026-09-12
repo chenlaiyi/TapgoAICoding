@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.310", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.310",
+                    summary: "维护告警自检:真实 launchd 上下文跑一次失败维护并验证通知。",
+                    changes: [
+                        "新增 scripts/evolution-maintenance-selftest.sh:装一个独立 Label(com.tapgo.aicoding.evolution-maintenance-selftest)的临时 LaunchAgent,RunAtLoad 立即执行;通过 EnvironmentVariables 注入必失败演练桩 + 通知捕获脚本 + 临时 state/日志,跑完 bootout 并删除 plist,生产任务与 state 完全不受影响。",
+                        "真机验证:launchd 上下文里维护任务按预期失败(last exit code=1)、历史写 status=failed 且带注入原因、通知捕获脚本收到标题 Tapgo 自进化维护失败 与完整原因;--use-system-notify 变体也跑通(launchd 里 osascript 被接受)。",
+                        "这段组合此前从没跑过:launchd+成功 已验、直接调用+失败+假 osascript 已验,唯独「launchd + 失败 → 真实告警」缺失。",
+                        "自检脚本自身修掉一个抢跑 bug:维护脚本先写历史、后发通知,原来只等历史文件就断言,导致偶发假失败;现在等 launchd 不再 running 再断言,并稳健解析 last exit code。",
+                        "新增 16 项回归(plist 形状 8 项 + 真实 launchd 运行 8 项,无 launchctl 环境自动跳过),已接入 run-all 与 benchmark。"
+                    ],
+                    why: "告警链路是维护任务唯一的失败出口:静默失败等于没人知道可恢复性已经失效。EVO-051 把这条最危险的组合变成可重复运行、可验证的一条命令。",
+                    next: "backlog 仅剩 EVO-021(需操作者提供真实 model runner);下一轮继续按证据挑问题。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.309", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.309",
                     summary: "canary 全链路演练:真实 promote + 真实 deploy-fleet 拼进 evolve 灰度阶段。",
                     changes: [
