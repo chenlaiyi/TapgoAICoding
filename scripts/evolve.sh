@@ -298,7 +298,7 @@ def _optional_float(raw: str) -> float | None:
 
 
 state = {
-    "schemaVersion": 3,
+    "schemaVersion": 4,
     "status": os.environ["EVO_STATUS"],
     "version": version,
     "commitSha": os.environ["EVO_SHA"],

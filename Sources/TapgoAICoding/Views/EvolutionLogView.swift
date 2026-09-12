@@ -339,6 +339,17 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.298", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.298",
+                    summary: "修正 state 写入版本号,并加守卫防止 schema 注册表与写入方漂移。",
+                    changes: [
+                        "修正 evolve.sh write_state 写出的 schemaVersion:EVO-041 把注册表升到 v4(新增 costSource)但漏改写入方,导致新记录仍标 v3——虽然 validate 把 v3 当 legacy 放过,但这正是 EVO-035 要消灭的静默漂移。",
+                        "evolution-schema 回归新增漂移守卫:从 evolution-schema.py 读出 evolution_state.json 的注册版本,从 evolve.sh 的 write_state 段读出写入字面量,两者必须相等;负向验证(把写入方改回 3)确认守卫会失败。",
+                        "本机现有 state 已带 costSource 字段,下一轮发布起落盘 schemaVersion=4。"
+                    ],
+                    why: "注册表与写入方是两个文件,单靠人工同步迟早再次漂移;EVO-035 的 schemaVersion 只有配上这条守卫才真正闭环。",
+                    next: "EVO-042 反馈漏斗接入看板:把 drafts/转化率/等待时长显示到 App 指标详情与手机端自进化卡片。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.297", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.297",
                     summary: "成本归属:App 写自进化会话 token 快照,evolve.sh 取增量并标注来源。",
                     changes: [

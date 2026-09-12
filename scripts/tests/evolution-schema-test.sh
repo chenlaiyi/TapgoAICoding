@@ -126,5 +126,16 @@ run_tool "$TMP/unknown.log" ensure
 expect_eq "unknown: ensure exit 0" "0" "$RC"
 expect_grep "unknown: file untouched" '"whatever":true' "$STATE/unknown_thing.jsonl"
 
+# ---------- 8. 漂移守卫：evolve.sh 写入的 state schemaVersion == 注册表当前版本 ----------
+REG_VERSION="$(python3 -c 'src = open("scripts/evolution-schema.py", encoding="utf-8").read(); marker = "\"evolution_state.json\": Artifact("; i = src.index(marker) + len(marker); digits = ""; 
+while src[i].isdigit():
+    digits += src[i]; i += 1
+print(digits)')"
+WRITER_VERSION="$(python3 -c 'src = open("scripts/evolve.sh", encoding="utf-8").read(); s = src.index("write_state() {"); e = src.index("# ---------- 10.", s); marker = "\"schemaVersion\": "; i = src.index(marker, s, e) + len(marker); digits = "";
+while src[i].isdigit():
+    digits += src[i]; i += 1
+print(digits)')"
+expect_eq "state writer schema matches registry" "$REG_VERSION" "$WRITER_VERSION"
+
 echo "evolution-schema tests: $PASSED passed, $FAILED failed"
 [[ "$FAILED" -eq 0 ]]
