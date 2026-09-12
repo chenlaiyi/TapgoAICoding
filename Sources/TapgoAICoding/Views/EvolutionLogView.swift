@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.296", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.296",
+                    summary: "依赖路径探测:SDK 与 codex 收敛到单点真源,升级机器不再硬失败。",
+                    changes: [
+                        "新增 scripts/evolution-deps.sh:evo_detect_sdk/evo_detect_codex/evo_require_tool/evo_deps_report,只定义函数、source 无副作用。",
+                        "SDK 解析顺序:TAPGO_SDK 显式 → 偏好 EVOLVE_SDK_PREFERRED(默认 macosx26.5,装了就用) → 本机最新已装 SDK → xcrun 默认;走非偏好分支会在 stderr 打 WARNING,全部失败才报错并列出已装 SDK。",
+                        "codex 解析顺序:EVOLVE_CODEX_BIN → PATH → /opt/homebrew/bin → /usr/local/bin → ~/.local/bin;找不到时明确报错。",
+                        "13 处 macosx26.5 硬编码(evolve/build-app/worktree-verify/rollback-drill/run-all/预检/预览脚本)与 3 处 codex 硬编码(harness 安装器、launchd plist、init-tapgo)收敛到该模块:plist 改用 __CODEX_BIN__ 占位符,由安装器探测后替换;init-tapgo 复用 evo_detect_codex。",
+                        "反馈注册表里 5 条检查去掉 -sdk macosx26.5,改用 xcrun 默认 SDK;预检新增 codex 解析结果一行(找不到只 WARN)。",
+                        "新增 27 项 deps 回归(显式覆盖/偏好回退+告警/全部不可用报错/codex 三种来源/缺工具提示/静态守卫:无残留硬编码、plist 占位符、六个脚本都引用单点真源)。"
+                    ],
+                    why: "此前 SDK 版本与 codex 路径散落在十几处硬编码:机器升级换了 SDK 或 codex 装在别处,整条自进化链路会以难懂的错误断掉。EVO-040 把它们收敛成可探测、可覆盖、失败可读的单点真源。",
+                    next: "EVO-041 自进化成本归属:App 把当前会话 token/成本传给 evolve.sh,让单轮成本指标有真实数据。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.295", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.295",
                     summary: "三机界面自动断言:版本到位之外,再证明界面真的可用且是新版本。",
                     changes: [

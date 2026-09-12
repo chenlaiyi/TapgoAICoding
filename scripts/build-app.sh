@@ -37,7 +37,8 @@ cd "$ROOT"
 # Default = macosx26.5 (last SDK that ships the plugin via
 # CommandLineTools). Override via TAPGO_SDK=macosx27.0 to try the
 # bleeding edge — that build will fail until Apple re-adds the plugin.
-TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
+source "$ROOT/scripts/evolution-deps.sh"
+TAPGO_SDK="${TAPGO_SDK:-$(evo_detect_sdk)}"
 if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
   echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2
   echo "  Installed SDKs:" >&2

@@ -8,7 +8,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
-SDK="${TAPGO_SDK:-macosx26.5}"
+source "$ROOT/scripts/evolution-deps.sh"
+SDK="${TAPGO_SDK:-$(evo_detect_sdk)}"
 
 PASSED=0; FAILED=0
 ok()  { PASSED=$((PASSED + 1)); }

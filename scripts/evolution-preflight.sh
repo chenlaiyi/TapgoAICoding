@@ -38,7 +38,8 @@ source "$SCRIPT_DIR/tapgo-repo-slug.sh"
 
 MODE="local"
 REMOTE=""
-SDK="${TAPGO_SDK:-macosx26.5}"
+source "$SCRIPT_DIR/evolution-deps.sh"
+SDK="${TAPGO_SDK:-$(evo_detect_sdk)}"
 NEXT_VERSION=""
 EXPECT_EXISTING_TAG=0
 MIN_FREE_GB="${EVOLVE_PREFLIGHT_MIN_FREE_GB:-5}"
@@ -123,6 +124,13 @@ if [[ -n "$SWIFT_VER" ]]; then
   record ok "swift" "$SWIFT_VER"
 else
   record fail "swift" "xcrun -sdk $SDK swift --version 失败"
+fi
+
+CODEX_PATH="$(evo_detect_codex 2>/dev/null || true)"
+if [[ -n "$CODEX_PATH" ]]; then
+  record ok "codex" "$CODEX_PATH"
+else
+  record warn "codex" "未找到（仅影响 harness 启动，不影响发布本身）"
 fi
 
 # ---------- 磁盘 ----------

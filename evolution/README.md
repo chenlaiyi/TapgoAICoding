@@ -43,6 +43,7 @@ python3 scripts/evolution-records.py validate --require-rendered --check-current
 - 单轮成本来自 `evolution_state*.json` 的 `durationSeconds`/`tokens`/`costUSD`（state schema v3）：时长由 `evolve.sh` 自动记录，token/成本由 harness 通过 `EVOLVE_RUN_TOKENS` / `EVOLVE_RUN_COST_USD` 提供，缺失即留空不估算。
 - `evolution/BACKLOG.md` 是下一轮选点的单一待办清单；完成后把 `[ ]` 改为 `[x]` 并附版本号。
 - `scripts/evolution-backlog.py` 提供 `list / top / validate`；Swift 侧 `TapgoCore.EvolutionBacklog` 使用同一格式驱动 App 横幅与 kickoff prompt。
+- `scripts/evolution-deps.sh` 是外部依赖探测的唯一真源（EVO-040）：`evo_detect_sdk`（`TAPGO_SDK` 显式 → 偏好 `EVOLVE_SDK_PREFERRED`（默认 macosx26.5）→ 本机最新已装 SDK → xcrun 默认，回退时打 WARNING）、`evo_detect_codex`（`EVOLVE_CODEX_BIN` → PATH → /opt/homebrew/bin → /usr/local/bin → ~/.local/bin）、`evo_require_tool`、`evo_deps_report`。
 - `scripts/evolution-ui-assert.sh` 断言"运行中的界面真的可用且是新版本"（EVO-039）：读 UserDefaults 的 H5 token → 找 PID 的 LISTEN 端口 → `/api/state` 的 `appVersion` 必须等于期望版本 → `/r/<token>` 骨架引用 app.js → `/r/<token>/assets/app.js` 含界面标记（默认 evolutionCard）→ 无 token 请求必须 403/404。退出码 21–28 区分失败原因，`--json` 可机读。
 - `deploy-fleet.sh` 在版本/PID 回读后对远端用 `ssh host bash -s < scripts/evolution-ui-assert.sh` 执行该断言（不依赖远端仓库版本），本地仅在 `--restart-local` 时断言；失败即部署失败，`EVOLVE_SKIP_UI_ASSERT=1` 可跳过。
 - `scripts/evolution-feedback-funnel.py` 量化反馈闭环（EVO-038）：`drafts → registered → shipped` 三阶段计数、转化率、等待时长（median/P95）与陈旧告警（`--stale-days`，默认 30；`--fail-on-stale` 可当门禁用）。

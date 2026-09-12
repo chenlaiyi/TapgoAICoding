@@ -42,7 +42,15 @@ cd "$ROOT"
 source "$ROOT/scripts/evolution-lib.sh"
 
 # ---------- SDK selection ----------
-TAPGO_SDK="${TAPGO_SDK:-macosx26.5}"
+# SDK 探测：TAPGO_SDK 显式指定优先，否则按 evolution-deps.sh 的偏好/回退链解析。
+# shellcheck source=scripts/evolution-deps.sh
+source "$ROOT/scripts/evolution-deps.sh"
+if [[ -z "${TAPGO_SDK:-}" ]]; then
+  TAPGO_SDK="$(evo_detect_sdk)" || {
+    echo "ERROR: 无法解析 macOS SDK；用 TAPGO_SDK=macosxXX ./scripts/evolve.sh 显式指定。" >&2
+    exit 7
+  }
+fi
 if [[ -z "${EVOLVE_SKIP_SDK_CHECK:-}" ]]; then
   if ! xcrun -sdk "$TAPGO_SDK" --show-sdk-path >/dev/null 2>&1; then
     echo "ERROR: TAPGO_SDK=$TAPGO_SDK is not installed on this machine." >&2

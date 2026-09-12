@@ -18,7 +18,13 @@ LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 LOG_DIR="$HOME/Library/Logs/TapgoAICoding"
 SOCKET_PATH="$APP_SUPPORT/run/harness.sock"
 CODEX_HOME="$APP_SUPPORT/codex"
-CODEX_BIN="/opt/homebrew/bin/codex"
+# codex 路径探测（EVO-040）：PATH → /opt/homebrew/bin → /usr/local/bin → ~/.local/bin
+# shellcheck source=scripts/evolution-deps.sh
+source "$REPO_ROOT/scripts/evolution-deps.sh"
+CODEX_BIN="$(evo_detect_codex)" || {
+  echo "ERROR: 找不到 codex 可执行文件；用 EVOLVE_CODEX_BIN=/path/to/codex 显式指定。" >&2
+  exit 1
+}
 LABEL="com.tapgo.aicoding.harness"
 PLIST_PATH="$LAUNCH_AGENTS/$LABEL.plist"
 
@@ -49,6 +55,7 @@ PLIST_TEMPLATE="$REPO_ROOT/scripts/launchd/$LABEL.plist"
 sed -e "s|__HARNESS_BIN__|$BIN_DIR/TapgoHarness|g" \
     -e "s|__SOCKET_PATH__|$SOCKET_PATH|g" \
     -e "s|__CODEX_HOME__|$CODEX_HOME|g" \
+    -e "s|__CODEX_BIN__|$CODEX_BIN|g" \
     -e "s|__API_KEY__|$API_KEY|g" \
     -e "s|__LOG_DIR__|$LOG_DIR|g" \
     "$PLIST_TEMPLATE" > "$PLIST_PATH"
@@ -66,6 +73,7 @@ echo "=== 安装完成 ==="
 echo "  binary:  $BIN_DIR/TapgoHarness"
 echo "  socket:  $SOCKET_PATH"
 echo "  plist:   $PLIST_PATH"
+echo "  codex:   $CODEX_BIN"
 echo "  logs:    $LOG_DIR/harness.{log,err.log}"
 echo ""
 echo "查看状态: launchctl print gui/\$(id -u)/$LABEL | head -20"

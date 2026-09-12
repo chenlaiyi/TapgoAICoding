@@ -41,6 +41,7 @@ make_repo() {
   cp "$SOURCE_ROOT/scripts/evolution-protect.py" "$dir/scripts/evolution-protect.py"
   cp "$SOURCE_ROOT/scripts/evolution-remote-lock.sh" "$dir/scripts/evolution-remote-lock.sh"
   cp "$SOURCE_ROOT/scripts/evolution-schema.py" "$dir/scripts/evolution-schema.py"
+  cp "$SOURCE_ROOT/scripts/evolution-deps.sh" "$dir/scripts/evolution-deps.sh"
   cp "$SOURCE_ROOT/evolution/protected-paths.json" "$dir/evolution/protected-paths.json"
   chmod +x "$dir/scripts/evolution-backlog.py" "$dir/scripts/test-failure-report.py" "$dir/scripts/evolution-protect.py" "$dir/scripts/evolution-remote-lock.sh"
   chmod +x "$dir/scripts/evolution-schema.py"

@@ -22,6 +22,7 @@
     __SOCKET_PATH__ → ~/Library/Application Support/Tapgo AICoding/run/harness.sock
     __CODEX_HOME__   → ~/Library/Application Support/Tapgo AICoding/codex
     __API_KEY__      → 读自 $CODEX_HOME/config.toml 的 experimental_bearer_token
+    __CODEX_BIN__    → codex 可执行文件（scripts/evolution-deps.sh 探测：PATH → /opt/homebrew/bin → /usr/local/bin → ~/.local/bin）
     __LOG_DIR__      → ~/Library/Logs/TapgoAICoding
 -->
 <plist version="1.0">
@@ -33,7 +34,7 @@
     <array>
         <string>__HARNESS_BIN__</string>
         <string>__SOCKET_PATH__</string>
-        <string>/opt/homebrew/bin/codex</string>
+        <string>__CODEX_BIN__</string>
         <string>__CODEX_HOME__</string>
     </array>
 

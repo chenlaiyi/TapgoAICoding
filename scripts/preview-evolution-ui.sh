@@ -6,7 +6,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 OUT="${1:-/tmp/tapgo-evolution-ui.png}"
-SDK="${TAPGO_SDK:-macosx26.5}"
+source "$ROOT/scripts/evolution-deps.sh"
+SDK="${TAPGO_SDK:-$(evo_detect_sdk)}"
 
 xcrun -sdk "$SDK" swift build --target TapgoCore >/dev/null
 BIN="$(xcrun -sdk "$SDK" swift build --show-bin-path)"

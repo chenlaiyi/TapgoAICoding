@@ -10,6 +10,9 @@
 set -euo pipefail
 
 ROOT="${EVOLVE_WORKTREE_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+# shellcheck source=scripts/evolution-deps.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/evolution-deps.sh"
 REF="${1:-}"
 [[ -n "$REF" ]] || { echo "ERROR: usage: worktree-verify.sh <ref>" >&2; exit 2; }
 git -C "$ROOT" rev-parse --verify "$REF^{commit}" >/dev/null
@@ -33,7 +36,7 @@ echo "==> worktree verify: $REF at $WT"
 if [[ -n "$BUILD_CMD" ]]; then
   ( cd "$WT" && bash -c "$BUILD_CMD" )
 else
-  ( cd "$WT" && xcrun -sdk "${TAPGO_SDK:-macosx26.5}" swift build -c release --product TapgoAICoding )
+  ( cd "$WT" && xcrun -sdk "${TAPGO_SDK:-$(evo_detect_sdk)}" swift build -c release --product TapgoAICoding )
 fi
 
 if [[ -n "$(git -C "$WT" status --porcelain)" ]]; then

@@ -16,7 +16,7 @@
       "title": "流式每字符保存导致 App 100% CPU",
       "reported": "2026-09-02",
       "weight": 17,
-      "check": "xcrun -sdk macosx26.5 swift run TapgoTests --filter 'ThreadStore: scheduleSave debounces streaming deltas' >/dev/null",
+      "check": "xcrun swift run TapgoTests --filter 'ThreadStore: scheduleSave debounces streaming deltas' >/dev/null",
       "origin": "manual",
       "registeredAt": "2026-09-12",
       "fixedIn": "v0.5.72"
@@ -26,7 +26,7 @@
       "title": "MiniMax 额度字段 usage 实为剩余值，展示反转错误",
       "reported": "v0.5.25",
       "weight": 17,
-      "check": "xcrun -sdk macosx26.5 swift run TapgoTests --filter 'MiniMaxQuota: SnapshotBuilder (remaining → used)' >/dev/null",
+      "check": "xcrun swift run TapgoTests --filter 'MiniMaxQuota: SnapshotBuilder (remaining → used)' >/dev/null",
       "origin": "manual",
       "registeredAt": "2026-09-12",
       "fixedIn": "v0.5.27"
@@ -36,7 +36,7 @@
       "title": "电脑控制 helper 版本落后与签名反复出错",
       "reported": "v0.5.230",
       "weight": 17,
-      "check": "xcrun -sdk macosx26.5 swift run TapgoTests --filter 'AppUpdate: GitHub Releases distribution' >/dev/null",
+      "check": "xcrun swift run TapgoTests --filter 'AppUpdate: GitHub Releases distribution' >/dev/null",
       "origin": "manual",
       "registeredAt": "2026-09-12",
       "fixedIn": "v0.5.232"
@@ -46,7 +46,7 @@
       "title": "版本日志/结构化记录/UI makeHistory 不同步",
       "reported": "v0.5.33",
       "weight": 16,
-      "check": "xcrun -sdk macosx26.5 swift run TapgoTests --filter 'Evolution log sync (makeHistory vs EVOLUTION.md)' >/dev/null",
+      "check": "xcrun swift run TapgoTests --filter 'Evolution log sync (makeHistory vs EVOLUTION.md)' >/dev/null",
       "origin": "manual",
       "registeredAt": "2026-09-12",
       "fixedIn": "v0.5.128"
@@ -56,7 +56,7 @@
       "title": "完成态过程消息与最终回复同样式，阅读疲劳",
       "reported": "v0.5.256",
       "weight": 16,
-      "check": "xcrun -sdk macosx26.5 swift run TapgoTests --filter 'Conversation: quiet work and readable responses' >/dev/null",
+      "check": "xcrun swift run TapgoTests --filter 'Conversation: quiet work and readable responses' >/dev/null",
       "origin": "manual",
       "registeredAt": "2026-09-12",
       "fixedIn": "v0.5.256"

@@ -7,6 +7,9 @@
 set -euo pipefail
 
 ROOT="${EVOLVE_ROLLBACK_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+# shellcheck source=scripts/evolution-deps.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/evolution-deps.sh"
 cd "$ROOT"
 TAG=""; ARCHIVE=""; FULL_BUILD=0; NO_DOWNLOAD=0; HISTORY=""
 HEALTH_SCRIPT="${EVOLVE_ROLLBACK_HEALTH_SCRIPT:-$ROOT/scripts/health-check.sh}"
@@ -78,7 +81,7 @@ fi
 git worktree add --detach "$TMP/worktree" "$TAG" >/dev/null
 [[ -z "$(git -C "$TMP/worktree" status --porcelain)" ]] || fail_record "worktree not clean"
 if [[ "$FULL_BUILD" -eq 1 ]]; then
-  if ! (cd "$TMP/worktree" && xcrun -sdk "${TAPGO_SDK:-macosx26.5}" swift build -c release --product TapgoAICoding); then
+  if ! (cd "$TMP/worktree" && xcrun -sdk "${TAPGO_SDK:-$(evo_detect_sdk)}" swift build -c release --product TapgoAICoding); then
     fail_record "clean checkout build failed"
   fi
 fi

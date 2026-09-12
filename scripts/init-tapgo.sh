@@ -35,28 +35,16 @@ CATALOG_FILE="${CODEX_HOME}/model-catalogs/tapgo-catalog.json"
 MIN_HARNESS_VERSION="0.149.1"
 HARNESS_BIN_OVERRIDE="${HARNESS_BIN:-}"
 
+# codex 路径探测统一走 scripts/evolution-deps.sh（EVO-040）。
+# shellcheck source=scripts/evolution-deps.sh
+source "$(cd "$(dirname "$0")" && pwd)/evolution-deps.sh"
+
 resolve_harness_bin() {
   if [[ -n "${HARNESS_BIN_OVERRIDE}" ]]; then
     printf '%s\n' "${HARNESS_BIN_OVERRIDE}"
     return
   fi
-
-  local path_codex=""
-  path_codex="$(command -v codex 2>/dev/null || true)"
-
-  local candidate
-  for candidate in \
-    /opt/homebrew/bin/codex \
-    /usr/local/bin/codex \
-    "${HOME}/.local/bin/codex" \
-    "${path_codex}"; do
-    if [[ -n "${candidate}" && -x "${candidate}" ]]; then
-      printf '%s\n' "${candidate}"
-      return
-    fi
-  done
-
-  return 1
+  evo_detect_codex
 }
 
 version_at_least() {
