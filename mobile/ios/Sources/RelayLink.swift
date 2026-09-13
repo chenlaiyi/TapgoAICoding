@@ -103,10 +103,15 @@ final class RelayLink: ObservableObject {
 
 struct ModelOption: Identifiable, Hashable {
     var id: String { providerId + ":" + modelId }
-    let providerId: String
-    let providerName: String
-    let modelId: String
-    let modelName: String
-    let configured: Bool
-    let selected: Bool
+    var providerId: String
+    var providerName: String
+    var modelId: String
+    var modelName: String
+    var configured: Bool
+    var selected: Bool
+    init(providerId: String, providerName: String, modelId: String, modelName: String, configured: Bool, selected: Bool) {
+        self.providerId = providerId; self.providerName = providerName
+        self.modelId = modelId; self.modelName = modelName
+        self.configured = configured; self.selected = selected
+    }
 }
