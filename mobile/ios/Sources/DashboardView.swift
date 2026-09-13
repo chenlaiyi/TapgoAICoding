@@ -459,8 +459,8 @@ struct SessionDetailView: View {
 
     // MARK: - Mock 数据 (下个版本接 /api/native/session/<id>)
 
-    private struct MockTurn: Identifiable {
-        enum Role { case user, ai }
+    fileprivate struct MockTurn: Identifiable {
+        fileprivate enum Role { case user, ai }
         let id = UUID()
         let role: Role
         let text: String
