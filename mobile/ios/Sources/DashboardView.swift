@@ -319,7 +319,7 @@ struct SessionDetailView: View {
                 } label: { Image(systemName: "ellipsis.circle") }
             }
         }
-        .task { tick() }
+        .task { await tick() }
     }
 
     // MARK: - 标题
