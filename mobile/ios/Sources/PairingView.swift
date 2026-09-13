@@ -27,6 +27,15 @@ struct PairingView: View {
         }
         .padding(24)
         .background(Color(.systemBackground))
+        .onAppear {
+            // v1.0.5: 进入配对页自动从剪贴板读取 (绕开镜像下中文键盘拦截)。
+            if manualCode.isEmpty, let s = UIPasteboard.general.string {
+                let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !t.isEmpty && (t.lowercased().hasPrefix("http") || t.count == 6) {
+                    manualCode = t
+                }
+            }
+        }
         .sheet(isPresented: $showScanner) {
             QRScannerView { code in
                 showScanner = false
