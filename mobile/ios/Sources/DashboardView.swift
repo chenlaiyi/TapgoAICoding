@@ -287,7 +287,7 @@ struct SessionDetailView: View {
         VStack(spacing: 0) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    titleBlock
+                    timerRow
                     ForEach(Self.mockTurns) { turn in
                         if turn.role == .user { userBubble(turn.text) }
                         else { aiBlock(turn) }
@@ -316,23 +316,28 @@ struct SessionDetailView: View {
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 16) {
-                Button {} label: { Image(systemName: "square.and.pencil").font(.system(size: 15)) }
-                Menu {} label: { Image(systemName: "ellipsis.circle").font(.system(size: 17)) }
+            HStack(spacing: 10) {
+                Button {} label: {
+                    Image(systemName: "square.and.pencil").font(.system(size: 15))
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color(.tertiarySystemBackground)))
+                }
+                Menu {} label: {
+                    Image(systemName: "ellipsis").font(.system(size: 16, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color(.tertiarySystemBackground)))
+                }
             }
         }
     }
 
     // MARK: - 标题 / 计时
 
-    private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(sessionTitle ?? "会话").font(.title2.weight(.semibold))
-            HStack(spacing: 4) {
-                Image(systemName: "clock").font(.caption).foregroundStyle(.secondary)
-                Text("用时 \(formatTime(elapsed))").font(.caption).foregroundStyle(.secondary)
-                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
-            }
+    private var timerRow: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "clock").font(.caption).foregroundStyle(.secondary)
+            Text("用时 \(formatTime(elapsed))").font(.caption).foregroundStyle(.secondary)
+            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
         }
     }
 
@@ -477,26 +482,27 @@ struct SessionDetailView: View {
     private var inputBar: some View {
         VStack(spacing: 0) {
             Divider()
+            // 模型 chip 独立一行 (不挤占输入框)
+            Button { showModelSheet = true } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkle").font(.system(size: 10, weight: .semibold))
+                    Text(currentModel.isEmpty ? "选择模型" : shortModel(currentModel))
+                        .font(.caption.weight(.medium)).lineLimit(1)
+                    Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                }
+                .padding(.horizontal, 9).padding(.vertical, 5)
+                .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+                .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14).padding(.top, 8)
             HStack(spacing: 8) {
                 Button {} label: {
                     Image(systemName: "plus").font(.system(size: 18, weight: .medium))
                         .frame(width: 32, height: 32)
                         .background(Circle().fill(Color(.tertiarySystemBackground)))
                 }
-                // 模型 chip 内嵌在输入框左侧 (Codex 移动端风格)
-                Button { showModelSheet = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sparkle").font(.system(size: 10, weight: .semibold))
-                        Text(currentModel.isEmpty ? "选择模型" : shortModel(currentModel))
-                            .font(.caption.weight(.medium))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
-                    }
-                    .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.12)))
-                    .foregroundStyle(Color.accentColor)
-                }
-                .buttonStyle(.plain)
                 HStack {
                     TextField("在 \(projectName ?? "Mac") 上工作", text: $newMessage, axis: .vertical)
                         .lineLimit(1...3)
