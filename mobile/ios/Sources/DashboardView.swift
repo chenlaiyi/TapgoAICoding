@@ -434,22 +434,16 @@ struct SessionDetailView: View {
     private var modelSheet: some View {
         NavigationStack {
             List {
-                ForEach(modelOptions) { m in
-                    Button {
-                        Task { await pickModel(m) }
-                    } label: {
+                ForEach(modelOptions, id: \.id) { m in
+                    Button(action: { Task { await pickModel(m) } }) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(m.modelName).font(.system(size: 15, weight: .medium))
                                 Text(m.providerName).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if m.selected {
-                                Image(systemName: "checkmark").foregroundStyle(.accent)
-                            }
-                            if !m.configured {
-                                Text("未配置").font(.caption2).foregroundStyle(.tertiary)
-                            }
+                            if m.selected { Image(systemName: "checkmark").foregroundStyle(.accentColor) }
+                            if !m.configured { Text("未配置").font(.caption2).foregroundStyle(.tertiary) }
                         }
                     }
                     .buttonStyle(.plain)
