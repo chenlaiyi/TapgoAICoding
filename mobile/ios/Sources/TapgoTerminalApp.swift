@@ -42,13 +42,20 @@ struct TapgoTerminalApp: App {
 /// 根视图: 启动时按配对状态分流。
 struct RootView: View {
     @EnvironmentObject var pairing: PairingStore
+    @StateObject private var relay = RelayLink()
 
     var body: some View {
-        switch pairing.state {
-        case .unpaired:
-            PairingView()
-        case .paired:
+        // v1.0.5: RelayLink 已配置公网中继 URL → 直接进 Dashboard (任意网络可用),
+        // 跳过 PairingView (即使本地未配对也能用)。
+        if relay.isConfigured {
             DashboardView()
+        } else {
+            switch pairing.state {
+            case .unpaired:
+                PairingView()
+            case .paired:
+                DashboardView()
+            }
         }
     }
 }
