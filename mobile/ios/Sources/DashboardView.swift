@@ -469,19 +469,7 @@ struct SessionDetailView: View {
     }
 
     fileprivate static let mockTurns: [MockTurn] = [
-        MockTurn(role: .user, text: "查询 88012088 实时数据"),
-        MockTurn(role: .ai, text: """
-你好,目前这台设备在小程序端无法使用起来 4000L 券。
-
-券有效且未使用,但设备仍为时长套餐,系统限制"流量券仅适用于流量套餐设备"。
-
-需要先将设备成功切换为流量套餐并回读确认,用户才能使用;此前后台切换未成功。
-"""),
-        MockTurn(role: .user, text: "请你问管理员能否增加这个套餐切换的开关功能"),
-        MockTurn(role: .ai, text: """
-我先核对远程 main 和现有套餐切换逻辑,在管理后台增加切换入口及确认结果展示,并完成针对性验证。
-
-发现关键原因:旧的计费模式切换指令已被七云废弃,所以此前后台操作没有真正切换。我会把入口做成明确的套餐选择与确认,并采用保留滤芯寿命和现有额度的主板同步流程;只有主板回读一致才显示成功。
-""")
+        MockTurn(role: .user, text: "戴丽萍的也是测试机,从表里删除", filePath: "", timestamp: "星期三 13:01"),
+        MockTurn(role: .ai, text: "已从 Excel 删除戴丽萍的 88035235,现剩 17 台,其条资料已核对并保持一致。\n\n本次仅修改表格,生产台账未变动。", filePath: "/Users/chanlaiyi/YTB/outputs/01a07ea7-44e4-7ba0-a2e2-0427f8501f8a/build-active18.mjs", timestamp: "星期三 13:01")
     ]
 }
