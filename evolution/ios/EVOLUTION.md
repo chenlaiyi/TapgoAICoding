@@ -126,3 +126,14 @@
 - `mobile/ios/Sources/DashboardView.swift`: 全面重写——顶部 Mac 名+连接状态一行; 「项目」大标题 + DisclosureGroup 项目分组 (📁项目名 semibold + 最近会话标题缩进); 底部连接管理收纳; 保留快捷发消息真业务。移除旧平铺"最近会话"与切项目 Menu (阶段三改新会话流)。
 **Why**: 对标 Codex 官方移动端首页 (项目分组+最近会话结构), 旧 UI 是 Settings 风格平铺列表, 信息层级与产品定位不符。
 **Next**: 阶段二 getSession 对话流 + 实时状态; 阶段三 newSession 创建流。模拟器视觉回归后部署。
+
+## v1.0.5 (iOS) — 增量: 公网中继传输层 (pay.itapgo.com)
+**Date**: 2026-09-13
+**Scope**: iOS 端 (Mac 主仓 v0.5.318 协同)
+**Changed**:
+- `mobile/ios/Sources/RelayLink.swift` (新增): URLSession 公网传输层; 扫码识别 https 中继链接并持久化 (UserDefaults key tapgo.relay.baseURL); fetchProjects() 调 /api/native/projects, send(text:) 调 /api/send。
+- `mobile/ios/Sources/PairingView.swift`: handleScannedCode 识别 https 中继链接 (扫 Mac 端 H5 二维码即完成公网配对)。
+- `mobile/ios/Sources/DashboardView.swift`: loadProjects / sendMessage 公网优先, 失败回落局域网长链接。
+- `mobile/ios/project.yml`: 1.0.4(4) → 1.0.5(5)。
+**Why**: 用户拍板走 pay.itapgo.com 中继 (与 Codex 移动端同构): 任意网络可用, 不再依赖同 Wi-Fi 与本地网络权限。
+**Next**: 模拟器注入 relay URL 验证; 配对码卡片加公网 QR; 阶段二对话流。

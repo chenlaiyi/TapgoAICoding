@@ -421,6 +421,30 @@ final class PhoneRemoteController: ObservableObject {
                                                           stateDirectory: stateDir, projectRoot: root)
                                                   }())
             return PhoneRemote.jsonOK(PhoneRemote.stateJSON(snapshot))
+        case .success(.nativeProjects):
+            lastPollAt = Date()
+            phoneConnected = true
+            let byProject = Dictionary(grouping: store.liveThreads.filter { $0.mode != "auxiliary" },
+                                       by: { $0.projectId ?? "(none)" })
+            let entries = workspace.projects.map { proj -> MobilePairingRPC.ProjectWithSessions in
+                let recents = (byProject[proj.id] ?? [])
+                    .sorted { $0.updatedAt > $1.updatedAt }
+                    .prefix(3)
+                    .map { t in
+                        MobilePairingRPC.SessionSeed(
+                            id: t.id, title: t.title, projectId: proj.id,
+                            projectName: proj.displayName,
+                            updatedAt: t.updatedAt, isAuxiliary: false)
+                    }
+                return MobilePairingRPC.ProjectWithSessions(
+                    id: proj.id, name: proj.displayName, recentSessions: Array(recents))
+            }
+            let params = MobilePairingRPC.listProjectsResponse(
+                projects: entries, macName: Self.displayName())
+            if let data = try? JSONEncoder().encode(params) {
+                return PhoneRemote.jsonOK(data)
+            }
+            return PhoneRemote.badRequestResponse
         case .success(.send(let text)):
             lastPollAt = Date()
             phoneConnected = true

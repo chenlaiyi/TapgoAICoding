@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.318", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.318",
+                    summary: "产品转向确认: 原生 iOS 走 pay.itapgo.com 公网中继, 局域网降为回落通道。",
+                    changes: [
+                        "PhoneRemoteLink.Route 新增 GET /r/<token>/api/native/projects, 返回项目分组+最近会话 JSON (复用 MobilePairingRPC.listProjectsResponse)。",
+                        "iOS 新增 RelayLink (URLSession): 扫码识别 https 中继链接→持久化 UserDefaults; fetchProjects/send 直调 H5 通道, token 沿 path 鉴权。",
+                        "DashboardView: loadProjects/sendMessage 公网优先, 失败回落局域网长链接。",
+                        "PairingView 扫码支持 https 中继链接 (扫 Mac 端 H5 二维码即可配对公网)。",
+                        "iOS 1.0.5(5)。",
+                    ],
+                    why: "用户指出局域网直连出门即断, 产品无意义; 确认走公司 pay.itapgo.com 中继 (H5 公网链路已在跑), 与 Codex 官方移动端架构同构。",
+                    next: "模拟器 UserDefaults 注入 relay URL 验证端到端; 配对码卡片加公网 QR; WSS 实时推送。",
+                ),
+                EvolutionEntry(
                     version: "v0.5.317", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.317",
                     summary: "配对长链接改独立端口 + Bonjour TXT deviceId，修 iOS 模拟器连错实例与永久加载中。",
                     changes: [

@@ -96,6 +96,15 @@ struct PairingView: View {
     }
 
     private func handleScannedCode(_ raw: String) {
+        // v1.0.5: 识别公网中继链接 (https://pay.itapgo.com/remote/.../r/<token>)。
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.lowercased().hasPrefix("http") {
+            let relay = RelayLink()
+            if relay.configure(fromScannedText: trimmed) {
+                dismiss()
+                return
+            }
+        }
         if let url = URL(string: raw), url.scheme == MobilePairing.urlScheme {
             pairing.handleIncomingURL(url)
         } else {

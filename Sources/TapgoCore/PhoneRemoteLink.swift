@@ -196,6 +196,8 @@ public enum PhoneRemote {
         case asset(name: String)
         /// GET /r/<token>/api/state — 全量状态快照 JSON。
         case state
+        /// GET /r/<token>/api/native/projects — 原生 App 公网项目列表 (v0.5.318)。
+        case nativeProjects
         /// POST /r/<token>/api/send `{"text": "..."}` — 向当前会话发送指令。
         case send(text: String)
         /// POST /r/<token>/api/select `{"threadId": "..."}` — 切换活动会话。
@@ -328,6 +330,9 @@ public enum PhoneRemote {
         case ["api", "state"]:
             guard method == "GET" else { return .failure(.badRequest) }
             return .success(.state)
+        case ["api", "native", "projects"]:
+            guard method == "GET" else { return .failure(.badRequest) }
+            return .success(.nativeProjects)
         case ["api", "send"]:
             guard method == "POST", let text = jsonStringField(body, "text"), !text.isEmpty else {
                 return .failure(.badRequest)

@@ -12,6 +12,7 @@ struct DashboardView: View {
     @State private var isLoadingProjects = false
     @State private var newMessage: String = ""
     @State private var sendingMessage = false
+    @StateObject private var relay = RelayLink()
 
     var body: some View {
         NavigationStack {
@@ -157,15 +158,29 @@ struct DashboardView: View {
 
     @MainActor
     private func loadProjects() async {
-        guard isConnected else { return }
         isLoadingProjects = true
         loadError = nil
+        // v1.0.5: 公网中继优先 (任意网络可用), 失败回落局域网长链接。
+        if relay.isConfigured {
+            do {
+                let params = try await relay.fetchProjects()
+                projectGroups = Self.parseProjectGroups(params)
+                isLoadingProjects = false
+                return
+            } catch {
+                loadError = "公网加载失败: \(error.localizedDescription)（回落局域网）"
+            }
+        }
+        guard isConnected else {
+            isLoadingProjects = false
+            if loadError == nil { loadError = "未连接 Mac（长链接未就绪）" }
+            return
+        }
         pairing.link.request(method: MobileRemoteLink.Method.listProjects) { result in
             isLoadingProjects = false
             switch result {
             case .success(let params):
                 projectGroups = Self.parseProjectGroups(params)
-                if projectGroups.isEmpty { loadError = nil }
             case .failure(let err):
                 loadError = "加载项目失败: \(err.localizedDescription)"
             }
@@ -178,6 +193,16 @@ struct DashboardView: View {
         guard !msg.isEmpty else { return }
         sendingMessage = true
         defer { sendingMessage = false }
+        if relay.isConfigured {
+            do {
+                try await relay.send(text: msg)
+                newMessage = ""
+                return
+            } catch {
+                loadError = "公网发送失败: \(error.localizedDescription)"
+            }
+        }
+        guard isConnected else { return }
         var p = MobileRemoteLink.Params()
         p.set("text", .string(msg))
         pairing.link.request(method: MobileRemoteLink.Method.sendMessage, params: p) { result in

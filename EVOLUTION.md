@@ -1,5 +1,15 @@
 # Evolution Log
 
+## v0.5.318 — 原生 iOS 走 pay.itapgo.com 公网中继
+**Date**: 2026-09-13
+**Scope**: Mac 端 + iOS 端 (iOS 1.0.5)
+**Changed**:
+- `PhoneRemoteLink.Route`: +GET /api/native/projects; PhoneRemoteServer 分支返回项目分组 JSON。
+- `mobile/ios/Sources/RelayLink.swift` (新增): URLSession 公网传输, 扫码持久化中继链接。
+- DashboardView: 公网优先/局域网回落; PairingView 扫码识别 https 中继链接。
+**Why**: 用户确认产品必须外网可用, 走 pay.itapgo.com 中继与 Codex 移动端同构。
+**Next**: 模拟器验证; 配对码卡片加公网 QR; WSS 推送。
+
 ## v0.5.317 — 配对长链接独立端口 + Bonjour TXT deviceId
 **Date**: 2026-09-13
 **Scope**: Mac 端 + iOS 端协同 (iOS 1.0.3)
