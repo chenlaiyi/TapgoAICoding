@@ -80,22 +80,18 @@ public enum TapgoProviderKind: String, Codable, CaseIterable, Equatable {
             ]
         case .deepseek:
             return [
+                // deepseek API 仅接受 deepseek-flash / deepseek-v4-pro 两个模型名,
+                // 传其他名字返回 invalid_request_error (v0.5.319 修正)。
                 ProviderModel(
                     id: "builtin:deepseek::deepseek-v4-flash",
                     displayName: "DeepSeek V4 Flash",
-                    apiModel: "deepseek-v4-flash",
+                    apiModel: "deepseek-flash",
                     contextWindow: 1_048_576,
                     isCustom: false),
                 ProviderModel(
                     id: "builtin:deepseek::deepseek-v4-pro",
                     displayName: "DeepSeek V4 Pro",
                     apiModel: "deepseek-v4-pro",
-                    contextWindow: 1_048_576,
-                    isCustom: false),
-                ProviderModel(
-                    id: "builtin:deepseek::deepseek-v4-flash-vision-exp",
-                    displayName: "DeepSeek V4 Flash Vision",
-                    apiModel: "deepseek-v4-flash-vision-exp",
                     contextWindow: 1_048_576,
                     isCustom: false),
             ]
