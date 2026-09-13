@@ -66,6 +66,14 @@ struct PairingView: View {
                     manualCode = String(newValue.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(6))
                 }
             Button {
+                // v1.0.5: 输入框也接受公网中继链接 (https://.../r/<token>)。
+                let trimmed = manualCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.lowercased().hasPrefix("http") {
+                    if RelayLink().configure(fromScannedText: trimmed) {
+                        error = nil
+                        return
+                    }
+                }
                 pairing.acceptManualCode(manualCode) { result in
                     if case .failure(let msg) = result { error = msg }
                 }
