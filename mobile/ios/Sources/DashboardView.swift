@@ -262,3 +262,92 @@ struct SessionSummary: Identifiable {
     let id: String; let title: String?; let project: String?
     let projectId: String?; let updatedAt: String?
 }
+
+// MARK: - 会话详情 (v1.0.7 占位, 阶段二接真实对话流)
+
+struct SessionDetailView: View {
+    let threadId: String
+    let projectName: String?
+    let sessionTitle: String?
+    @EnvironmentObject var pairing: PairingStore
+    @StateObject private var relay = RelayLink()
+    @State private var newMessage: String = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.left.fill").font(.system(size: 13)).foregroundStyle(.tertiary)
+                        Text(projectName ?? "默认项目").font(.footnote).foregroundStyle(.secondary)
+                    }.padding(.top, 8).padding(.horizontal, 16)
+                    messageBubble(text: "👋 这是 \(sessionTitle ?? "(无标题)") 的对话流占位。下个版本接 /api/native/session/\(threadId) 拉取真实 turns/items。", isUser: false)
+                    statusLine
+                }.padding(.bottom, 80)
+            }
+            inputBar
+        }
+        .navigationTitle(sessionTitle ?? "会话")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func messageBubble(text: String, isUser: Bool) -> some View {
+        HStack(alignment: .bottom) {
+            if isUser { Spacer(minLength: 40) }
+            Text(text)
+                .font(.system(size: 15))
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(isUser ? Color.accentColor : Color(.secondarySystemBackground))
+                )
+                .foregroundStyle(isUser ? Color.white : Color.primary)
+            if !isUser { Spacer(minLength: 40) }
+        }.padding(.horizontal, 16)
+    }
+
+    private var statusLine: some View {
+        HStack(spacing: 8) {
+            ProgressView().scaleEffect(0.8)
+            Text("对话流 API 待接入 (\(threadId.prefix(8))…)")
+                .font(.footnote).foregroundStyle(.secondary)
+        }.padding(.horizontal, 16)
+    }
+
+    private var inputBar: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("跟进…", text: $newMessage, axis: .vertical)
+                    .lineLimit(1...4)
+                Spacer()
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(Color(.secondarySystemBackground), in: Capsule())
+
+            Button {
+                Task { await sendFollowUp() }
+            } label: {
+                Image(systemName: "paperplane.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 38, height: 38)
+                    .background(Color.accentColor, in: Circle())
+                    .foregroundStyle(.white)
+            }
+            .disabled(newMessage.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+    }
+
+    private func sendFollowUp() async {
+        let msg = newMessage.trimmingCharacters(in: .whitespaces)
+        guard !msg.isEmpty else { return }
+        if relay.isConfigured {
+            try? await relay.send(text: msg)
+        } else if pairing.link.status == .connected("") {
+            // 真发送需要 binding 配套, 暂作占位
+        }
+        newMessage = ""
+    }
+}
