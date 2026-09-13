@@ -4,6 +4,7 @@ import SwiftUI
 /// v1.0.0 起接 AVFoundation 真扫码 (`QRScannerView`)。
 /// 手动输入作为兜底。
 struct PairingView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var pairing: PairingStore
     @State private var manualCode: String = ""
     @State private var error: String? = nil
