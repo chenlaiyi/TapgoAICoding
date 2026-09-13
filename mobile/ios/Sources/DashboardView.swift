@@ -433,21 +433,25 @@ struct SessionDetailView: View {
 
     private var modelSheet: some View {
         NavigationStack {
-            List {
-                ForEach(modelOptions, id: \.id) { m in
-                    Button(action: { Task { await pickModel(m) } }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(m.modelName).font(.system(size: 15, weight: .medium))
-                                Text(m.providerName).font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(modelOptions) { m in
+                        Button(action: { Task { await pickModel(m) } }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(m.modelName).font(.system(size: 15, weight: .medium))
+                                    Text(m.providerName).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if m.selected { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                                if !m.configured { Text("未配置").font(.caption2).foregroundStyle(.tertiary) }
                             }
-                            Spacer()
-                            if m.selected { Image(systemName: "checkmark").foregroundStyle(.accentColor) }
-                            if !m.configured { Text("未配置").font(.caption2).foregroundStyle(.tertiary) }
+                            .padding(.vertical, 10).padding(.horizontal, 16)
                         }
+                        .buttonStyle(.plain)
+                        .disabled(!m.configured)
+                        Divider()
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!m.configured)
                 }
             }
             .navigationTitle("选择模型")
@@ -461,27 +465,7 @@ struct SessionDetailView: View {
         .presentationDetents([.medium, .large])
     }
 
-    private func loadModels() async {
-        guard relay.isConfigured else { return }
-        do {
-            let s = try await relay.fetchState()
-            currentModel = s.current
-            modelOptions = s.options
-        } catch {}
-    }
-
-    private func pickModel(_ m: ModelOption) async {
-        do {
-            try await relay.selectModel(providerId: m.providerId, modelId: m.modelId)
-            currentModel = m.modelName
-            for i in modelOptions.indices { modelOptions[i].selected = (modelOptions[i].id == m.id) }
-            showModelSheet = false
-        } catch {
-            currentModel = "切换失败"
-        }
-    }
-
-    // MARK: - 输入栏 (Codex 风格: + / "在 X 上工作" / 麦克风 / 发送)
+        // MARK: - 输入栏 (Codex 风格: + / "在 X 上工作" / 麦克风 / 发送)
 
     private var inputBar: some View {
         VStack(spacing: 0) {
