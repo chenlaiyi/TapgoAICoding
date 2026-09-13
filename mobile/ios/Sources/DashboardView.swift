@@ -297,7 +297,8 @@ struct SessionDetailView: View {
                 }
                 .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 110)
             }
-            modelPicker
+            .task { await loadModels() }
+            .sheet(isPresented: $showModelSheet) { modelSheet }
             inputBar
         }
         .navigationTitle("")
@@ -493,12 +494,26 @@ struct SessionDetailView: View {
     private var inputBar: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Button {} label: {
                     Image(systemName: "plus").font(.system(size: 18, weight: .medium))
                         .frame(width: 32, height: 32)
                         .background(Circle().fill(Color(.tertiarySystemBackground)))
                 }
+                // 模型 chip 内嵌在输入框左侧 (Codex 移动端风格)
+                Button { showModelSheet = true } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkle").font(.system(size: 10, weight: .semibold))
+                        Text(currentModel.isEmpty ? "选择模型" : shortModel(currentModel))
+                            .font(.caption.weight(.medium))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                    }
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+                    .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
                 HStack {
                     TextField("在 \(projectName ?? "Mac") 上工作", text: $newMessage, axis: .vertical)
                         .lineLimit(1...3)
@@ -518,6 +533,12 @@ struct SessionDetailView: View {
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(.ultraThinMaterial)
         }
+    }
+
+    /// 把"智谱 GLM-5.3-Flash"压缩为"GLM-5.3-Flash"等短名, 避免输入框拥挤。
+    private func shortModel(_ s: String) -> String {
+        if let i = s.firstIndex(of: " ") { return String(s[s.index(after: i)...]) }
+        return s
     }
 
     private func formatTime(_ s: Int) -> String { String(format: "%d 分 %d 秒", s/60, s%60) }
