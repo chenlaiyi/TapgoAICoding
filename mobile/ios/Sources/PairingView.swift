@@ -63,6 +63,11 @@ struct PairingView: View {
                         .stroke(Color.secondary.opacity(0.3))
                 )
                 .onChange(of: manualCode) { newValue in
+                    // v1.0.5: 公网中继链接 (https://...) 不做 6 位码过滤。
+                    if newValue.lowercased().hasPrefix("http") {
+                        manualCode = newValue
+                        return
+                    }
                     manualCode = String(newValue.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(6))
                 }
             Button {
