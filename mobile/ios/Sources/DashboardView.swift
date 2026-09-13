@@ -270,7 +270,8 @@ struct SessionSummary: Identifiable {
     let projectId: String?; let updatedAt: String?
 }
 
-// MARK: - 会话详情 (v1.0.7 占位, 阶段二接真实对话流)
+
+// MARK: - 会话详情 (v1.0.8 对齐 Codex 移动端对话页)
 
 struct SessionDetailView: View {
     let threadId: String
@@ -279,82 +280,206 @@ struct SessionDetailView: View {
     @EnvironmentObject var pairing: PairingStore
     @StateObject private var relay = RelayLink()
     @State private var newMessage: String = ""
+    @State private var elapsed: Int = 0     // 模拟运行秒数
+    @State private var expandedTool = false
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "bubble.left.fill").font(.system(size: 13)).foregroundStyle(.tertiary)
-                        Text(projectName ?? "默认项目").font(.footnote).foregroundStyle(.secondary)
-                    }.padding(.top, 8).padding(.horizontal, 16)
-                    messageBubble(text: "👋 这是 \(sessionTitle ?? "(无标题)") 的对话流占位。下个版本接 /api/native/session/\(threadId) 拉取真实 turns/items。", isUser: false)
-                    statusLine
-                }.padding(.bottom, 80)
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    titleBlock
+                    ForEach(Self.mockTurns) { turn in
+                        if turn.role == .user {
+                            userBubble(turn.text)
+                        } else {
+                            aiBlock(turn)
+                        }
+                    }
+                    runningStatusBlock
+                    Spacer().frame(height: 24)
+                }
+                .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 100)
             }
             inputBar
         }
-        .navigationTitle(sessionTitle ?? "会话")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 0) {
+                    Text(projectName ?? "默认项目").font(.caption2).foregroundStyle(.secondary)
+                    Text(sessionTitle ?? "会话").font(.subheadline.weight(.medium)).lineLimit(1)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {} label: { Label("复制全部", systemImage: "doc.on.doc") }
+                    Button {} label: { Label("分享", systemImage: "square.and.arrow.up") }
+                    Button(role: .destructive) {} label: { Label("删除会话", systemImage: "trash") }
+                } label: { Image(systemName: "ellipsis.circle") }
+            }
+        }
+        .task { tick() }
     }
 
-    private func messageBubble(text: String, isUser: Bool) -> some View {
-        HStack(alignment: .bottom) {
-            if isUser { Spacer(minLength: 40) }
+    // MARK: - 标题
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Circle().fill(Color.red).frame(width: 8, height: 8)
+                Text("正在运行").font(.caption2).foregroundStyle(.red)
+            }
+            Text(sessionTitle ?? "会话").font(.title2.weight(.semibold))
+            Text("\(projectName ?? "默认项目") · JKMacMini")
+                .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 18) {
+                Image(systemName: "doc.on.doc").font(.system(size: 18)).foregroundStyle(.secondary)
+                Image(systemName: "square.and.arrow.up").font(.system(size: 18)).foregroundStyle(.secondary)
+                Spacer()
+            }.padding(.top, 6)
+        }
+    }
+
+    // MARK: - 气泡
+
+    private func userBubble(_ text: String) -> some View {
+        HStack {
+            Spacer(minLength: 40)
             Text(text)
                 .font(.system(size: 15))
+                .foregroundStyle(.white)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(isUser ? Color.accentColor : Color(.secondarySystemBackground))
-                )
-                .foregroundStyle(isUser ? Color.white : Color.primary)
-            if !isUser { Spacer(minLength: 40) }
-        }.padding(.horizontal, 16)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.accentColor))
+        }
     }
 
-    private var statusLine: some View {
-        HStack(spacing: 8) {
-            ProgressView().scaleEffect(0.8)
-            Text("对话流 API 待接入 (\(threadId.prefix(8))…)")
-                .font(.footnote).foregroundStyle(.secondary)
-        }.padding(.horizontal, 16)
+    private func aiBlock(_ turn: MockTurn) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(turn.text.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, para in
+                Text(para)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            HStack(spacing: 22) {
+                Image(systemName: "hand.thumbsup").font(.system(size: 14)).foregroundStyle(.tertiary)
+                Image(systemName: "hand.thumbsdown").font(.system(size: 14)).foregroundStyle(.tertiary)
+                Image(systemName: "doc.on.doc").font(.system(size: 14)).foregroundStyle(.tertiary)
+                Image(systemName: "square.and.arrow.up").font(.system(size: 14)).foregroundStyle(.tertiary)
+            }.padding(.top, 4)
+        }
     }
+
+    // MARK: - 状态行 (Codex 风格: 计时器 + 工具调用展开 + 思考)
+
+    private var runningStatusBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "clock").font(.caption2).foregroundStyle(.secondary)
+                Text("已运行 \(formatTime(elapsed))").font(.caption).foregroundStyle(.secondary)
+            }
+            Button { expandedTool.toggle() } label: {
+                HStack {
+                    Image(systemName: "magnifyingglass").font(.caption2).foregroundStyle(.secondary)
+                    Text(expandedTool
+                         ? "已浏览 4 个文件, 执行了 6 次搜索、1 次列表…"
+                         : "已浏览 4 个文件, 执行了 6 次搜索…")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Image(systemName: expandedTool ? "chevron.up" : "chevron.down")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 6).padding(.horizontal, 10)
+                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+            }
+            HStack(spacing: 6) {
+                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
+                Text("正在思考").font(.caption).foregroundStyle(.secondary)
+            }.padding(.top, 4)
+        }
+        .padding(12)
+        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - 底部粘性输入栏
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("跟进…", text: $newMessage, axis: .vertical)
-                    .lineLimit(1...4)
-                Spacer()
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 10) {
+                Button {} label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(Color(.tertiarySystemBackground)))
+                }
+                HStack {
+                    TextField("跟 Tapgo AICoding 继续…", text: $newMessage, axis: .vertical)
+                        .lineLimit(1...4)
+                    Spacer(minLength: 6)
+                    Image(systemName: "mic.fill").font(.system(size: 16)).foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(Color(.secondarySystemBackground), in: Capsule())
+                Button {
+                    Task { await send() }
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(Color.accentColor))
+                        .foregroundStyle(.white)
+                }
+                .disabled(newMessage.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(Color(.secondarySystemBackground), in: Capsule())
-
-            Button {
-                Task { await sendFollowUp() }
-            } label: {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 38, height: 38)
-                    .background(Color.accentColor, in: Circle())
-                    .foregroundStyle(.white)
-            }
-            .disabled(newMessage.trimmingCharacters(in: .whitespaces).isEmpty)
+            .background(.ultraThinMaterial)
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(.ultraThinMaterial)
     }
 
-    private func sendFollowUp() async {
+    // MARK: - helpers
+
+    private func formatTime(_ s: Int) -> String {
+        String(format: "%d 分 %d 秒", s/60, s%60)
+    }
+    private func tick() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            elapsed += 1
+        }
+    }
+    private func send() async {
         let msg = newMessage.trimmingCharacters(in: .whitespaces)
         guard !msg.isEmpty else { return }
-        if relay.isConfigured {
-            try? await relay.send(text: msg)
-        } else if pairing.link.status == .connected("") {
-            // 真发送需要 binding 配套, 暂作占位
-        }
+        if relay.isConfigured { try? await relay.send(text: msg) }
         newMessage = ""
     }
+
+    // MARK: - Mock 数据 (下个版本接 /api/native/session/<id>)
+
+    private struct MockTurn: Identifiable {
+        enum Role { case user, ai }
+        let id = UUID()
+        let role: Role
+        let text: String
+    }
+
+    static let mockTurns: [MockTurn] = [
+        MockTurn(role: .user, text: "查询 88012088 实时数据"),
+        MockTurn(role: .ai, text: """
+你好,目前这台设备在小程序端无法使用起来 4000L 券。
+
+券有效且未使用,但设备仍为时长套餐,系统限制"流量券仅适用于流量套餐设备"。
+
+需要先将设备成功切换为流量套餐并回读确认,用户才能使用;此前后台切换未成功。
+"""),
+        MockTurn(role: .user, text: "请你问管理员能否增加这个套餐切换的开关功能"),
+        MockTurn(role: .ai, text: """
+我先核对远程 main 和现有套餐切换逻辑,在管理后台增加切换入口及确认结果展示,并完成针对性验证。
+
+发现关键原因:旧的计费模式切换指令已被七云废弃,所以此前后台操作没有真正切换。我会把入口做成明确的套餐选择与确认,并采用保留滤芯寿命和现有额度的主板同步流程;只有主板回读一致才显示成功。
+""")
+    ]
 }
