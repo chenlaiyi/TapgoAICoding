@@ -24,18 +24,16 @@ struct PairingView: View {
                     .padding(.horizontal, 16)
             }
             Spacer()
-        }
-        .padding(24)
-        .background(Color(.systemBackground))
         #if DEBUG
         Button {
-            if RelayLink().configure(fromScannedText: "https://pay.itapgo.com/remote/fafa/r/vZWHO1tmZlgpr32m38kDrQ") {
-                // 配对成功 - 由调用方 dismiss
-            }
+            if RelayLink().configure(fromScannedText: "https://pay.itapgo.com/remote/fafa/r/vZWHO1tmZlgpr32m38kDrQ") {}
         } label: {
             Text("使用示例中继链接 (Debug)").font(.footnote).foregroundStyle(.secondary)
         }
         #endif
+        }
+        .padding(24)
+        .background(Color(.systemBackground))
         .onAppear {
             // v1.0.5: 进入配对页自动从剪贴板读取 (绕开镜像下中文键盘拦截)。
             if manualCode.isEmpty, let s = UIPasteboard.general.string {
