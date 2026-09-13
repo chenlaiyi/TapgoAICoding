@@ -238,7 +238,15 @@ final class PairingLink: ObservableObject {
                     cb(.failure(NSError(domain: "PairingLink", code: err.code,
                                         userInfo: [NSLocalizedDescriptionKey: err.message])))
                 } else {
-                    cb(.success(frame.result ?? MobileRemoteLink.Params()))
+                    let result = frame.result ?? MobileRemoteLink.Params()
+                    // v1.0.2 约定: Mac 端 RequestHandler 只能回 result frame,
+                    // 失败时放 {"ok": false, "error": "..."}; 在这里转 failure。
+                    if let msg = result["error"]?.stringValue {
+                        cb(.failure(NSError(domain: "PairingLink", code: -1,
+                                            userInfo: [NSLocalizedDescriptionKey: msg])))
+                    } else {
+                        cb(.success(result))
+                    }
                 }
             }
         } else if frame.isPush {

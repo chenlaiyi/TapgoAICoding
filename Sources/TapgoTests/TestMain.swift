@@ -117,6 +117,7 @@ let allSections: [String] = [
     "MarkdownLite: nested lists depths",
     "MarkdownLite: file reference",
     "MobilePairing: protocol + URL round-trip",
+    "MobilePairingRPC: 配对长链接响应构造",
     "PhoneRemote: token 生成与校验",
     "PhoneRemote: 链接构建与路由鉴权",
     "PhoneRemote: HTTP 解析与响应序列化",
@@ -860,6 +861,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "MobilePairing: protocol + URL round-trip") {
             runMobilePairing(runner)
+        }
+        await runIfInScope(runner, "MobilePairingRPC: 配对长链接响应构造") {
+            runMobilePairingRPC(runner)
         }
         await runIfInScope(runner, "PhoneRemote: token 生成与校验") {
             runPhoneRemoteToken(runner)

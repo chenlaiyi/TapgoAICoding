@@ -627,6 +627,8 @@ final class PhoneRemoteController: ObservableObject {
     }
 
     /// 启动 Bonjour _tapgo-pair._tcp 监听器, 让 iOS 端 PairingLink (NWBrowser) 能发现并长链接。
+    /// v1.0.2: 接线 onRequest, 把 iOS 端 listSessions / switchProject / sendMessage
+    /// 三个 JSON-RPC 请求路由到 SessionStore / WorkspaceStore 真业务流 (Phase 3)。
     private func startPairingLinkListener() {
         guard pairingListener == nil else { return }
         let listener = PairingLinkListener(
@@ -634,14 +636,78 @@ final class PhoneRemoteController: ObservableObject {
             port: UInt16(port),
             onId: { [weak self] id in
                 Task { @MainActor in self?.handlePairingId(id) }
+            },
+            onRequest: { [weak self] method, params in
+                guard let self = self else {
+                    return MobilePairingRPC.errorParams("controller released")
+                }
+                return self.handleNativePairingRequest(method: method, params: params)
             }
         )
         pairingListener = listener
         listener.start(on: queue)
     }
 
+    /// v1.0.2 Phase 3: 原生长链接请求 → 真业务流。
+    /// - listSessions: 最近 20 条非辅助会话 (id/title/project/projectId/updatedAt)
+    /// - switchProject: params.id (项目 id, 优先) 或 params.path (项目路径, 兼容)
+    /// - sendMessage: params.text → store.sendUserMessage
+    /// 响应拼装语义在 TapgoCore.MobilePairingRPC (可单测), 此处只做类型映射。
+    private func handleNativePairingRequest(method: String,
+                                            params: MobileRemoteLink.Params) -> MobileRemoteLink.Params {
+        let projectSeeds = workspace.projects.map {
+            MobilePairingRPC.ProjectSeed(id: $0.id, name: $0.displayName)
+        }
+        switch method {
+        case MobileRemoteLink.Method.listSessions:
+            let seeds = store.liveThreads.map { t in
+                MobilePairingRPC.SessionSeed(
+                    id: t.id,
+                    title: t.title,
+                    projectId: t.projectId,
+                    projectName: t.projectId.flatMap { pid in
+                        workspace.projects.first { $0.id == pid }?.displayName
+                    },
+                    updatedAt: t.updatedAt,
+                    isAuxiliary: t.mode == "auxiliary")
+            }
+            return MobilePairingRPC.listSessionsResponse(
+                sessions: seeds, activeThreadId: store.activeThreadId)
+        case MobileRemoteLink.Method.switchProject:
+            if case .string(let id) = params["id"], !id.isEmpty {
+                return MobilePairingRPC.switchProjectResponse(id: id, projects: projectSeeds) {
+                    store.setActiveProject(id)
+                }
+            }
+            if case .string(let path) = params["path"], !path.isEmpty {
+                guard let matched = workspace.projects.first(where: {
+                    $0.worktreeRoot.path == path || $0.worktreeRoot.path == path + "/"
+                }) else {
+                    return MobilePairingRPC.errorParams("project not found for path: \(path)")
+                }
+                return MobilePairingRPC.switchProjectResponse(id: matched.id, projects: projectSeeds) {
+                    store.setActiveProject(matched.id)
+                }
+            }
+            return MobilePairingRPC.errorParams("switchProject requires id or path")
+        case MobileRemoteLink.Method.sendMessage:
+            guard case .string(let text) = params["text"],
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return MobilePairingRPC.errorParams("sendMessage requires non-empty text")
+            }
+            store.sendUserMessage(text)
+            var ok = MobileRemoteLink.Params()
+            ok.set("ok", .bool(true))
+            return ok
+        default:
+            return MobilePairingRPC.errorParams("unknown method: \(method)")
+        }
+    }
+
     private func handlePairingId(_ id: String) {
-        // 占位: 后续可扩展, 给 iOS 端推 sessionUpdate / message push.
+        // iOS 端 hello 握手即视为已连接; 后续可扩展 push sessionUpdate / message。
+        lastPollAt = Date()
+        phoneConnected = true
     }
 
     private func rebuildLink() {

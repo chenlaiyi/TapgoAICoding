@@ -6,7 +6,6 @@ import Foundation
 // 一致性由 mobile/ios/Scripts/check-sync.sh 通过 diff 强制保证：
 // 任何一端改动必须同步另一端，否则 build 脚本会拒绝并打印差异。
 // MARK: - iOS 工程自包含副本
-
 public enum MobileRemoteLink {
 
     public static let protocolVersion = 1

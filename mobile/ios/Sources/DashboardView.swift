@@ -14,6 +14,7 @@ struct DashboardView: View {
     @State private var newMessage: String = ""
     @State private var sendingMessage = false
     @State private var lastSentEcho: String?
+    @State private var selectedProject: ProjectOption?
 
     var body: some View {
         NavigationStack {
@@ -74,12 +75,24 @@ struct DashboardView: View {
     private var actionsSection: some View {
         Section("快捷动作") {
             HStack {
-                Button {
-                    Task { await switchProject() }
+                Menu {
+                    ForEach(knownProjects, id: \.self) { proj in
+                        Button {
+                            selectedProject = proj
+                            Task { await switchProject() }
+                        } label: {
+                            if selectedProject?.id == proj.id {
+                                Label(proj.name, systemImage: "checkmark")
+                            } else {
+                                Text(proj.name)
+                            }
+                        }
+                    }
                 } label: {
-                    Label("切项目", systemImage: "folder.fill.badge.plus")
+                    Label(selectedProject.map { "切到 \($0.name)" } ?? "切项目",
+                          systemImage: "folder.fill.badge.plus")
                 }
-                .disabled(!isConnected || switchingProject)
+                .disabled(!isConnected || switchingProject || knownProjects.isEmpty)
                 Spacer()
                 if switchingProject { ProgressView() }
             }
@@ -186,16 +199,32 @@ struct DashboardView: View {
 
     @MainActor
     private func switchProject() async {
+        guard let proj = selectedProject else {
+            lastSentEcho = "请先从菜单选择项目"
+            return
+        }
         switchingProject = true
         defer { switchingProject = false }
         var p = MobileRemoteLink.Params()
-        p.set("path", .string("/Users/chanlaiyi/TapgoAICoding"))
+        p.set("id", .string(proj.id))
         pairing.link.request(method: MobileRemoteLink.Method.switchProject, params: p) { result in
             switch result {
-            case .success: lastSentEcho = "已请求切项目"
+            case .success: lastSentEcho = "已切换到 \(proj.name)"
             case .failure(let err): lastSentEcho = "切项目失败: \(err.localizedDescription)"
             }
         }
+    }
+
+    /// 从最近会话去重出的可选项目 (v1.0.2 起, 替代硬编码路径)。
+    private var knownProjects: [ProjectOption] {
+        var seen = Set<String>()
+        var out: [ProjectOption] = []
+        for s in sessionList {
+            guard let pid = s.projectId, !seen.contains(pid) else { continue }
+            seen.insert(pid)
+            out.append(ProjectOption(id: pid, name: s.project ?? pid))
+        }
+        return out
     }
 
     @MainActor
@@ -225,6 +254,7 @@ struct DashboardView: View {
                 id: obj["id"]?.stringValue ?? UUID().uuidString,
                 title: obj["title"]?.stringValue,
                 project: obj["project"]?.stringValue,
+                projectId: obj["projectId"]?.stringValue,
                 updatedAt: obj["updatedAt"]?.stringValue
             )
         }
@@ -235,5 +265,13 @@ struct SessionSummary: Identifiable {
     let id: String
     let title: String?
     let project: String?
+    /// v1.0.2: Mac 端回传的项目 id, 用于切项目 RPC。
+    let projectId: String?
     let updatedAt: String?
+}
+
+/// 可切项目选项 (从最近会话去重派生)。
+struct ProjectOption: Hashable, Identifiable {
+    let id: String
+    let name: String
 }
