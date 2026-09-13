@@ -343,9 +343,10 @@ struct SessionDetailView: View {
             Spacer(minLength: 40)
             Text(text)
                 .font(.system(size: 15))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.accentColor))
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.14)))
         }
     }
 
@@ -353,38 +354,19 @@ struct SessionDetailView: View {
 
     private func aiBlock(_ turn: MockTurn) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // 文件改动标签 (Codex 风格)
-            HStack(spacing: 6) {
-                Text("已更新 1 个文件")
-                    .font(.caption2)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(Capsule().fill(Color(.tertiarySystemBackground)))
-                Text("+97")
-                    .font(.caption2.weight(.semibold)).foregroundStyle(.green)
-                Text("-0")
-                    .font(.caption2.weight(.semibold)).foregroundStyle(.red)
-            }
-            if !turn.filePath.isEmpty {
-                Text(turn.filePath)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            // 正文
             ForEach(Array(turn.text.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, para in
                 Text(para)
                     .font(.system(size: 15))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
-            // 时间戳
-            Text(turn.timestamp).font(.caption2).foregroundStyle(.tertiary)
-            // 互动图标
             HStack(spacing: 20) {
                 Image(systemName: "doc.on.doc").font(.system(size: 14)).foregroundStyle(.tertiary)
                 Image(systemName: "hand.thumbsup").font(.system(size: 14)).foregroundStyle(.tertiary)
                 Image(systemName: "hand.thumbsdown").font(.system(size: 14)).foregroundStyle(.tertiary)
                 Image(systemName: "square.and.arrow.up").font(.system(size: 14)).foregroundStyle(.tertiary)
+                Spacer()
+                Text(turn.timestamp).font(.caption2).foregroundStyle(.tertiary)
             }
         }
     }
@@ -400,8 +382,9 @@ struct SessionDetailView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
+        .padding(.horizontal, 14).padding(.vertical, 8)
         .background(Capsule().fill(Color(.tertiarySystemBackground)))
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     // MARK: - 模型选择 (Codex 移动端核心)
@@ -518,7 +501,11 @@ struct SessionDetailView: View {
                     TextField("在 \(projectName ?? "Mac") 上工作", text: $newMessage, axis: .vertical)
                         .lineLimit(1...3)
                     Spacer(minLength: 6)
-                    Image(systemName: "mic.fill").font(.system(size: 16)).foregroundStyle(.tertiary)
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 15)).foregroundStyle(.orange)
+                    Image(systemName: "gauge.with.dots.needle.33percent")
+                        .font(.system(size: 15)).foregroundStyle(.tertiary)
+                    Image(systemName: "mic.fill").font(.system(size: 15)).foregroundStyle(.tertiary)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .background(Color(.secondarySystemBackground), in: Capsule())
