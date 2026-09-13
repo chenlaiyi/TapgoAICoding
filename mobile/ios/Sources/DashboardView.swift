@@ -271,7 +271,7 @@ struct SessionSummary: Identifiable {
 }
 
 
-// MARK: - 会话详情 (v1.0.8 对齐 Codex 移动端对话页)
+// MARK: - 会话详情 (v1.0.9 对齐 Codex 移动端: 文件改动标签 + stats 卡片 + 时间戳 + 互动图标)
 
 struct SessionDetailView: View {
     let threadId: String
@@ -280,68 +280,64 @@ struct SessionDetailView: View {
     @EnvironmentObject var pairing: PairingStore
     @StateObject private var relay = RelayLink()
     @State private var newMessage: String = ""
-    @State private var elapsed: Int = 0     // 模拟运行秒数
+    @State private var elapsed: Int = 0
     @State private var expandedTool = false
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     titleBlock
                     ForEach(Self.mockTurns) { turn in
-                        if turn.role == .user {
-                            userBubble(turn.text)
-                        } else {
-                            aiBlock(turn)
-                        }
+                        if turn.role == .user { userBubble(turn.text) }
+                        else { aiBlock(turn) }
                     }
-                    runningStatusBlock
-                    Spacer().frame(height: 24)
+                    Spacer().frame(height: 8)
+                    statsCard                       // 项目级 diff 摘要
                 }
-                .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 100)
+                .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 110)
             }
             inputBar
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                VStack(spacing: 0) {
-                    Text(projectName ?? "默认项目").font(.caption2).foregroundStyle(.secondary)
-                    Text(sessionTitle ?? "会话").font(.subheadline.weight(.medium)).lineLimit(1)
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {} label: { Label("复制全部", systemImage: "doc.on.doc") }
-                    Button {} label: { Label("分享", systemImage: "square.and.arrow.up") }
-                    Button(role: .destructive) {} label: { Label("删除会话", systemImage: "trash") }
-                } label: { Image(systemName: "ellipsis.circle") }
-            }
-        }
+        .toolbar { toolbarContent }
         .task { await tick() }
     }
 
-    // MARK: - 标题
-
-    private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Circle().fill(Color.red).frame(width: 8, height: 8)
-                Text("正在运行").font(.caption2).foregroundStyle(.red)
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            VStack(spacing: 1) {
+                Text(sessionTitle ?? "会话").font(.subheadline.weight(.medium)).lineLimit(1)
+                Text("\(projectName ?? "默认项目") · JKMacMini").font(.caption2).foregroundStyle(.secondary)
             }
-            Text(sessionTitle ?? "会话").font(.title2.weight(.semibold))
-            Text("\(projectName ?? "默认项目") · JKMacMini")
-                .font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 18) {
-                Image(systemName: "doc.on.doc").font(.system(size: 18)).foregroundStyle(.secondary)
-                Image(systemName: "square.and.arrow.up").font(.system(size: 18)).foregroundStyle(.secondary)
-                Spacer()
-            }.padding(.top, 6)
+        }
+        ToolbarItem(placement: .topBarLeading) {
+            Button {} label: { Image(systemName: "chevron.left") }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            HStack(spacing: 16) {
+                Button {} label: { Image(systemName: "square.and.pencil").font(.system(size: 15)) }
+                Menu {} label: { Image(systemName: "ellipsis.circle").font(.system(size: 17)) }
+            }
         }
     }
 
-    // MARK: - 气泡
+    // MARK: - 标题 / 计时
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(sessionTitle ?? "会话").font(.title2.weight(.semibold))
+            HStack(spacing: 4) {
+                Image(systemName: "clock").font(.caption).foregroundStyle(.secondary)
+                Text("用时 \(formatTime(elapsed))").font(.caption).foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    // MARK: - 用户气泡
 
     private func userBubble(_ text: String) -> some View {
         HStack {
@@ -354,80 +350,82 @@ struct SessionDetailView: View {
         }
     }
 
+    // MARK: - AI 卡片 (带文件改动标签 + 互动图标 + 时间戳)
+
     private func aiBlock(_ turn: MockTurn) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            // 文件改动标签 (Codex 风格)
+            HStack(spacing: 6) {
+                Text("已更新 1 个文件")
+                    .font(.caption2)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(Capsule().fill(Color(.tertiarySystemBackground)))
+                Text("+97")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(.green)
+                Text("-0")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(.red)
+            }
+            if !turn.filePath.isEmpty {
+                Text(turn.filePath)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            // 正文
             ForEach(Array(turn.text.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, para in
                 Text(para)
                     .font(.system(size: 15))
-                    .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
             }
-            HStack(spacing: 22) {
+            // 时间戳
+            Text(turn.timestamp).font(.caption2).foregroundStyle(.tertiary)
+            // 互动图标
+            HStack(spacing: 20) {
+                Image(systemName: "doc.on.doc").font(.system(size: 14)).foregroundStyle(.tertiary)
                 Image(systemName: "hand.thumbsup").font(.system(size: 14)).foregroundStyle(.tertiary)
                 Image(systemName: "hand.thumbsdown").font(.system(size: 14)).foregroundStyle(.tertiary)
-                Image(systemName: "doc.on.doc").font(.system(size: 14)).foregroundStyle(.tertiary)
                 Image(systemName: "square.and.arrow.up").font(.system(size: 14)).foregroundStyle(.tertiary)
-            }.padding(.top, 4)
+            }
         }
     }
 
-    // MARK: - 状态行 (Codex 风格: 计时器 + 工具调用展开 + 思考)
+    // MARK: - 项目级 stats 摘要卡片 (粘在输入栏上方)
 
-    private var runningStatusBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private var statsCard: some View {
+        HStack(spacing: 12) {
+            Text("648 个文件").font(.caption)
             HStack(spacing: 6) {
-                Image(systemName: "clock").font(.caption2).foregroundStyle(.secondary)
-                Text("已运行 \(formatTime(elapsed))").font(.caption).foregroundStyle(.secondary)
+                Text("+2万").font(.caption.weight(.semibold)).foregroundStyle(.green)
+                Text("-2626").font(.caption.weight(.semibold)).foregroundStyle(.red)
             }
-            Button { expandedTool.toggle() } label: {
-                HStack {
-                    Image(systemName: "magnifyingglass").font(.caption2).foregroundStyle(.secondary)
-                    Text(expandedTool
-                         ? "已浏览 4 个文件, 执行了 6 次搜索、1 次列表…"
-                         : "已浏览 4 个文件, 执行了 6 次搜索…")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Image(systemName: expandedTool ? "chevron.up" : "chevron.down")
-                        .font(.caption2).foregroundStyle(.tertiary)
-                }
-                .padding(.vertical, 6).padding(.horizontal, 10)
-                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
-            }
-            HStack(spacing: 6) {
-                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
-                Text("正在思考").font(.caption).foregroundStyle(.secondary)
-            }.padding(.top, 4)
+            Spacer()
         }
-        .padding(12)
-        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(Capsule().fill(Color(.tertiarySystemBackground)))
     }
 
-    // MARK: - 底部粘性输入栏
+    // MARK: - 输入栏 (Codex 风格: + / "在 X 上工作" / 麦克风 / 发送)
 
     private var inputBar: some View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 10) {
                 Button {} label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .medium))
+                    Image(systemName: "plus").font(.system(size: 18, weight: .medium))
                         .frame(width: 32, height: 32)
                         .background(Circle().fill(Color(.tertiarySystemBackground)))
                 }
                 HStack {
-                    TextField("跟 Tapgo AICoding 继续…", text: $newMessage, axis: .vertical)
-                        .lineLimit(1...4)
+                    TextField("在 \(projectName ?? "Mac") 上工作", text: $newMessage, axis: .vertical)
+                        .lineLimit(1...3)
                     Spacer(minLength: 6)
                     Image(systemName: "mic.fill").font(.system(size: 16)).foregroundStyle(.tertiary)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .background(Color(.secondarySystemBackground), in: Capsule())
-                Button {
-                    Task { await send() }
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
+                Button { Task { await send() } } label: {
+                    Image(systemName: "arrow.up").font(.system(size: 16, weight: .semibold))
                         .frame(width: 32, height: 32)
                         .background(Circle().fill(Color.accentColor))
                         .foregroundStyle(.white)
@@ -439,11 +437,7 @@ struct SessionDetailView: View {
         }
     }
 
-    // MARK: - helpers
-
-    private func formatTime(_ s: Int) -> String {
-        String(format: "%d 分 %d 秒", s/60, s%60)
-    }
+    private func formatTime(_ s: Int) -> String { String(format: "%d 分 %d 秒", s/60, s%60) }
     private func tick() async {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -451,10 +445,18 @@ struct SessionDetailView: View {
         }
     }
     private func send() async {
-        let msg = newMessage.trimmingCharacters(in: .whitespaces)
-        guard !msg.isEmpty else { return }
+        let msg = newMessage.trimmingCharacters(in: .whitespaces); guard !msg.isEmpty else { return }
         if relay.isConfigured { try? await relay.send(text: msg) }
         newMessage = ""
+    }
+
+    fileprivate struct MockTurn: Identifiable {
+        fileprivate enum Role { case user, ai }
+        let id = UUID()
+        let role: Role
+        let text: String
+        let filePath: String
+        let timestamp: String
     }
 
     // MARK: - Mock 数据 (下个版本接 /api/native/session/<id>)
