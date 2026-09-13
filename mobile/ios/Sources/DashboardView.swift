@@ -196,20 +196,27 @@ struct ProjectCard: View {
                 Divider().padding(.leading, 62)
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(group.recentSessions) { s in
-                        HStack(spacing: 10) {
-                            Image(systemName: "bubble.left")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.tertiary)
-                                .frame(width: 18)
-                            Text(s.title ?? "(无标题)")
-                                .font(.system(size: 15))
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                            Spacer()
+                        NavigationLink {
+                            SessionDetailView(threadId: s.id, projectName: group.name, sessionTitle: s.title)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "bubble.left")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.tertiary)
+                                    .frame(width: 18)
+                                Text(s.title ?? "(无标题)")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.leading, 62).padding(.trailing, 14).padding(.vertical, 10)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.leading, 62)
-                        .padding(.trailing, 14)
-                        .padding(.vertical, 10)
+                        .buttonStyle(.plain)
                     }
                 }
             }
