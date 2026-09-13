@@ -1,3 +1,4 @@
+import UIKit
 import SwiftUI
 
 /// 配对界面: 扫码 + 手动输入两个入口。
@@ -63,12 +64,20 @@ struct PairingView: View {
                         .stroke(Color.secondary.opacity(0.3))
                 )
                 .onChange(of: manualCode) { newValue in
-                    // v1.0.5: 公网中继链接 (https://...) 不做 6 位码过滤。
                     if newValue.lowercased().hasPrefix("http") {
                         manualCode = newValue
                         return
                     }
                     manualCode = String(newValue.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(6))
+                }
+                .contextMenu {
+                    Button {
+                        if let s = UIPasteboard.general.string, !s.isEmpty {
+                            manualCode = s
+                        }
+                    } label: {
+                        Label("从剪贴板粘贴", systemImage: "doc.on.clipboard")
+                    }
                 }
             Button {
                 // v1.0.5: 输入框也接受公网中继链接 (https://.../r/<token>)。
