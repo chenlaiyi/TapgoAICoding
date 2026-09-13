@@ -466,7 +466,7 @@ struct SessionDetailView: View {
         let text: String
     }
 
-    static let mockTurns: [MockTurn] = [
+    fileprivate static let mockTurns: [MockTurn] = [
         MockTurn(role: .user, text: "查询 88012088 实时数据"),
         MockTurn(role: .ai, text: """
 你好,目前这台设备在小程序端无法使用起来 4000L 券。
