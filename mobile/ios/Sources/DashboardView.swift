@@ -431,6 +431,29 @@ struct SessionDetailView: View {
         .sheet(isPresented: $showModelSheet) { modelSheet }
     }
 
+    private func loadModels() async {
+        guard relay.isConfigured else { return }
+        do {
+            let s = try await relay.fetchState()
+            currentModel = s.current
+            modelOptions = s.options
+        } catch {}
+    }
+
+    private func pickModel(_ m: ModelOption) async {
+        do {
+            try await relay.selectModel(providerId: m.providerId, modelId: m.modelId)
+            currentModel = m.modelName
+            for i in modelOptions.indices {
+                if modelOptions[i].id == m.id { modelOptions[i].selected = true }
+                else { modelOptions[i].selected = false }
+            }
+            showModelSheet = false
+        } catch {
+            currentModel = "切换失败"
+        }
+    }
+
     private var modelSheet: some View {
         NavigationStack {
             ScrollView {
