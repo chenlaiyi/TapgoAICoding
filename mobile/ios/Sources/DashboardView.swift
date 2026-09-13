@@ -1,208 +1,106 @@
 import SwiftUI
 
-/// 已配对后的工作面板 —— 对齐 Codex 移动端首页结构 (v1.0.4 重构)。
-///
-/// 顶部: Mac 展示名 + 实时连接状态
-/// 主体: 「项目」大标题 + 项目分组列表 (📁项目名 + 每项目最近会话标题)
-/// 底部: 连接管理 (停止连接 / 取消配对)
+/// 已配对后的工作面板 (v1.0.7 重做)——对齐 Codex 移动端首页风格:
+/// 紧凑顶栏 (远程 + 机器名绿点) + 项目卡片列表 (SF Symbol 彩色图标 + 编辑笔)
+/// + 底部浮动搜索/语音/新建条 (Codex 风格)。
 struct DashboardView: View {
     @EnvironmentObject var pairing: PairingStore
     @State private var projectGroups: [ProjectGroup] = []
     @State private var loadError: String?
     @State private var isLoadingProjects = false
-    @State private var newMessage: String = ""
-    @State private var sendingMessage = false
     @StateObject private var relay = RelayLink()
 
     var body: some View {
         NavigationStack {
-            List {
-                projectsSection
-                if let err = loadError { errorSection(err) }
-            }
-            .listStyle(.plain)
-            .navigationTitle("远程")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 1) {
-                        Text("远程").font(.headline)
-                        HStack(spacing: 4) {
-                            Circle().fill(isConnected ? Color.green : Color.orange)
-                                .frame(width: 7, height: 7)
-                            Text(pairingMacHostname)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        if projectGroups.isEmpty && isLoadingProjects {
+                            loadingState
                         }
+                        if let err = loadError { errorState(err) }
+                        ForEach(projectGroups) { group in
+                            ProjectCard(group: group)
+                        }
+                        if projectGroups.isEmpty && !isLoadingProjects && loadError == nil {
+                            emptyState
+                        }
+                        Spacer().frame(height: 90)   // 给底部浮动条留空间
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button { Task { await sendMessage() } } label: { Label("发消息给当前会话", systemImage: "paperplane") }
-                        Button { pairing.stopLink() } label: { Label("停止连接", systemImage: "stop.circle") }
-                        Button(role: .destructive) { pairing.unpair() } label: { Label("取消配对", systemImage: "trash") }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
-            }
-            .task { await loadProjects() }
-        }
-    }
+                .refreshable { await loadProjects() }
+                .task { await loadProjects() }
+                .navigationTitle("远程")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { toolbarContent }
 
-    // MARK: - 顶部: Mac 名 + 连接状态
-
-    private var headerSection: some View {
-        Section {
-            HStack(spacing: 8) {
-                Image(systemName: "macbook")
-                    .foregroundStyle(.secondary)
-                Text(pairingMacHostname)
-                    .font(.headline)
-                Circle()
-                    .fill(isConnected ? Color.green : Color.orange)
-                    .frame(width: 9, height: 9)
-                Text(connectionText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                BottomBar()
             }
         }
     }
 
-    // MARK: - 项目分组 (对齐 Codex 移动端首页)
+    // MARK: - 顶栏
 
-    private var projectsSection: some View {
-        Section {
-            if projectGroups.isEmpty && isLoadingProjects {
-                HStack { ProgressView(); Text("加载项目…").foregroundStyle(.secondary) }
-            }
-            if projectGroups.isEmpty && !isLoadingProjects && loadError == nil {
-                Text("暂无项目").foregroundStyle(.secondary)
-            }
-            ForEach(projectGroups) { group in
-                Section {
-                    ForEach(group.recentSessions) { s in
-                        Text(s.title ?? "(无标题)")
-                            .font(.subheadline)
-                    }
-                    Button {
-                        Task { await loadProjects() }
-                    } label: {
-                        Label("刷新", systemImage: "arrow.clockwise").font(.footnote)
-                    }
-                } header: {
-                    Label(group.name, systemImage: "folder")
-                        .font(.headline)
-                        .textCase(nil)
-                        .foregroundStyle(.primary)
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            VStack(spacing: 1) {
+                Text("远程").font(.headline)
+                HStack(spacing: 4) {
+                    Circle().fill(isConnected ? Color.green : Color.orange)
+                        .frame(width: 7, height: 7)
+                    Text(pairingMacHostname)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-    }
-
-    private var legacyProjectsSection: some View {
-        Section("项目") {
-            if projectGroups.isEmpty && isLoadingProjects {
-                HStack { ProgressView(); Text("加载项目…").foregroundStyle(.secondary) }
-            }
-            if projectGroups.isEmpty && !isLoadingProjects && loadError == nil && isConnected {
-                Text("Mac 端还没有项目").foregroundStyle(.secondary)
-            }
-            ForEach(projectGroups) { group in
-                DisclosureGroup {
-                    ForEach(group.recentSessions) { s in
-                        Text(s.title ?? "(无标题)")
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                            .padding(.leading, 4)
-                    }
-                } label: {
-                    Label(group.name, systemImage: "folder")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
-            }
-            if isConnected {
-                Button {
-                    Task { await loadProjects() }
-                } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
-                }
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button { Task { await sendMessage() } } label: { Label("发消息给当前会话", systemImage: "paperplane") }
+                Button { pairing.stopLink() } label: { Label("停止连接", systemImage: "stop.circle") }
+                Button(role: .destructive) { pairing.unpair() } label: { Label("取消配对", systemImage: "trash") }
+            } label: {
+                Image(systemName: "ellipsis.circle")
             }
         }
     }
 
-    private func errorSection(_ message: String) -> some View {
-        Section {
-            Text(message).font(.footnote).foregroundStyle(.red)
-        }
+    // MARK: - 状态视图
+
+    private var loadingState: some View {
+        HStack { ProgressView(); Text("加载项目…").foregroundStyle(.secondary) }
+            .padding(.vertical, 40).frame(maxWidth: .infinity)
     }
 
-    // MARK: - 快捷发消息 (真业务: 送进 Mac 当前会话)
-
-    private var quickMessageSection: some View {
-        Section("发消息给当前会话") {
-            TextField("输入消息…", text: $newMessage, axis: .vertical)
-                .lineLimit(1...3)
-                .disabled(!isConnected || sendingMessage)
-            HStack {
-                if sendingMessage { ProgressView() }
-                Spacer()
-                Button {
-                    Task { await sendMessage() }
-                } label: {
-                    Label("发送", systemImage: "paperplane.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isConnected || newMessage.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
+    private func errorState(_ msg: String) -> some View {
+        Text(msg).font(.footnote).foregroundStyle(.red)
+            .padding(.vertical, 12)
     }
 
-    // MARK: - 连接管理
-
-    private var manageSection: some View {
-        Section("连接管理") {
-            LabeledContent("主机", value: pairingMacHost)
-            HStack(spacing: 12) {
-                Button("停止连接") { pairing.stopLink() }
-                    .buttonStyle(.bordered)
-                    .disabled(!isConnected)
-                Button("取消配对", role: .destructive) { pairing.unpair() }
-                    .buttonStyle(.bordered)
-            }
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "tray").font(.system(size: 36)).foregroundStyle(.tertiary)
+            Text("暂无项目").foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity).padding(.vertical, 60)
     }
 
-    // MARK: - Helpers
+    // MARK: - 浮点
 
-    /// 已配对 Mac 的展示名 (hostname); 未配对时回落 "Mac"。
     private var pairingMacHostname: String {
         if case .paired(let mac, _) = pairing.state { return mac.hostname }
         return "Mac"
     }
-
-    /// 连接管理里显示的 host:port。
     private var pairingMacHost: String {
-        if case .paired(let mac, _) = pairing.state {
-            return "\(mac.host):\(mac.port)"
-        }
+        if case .paired(let mac, _) = pairing.state { return "\(mac.host):\(mac.port)" }
         return "—"
     }
-
     private var isConnected: Bool {
         if case .connected = pairing.link.status { return true }
         return false
-    }
-
-    private var connectionText: String {
-        switch pairing.link.status {
-        case .idle: return "未启用长链接"
-        case .discovering: return "搜索中…"
-        case .connecting: return "连接中…"
-        case .connected: return "已连接"
-        case .failed(let msg): return "异常 · \(msg)"
-        }
     }
 
     // MARK: - RPC
@@ -211,7 +109,6 @@ struct DashboardView: View {
     private func loadProjects() async {
         isLoadingProjects = true
         loadError = nil
-        // v1.0.5: 公网中继优先 (任意网络可用), 失败回落局域网长链接。
         if relay.isConfigured {
             do {
                 let params = try await relay.fetchProjects()
@@ -219,7 +116,7 @@ struct DashboardView: View {
                 isLoadingProjects = false
                 return
             } catch {
-                loadError = "公网加载失败: \(error.localizedDescription)（回落局域网）"
+                loadError = "公网加载失败: \(error.localizedDescription)"
             }
         }
         guard isConnected else {
@@ -230,38 +127,22 @@ struct DashboardView: View {
         pairing.link.request(method: MobileRemoteLink.Method.listProjects) { result in
             isLoadingProjects = false
             switch result {
-            case .success(let params):
-                projectGroups = Self.parseProjectGroups(params)
-            case .failure(let err):
-                loadError = "加载项目失败: \(err.localizedDescription)"
+            case .success(let params): projectGroups = Self.parseProjectGroups(params)
+            case .failure(let err): loadError = "加载项目失败: \(err.localizedDescription)"
             }
         }
     }
 
     @MainActor
     private func sendMessage() async {
-        let msg = newMessage.trimmingCharacters(in: .whitespaces)
-        guard !msg.isEmpty else { return }
-        sendingMessage = true
-        defer { sendingMessage = false }
+        let msg = "新指令"
         if relay.isConfigured {
-            do {
-                try await relay.send(text: msg)
-                newMessage = ""
-                return
-            } catch {
-                loadError = "公网发送失败: \(error.localizedDescription)"
-            }
+            do { try await relay.send(text: msg); return }
+            catch { loadError = "公网发送失败: \(error.localizedDescription)" }
         }
         guard isConnected else { return }
-        var p = MobileRemoteLink.Params()
-        p.set("text", .string(msg))
-        pairing.link.request(method: MobileRemoteLink.Method.sendMessage, params: p) { result in
-            switch result {
-            case .success: newMessage = ""
-            case .failure(let err): loadError = "发送失败: \(err.localizedDescription)"
-            }
-        }
+        var p = MobileRemoteLink.Params(); p.set("text", .string(msg))
+        pairing.link.request(method: MobileRemoteLink.Method.sendMessage, params: p) { _ in }
     }
 
     private static func parseProjectGroups(_ params: MobileRemoteLink.Params) -> [ProjectGroup] {
@@ -276,10 +157,8 @@ struct DashboardView: View {
                     guard case .object(let so) = sv,
                           let sid = so["id"]?.stringValue else { return nil }
                     return SessionSummary(
-                        id: sid,
-                        title: so["title"]?.stringValue,
-                        project: name,
-                        projectId: id,
+                        id: sid, title: so["title"]?.stringValue,
+                        project: name, projectId: id,
                         updatedAt: so["updatedAt"]?.stringValue)
                 }
             }
@@ -288,24 +167,98 @@ struct DashboardView: View {
     }
 }
 
-/// 项目分组 (首页结构)。
-struct ProjectGroup: Identifiable {
-    let id: String
-    let name: String
-    let recentSessions: [SessionSummary]
+// MARK: - 项目卡片 (对齐 Codex 移动端项目行)
+
+struct ProjectCard: View {
+    let group: ProjectGroup
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                }
+                Text(group.name)
+                    .font(.system(size: 18, weight: .semibold))
+                Spacer()
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+
+            if !group.recentSessions.isEmpty {
+                Divider().padding(.leading, 62)
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(group.recentSessions) { s in
+                        HStack(spacing: 10) {
+                            Image(systemName: "bubble.left")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
+                                .frame(width: 18)
+                            Text(s.title ?? "(无标题)")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Spacer()
+                        }
+                        .padding(.leading, 62)
+                        .padding(.trailing, 14)
+                        .padding(.vertical, 10)
+                    }
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 0.5)
+        )
+    }
 }
 
+// MARK: - 底部浮动条 (Codex 风格: 搜索 + 语音 + 新建)
+
+struct BottomBar: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                Text("搜索聊天").foregroundStyle(.tertiary)
+                Spacer()
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(Color(.systemBackground), in: Capsule())
+
+            Button {} label: { Image(systemName: "waveform").font(.system(size: 19, weight: .medium)) }
+                .frame(width: 42, height: 42)
+                .background(Color.accentColor, in: Circle())
+                .foregroundStyle(.white)
+
+            Button {} label: { Image(systemName: "square.and.pencil").font(.system(size: 19, weight: .medium)) }
+                .frame(width: 42, height: 42)
+                .background(Color.accentColor, in: Circle())
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 14).padding(.bottom, 18)
+        .background(
+            LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.9), Color(.systemBackground)],
+                           startPoint: .top, endPoint: .bottom)
+            .ignoresSafeArea(edges: .bottom)
+        )
+    }
+}
+
+struct ProjectGroup: Identifiable { let id: String; let name: String; let recentSessions: [SessionSummary] }
 struct SessionSummary: Identifiable {
-    let id: String
-    let title: String?
-    let project: String?
-    /// v1.0.2: Mac 端回传的项目 id, 用于切项目 RPC。
-    let projectId: String?
-    let updatedAt: String?
-}
-
-/// 可切项目选项 (从最近会话去重派生)。
-struct ProjectOption: Hashable, Identifiable {
-    let id: String
-    let name: String
+    let id: String; let title: String?; let project: String?
+    let projectId: String?; let updatedAt: String?
 }
