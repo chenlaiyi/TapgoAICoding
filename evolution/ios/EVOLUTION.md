@@ -102,3 +102,14 @@
 - `mobile/ios/project.yml`: MARKETING_VERSION 1.0 → 1.0.2, CURRENT_PROJECT_VERSION 1 → 2。
 **Why**: Mac 端 v0.5.316 (Phase 3) 已把 listSessions / switchProject / sendMessage 接到 SessionStore / WorkspaceStore 真业务流, iOS 端要同步升级才能消费新语义 (projectId 字段 + error 转 failure)。
 **Next**: JK14pro 解锁后跑 `mobile/E2E-TEST-v1.0.1.md` 真机回归 (扫码 → 已连接 → 切项目 → 发消息); 后续可加「新会话」按钮 (Mac 端补 newSession RPC)。
+
+## v1.0.3 (iOS) — 增量: Bonjour TXT deviceId 匹配 + 断线请求冲刷
+**Date**: 2026-09-13
+**Scope**: iOS 端独立 patch (Mac 主仓 v0.5.317 协同)
+**Tag**: v1.0.3
+**Test status**: iOS 协议层 488/488 全过; swiftc -parse 通过
+**Changed**:
+- `mobile/ios/Sources/PairingLink.swift`: `handleBrowseResults` 改用 Bonjour TXT `deviceId` 作为权威匹配键 (实例名=计算机名, 多台 Mac 同网时不可靠); TXT 缺失时回退 name.contains。`stop()` 把 pendingRequests 全部以 failure (code -3 connection closed) 回调。
+- `mobile/ios/project.yml`: 1.0.2(2) → 1.0.3(3)。
+**Why**: 模拟器实测连到同网另一台 Mac 的实例后 listSessions 永久"加载中"——请求发出后连接断开, pending 被 removeAll 吞掉, completion 永不触发。TXT deviceId 是 Bonjour 匹配多实例的标准做法。
+**Next**: 模拟器重连验证最近会话渲染; JK14pro / JK15pro 真机安装 1.0.3。

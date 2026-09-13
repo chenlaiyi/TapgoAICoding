@@ -1,5 +1,17 @@
 # Evolution Log
 
+## v0.5.317 — 配对长链接独立端口 + Bonjour TXT deviceId
+**Date**: 2026-09-13
+**Scope**: Mac 端 + iOS 端协同 (iOS 1.0.3)
+**Test status**: iOS 协议层 488/488; Mac 端 swift build 通过; nc 直连 52384 listSessions 返回真实会话数据
+**Changed**:
+- `PairingLinkListener`: 显式绑定 preferredPort + Bonjour TXT deviceId; `PhoneRemoteServer` 用 H5 端口+1 (8724) 并传 macDeviceId。
+- `mobile/ios/Sources/PairingLink.swift`: TXT deviceId 优先匹配; stop()/断线 pending 请求全部 failure 回调。
+- `mobile/ios/project.yml`: 1.0.3(3)。
+**Why**: 多台 Mac 同网运行时实例名(计算机名)不唯一且不含 deviceId; 端口复用导致连接落到 HTTP 服务无响应; 断线吞请求导致永久加载中。
+**Next**: 模拟器重连验证; 两台真机 install。
+
+
 ## v0.5.316 — 配对长链接 Phase 3: iOS RPC 接入 Mac 真业务流
 **Date**: 2026-09-13
 **Scope**: Mac 端 + iOS 端协同 (iOS 1.0.2)

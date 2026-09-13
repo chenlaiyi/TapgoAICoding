@@ -78,7 +78,13 @@ final class PairingLink: ObservableObject {
         heartbeatTimer?.invalidate()
         heartbeatTimer = nil
         inboundBuffer = Data()
+        // v1.0.3: 断线时把未完成请求全部以 failure 回调, 否则 UI 会永远"加载中"。
+        let orphans = pendingRequests
         pendingRequests.removeAll()
+        for cb in orphans.values {
+            cb(.failure(NSError(domain: "PairingLink", code: -3,
+                                userInfo: [NSLocalizedDescriptionKey: "connection closed"])))
+        }
         transitionTo(.idle)
         onConnectionChange?(false)
     }
@@ -127,12 +133,23 @@ final class PairingLink: ObservableObject {
         // 不会包含 "demo-mac" 字面量).
         var chosen: NWEndpoint? = nil
         for r in results {
-            if case .service(let name, _, _, _) = r.endpoint {
-                if let expected = expectedDeviceId, expected != "demo-mac",
-                   !name.contains(expected) { continue }
-                chosen = r.endpoint
-                break
+            guard case .service(let name, _, _, _) = r.endpoint else { continue }
+            // v1.0.3: TXT 里的 deviceId 是权威匹配键 (实例名=计算机名, 不可靠)。
+            let txtDeviceId: String? = {
+                if case .bonjour(let txt) = r.metadata {
+                    return txt["deviceId"]
+                }
+                return nil
+            }()
+            if let expected = expectedDeviceId, expected != "demo-mac" {
+                if let did = txtDeviceId {
+                    if did != expected { continue }
+                } else if !name.contains(expected) {
+                    continue
+                }
             }
+            chosen = r.endpoint
+            break
         }
         guard let endpoint = chosen else { return }
         connect(to: endpoint)

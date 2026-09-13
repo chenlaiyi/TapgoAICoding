@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.317", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.317",
+                    summary: "配对长链接改独立端口 + Bonjour TXT deviceId，修 iOS 模拟器连错实例与永久加载中。",
+                    changes: [
+                        "诊断：模拟器连到同网另一台 Mac 的 Bonjour 实例（实例名=计算机名不可靠）；PairingLinkListener 的 preferredPort 被忽略绑到随机端口，且 allowLocalEndpointReuse 与 H5 HTTP 共用 8723。",
+                        "nc 直连验证 Mac 端 listSessions RPC 响应真实会话数据，排除服务端问题。",
+                        "PairingLinkListener：显式绑定 preferredPort（H5 端口+1，通常 8724），Bonjour TXT 写入 deviceId；PhoneRemoteServer 传 txtDeviceId=macDeviceId。",
+                        "iOS PairingLink：browse 匹配改 TXT deviceId 优先（name.contains 回退）；stop()/断线把 pending 请求全部 failure 回调，修 UI 永远加载中。",
+                        "iOS 1.0.3(3)；协议层 488/488 保持绿。"
+                    ],
+                    why: "同一局域网多台 Mac 同时跑 App 时，Bonjour 实例名（计算机名）不唯一且不含 deviceId，iOS 端 name.contains 过滤永远失配，只能盲连第一个实例；端口复用又让连接落到 HTTP 服务上。deviceId 走 TXT 是 Bonjour 标准做法。",
+                    next: "JKmacmini 重建后模拟器重连验证 listSessions 真数据渲染；两台真机 install。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.316", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.316",
                     summary: "配对长链接 Phase 3：iOS 端 listSessions / switchProject / sendMessage 三条 RPC 接入 Mac 真业务流。",
                     changes: [

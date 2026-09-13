@@ -97,6 +97,8 @@ final class PhoneRemoteController: ObservableObject {
     private let workspace: WorkspaceStore
     private var listener: NWListener?
     private var pairingListener: PairingLinkListener?
+    /// 配对长链接独立端口 (H5 端口 +1, 通常 8724)。Bonjour 广播此端口。
+    private var pairingListenPort: UInt16 = UInt16(clamping: PhoneRemote.defaultPort + 1)
     private var token: String
     private var pairingTimer: Timer?
     private var rev = 0
@@ -604,7 +606,7 @@ final class PhoneRemoteController: ObservableObject {
     /// 每 60 秒由 pairingTimer 自动调用一次。
     func refreshPairingCode(now: Date = Date()) {
         let host = lanAddress ?? "127.0.0.1"
-        let code = MobilePairing.generateCode(port: port, now: now)
+        let code = MobilePairing.generateCode(port: Int(pairingListenPort), now: now)
         pairingCode = code
         if let url = MobilePairing.pairingURL(
             macDeviceId: macDeviceId,
@@ -631,9 +633,12 @@ final class PhoneRemoteController: ObservableObject {
     /// 三个 JSON-RPC 请求路由到 SessionStore / WorkspaceStore 真业务流 (Phase 3)。
     private func startPairingLinkListener() {
         guard pairingListener == nil else { return }
+        // v0.5.317: 配对长链接用独立端口 (H5 HTTP 端口 +1, 通常 8724),
+        // 避免与 H5 listener 同端口冲突导致连接落到 HTTP 服务上无响应。
+        pairingListenPort = UInt16(clamping: port + 1)
         let listener = PairingLinkListener(
             serviceType: MobileRemoteLink.bonjourServiceType,
-            port: UInt16(port),
+            port: pairingListenPort,
             onId: { [weak self] id in
                 Task { @MainActor in self?.handlePairingId(id) }
             },
@@ -642,7 +647,8 @@ final class PhoneRemoteController: ObservableObject {
                     return MobilePairingRPC.errorParams("controller released")
                 }
                 return self.handleNativePairingRequest(method: method, params: params)
-            }
+            },
+            txtDeviceId: macDeviceId
         )
         pairingListener = listener
         listener.start(on: queue)

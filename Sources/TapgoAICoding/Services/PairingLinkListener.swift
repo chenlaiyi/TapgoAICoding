@@ -25,15 +25,23 @@ final class PairingLinkListener {
     private var inboundBuffers: [ObjectIdentifier: Data] = [:]
     private let queue: DispatchQueue
 
+    private let txtDeviceId: String?
+
+    /// - Parameters:
+    ///   - port: 显式绑定端口 (v0.5.317 起用独立端口避开 H5 HTTP 8723 冲突)。
+    ///   - txtDeviceId: 写入 Bonjour TXT 记录的 macDeviceId, 让 iOS 端按设备
+    ///     而不是实例名匹配 (计算机名不可靠)。
     init(serviceType: String = MobileRemoteLink.bonjourServiceType,
          port: UInt16,
          onId: @escaping (String) -> Void,
          onRequest: RequestHandler? = nil,
+         txtDeviceId: String? = nil,
          queue: DispatchQueue? = nil) {
         self.serviceType = serviceType
         self.preferredPort = port
         self.onId = onId
         self.onRequest = onRequest
+        self.txtDeviceId = txtDeviceId
         self.queue = queue ?? DispatchQueue(label: "tapgo.pairing-link", qos: .userInitiated)
     }
 
@@ -45,8 +53,15 @@ final class PairingLinkListener {
             let tcp = NWParameters.tcp
             tcp.allowLocalEndpointReuse = true
             tcp.includePeerToPeer = true
-            let nwListener = try NWListener(using: tcp)
-            nwListener.service = NWListener.Service(type: serviceType)
+            let nwListener = try NWListener(using: tcp, on: NWEndpoint.Port(integerLiteral: preferredPort))
+            let service: NWListener.Service
+            if let did = txtDeviceId {
+                service = NWListener.Service(name: "", type: serviceType,
+                                             domain: nil, txtRecord: NWTXTRecord(["deviceId": did]))
+            } else {
+                service = NWListener.Service(type: serviceType)
+            }
+            nwListener.service = service
             nwListener.newConnectionHandler = { [weak self] connection in
                 connection.start(queue: queue)
                 Task { @MainActor in self?.accept(connection) }
