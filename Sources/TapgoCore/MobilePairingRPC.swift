@@ -72,6 +72,43 @@ public enum MobilePairingRPC {
         return p
     }
 
+    /// 项目 + 该项目最近会话 (对齐 Codex 移动端首页结构)。
+    public struct ProjectWithSessions {
+        public let id: String
+        public let name: String
+        /// 最近 N 条非辅助会话, 按 updatedAt 降序。
+        public let recentSessions: [SessionSeed]
+
+        public init(id: String, name: String, recentSessions: [SessionSeed]) {
+            self.id = id; self.name = name; self.recentSessions = recentSessions
+        }
+    }
+
+    /// listProjects 响应: 项目分组 + 每项目最近会话标题 + Mac 展示名。
+    /// 结构对齐 Codex 移动端首页: 顶部机器名(在线), "项目" 大标题,
+    /// 每个项目📁名字 + 下面最近会话标题(无时间戳)。
+    public static func listProjectsResponse(projects: [ProjectWithSessions],
+                                            macName: String?) -> MobileRemoteLink.Params {
+        let entries: [MobileRemoteLink.AnyJSON] = projects.map { p in
+            var obj = MobileRemoteLink.Params()
+            obj.set("id", .string(p.id))
+            obj.set("name", .string(p.name))
+            let sessions: [MobileRemoteLink.AnyJSON] = p.recentSessions.map { s in
+                var so = MobileRemoteLink.Params()
+                so.set("id", .string(s.id))
+                so.set("title", .string(s.title))
+                so.set("updatedAt", .string(isoFormatter.string(from: s.updatedAt)))
+                return .object(so.raw)
+            }
+            obj.set("recentSessions", .array(sessions))
+            return .object(obj.raw)
+        }
+        var p = MobileRemoteLink.Params()
+        p.set("projects", .array(entries))
+        if let n = macName, !n.isEmpty { p.set("macName", .string(n)) }
+        return p
+    }
+
     /// switchProject 响应: 校验 id 在已知项目里 → 执行 action → {ok, projectId, projectName}。
     /// id 未知时返回 errorParams, action 不执行。
     public static func switchProjectResponse(id: String,

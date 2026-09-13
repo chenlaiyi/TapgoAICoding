@@ -113,3 +113,16 @@
 - `mobile/ios/project.yml`: 1.0.2(2) → 1.0.3(3)。
 **Why**: 模拟器实测连到同网另一台 Mac 的实例后 listSessions 永久"加载中"——请求发出后连接断开, pending 被 removeAll 吞掉, completion 永不触发。TXT deviceId 是 Bonjour 匹配多实例的标准做法。
 **Next**: 模拟器重连验证最近会话渲染; JK14pro / JK15pro 真机安装 1.0.3。
+
+## v1.0.4 (iOS) — 增量: 首页重构为项目分组列表 (对齐 Codex 移动端)
+**Date**: 2026-09-13
+**Scope**: iOS 端 (Mac 主仓 v0.5.317 协同: 新增 listProjects RPC)
+**Tag**: v1.0.4
+**Test status**: 协议层 488/488; swiftc -parse 通过; 待 JKmacmini 模拟器视觉回归
+**Changed**:
+- `Sources/TapgoCore/MobileRemoteLink.swift`: Method.listProjects 常量 (双端同步)。
+- `Sources/TapgoCore/MobilePairingRPC.swift`: ProjectWithSessions + listProjectsResponse (projects[].{id,name,recentSessions[].{id,title,updatedAt}} + macName)。
+- `PhoneRemoteServer.handleNativePairingRequest`: listProjects 路由——按 workspace.projects 分组 liveThreads, 每项目取最近 3 条非辅助会话, macName=displayName。
+- `mobile/ios/Sources/DashboardView.swift`: 全面重写——顶部 Mac 名+连接状态一行; 「项目」大标题 + DisclosureGroup 项目分组 (📁项目名 semibold + 最近会话标题缩进); 底部连接管理收纳; 保留快捷发消息真业务。移除旧平铺"最近会话"与切项目 Menu (阶段三改新会话流)。
+**Why**: 对标 Codex 官方移动端首页 (项目分组+最近会话结构), 旧 UI 是 Settings 风格平铺列表, 信息层级与产品定位不符。
+**Next**: 阶段二 getSession 对话流 + 实时状态; 阶段三 newSession 创建流。模拟器视觉回归后部署。

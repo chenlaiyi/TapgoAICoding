@@ -89,6 +89,7 @@ public enum MobileRemoteLink {
         public static let hello = "hello"
         public static let heartbeat = "heartbeat"
         public static let listSessions = "listSessions"
+        public static let listProjects = "listProjects"
         public static let switchProject = "switchProject"
         public static let sendMessage = "sendMessage"
         public static let pushSessionUpdate = "sessionUpdate"

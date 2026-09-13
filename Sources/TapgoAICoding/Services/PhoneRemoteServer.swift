@@ -665,6 +665,24 @@ final class PhoneRemoteController: ObservableObject {
             MobilePairingRPC.ProjectSeed(id: $0.id, name: $0.displayName)
         }
         switch method {
+        case MobileRemoteLink.Method.listProjects:
+            let byProject = Dictionary(grouping: store.liveThreads.filter { $0.mode != "auxiliary" },
+                                       by: { $0.projectId ?? "(none)" })
+            let entries = workspace.projects.map { proj -> MobilePairingRPC.ProjectWithSessions in
+                let recents = (byProject[proj.id] ?? [])
+                    .sorted { $0.updatedAt > $1.updatedAt }
+                    .prefix(3)
+                    .map { t in
+                        MobilePairingRPC.SessionSeed(
+                            id: t.id, title: t.title, projectId: proj.id,
+                            projectName: proj.displayName,
+                            updatedAt: t.updatedAt, isAuxiliary: false)
+                    }
+                return MobilePairingRPC.ProjectWithSessions(
+                    id: proj.id, name: proj.displayName, recentSessions: Array(recents))
+            }
+            return MobilePairingRPC.listProjectsResponse(
+                projects: entries, macName: Self.displayName())
         case MobileRemoteLink.Method.listSessions:
             let seeds = store.liveThreads.map { t in
                 MobilePairingRPC.SessionSeed(
