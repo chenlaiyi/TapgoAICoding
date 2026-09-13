@@ -89,3 +89,16 @@
 **Why**: 之前 v0.5.16 Mac 端 `ConnectPhoneView` 重写转 H5 路线时把 6 位配对码 UI 删了，导致 iOS App v1.0.0 配对功能孤立. 本次恢复 v0.5.7 路径, 端到端配对闭环.
 **Test status (manual)**: 端到端真机测试需 JKmacmini 登录桌面手工跑 (SSH session 无 display 权限). 模拟器 build + 真机 build 都通过, 但 PairCode 卡片 UI 截图 + DashboardView 已连接状态截图需用户手工.
 **Next (Phase 3)**: Mac 端 `PairingLinkListener` `RequestHandler` 路由到 `SessionStore` / `WorkspaceStore`; 实现 `listSessions` / `switchProject` / `sendMessage` 真业务流.
+
+## v1.0.2 (iOS) — 增量: RPC 客户端对接 Mac 真业务流 (Phase 3)
+**Date**: 2026-09-13
+**Scope**: iOS 端独立 patch (Mac 主仓 v0.5.316 协同)
+**Tag**: v1.0.2
+**Test status**: iOS 协议层 488/488 全过; check-sync 双协议层绿 (含既有空行差异修复); JKmacmini 真机 BUILD SUCCEEDED; JK14pro 已安装 1.0.2(2) (databaseSequenceNumber 3032, 启动需解锁手机)
+**Changed**:
+- `mobile/ios/Sources/DashboardView.swift`: 「切项目」去掉硬编码 `/Users/chanlaiyi/TapgoAICoding`, 改为从最近会话去重出项目的 Menu 选择; `SessionSummary` 新增 `projectId`; 新增 `ProjectOption` Hashable 结构。
+- `mobile/ios/Sources/PairingLink.swift`: `handleFrame` 识别 result params 里的 `error` 字段 (Mac 端 RequestHandler 无法回 error frame 的约定), 转 `.failure` 回调。
+- `mobile/ios/Sources/MobileRemoteLink.swift`: 删除第二个 MARK 后多余空行 (HEAD 既有问题; JKmacmini 9/8 手改过但未提交, 内容与本次修复一致)。
+- `mobile/ios/project.yml`: MARKETING_VERSION 1.0 → 1.0.2, CURRENT_PROJECT_VERSION 1 → 2。
+**Why**: Mac 端 v0.5.316 (Phase 3) 已把 listSessions / switchProject / sendMessage 接到 SessionStore / WorkspaceStore 真业务流, iOS 端要同步升级才能消费新语义 (projectId 字段 + error 转 failure)。
+**Next**: JK14pro 解锁后跑 `mobile/E2E-TEST-v1.0.1.md` 真机回归 (扫码 → 已连接 → 切项目 → 发消息); 后续可加「新会话」按钮 (Mac 端补 newSession RPC)。

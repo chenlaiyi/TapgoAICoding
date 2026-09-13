@@ -339,6 +339,19 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.316", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.316",
+                    summary: "配对长链接 Phase 3：iOS 端 listSessions / switchProject / sendMessage 三条 RPC 接入 Mac 真业务流。",
+                    changes: [
+                        "新增 TapgoCore/MobilePairingRPC.swift：listSessions / switchProject / errorParams 响应构造纯函数；RequestHandler 只能回 Params，失败约定 {ok:false, error:消息}，iOS 端 PairingLink 据此转 failure。",
+                        "PhoneRemoteServer.startPairingLinkListener 接线 onRequest：listSessions 返回最近 20 条非辅助会话（id/title/project/projectId/updatedAt ISO8601 + activeSessionId）；switchProject 支持 id（优先）与 path（兼容）双参数并调 store.setActiveProject；sendMessage 校验非空后调 store.sendUserMessage。",
+                        "iOS DashboardView 切项目去掉硬编码 /Users/chanlaiyi 路径，改为从最近会话去重出项目 Menu；SessionSummary 增加 projectId 字段。",
+                        "hello 握手即置 phoneConnected=true；修 MobileRemoteLink iOS 副本第二个 MARK 后多余空行导致 check-sync 红（HEAD 既有问题，与 9/8 JKmacmini 手改未提交内容一致）。",
+                        "新增 MobilePairingRPC 单测 20 断言（errorParams 约定 / 过滤辅助会话 / 降序排序 / 字段映射 / switchProject 命中与未命中路径）全过；iOS 协议层 488/488 保持绿；版本升 iOS 1.0.2(2)。"
+                    ],
+                    why: "v1.0.1 恢复 PairCode UI 后，iPhone 端三个信息流请求在 Mac 端没有 handler，8 秒超时必然失败，配对只是形式连通。Phase 3 把响应语义下沉到可单测的 TapgoCore，Mac 端只做 Thread/Project 到 Seed 的类型映射，端到端业务闭环才算打通。",
+                    next: "JK14pro 解锁后跑真机 E2E（PairCode 卡片 → 扫码 → Dashboard 已连接 → 切项目 / 发消息真实落库）；Mac 端把 pairingListener 状态暴露到 ConnectPhoneView。"
+                ),
+                EvolutionEntry(
                     version: "v0.5.315", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.315",
                     summary: "DeepSeek V4.1 改名后余额恢复显示：额度通道改按内置供应商身份路由。",
                     changes: [

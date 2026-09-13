@@ -1,5 +1,21 @@
 # Evolution Log
 
+## v0.5.316 — 配对长链接 Phase 3: iOS RPC 接入 Mac 真业务流
+**Date**: 2026-09-13
+**Scope**: Mac 端 + iOS 端协同 (iOS 1.0.2)
+**Test status**: MobilePairingRPC 单测 20/20; iOS 协议层 488/488; 全量 TapgoTests 3515 过 / 12 失败均为 RemoteSSH/auth.json 环境依赖集成测试 (与本轮无关); 本机 + JKmacmini + fafamacmini App 0.5.316 均构建并运行
+**Changed**:
+- `Sources/TapgoCore/MobilePairingRPC.swift` (新增): listSessions / switchProject / errorParams 响应构造纯函数; 失败约定 `{"ok": false, "error": "..."}`。
+- `Sources/TapgoAICoding/Services/PhoneRemoteServer.swift`: `startPairingLinkListener` 接线 `onRequest`, 路由三条 RPC 到 SessionStore / WorkspaceStore; hello 握手置 phoneConnected。
+- `mobile/ios/Sources/DashboardView.swift`: 切项目改 Menu (会话去重出项目), SessionSummary + projectId, 去掉硬编码路径。
+- `mobile/ios/Sources/PairingLink.swift`: 响应含 error 字段转 failure。
+- `mobile/ios/Sources/MobileRemoteLink.swift`: 修既有空行差异, check-sync 恢复绿。
+- `mobile/ios/project.yml`: 1.0.2(2)。
+- `Sources/TapgoTests/MobilePairingRPCTests.swift` (新增, 20 断言): errorParams 约定 / 辅助会话过滤 / 降序 / 字段映射 / switchProject 命中与未命中。
+**Why**: v1.0.1 后 iPhone 端三条请求到 Mac 无 handler 必超时; Phase 3 把语义下沉 TapgoCore 可单测, Mac 端只做类型映射, 业务闭环打通。
+**Next**: JK14pro 解锁后真机 E2E; ConnectPhoneView 暴露长链接状态。
+
+
 ## v0.5.315 — fix(quota): DeepSeek V4.1 改名后仍显示余额
 **Date**: 2026-09-13
 **Commit**: _(see `git log -1 v0.5.315`)_
