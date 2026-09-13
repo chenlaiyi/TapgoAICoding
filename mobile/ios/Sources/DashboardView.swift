@@ -17,13 +17,35 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                headerSection
                 projectsSection
                 if let err = loadError { errorSection(err) }
-                quickMessageSection
-                manageSection
             }
-            .navigationTitle("点点够终端")
+            .listStyle(.plain)
+            .navigationTitle("远程")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 1) {
+                        Text("远程").font(.headline)
+                        HStack(spacing: 4) {
+                            Circle().fill(isConnected ? Color.green : Color.orange)
+                                .frame(width: 7, height: 7)
+                            Text(pairingMacHostname)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { Task { await sendMessage() } } label: { Label("发消息给当前会话", systemImage: "paperplane") }
+                        Button { pairing.stopLink() } label: { Label("停止连接", systemImage: "stop.circle") }
+                        Button(role: .destructive) { pairing.unpair() } label: { Label("取消配对", systemImage: "trash") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
             .task { await loadProjects() }
         }
     }
@@ -50,6 +72,35 @@ struct DashboardView: View {
     // MARK: - 项目分组 (对齐 Codex 移动端首页)
 
     private var projectsSection: some View {
+        Section {
+            if projectGroups.isEmpty && isLoadingProjects {
+                HStack { ProgressView(); Text("加载项目…").foregroundStyle(.secondary) }
+            }
+            if projectGroups.isEmpty && !isLoadingProjects && loadError == nil {
+                Text("暂无项目").foregroundStyle(.secondary)
+            }
+            ForEach(projectGroups) { group in
+                Section {
+                    ForEach(group.recentSessions) { s in
+                        Text(s.title ?? "(无标题)")
+                            .font(.subheadline)
+                    }
+                    Button {
+                        Task { await loadProjects() }
+                    } label: {
+                        Label("刷新", systemImage: "arrow.clockwise").font(.footnote)
+                    }
+                } header: {
+                    Label(group.name, systemImage: "folder")
+                        .font(.headline)
+                        .textCase(nil)
+                        .foregroundStyle(.primary)
+                }
+            }
+        }
+    }
+
+    private var legacyProjectsSection: some View {
         Section("项目") {
             if projectGroups.isEmpty && isLoadingProjects {
                 HStack { ProgressView(); Text("加载项目…").foregroundStyle(.secondary) }
