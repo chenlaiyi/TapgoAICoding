@@ -52,6 +52,40 @@ final class RelayLink: ObservableObject {
         return try JSONDecoder().decode(MobileRemoteLink.Params.self, from: data)
     }
 
+    /// GET /api/state 解析 model + models (Codex 移动端模型选择数据源)。
+    func fetchState() async throws -> (current: String, options: [ModelOption]) {
+        guard let base = baseURL else { throw URLError(.badURL) }
+        let data = try await URLSession.shared.data(from: base.appendingPathComponent("api/state")).0
+        struct R: Decodable {
+            struct ModelOpt: Decodable {
+                let providerId: String; let providerName: String
+                let modelId: String; let modelName: String
+                let configured: Bool?; let selected: Bool?
+            }
+            let model: String?; let models: [ModelOpt]?
+        }
+        let r = try JSONDecoder().decode(R.self, from: data)
+        return (r.model ?? "", (r.models ?? []).map {
+            ModelOption(providerId: $0.providerId, providerName: $0.providerName,
+                        modelId: $0.modelId, modelName: $0.modelName,
+                        configured: $0.configured ?? false, selected: $0.selected ?? false)
+        })
+    }
+
+    /// POST /api/model {providerId, modelId}。
+    func selectModel(providerId: String, modelId: String) async throws {
+        guard let base = baseURL else { throw URLError(.badURL) }
+        var req = URLRequest(url: base.appendingPathComponent("api/model"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject:
+            ["providerId": providerId, "modelId": modelId])
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
     /// POST /api/send。
     func send(text: String) async throws {
         guard let base = baseURL else { throw URLError(.badURL) }
@@ -64,4 +98,15 @@ final class RelayLink: ObservableObject {
             throw URLError(.badServerResponse)
         }
     }
+}
+
+
+struct ModelOption: Identifiable, Hashable {
+    var id: String { providerId + ":" + modelId }
+    let providerId: String
+    let providerName: String
+    let modelId: String
+    let modelName: String
+    let configured: Bool
+    let selected: Bool
 }

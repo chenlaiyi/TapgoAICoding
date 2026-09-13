@@ -297,6 +297,7 @@ struct SessionDetailView: View {
                 }
                 .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 110)
             }
+            modelPicker
             inputBar
         }
         .navigationTitle("")
@@ -312,9 +313,6 @@ struct SessionDetailView: View {
                 Text(sessionTitle ?? "会话").font(.subheadline.weight(.medium)).lineLimit(1)
                 Text("\(projectName ?? "默认项目") · JKMacMini").font(.caption2).foregroundStyle(.secondary)
             }
-        }
-        ToolbarItem(placement: .topBarLeading) {
-            Button {} label: { Image(systemName: "chevron.left") }
         }
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 16) {
@@ -403,6 +401,90 @@ struct SessionDetailView: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
         .background(Capsule().fill(Color(.tertiarySystemBackground)))
+    }
+
+    // MARK: - 模型选择 (Codex 移动端核心)
+
+    @State private var currentModel: String = ""
+    @State private var modelOptions: [ModelOption] = []
+    @State private var showModelSheet = false
+
+    private var modelPicker: some View {
+        Button {
+            showModelSheet = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "sparkle").font(.caption2)
+                Text(currentModel.isEmpty ? "选择模型" : currentModel)
+                    .font(.caption)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9))
+            }
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Capsule().fill(Color(.tertiarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.vertical, 6)
+        .background(.ultraThinMaterial)
+        .task { await loadModels() }
+        .sheet(isPresented: $showModelSheet) { modelSheet }
+    }
+
+    private var modelSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(modelOptions) { m in
+                    Button {
+                        Task { await pickModel(m) }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(m.modelName).font(.system(size: 15, weight: .medium))
+                                Text(m.providerName).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if m.selected {
+                                Image(systemName: "checkmark").foregroundStyle(.accent)
+                            }
+                            if !m.configured {
+                                Text("未配置").font(.caption2).foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!m.configured)
+                }
+            }
+            .navigationTitle("选择模型")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { showModelSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func loadModels() async {
+        guard relay.isConfigured else { return }
+        do {
+            let s = try await relay.fetchState()
+            currentModel = s.current
+            modelOptions = s.options
+        } catch {}
+    }
+
+    private func pickModel(_ m: ModelOption) async {
+        do {
+            try await relay.selectModel(providerId: m.providerId, modelId: m.modelId)
+            currentModel = m.modelName
+            for i in modelOptions.indices { modelOptions[i].selected = (modelOptions[i].id == m.id) }
+            showModelSheet = false
+        } catch {
+            currentModel = "切换失败"
+        }
     }
 
     // MARK: - 输入栏 (Codex 风格: + / "在 X 上工作" / 麦克风 / 发送)
