@@ -23,8 +23,11 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// `clearAPIKey(for:)` 的 switch 仍要能命中），但它们不再出现在
     /// `allCases` 里，于是 `allModels()` / `renderCatalog()` / 聊天
     /// 模型选择器都不会再列出这两家的模型。
+    /// vision-exp 不在此列：DeepSeek API 只接受 `deepseek-flash` /
+    /// `deepseek-v4-pro` 两个模型名（v0.5.319 已在 Provider 层删除
+    /// 该条目），保留 case 定义仅为兼容历史 catalog / 会话记录。
     public static var allCases: [TapgoModel] {
-        [.deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp]
+        [.deepSeekV4Flash, .deepSeekV4Pro]
     }
 
     public var id: String { rawValue }

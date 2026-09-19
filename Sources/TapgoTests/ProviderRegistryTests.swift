@@ -30,10 +30,12 @@ func runProviderRegistry(_ t: TestRunner) {
 
     // MARK: - DeepSeek 下挂 3 个默认模型
     let deepSeek = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
-    t.expectEqual(deepSeek.models.count, 3,
-                  "provider: DeepSeek 默认挂 3 个模型（Flash / Pro / Flash Vision）")
-    t.expect(deepSeek.models.contains { $0.apiModel == "deepseek-v4-flash" },
-             "provider: DeepSeek 默认模型含 V4 Flash")
+    t.expectEqual(deepSeek.models.count, 2,
+                  "provider: DeepSeek 默认挂 2 个模型（Flash / Pro）")
+    // DeepSeek API 只接受 `deepseek-flash`；v0.5.319 起 apiModel 用真实
+    // 名字，id 仍保留 builtin:deepseek::deepseek-v4-flash 以兼容选中态。
+    t.expect(deepSeek.models.contains { $0.apiModel == "deepseek-flash" },
+             "provider: DeepSeek 默认模型用 API 接受的 deepseek-flash")
 
     // MARK: - v0.5.117：名单外的内置供应商在补全时被清除
     let staleState = ProviderRegistryState(
