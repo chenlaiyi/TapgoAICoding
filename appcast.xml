@@ -3,6 +3,50 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.5.319</title>
+            <pubDate>Sun, 20 Sep 2026 04:54:16 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.319</link>
+            <sparkle:version>0.5.319</sparkle:version>
+            <sparkle:shortVersionString>0.5.319</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.319
+
+fix(harness): daemon 多客户端并发 + provider 段名 TOML 转义；模型供应商只保留 DeepSeek
+
+## 修复：App「无法使用」的根因
+
+- **TapgoHarness daemon 支持多客户端并发**。此前 daemon 是单客户端串行：一条连接占线时，第二条连接只能在 listen backlog 里排队，它的 `initialize` 永远得不到响应，App 侧 30 秒后报 `Harness RPC 超时：initialize` / 「任务未完成，可重试」。只要有一个长任务在跑，整个 App 看起来就不可用。现在每条连接一个独立线程 + 独立 codex app-server，互不阻塞。
+- 实测：daemon 被占用时新连接的 `initialize` 由「必然超时」变为 0.05–0.26 秒返回；App 内并发验证——长任务（`sleep 25`）在跑的同时，另一个会话 3 秒完成一次对话。
+- 客户端 socket 与 daemon accept 后的 fd 均设 `FD_CLOEXEC`，daemon 忽略 `SIGPIPE`，listen backlog 8→32；活跃会话数写入 daemon 日志便于排查。
+- **provider 段名 TOML 转义**：遗留注册表里的 `builtin:zhipu` / `builtin:minimax` 被当成自定义 Provider 时，未加引号的 `:` 会让 codex 拒绝加载**整份** config.toml（`invalid unquoted key`），harness 连 initialize 都起不来。现在按需加双引号。
+- **遗留内置供应商自动清理**：`ensureBuiltinProviders()` 按启用名单清除已下线的 `builtin:*` 条目连同选中态，不再以自定义 Provider 身份残留（模型选择器里不会再挂着 GLM / MiniMax）。
+
+## 发布链路校验（本次发布前实测）
+
+- `generate_keys -p --account com.tapgo.aicoding` 输出的公钥与 `AppBuilder/Info.plist` 的 `SUPublicEDKey` 一致；用同一把私钥重签上一版归档（0.5.315）得到的签名与线上 appcast **逐字节一致** —— 签名密钥、App 内置公钥、已发布 appcast 三者自洽。
+- 本次发布的 0.5.319 归档已带 `sparkle:edSignature`；GitHub Release 归档 URL 与 feed URL 均已回读校验。
+
+## 模型供应商只保留 DeepSeek
+
+- `TapgoProviderKind` / `TapgoQuotaChannel` 只留 `deepseek`；删除 `GLMQuotaClient`、`MiniMaxQuotaClient` 及其测试，`RateLimits` 去掉 MiniMax 快照构建器。
+- 设置页、侧边栏、额度弹窗、L10n、`scripts/init-tapgo.sh` 同步清理。
+- 三个 Mac 的代码已合并到同一个 `main`（合并 jkmacmini 侧已推送的精简实现与本机实现），并清除所有过期分支引用。
+
+## 验证
+
+- `swift build` 通过；TapgoTests 3464 通过 / 12 失败（12 个均为既有环境失败：不可达 SSH 主机、缺少 `auth.json`）。
+- 新增回归测试 32 断言：daemon 并发 8、TomlKey 14、注册表清理 10。
+- 真实界面回归：三台机 App 均 0.5.319，UI 断言通过；本机与 jkmacmini 各跑通真实回合。
+- 线上链路：GitHub Release 归档 + 签名 appcast 已发布，下载 URL 与 appcast URL 均已回读校验。
+
+## Next
+
+- 长任务与普通对话并发的人工回归；把 daemon 版本纳入 fleet 部署脚本（daemon 需单独 `install-harness-daemon.sh`）。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.319/Tapgo-AICoding-0.5.319.zip" length="12716101" type="application/octet-stream" sparkle:edSignature="nrNIegrHCSQzd8KFp1hB99k4G+E4ERXgLf/4/V5W4xSa+GIZ7rKfKnvVVMHb8QeOAROkNwjNu2Z3mOb5vSGqDw=="/>
+        </item>
+        <item>
             <title>0.5.315</title>
             <pubDate>Sun, 13 Sep 2026 07:27:45 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.315</link>
@@ -56,33 +100,6 @@ feat(evolution): 本机版本漂移可老化可查询
 EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
 ]]></description>
             <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.314/Tapgo-AICoding-0.5.314.zip" length="12738403" type="application/octet-stream" sparkle:edSignature="sc3FAc54AbfOwhnVKVVtAPYbud5WWxSu6c3yInHzWQM5lf8a5XxWnnnaatOfWXaSXWCgto0+IO+uPGkJ68N7Cg=="/>
-        </item>
-        <item>
-            <title>0.5.313</title>
-            <pubDate>Sun, 13 Sep 2026 05:01:29 +0800</pubDate>
-            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.313</link>
-            <sparkle:version>0.5.313</sparkle:version>
-            <sparkle:shortVersionString>0.5.313</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# v0.5.313
-
-test(evolution): H5 渲染执行级测试
-
-## 变更
-
-- 新增 scripts/tests/evolution-h5-render.mjs（EVO-054）：最小 DOM stub 里加载真实 app.js，用真实 fetch 回调驱动 refresh() → renderEvolution()，断言渲染进 DOM 的文案与 hidden 状态；40 项断言覆盖完整渲染、evolution 消失后恢复、漏斗/指标为空边界、CSS hidden 不变量。
-- 变异验证证明测试有牙：把漏斗改回修复前扁平键 → 5 项失败（含用户可见症状「漏斗行可见」）；可见性边界 > 0 写成 >= 0 → 1 项失败；还原后 40/40 绿。甄别掉一个假阳性——evolution 为 null 时子行保留旧 hidden 标志，但子行在已隐藏卡片子树内且无 author display 覆盖，用户不可见，故断言用户可见语义而非改生产代码迎合测试。
-- 共享 fixture evolution/h5-fixtures/evolution-state.json：Swift 契约测试（EVO-053）增加 4 项断言，校验它仍能解码为 EvolutionStatus 且覆盖 app.js 读取的每个顶层键，避免 Node 侧拿服务器给不出的形状自说自话。
-- 接入 scripts/tests/run-all.sh 单绿门禁（需要 node，缺失时明确失败而不是静默跳过）。
-
-手机端自进化卡片渲染纳入秒级门禁
-
-## Next
-
-EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
-]]></description>
-            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.313/Tapgo-AICoding-0.5.313.zip" length="12737798" type="application/octet-stream" sparkle:edSignature="93AGWB+VtSGaKaxbqW8Ee9Ii3hHpRsZayCeAFdNatN4F2t5wQjEPlrPe+1BmI+zjVWu7euQnv5jk0VDywIk9BQ=="/>
         </item>
     </channel>
 </rss>
