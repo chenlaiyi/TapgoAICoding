@@ -60,6 +60,10 @@ public final class SocketHarnessTransport: HarnessTransport {
         guard s >= 0 else {
             throw HarnessTransportError.notRunning
         }
+        // v0.5.319: 会话 fd 不能被派生的子进程（codex / ssh / git / MCP）
+        // 继承。继承后 App 关闭自己的一端，daemon 仍看得到「活着」的对端，
+        // 就会永远停在这条会话上，后续所有 initialize 超时。
+        _ = fcntl(s, F_SETFD, FD_CLOEXEC)
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
         let pathBytes = Array(socketPath.utf8)

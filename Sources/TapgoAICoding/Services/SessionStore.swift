@@ -108,17 +108,15 @@ final class SessionStore: ObservableObject {
     @Published var turnFeedback: [String: Int] = [:]
     @Published var setupError: SetupError?
 
-    /// Latest MiniMax (Token Plan / Coding Plan) 剩余额度快照。驱动 composer 弹窗
-    /// （5 小时 / 每周 / Plan 名）。由 `refreshRateLimits()` 直接打 MiniMax 官方
-    /// HTTP 接口拉取，不再走 Codex app-server —— 那是 Codex 的 JSON-RPC，永远
-    /// 拿不到 MiniMax-M3 的真实订阅数据。
+    /// DeepSeek 账户余额快照。驱动 composer 弹窗（按量计费，只显示余额）。
+    /// 由 `refreshRateLimits()` 直接打 DeepSeek 官方接口拉取。
     @Published var rateLimits: RateLimitsSnapshot?
     @Published var rateLimitsLoading: Bool = false
     /// Last error from `refreshRateLimits()` so the popover can show a
     /// brief failure caption instead of a misleading "—".
     @Published var rateLimitsError: String?
-    /// 弹窗标签：标识额度来源，便于排错。永远是 "MiniMax coding_plan/remains"。
-    let rateLimitsSource: String = "MiniMax coding_plan/remains"
+    /// 弹窗标签：标识额度来源，便于排错。
+    let rateLimitsSource: String = "DeepSeek user/balance"
 
     /// Approval requests the harness is waiting on, keyed by request id.
     /// `ApprovalRow` watches this and resolves entries by calling
@@ -140,16 +138,13 @@ final class SessionStore: ObservableObject {
     /// UI 展示用的当前模型名（品牌 + 模型名）。
     var modelDisplayName: String { TapgoConfig.resolveSelected().displayName }
 
-    /// 当前选中 Provider 的官方额度通道。按供应商身份判定，避免用户把
-    /// DeepSeek 模型 slug 改成 V4.1 后被误判成自定义模型。
+    /// 当前选中 Provider 的官方额度通道。按供应商身份判定。
     var selectedQuotaChannel: TapgoQuotaChannel? {
         TapgoConfig.resolveSelectedProvider().quotaChannel
     }
 
-    /// 拉取当前所选模型的官方套餐余量/余额，写入 `rateLimits`。可重复调用 —
-    /// 重叠请求由 `rateLimitsLoading` 合并。三条通道：MiniMax 走
-    /// coding_plan/remains，GLM 走 BigModel monitor/usage/quota/limit
-    /// （端点抄自智谱官方用量查询插件），DeepSeek 走 user/balance
+    /// 拉取当前所选模型的官方余额，写入 `rateLimits`。可重复调用 —
+    /// 重叠请求由 `rateLimitsLoading` 合并。DeepSeek 走 user/balance
     /// （按量计费，只显示余额）。任何错误写到 `rateLimitsError`。
     func refreshRateLimits() {
         guard !rateLimitsLoading else { return }
@@ -159,15 +154,6 @@ final class SessionStore: ObservableObject {
             do {
                 let snapshot: RateLimitsSnapshot
                 switch self?.selectedQuotaChannel {
-                case .minimax:
-                    snapshot = try await MiniMaxQuotaClient(
-                        apiKey: TapgoConfig.providerAPIKey(.minimax),
-                        modelName: TapgoConfig.modelName
-                    ).fetchRemains()
-                case .glm:
-                    snapshot = try await GLMQuotaClient(
-                        apiKey: TapgoConfig.providerAPIKey(.zhipu)
-                    ).fetchRemains()
                 case .deepseek:
                     snapshot = try await DeepSeekQuotaClient(
                         apiKey: TapgoConfig.providerAPIKey(.deepseek)

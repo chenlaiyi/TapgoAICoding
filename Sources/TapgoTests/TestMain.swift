@@ -55,6 +55,9 @@ let allSections: [String] = [
     "HarnessSupervisor: onReconnected fires once per successful restart",
     "SocketHarnessTransport: start fails when socket absent",
     "SocketHarnessTransport: start + send round-trips to listening peer",
+    "TapgoHarness daemon: 并发客户端都能拿到 initialize 响应",
+    "TomlKey: provider 段名转义",
+    "ProviderRegistry: 下线内置供应商清理",
     "HarnessDaemonLauncher: returns true when launcher socket file exists",
     "HarnessDaemonLauncher: socketPath is the well-known Application Support path",
     "HarnessDaemonLauncher: daemonBinaryPath resolves to installed binary",
@@ -405,12 +408,6 @@ struct TapgoTestMain {
         await runIfInScope(runner, "TapgoModel: catalog & provider mapping") {
             runModelCatalog(runner)
         }
-        await runIfInScope(runner, "GLMQuota: quota/limit 解析与映射") {
-            runGLMQuota(runner)
-        }
-        await runIfInScope(runner, "GLMQuota: GLMQuotaClient transport & auth") {
-            await runGLMQuotaClient(runner)
-        }
         await runIfInScope(runner, "DeepSeekQuota: balance 解析与映射") {
             runDeepSeekQuota(runner)
         }
@@ -458,18 +455,6 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ExecEvent: account/rateLimits/updated notification") {
             runExecEventParserRateLimitsUpdated(runner)
-        }
-        await runIfInScope(runner, "MiniMaxQuota: SnapshotBuilder (remaining → used)") {
-            runMiniMaxQuotaParsing(runner)
-        }
-        await runIfInScope(runner, "MiniMaxQuota: MiniMaxQuotaClient (transport-injected)") {
-            await runMiniMaxQuotaClient(runner)
-        }
-        await runIfInScope(runner, "MiniMaxQuota: lenient match + dual-endpoint fallback") {
-            await runMiniMaxQuotaLenientMatch(runner)
-        }
-        await runIfInScope(runner, "MiniMaxQuota: timestamp parsing (ms vs s)") {
-            runMiniMaxQuotaTimestampParsing(runner)
         }
         await runIfInScope(runner, "MarkdownLite: fenced code blocks") {
             runMarkdownLiteFencedCode(runner)
@@ -626,6 +611,15 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "HarnessDaemonLauncher: daemonBinaryPath resolves to installed binary") {
             runHarnessDaemonLauncherDaemonBinaryPathPrefersInstalledBinary(runner)
+        }
+        await runIfInScope(runner, "TapgoHarness daemon: 并发客户端都能拿到 initialize 响应") {
+            runHarnessDaemonServesConcurrentClients(runner)
+        }
+        await runIfInScope(runner, "TomlKey: provider 段名转义") {
+            runTomlKeyProviderSectionTests(runner)
+        }
+        await runIfInScope(runner, "ProviderRegistry: 下线内置供应商清理") {
+            runProviderRegistryRetiredBuiltinPrune(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: restart start failures consume retry budget") {
             await runHarnessSupervisorGivesUp(runner)

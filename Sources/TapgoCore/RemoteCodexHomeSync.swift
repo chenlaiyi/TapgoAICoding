@@ -35,7 +35,7 @@ public enum RemoteCodexHomeSync {
             "model=\(quote(model))",
             "model_provider=\(quote(provider))",
             "model_context_window=\(contextWindow)",
-            "model_providers.\(provider)={name=\(quote(provider)),base_url=\(quote(baseURL)),wire_api=\"responses\",env_key=\"OPENAI_API_KEY\"}",
+            "model_providers.\(TomlKey.providerSectionKey(provider))={name=\(quote(provider)),base_url=\(quote(baseURL)),wire_api=\"responses\",env_key=\"OPENAI_API_KEY\"}",
         ]
     }
 
@@ -158,10 +158,10 @@ public enum RemoteCodexHomeSync {
     /// host's `~/.codex/config.toml` (which has chatgpt tokens
     /// and a different model_provider).
     public static func renderRemoteConfig(
-        model: String = "MiniMax-M3",
-        modelProvider: String = "minimax",
-        modelContextWindow: Int = 1_000_000,
-        baseURL: String = "https://api.minimaxi.com/v1",
+        model: String = "deepseek-v4-flash",
+        modelProvider: String = "deepseek",
+        modelContextWindow: Int = 1_048_576,
+        baseURL: String = "https://api.deepseek.com",
         wireAPI: String = "responses",
         providerEnvKey: String = "OPENAI_API_KEY",
         trustedRemotePaths: [String] = []
@@ -175,7 +175,7 @@ public enum RemoteCodexHomeSync {
         model_provider = "\(modelProvider)"
         model_context_window = \(modelContextWindow)
 
-        [model_providers.\(modelProvider)]
+        [model_providers.\(TomlKey.providerSectionKey(modelProvider))]
         name = "\(modelProvider)"
         base_url = "\(baseURL)"
         wire_api = "\(wireAPI)"

@@ -10,22 +10,18 @@ import Foundation
 /// 智谱为 Codex 提供的 OpenAI Responses 协议专属端点
 /// （docs.bigmodel.cn/cn/coding-plan/tool/codex）。
 public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
-    case minimaxM3 = "MiniMax-M3"
-    case glm53Flash = "GLM-5.3-Flash"
     /// DeepSeek 官方 slug 为小写（api-docs.deepseek.com Codex 接入文档）。
     case deepSeekV4Flash = "deepseek-v4-flash"
     case deepSeekV4Pro = "deepseek-v4-pro"
     case deepSeekV4FlashVisionExp = "deepseek-v4-flash-vision-exp"
 
-    /// v0.5.117：模型配置只保留 DeepSeek。
+    /// 模型配置只保留 DeepSeek，且**对外只列 flash / pro 两个**。
     ///
-    /// MiniMax / GLM 的 case 定义保留（旧 catalog、历史会话记录、
-    /// `clearAPIKey(for:)` 的 switch 仍要能命中），但它们不再出现在
-    /// `allCases` 里，于是 `allModels()` / `renderCatalog()` / 聊天
-    /// 模型选择器都不会再列出这两家的模型。
-    /// vision-exp 不在此列：DeepSeek API 只接受 `deepseek-flash` /
-    /// `deepseek-v4-pro` 两个模型名（v0.5.319 已在 Provider 层删除
-    /// 该条目），保留 case 定义仅为兼容历史 catalog / 会话记录。
+    /// `deepSeekV4FlashVisionExp` 的 case 保留（旧 catalog、历史会话记录仍需
+    /// 能解码），但不出现在 `allCases` 里：DeepSeek API 只接受
+    /// `deepseek-flash` / `deepseek-v4-pro` 两个模型名，vision-exp 条目已在
+    /// Provider 层（`TapgoProviderKind.deepseek.defaultModels`）删除。
+    /// 智谱 / MiniMax 的 case 已于 v0.5.319 随供应商下线一并删除。
     public static var allCases: [TapgoModel] {
         [.deepSeekV4Flash, .deepSeekV4Pro]
     }
@@ -36,8 +32,6 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// 不暴露 "deepseek-v4-flash" 这类技术 slug（slug 只用于 API 调用）。
     public var displayName: String {
         switch self {
-        case .minimaxM3: return "MiniMax M3"
-        case .glm53Flash: return "GLM 5.3 Flash"
         case .deepSeekV4Flash: return "DeepSeek V4 Flash"
         case .deepSeekV4FlashVisionExp: return "DeepSeek V4 Flash Vision"
         case .deepSeekV4Pro: return "DeepSeek V4 Pro"
@@ -48,8 +42,6 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// 同时是 `thread/start` 的 `modelProvider` 参数值。
     public var providerId: String {
         switch self {
-        case .minimaxM3: return "minimax"
-        case .glm53Flash: return "glm"
         case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "deepseek"
         }
     }
@@ -58,8 +50,6 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// `TapgoConfig.effectiveBaseURL(for:)` 决定；GLM / DeepSeek 固定。
     public var defaultBaseURL: String {
         switch self {
-        case .minimaxM3: return "https://api.minimaxi.com/v1"
-        case .glm53Flash: return "https://open.bigmodel.cn/api/v1"
         // DeepSeek API 原生支持 OpenAI Responses 协议 (codex 会追加 /responses)。
         case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return "https://api.deepseek.com"
         }
@@ -69,7 +59,6 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// `autoCompactTokenLimit` 保持一致（三者都在 1M 量级）。
     public var contextWindow: Int {
         switch self {
-        case .minimaxM3, .glm53Flash: return 1_000_000
         case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return 1_048_576
         }
     }
@@ -106,8 +95,6 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     /// 目录里展示的一句描述。
     var catalogDescription: String {
         switch self {
-        case .minimaxM3: return "MiniMax 官方 Coding Plan 模型。"
-        case .glm53Flash: return "智谱 GLM-5.3-Flash（BigModel Coding Plan）。"
         case .deepSeekV4Flash: return "DeepSeek V4-Flash（按量计费，原生 Responses API）。"
         case .deepSeekV4FlashVisionExp: return "DeepSeek V4-Flash Vision Exp（实验性多模态视觉模型，文本能力同 V4 Flash，额外支持图像输入）。"
         case .deepSeekV4Pro: return "DeepSeek V4-Pro（按量计费，原生 Responses API）。"

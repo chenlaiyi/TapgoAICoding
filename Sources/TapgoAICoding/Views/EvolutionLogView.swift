@@ -339,6 +339,20 @@ struct EvolutionLogView: View {
         // 倒序：最新在最上。新增条目直接 prepend 即可。
         return [
                 EvolutionEntry(
+                    version: "v0.5.319", date: "2026-09-20", commit: "见源码提交", tag: "v0.5.319",
+                    summary: "修 App 无法使用: daemon 由单客户端串行改为每连接独立会话 (并发 initialize 不再 30 秒超时); 顺带修 provider 段名 TOML 转义 (遗留 builtin:zhipu 曾让整份 config.toml 解析失败)。",
+                    changes: [
+                        "TapgoHarness main.swift: accept 循环每条连接起独立线程 + 独立 codex app-server; 会话结束只影响自身; 活跃会话数写 stderr; backlog 8→32; 忽略 SIGPIPE; accept 后 fd 设 FD_CLOEXEC。",
+                        "SocketHarnessTransport: 客户端 socket 设 FD_CLOEXEC, 避免 codex/ssh/git/MCP 子进程继承会话 fd 后 daemon 看不到 EOF。",
+                        "TomlKey (新增, TapgoCore): provider id 渲染进 [model_providers.<id>] 段名时按需加双引号; 老注册表遗留的 builtin:zhipu/builtin:minimax 精简后被当成自定义 Provider, 未加引号的冒号让 codex 报 invalid unquoted key 并拒绝加载整份 config.toml。",
+                        "TapgoConfig + RemoteCodexHomeSync: 4 处 model_providers 段名渲染统一走 TomlKey.providerSectionKey。",
+                        "HarnessDaemonConcurrencyTests + TomlKeyTests 新增并注册 (8 + 14 断言)。",
+                        "本机与 jkmacmini 已重装/热切换新 daemon 二进制 (jkmacmini 用热切换, 保住正在跑的会话)。",
+                    ],
+                    why: "用户截图会话连续两次 Harness RPC 超时：initialize, 提示任务未完成可重试, 整个 App 看起来不可用; 实测 jkmacmini daemon 卡在一条未结束的会话上, 第二条连接 initialize 永远无响应。升级 chenlaiyi-mbp 后又暴露遗留注册表 provider 段名未加引号的 TOML 回归。",
+                    next: "长任务 + 普通对话并发的人工回归; 把 daemon 版本纳入 fleet 部署脚本。",
+                ),
+                EvolutionEntry(
                     version: "v0.5.318", date: "2026-09-13", commit: "见源码提交", tag: "v0.5.318",
                     summary: "产品转向确认: 原生 iOS 走 pay.itapgo.com 公网中继, 局域网降为回落通道。",
                     changes: [

@@ -7,11 +7,8 @@ import TapgoCore
 ///   * 6 行占比                → 用 TokenUsage.input/output/cached/reasoning 4 个
 ///     维度填充前 4 行;MCP 工具 / 技能当前无拆分量,占位"—"。
 ///   * 平均缓存命中率           → 由调用方提供
-///   * 剩余额度 (5小时/每周)    → MiniMax 官方 Token Plan / Coding Plan 接口
-///     `GET /v1/api/openplatform/coding_plan/remains`,由 `MiniMaxQuotaClient`
-///     拉取并把 "remaining" 反算为 "usedPercent",SessionStore.rateLimits
-///     持有,本视图直接渲染。Credits 一栏对 Token Plan 订阅始终隐藏 (按 token
-///     扣费,无余额概念)。
+///   * 剩余额度                 → DeepSeek 官方 user/balance 接口
+///     拉取账户余额,SessionStore.rateLimits 持有,本视图直接渲染。
 struct ModelUsagePopover: View {
     let usage: TokenUsage?
     let averageCacheHitPercent: Int?
@@ -144,7 +141,7 @@ struct ModelUsagePopover: View {
             }
             let cells = quotaCells()
             if cells.isEmpty {
-                // v0.5.33: GLM 也接了官方余量接口; 空数据文案按模型区分。
+                // 空数据文案按模型区分。
                 Text(emptyQuotaHint)
                     .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier))
                     .foregroundStyle(DSHTheme.labelTertiary)
@@ -175,8 +172,6 @@ struct ModelUsagePopover: View {
     private var sourceLabel: String {
         if rateLimitsLoading { return "刷新中…" }
         switch quotaChannel {
-        case .minimax: return "MiniMax coding_plan/remains"
-        case .glm: return "BigModel monitor/usage/quota/limit"
         case .deepseek: return "DeepSeek user/balance"
         case nil: return "自定义模型未配置额度接口"
         }
@@ -185,8 +180,6 @@ struct ModelUsagePopover: View {
     /// 无快照时的占位文案，按 Provider 给出对应指引。
     private var emptyQuotaHint: String {
         switch quotaChannel {
-        case .minimax: return "等待首次订阅用量上报"
-        case .glm: return "暂无 GLM 额度数据（检查 auth-glm.json）"
         case .deepseek: return "暂无 DeepSeek 余额数据（检查 auth-deepseek.json）"
         case nil: return "自定义模型暂无额度数据"
         }

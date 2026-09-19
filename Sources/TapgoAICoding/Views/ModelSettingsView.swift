@@ -1,11 +1,11 @@
 // TapgoAICoding/Views/ModelSettingsView.swift
 // v0.5.54：模型设置按 ZCode 真实界面整窗复刻 —— 把"供应商 / 模型"两层结构搬到
-// Tapgo AICoding。三个内置供应商（智谱 / MiniMax / DeepSeek）按 kind 默认
-// 挂若干 ProviderModel；用户可在"自定义供应商"段下增删改查。
+// Tapgo AICoding。内置供应商 DeepSeek 按 kind 默认挂若干 ProviderModel；
+// 用户可在"自定义供应商"段下增删改查。
 //
 // 与 v0.5.52 SettingsView.modelTab 的差异：
 //   * 不再在 SettingsView 内联：迁到独立 ModelSettingsView
-//   * 不再有"MiniMax 端点覆盖"卡片（端点改到每个 Provider 行内可改）
+//   * 不再有端点覆盖卡片（端点改到每个 Provider 行内可改）
 //   * 行尾操作：测试模型 / 编辑模型配置（popupbutton 菜单：编辑 / 添加模型 / 删除）
 //   * 自定义供应商支持删除；内置不允许
 //   * 顶部"拖拽调整供应商顺序"按钮占位，点击弹即将推出提示
@@ -173,7 +173,7 @@ struct ModelSettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    providerNavigationSection(title: "智谱", providers: builtinProviders)
+                    providerNavigationSection(title: "DeepSeek", providers: builtinProviders)
                     providerNavigationSection(title: "自定义供应商", providers: customProviders)
 
                     Button {
@@ -361,13 +361,6 @@ struct ModelSettingsView: View {
                 .font(AppFont.scaled(.caption, multiplier: appFontScale.multiplier).weight(.semibold))
                 .foregroundStyle(DSHTheme.labelDim)
             switch provider.builtInKind {
-            case .zhipu:
-                windowQuotaCards(providerName: "智谱 Coding Plan", defaultPlan: "--")
-            case .minimax:
-                windowQuotaCards(
-                    providerName: "MiniMax Coding Plan",
-                    defaultPlan: TapgoConfig.planDisplayName
-                )
             case .deepseek:
                 deepSeekBalanceCards
             case nil:
@@ -380,25 +373,6 @@ struct ModelSettingsView: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(DSHTheme.border, lineWidth: 1)
         )
-    }
-
-    @ViewBuilder
-    private func windowQuotaCards(providerName: String, defaultPlan: String) -> some View {
-        HStack(spacing: 10) {
-            quotaMetricCard(title: quotaSnapshot?.primary?.windowLabel ?? "5 小时剩余",
-                            window: quotaSnapshot?.primary,
-                            tint: DSHTheme.brand)
-            quotaMetricCard(title: quotaSnapshot?.secondary?.windowLabel ?? "每周剩余",
-                            window: quotaSnapshot?.secondary,
-                            tint: DSHTheme.success)
-            metricCard(
-                title: "当前套餐",
-                value: quotaLoading ? "…" : (quotaSnapshot?.planLabel ?? defaultPlan),
-                caption: quotaError ?? providerName,
-                tint: Color(hex: 0xFF8A3D),
-                progress: quotaSnapshot == nil ? 0 : 1
-            )
-        }
     }
 
     @ViewBuilder
@@ -437,20 +411,6 @@ struct ModelSettingsView: View {
             caption: "该供应商未提供官方额度查询接口",
             tint: DSHTheme.labelTertiary,
             progress: 0
-        )
-    }
-
-    @ViewBuilder
-    private func quotaMetricCard(title: String, window: RateLimitWindow?, tint: Color) -> some View {
-        let remaining = window.map { max(0, 100 - $0.usedPercent) }
-        metricCard(
-            title: title,
-            value: quotaLoading ? "…" : remaining.map { "\($0)%" } ?? "--",
-            caption: window?.resetsAt.map(resetCaption)
-                ?? quotaError
-                ?? (window == nil ? "未返回此额度" : "当前周期"),
-            tint: tint,
-            progress: Double(remaining ?? 0) / 100
         )
     }
 
@@ -576,31 +536,13 @@ struct ModelSettingsView: View {
 
     private func providerIcon(_ provider: Provider) -> String {
         switch provider.builtInKind {
-        case .zhipu: return "diamond.fill"
-        case .minimax: return "circle.hexagongrid.fill"
         case .deepseek: return "wave.3.right.circle.fill"
         case nil: return "shippingbox.fill"
         }
     }
 
     private func providerOverviewTitle(_ provider: Provider) -> String {
-        if provider.builtInKind == .zhipu {
-            let plan = quotaSnapshot?.planLabel ?? "Lite"
-            return plan.localizedCaseInsensitiveContains("coding")
-                ? "GLM \(plan)"
-                : "GLM Coding \(plan)"
-        }
         return provider.brand
-    }
-
-    private func resetCaption(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        if Calendar.current.isDateInToday(date) {
-            formatter.dateFormat = "HH:mm"
-        } else {
-            formatter.dateFormat = "M月d日"
-        }
-        return formatter.string(from: date)
     }
 
     private func contextWindowLabel(_ value: Int) -> String {
@@ -637,13 +579,6 @@ struct ModelSettingsView: View {
         defer { quotaLoading = false }
         do {
             switch kind {
-            case .zhipu:
-                quotaSnapshot = try await GLMQuotaClient(apiKey: provider.apiKey).fetchRemains()
-            case .minimax:
-                quotaSnapshot = try await MiniMaxQuotaClient(
-                    apiKey: provider.apiKey,
-                    modelName: provider.models.first?.apiModel ?? TapgoConfig.modelName
-                ).fetchRemains()
             case .deepseek:
                 quotaSnapshot = try await DeepSeekQuotaClient(apiKey: provider.apiKey).fetchBalance()
             }
@@ -711,9 +646,8 @@ struct ModelSettingsView: View {
     /// 把 Provider / Model 映射回 v0.5.52 的 selectedModelKey 值。
     private func resolveLegacyRaw(for provider: Provider, model: ProviderModel) -> String {
         if provider.isBuiltin, provider.builtInKind != nil {
-            // 内置 GLM-5.3 / GLM-5.3-Flash / GLM-5-Turbo 映射回旧 slug：
-            // 旧 TapgoModel 用 "GLM-5.3-Flash" / "deepseek-v4-flash" 等。
-            // 兼容旧 thread/start —— 用 model.apiModel 作为 builtin:<apiModel>
+            // 内置模型映射回旧 slug；兼容旧 thread/start
+            // 用 model.apiModel 作为 builtin:<apiModel>
             return "builtin:\(model.apiModel)"
         }
         return provider.id  // 自定义 Provider 整体 = 旧 custom-<id>
@@ -776,7 +710,7 @@ private struct EditModelSheet: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("模型 ID").font(.caption).foregroundStyle(.secondary)
-                TextField("例如 GLM-5.3-Flash", text: $apiModel)
+                TextField("例如 deepseek-v4-flash", text: $apiModel)
                     .textFieldStyle(.roundedBorder)
             }
             VStack(alignment: .leading, spacing: 6) {

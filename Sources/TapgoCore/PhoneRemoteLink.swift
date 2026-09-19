@@ -1571,7 +1571,7 @@ public enum PhoneRemote {
           }
           $("attMsg").textContent = att > 0 ? " 已附 " + att + " 张图片, 随下一条消息一起发送" : "";
           // composer 底栏状态 (仿 ZCode: 转圈 / 模型名 / 大脑绿点 / 盾牌)
-          $("modelName").textContent = s.model || "MiniMax M3";
+          $("modelName").textContent = s.model || "DeepSeek V4 Flash";
           $("busySpin").classList.toggle("hidden", !busy);
           const ctl = s.control;
           const ctrlReadyAll = !!(ctl && ctl.enabled && ctl.accessibilityAllowed && ctl.screenAllowed);

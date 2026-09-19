@@ -9,9 +9,9 @@ func runRemoteCodexHomeSyncConfigNoSecret(_ t: TestRunner) {
              "rendered config does NOT embed the literal API key value")
     t.expect(config.contains("env_key = \"OPENAI_API_KEY\""),
              "rendered config references env_key = \"OPENAI_API_KEY\" so the harness can read it from the env at runtime")
-    t.expect(config.contains("MiniMax-M3"), "rendered config pins model = MiniMax-M3")
-    t.expect(config.contains("minimax"), "rendered config pins provider = minimax")
-    t.expect(config.contains("https://api.minimaxi.com/v1"),
+    t.expect(config.contains("deepseek-v4-flash"), "rendered config pins model = deepseek-v4-flash")
+    t.expect(config.contains("deepseek"), "rendered config pins provider = deepseek")
+    t.expect(config.contains("https://api.deepseek.com"),
              "rendered config pins the correct base_url")
     t.expect(config.contains("wire_api = \"responses\""),
              "rendered config uses the responses wire API")

@@ -3,18 +3,18 @@
 #
 # What this does:
 #   1. Ensures the Codex CLI is installed (Homebrew cask, ≥ 0.149.1).
-#   2. Sources the MiniMax-M3 bearer token from a single, explicit
+#   2. Sources the DeepSeek bearer token from a single, explicit
 #      source. We deliberately do NOT auto-migrate from old
 #      ~/.codex/ backup files: those keys may be expired/revoked
 #      (we have hit `1008 insufficient balance` / `1004 login fail`
 #      on stale 8-month-old keys in this very repo). The user must
 #      either:
 #        - paste the key when prompted (input is hidden), or
-#        - set MINIMAX_API_KEY / TAPGO_API_KEY in the environment, or
+#        - set DEEPSEEK_API_KEY / TAPGO_API_KEY in the environment, or
 #      Optional safety net: an explicit `--from-file <path>` argument
 #      reads from a file the user points us at (e.g. an internal vault
 #      mount). We never probe ~/.codex/ on our own.
-#   3. Writes the model catalog, config.toml, and auth.json under
+#   3. Writes the model catalog, config.toml, and auth-deepseek.json under
 #      ~/Library/Application Support/Tapgo AICoding/codex/ — the ONLY
 #      directory Tapgo AICoding ever reads.
 #   4. Verifies by spawning `codex app-server` against the isolated
@@ -30,7 +30,7 @@ set -euo pipefail
 APP_NAME="Tapgo AICoding"
 CODEX_HOME="${HOME}/Library/Application Support/${APP_NAME}/codex"
 CONFIG_FILE="${CODEX_HOME}/config.toml"
-AUTH_FILE="${CODEX_HOME}/auth.json"
+AUTH_FILE="${CODEX_HOME}/auth-deepseek.json"
 CATALOG_FILE="${CODEX_HOME}/model-catalogs/tapgo-catalog.json"
 MIN_HARNESS_VERSION="0.149.1"
 HARNESS_BIN_OVERRIDE="${HARNESS_BIN:-}"
@@ -72,9 +72,9 @@ while [[ $# -gt 0 ]]; do
       cat <<USAGE
 Usage: $0 [--from-file <path>]
 
-Sources the MiniMax-M3 bearer key in this order (first hit wins):
+Sources the DeepSeek bearer key in this order (first hit wins):
   1. --from-file <path>        Read key from a specific file (single line).
-  2. \$MINIMAX_API_KEY env var
+  2. \$DEEPSEEK_API_KEY env var
   3. \$TAPGO_API_KEY env var
   4. Interactive prompt (input is hidden)
 
@@ -119,10 +119,10 @@ echo "  Found: ${HARNESS_VERSION_OUTPUT} (${HARNESS_BIN})"
 
 mkdir -p "${CODEX_HOME}/model-catalogs"
 
-# 2. Source the MiniMax-M3 bearer key. Explicit sources only — no
+# 2. Source the DeepSeek bearer key. Explicit sources only — no
 # auto-probing of ~/.codex/ to avoid ingesting stale/revoked keys.
 echo
-echo "==> Locating MiniMax-M3 bearer key (explicit sources only)"
+echo "==> Locating DeepSeek bearer key (explicit sources only)"
 
 KEY=""
 KEY_SOURCE=""
@@ -137,10 +137,10 @@ if [[ -n "${FROM_FILE}" ]]; then
   echo "  ✓ Key loaded from ${FROM_FILE}."
 fi
 
-if [[ -z "${KEY}" && -n "${MINIMAX_API_KEY:-}" ]]; then
-  KEY="${MINIMAX_API_KEY}"
-  KEY_SOURCE="env(MINIMAX_API_KEY)"
-  echo "  ✓ Key loaded from MINIMAX_API_KEY env var."
+if [[ -z "${KEY}" && -n "${DEEPSEEK_API_KEY:-}" ]]; then
+  KEY="${DEEPSEEK_API_KEY}"
+  KEY_SOURCE="env(DEEPSEEK_API_KEY)"
+  echo "  ✓ Key loaded from DEEPSEEK_API_KEY env var."
 fi
 
 if [[ -z "${KEY}" && -n "${TAPGO_API_KEY:-}" ]]; then
@@ -151,9 +151,9 @@ fi
 
 if [[ -z "${KEY}" ]]; then
   echo
-  echo "  No key in env or --from-file. Paste the MiniMax-M3 bearer key below."
-  echo "  (Input is hidden; key is stored 0600 in the isolated auth.json.)"
-  read -r -s -p "  MiniMax API key: " KEY
+  echo "  No key in env or --from-file. Paste the DeepSeek bearer key below."
+  echo "  (Input is hidden; key is stored 0600 in the isolated auth-deepseek.json.)"
+  read -r -s -p "  DeepSeek API key: " KEY
   echo
   KEY_SOURCE="user-typed"
 fi
@@ -163,10 +163,10 @@ if [[ -z "${KEY}" ]]; then
   exit 1
 fi
 
-# 3. Region. Default is the China endpoint, the only one we ship.
+# 3. Endpoint. Default is the DeepSeek endpoint.
 echo
-echo "==> Region"
-BASE_URL="${BASE_URL:-https://api.minimaxi.com/v1}"
+echo "==> Endpoint"
+BASE_URL="${BASE_URL:-https://api.deepseek.com}"
 echo "  Endpoint: ${BASE_URL}"
 echo "  (override with --region <url>)"
 
@@ -174,11 +174,11 @@ echo "  (override with --region <url>)"
 # AICoding ever reads from this directory.
 echo
 echo "==> Writing isolated configuration"
-echo "    auth.json     (0600)"
+echo "    auth-deepseek.json (0600)"
 echo "    config.toml   (0600)"
 echo "    tapgo-catalog.json"
 
-# auth.json — the bearer lives here, never in config.toml.
+# auth-deepseek.json — the bearer lives here, never in config.toml.
 umask 077
 TMP_AUTH="$(mktemp "${AUTH_FILE}.XXXXXX")"
 chmod 600 "${TMP_AUTH}"
@@ -191,33 +191,33 @@ PYEOF
 mv "${TMP_AUTH}" "${AUTH_FILE}"
 chmod 600 "${AUTH_FILE}"
 
-# config.toml — uses env_key so codex reads the bearer from auth.json
+# config.toml — uses env_key so codex reads the bearer from auth-deepseek.json
 # at runtime via the OPENAI_API_KEY env var that Tapgo AICoding
 # exports when spawning the harness. Nothing sensitive is hard-coded.
 cat >"${CONFIG_FILE}" <<EOF
 # Tapgo AICoding — isolated Codex home.
 # Owned by ${APP_NAME}. Independent from ~/.codex/.
 
-model = "MiniMax-M3"
-model_provider = "minimax"
-model_context_window = 1000000
+model = "deepseek-v4-flash"
+model_provider = "deepseek"
+model_context_window = 1048576
 model_catalog_json = "${CATALOG_FILE}"
 
-[model_providers.minimax]
-name = "MiniMax"
+[model_providers.deepseek]
+name = "DeepSeek"
 base_url = "${BASE_URL}"
 wire_api = "responses"
 env_key = "OPENAI_API_KEY"
 EOF
 chmod 600 "${CONFIG_FILE}"
 
-# tapgo-catalog.json — MiniMax-M3 only.
+# tapgo-catalog.json — DeepSeek only.
 cat >"${CATALOG_FILE}" <<'EOF'
 {
   "models": [
     {
-      "slug": "MiniMax-M3",
-      "display_name": "MiniMax-M3",
+      "slug": "deepseek-v4-flash",
+      "display_name": "DeepSeek V4 Flash",
       "description": "Tapgo AICoding 唯一可用模型。",
       "default_reasoning_level": "high",
       "supported_reasoning_levels": [
@@ -228,7 +228,7 @@ cat >"${CATALOG_FILE}" <<'EOF'
       "visibility": "list",
       "supported_in_api": true,
       "priority": 0,
-      "base_instructions": "You are Tapgo AICoding, a coding agent powered by MiniMax-M3. You share the user's workspace and help achieve their coding goals. Be concise and direct.",
+      "base_instructions": "You are Tapgo AICoding, a coding agent powered by deepseek-v4-flash. You share the user's workspace and help achieve their coding goals. Be concise and direct.",
       "supports_reasoning_summaries": true,
       "default_reasoning_summary": "none",
       "support_verbosity": false,

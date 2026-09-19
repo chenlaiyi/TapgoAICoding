@@ -1515,7 +1515,7 @@ struct ComposerView: View {
     @State private var branchSwitchError: String? = nil
     /// 与 ChatView 同 key 的本地镜像：切换模型菜单用高亮当前模型。
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
-        "builtin:\(TapgoModel.minimaxM3.rawValue)"
+        "builtin:\(TapgoModel.deepSeekV4Flash.rawValue)"
     @AppStorage("tapgo.planningMode") private var planningMode = false
     /// 常驻 Plan mode：开启后发消息不清除（默认关闭 → single-shot 行为）
     @AppStorage("tapgo.planModePersistent") private var planModePersistent: Bool = false
@@ -2803,7 +2803,7 @@ struct ComposerView: View {
                 showSlashMenu = false
                 focused = true
             }
-            slashRow("/model", "切换模型（如 /model MiniMax M3）") {
+            slashRow("/model", "切换模型（如 /model DeepSeek V4 Flash）") {
                 text = "/model "
                 focused = true
             }

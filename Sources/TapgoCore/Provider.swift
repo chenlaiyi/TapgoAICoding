@@ -12,84 +12,41 @@
 
 import Foundation
 
-/// 内置供应商分类（v0.5.53 起）。每个 case 都自带 baseURL 与默认模型
-/// 列表，让「智谱」这一 Section header 下能挂多个 ProviderModel 行。
+/// 内置供应商分类（v0.5.53 起）。每个 case 自带 baseURL 与默认模型列表。
+/// v0.5.319 起只保留 DeepSeek 一个内置供应商（智谱 / MiniMax 已下线，
+/// 对应 case 一并删除；旧 `provider-registry.json` 里的遗留条目由
+/// `ensureBuiltinProviders()` 清理）。
 public enum TapgoProviderKind: String, Codable, CaseIterable, Equatable {
-    case zhipu
-    case minimax
     case deepseek
 
-    /// v0.5.117：模型配置只保留 DeepSeek。
-    ///
-    /// 三个 case 都保留定义，原因有二：
-    ///   1. 旧 `provider-registry.json` 里 `builtInKindRaw = "zhipu" /
-    ///      "minimax"` 仍能解码，不会因枚举缺 case 导致整份注册表读不出来；
-    ///   2. `Provider.builtin(_:)` 与额度通道仍能构造历史数据。
-    ///
-    /// 但只有本名单内的供应商会被 `ensureBuiltinProviders()` 自动补全并
-    /// 出现在设置页；名单外的内置供应商会被连同 Key 一并清除。
-    /// 需要恢复智谱 / MiniMax 时，把对应 case 加回这里即可。
+    /// 启用名单：只有名单内的内置供应商会被 `ensureBuiltinProviders()`
+    /// 自动补全并出现在设置页；名单外的 `builtin:*` 条目（例如已下线的
+    /// `builtin:zhipu` / `builtin:minimax`）会被连同选中态一起清除。
+    /// 恢复某个内置供应商时，把 case 加回枚举并加入本名单。
     public static let enabledBuiltinKinds: [TapgoProviderKind] = [.deepseek]
 
     public var displayName: String {
         switch self {
-        case .zhipu: return "智谱"
-        case .minimax: return "MiniMax"
         case .deepseek: return "DeepSeek"
         }
     }
 
     public var brand: String {
         switch self {
-        case .zhipu: return "Zhipu"
-        case .minimax: return "MiniMax"
         case .deepseek: return "DeepSeek"
         }
     }
 
     public var defaultBaseURL: String {
         switch self {
-        case .zhipu: return "https://open.bigmodel.cn/api/v1"
-        case .minimax: return "https://api.minimaxi.com/v1"
         case .deepseek: return "https://api.deepseek.com"
         }
     }
 
     /// 该内置供应商下默认挂载的模型列表（v0.5.53）。
-    /// 智谱下挂 GLM-5.3 / GLM-5.3-Flash / GLM-5-Turbo 三个模型；
-    /// MiniMax / DeepSeek 各挂一个，作为兼容旧 Provider 的兜底。
+    /// DeepSeek 挂 flash / pro 两个模型，作为内置兜底。
     public var defaultModels: [ProviderModel] {
         switch self {
-        case .zhipu:
-            return [
-                ProviderModel(
-                    id: "builtin:zhipu::GLM-5.3",
-                    displayName: "GLM-5.3",
-                    apiModel: "GLM-5.3",
-                    contextWindow: 1_000_000,
-                    isCustom: false),
-                ProviderModel(
-                    id: "builtin:zhipu::GLM-5.3-Flash",
-                    displayName: "GLM-5.3-Flash",
-                    apiModel: "GLM-5.3-Flash",
-                    contextWindow: 1_000_000,
-                    isCustom: false),
-                ProviderModel(
-                    id: "builtin:zhipu::GLM-5-Turbo",
-                    displayName: "GLM-5-Turbo",
-                    apiModel: "GLM-5-Turbo",
-                    contextWindow: 200_000,
-                    isCustom: false),
-            ]
-        case .minimax:
-            return [
-                ProviderModel(
-                    id: "builtin:minimax::MiniMax-M3",
-                    displayName: "MiniMax M3",
-                    apiModel: "MiniMax-M3",
-                    contextWindow: 1_000_000,
-                    isCustom: false),
-            ]
         case .deepseek:
             return [
                 // deepseek API 仅接受 deepseek-flash / deepseek-v4-pro 两个模型名,
@@ -118,9 +75,8 @@ public enum TapgoProviderKind: String, Codable, CaseIterable, Equatable {
 /// 官方额度接口通道。只由内置供应商身份决定，不能用可编辑的
 /// `ProviderModel.apiModel` 反查：用户在模型设置页把 DeepSeek 改成
 /// `deepseek-v4.1-flash` 后，旧逻辑因枚举查不到而误判为自定义模型。
+/// 官方额度接口通道。当前只保留 DeepSeek 一个内置供应商身份。
 public enum TapgoQuotaChannel: String, Codable, Equatable {
-    case minimax
-    case glm
     case deepseek
 }
 
@@ -177,8 +133,6 @@ public struct Provider: Codable, Identifiable, Equatable {
     /// 当前 Provider 对应的官方额度通道；自定义 Provider 无额度接口。
     public var quotaChannel: TapgoQuotaChannel? {
         switch builtInKind {
-        case .minimax: return .minimax
-        case .zhipu: return .glm
         case .deepseek: return .deepseek
         case nil: return nil
         }

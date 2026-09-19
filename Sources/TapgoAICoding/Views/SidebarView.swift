@@ -902,21 +902,13 @@ struct SidebarView: View {
     // MARK: - Footer
 
     /// 左下角灰色行: 当前模型供应商 / 套餐名或余额 / 「5小时余量%/周余量%」。
-    /// 供应商跟随当前选中的模型 (v0.5.31)。v0.5.33 起 GLM 接 BigModel
-    /// 官方余量接口 (planLabel 如 Lite); v0.5.35 起 DeepSeek 按量计费,
-    /// 显示接口返回的余额 (如 ¥17.95 CNY), 无窗口百分比。
+    /// 供应商跟随当前选中的模型。DeepSeek 按量计费，显示接口返回的余额。
     private var modelQuotaSummary: String {
-        var parts: [String]
         let snapshot = store.rateLimits
         let selected = TapgoConfig.resolveSelected()
         switch TapgoConfig.resolveSelectedProvider().quotaChannel {
-        case .minimax:
-            // MiniMax 接口不返回套餐名, 用本地常量 (实际订阅 Ultra)。
-            parts = ["MiniMax", TapgoConfig.planDisplayName]
-        case .glm:
-            parts = ["GLM", snapshot?.planLabel ?? "Coding Plan"]
         case .deepseek:
-            parts = ["DeepSeek"]
+            var parts = ["DeepSeek"]
             if let credits = snapshot?.credits, credits.isVisible, !credits.balance.isEmpty {
                 parts.append("余额 \(credits.balance)")
             }
@@ -924,15 +916,6 @@ struct SidebarView: View {
         case nil:
             return "\(selected.displayName)·自定义"
         }
-        var quota: [String] = []
-        if let primary = snapshot?.primary {
-            quota.append("\(max(0, 100 - primary.usedPercent))%")
-        }
-        if let weekly = snapshot?.secondary, weekly.windowDurationMins == 10080 {
-            quota.append("\(max(0, 100 - weekly.usedPercent))%")
-        }
-        if !quota.isEmpty { parts.append(quota.joined(separator: "/")) }
-        return parts.joined(separator: "·")
     }
 
     @ViewBuilder

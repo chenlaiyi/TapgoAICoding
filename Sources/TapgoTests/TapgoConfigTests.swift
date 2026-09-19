@@ -52,7 +52,7 @@ func runTapgoConfigDeleteCustomModel(_ t: TestRunner) {
     let selectedKey = "tapgo.model"
     defaults.set(customID, forKey: selectedKey)
 
-    let fallback = "builtin:\(TapgoModel.minimaxM3.rawValue)"
+    let fallback = "builtin:\(TapgoModel.deepSeekV4Flash.rawValue)"
     let removed = ModelSettingsProbe.deleteCustomModel(
         id: customID,
         registry: registry,

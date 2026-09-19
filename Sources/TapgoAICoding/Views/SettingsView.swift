@@ -30,7 +30,7 @@ struct SettingsView: View {
     @AppStorage("tapgo.baseURL") private var baseURL = ""
     @AppStorage(TapgoConfig.reasoningEffortKey) private var reasoningEffort = ""
     @AppStorage(TapgoConfig.selectedModelKey) private var selectedModelRaw =
-        TapgoModel.minimaxM3.rawValue
+        TapgoModel.deepSeekV4Flash.rawValue
     @State private var deleteCandidate: TapgoConfig.ResolvedModel?
     @AppStorage(TapgoConfig.appearanceKey) private var appearanceRaw = "system"
     @AppStorage(AppFontScale.userDefaultsKey) private var fontScaleRaw = "medium"
@@ -539,7 +539,7 @@ struct SettingsView: View {
         let removed = TapgoConfig.deleteCustomModel(id: row.id)
         guard removed else { return }
         if wasSelected {
-            let fallback = "builtin:\(TapgoModel.minimaxM3.rawValue)"
+            let fallback = "builtin:\(TapgoModel.deepSeekV4Flash.rawValue)"
             selectedModelRaw = fallback
         }
     }
@@ -952,7 +952,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Tapgo AICoding")
                 .font(AppFont.scaled(.title3, multiplier: scale.multiplier))
-            Text("给 MiniMax-M3 发条任务…")
+            Text("给 DeepSeek 发条任务…")
                 .font(AppFont.scaled(.body, multiplier: scale.multiplier))
                 .foregroundStyle(.secondary)
             Text("已批准 · 思考摘要 · 3 个回合")

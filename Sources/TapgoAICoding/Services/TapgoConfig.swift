@@ -5,33 +5,27 @@ import TapgoCore
 /// We never read or write anything under `~/.codex/`; everything lives under
 /// `~/Library/Application Support/Tapgo AICoding/codex/`.
 enum TapgoConfig {
-    /// Default region. China is the only one we ship — change here if you ever
-    /// need a different endpoint.
-    static let defaultRegion: Region = .china
+    /// 唯一内置供应商 DeepSeek，端点唯一。
+    static let defaultRegion: Region = .deepseek
 
     enum Region: String, CaseIterable, Identifiable {
-        case china
+        case deepseek
         var id: String { rawValue }
         var displayName: String {
             switch self {
-            case .china: return "中国 (api.deepseek.com)"
+            case .deepseek: return "DeepSeek (api.deepseek.com)"
             }
         }
         var baseURL: String {
             switch self {
-            case .china: return "https://api.deepseek.com"
+            case .deepseek: return "https://api.deepseek.com"
             }
         }
     }
 
-    /// 默认模型与 provider（config.toml 顶层缺省值）。v0.5.117 起模型
-    /// 配置只保留 DeepSeek：智谱 / MiniMax 不再出现在启用名单里，
-    /// config.toml 顶层缺省值相应切到 DeepSeek V4 Flash。
-    /// 实际每个新会话用哪个仍由 `selectedModel` 决定，经 `thread/start`
-    /// 显式下发。
+    /// 默认模型与 provider（config.toml 顶层缺省值）。实际每个新会话用哪个
+    /// 由 `selectedModel` 决定，经 `thread/start` 显式下发。
     static let modelName = TapgoModel.deepSeekV4Flash.rawValue
-    /// 套餐显示名 (接口不返回套餐名, 以实际订阅为准)。
-    static let planDisplayName = "Ultra"
     static let modelProvider = TapgoModel.deepSeekV4Flash.providerId
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
@@ -42,7 +36,7 @@ enum TapgoConfig {
     /// into a summary (replaces the user having to manually start a new
     /// session). Sits below `model_context_window` so compaction happens
     /// before the model hits the wall.
-    // DeepSeek V4 系列当前提供 1M 级上下文窗口。Compact at 80%,
+    // MiniMax-M3 currently exposes a 1M context window. Compact at 80%,
     // matching the pressure-based strategy used by current agent harnesses.
     static let autoCompactTokenLimit = 800_000
 
@@ -492,7 +486,7 @@ enum TapgoConfig {
         ProviderRegistry(
             fileURL: providerRegistryFileURL,
             legacyModelRegistryURL: modelRegistryFileURL,
-            legacyAuthPaths: [authPath, glmAuthPath, deepSeekAuthPath]
+            legacyAuthPaths: [deepSeekAuthPath]
         )
     }
 
@@ -522,9 +516,6 @@ enum TapgoConfig {
             return key
         }
         switch kind {
-        case .zhipu: return glmAuthKey()
-        case .minimax:
-            return ModelSettingsProbe.readAPIKey(at: authPath)
         case .deepseek: return deepSeekAuthKey()
         }
     }
@@ -648,8 +639,6 @@ enum TapgoConfig {
     /// ProviderRegistry ID 到 Codex config.toml provider 段名的稳定映射。
     private static func configProviderID(for provider: Provider) -> String {
         switch provider.builtInKind {
-        case .zhipu: return TapgoModel.glm53Flash.providerId
-        case .minimax: return TapgoModel.minimaxM3.providerId
         case .deepseek: return TapgoModel.deepSeekV4Flash.providerId
         case nil: return provider.id
         }
@@ -712,8 +701,6 @@ enum TapgoConfig {
     static func clearAPIKey(for model: TapgoModel) {
         let path: URL
         switch model {
-        case .minimaxM3: path = authPath
-        case .glm53Flash: path = glmAuthPath
         case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: path = deepSeekAuthPath
         }
         try? FileManager.default.removeItem(at: path)
@@ -729,8 +716,6 @@ enum TapgoConfig {
         let key: String?
         if let builtIn = row.builtIn {
             switch builtIn {
-            case .minimaxM3: key = ModelSettingsProbe.readAPIKey(at: authPath)
-            case .glm53Flash: key = ModelSettingsProbe.readAPIKey(at: glmAuthPath)
             case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: key = ModelSettingsProbe.readAPIKey(at: deepSeekAuthPath)
             }
         } else {
@@ -784,8 +769,6 @@ enum TapgoConfig {
     static func syncModelConfigFiles() {
         let config = renderedConfigWithKey(
             region: defaultRegion,
-            authKey: providerAPIKey(.minimax),
-            glmKey: providerAPIKey(.zhipu),
             deepSeekKey: providerAPIKey(.deepseek)
         )
         try? atomicWrite(Data(config.utf8), to: configPath)
@@ -805,8 +788,6 @@ enum TapgoConfig {
                 UserDefaults.standard.string(forKey: selectedModelKey) ?? ""
             )
             let slug = id.hasPrefix("builtin:") ? String(id.dropFirst("builtin:".count)) : id
-            // v0.5.117：只保留 DeepSeek，旧值（builtin:MiniMax-M3 等）
-            // 解析不到时回落到 DeepSeek V4 Flash。
             return TapgoModel(rawValue: slug)
                 ?? .deepSeekV4Flash
         }
@@ -816,24 +797,8 @@ enum TapgoConfig {
     /// 选中模型的实际端点：MiniMax 尊重用户在运行设置里的覆盖，GLM 固定。
     static func effectiveBaseURL(for model: TapgoModel) -> String {
         switch model {
-        case .minimaxM3: return effectiveBaseURL
-        case .glm53Flash, .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return model.defaultBaseURL
+        case .deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp: return model.defaultBaseURL
         }
-    }
-
-    /// GLM（BigModel Coding Plan）的独立鉴权文件，与 auth.json 同设计
-    /// （0600，`{"OPENAI_API_KEY": "<key>"}`）。`renderConfig` 会把其中
-    /// 的 key 注入 `[model_providers.glm]` 的 bearer。文件缺失时注入
-    /// 空串而不是占位符——占位符没有任何运行时替换机制（v0.5.28 的
-    /// 教训），选 GLM 的新会话会直接收到 401，错误清晰可定位。
-    static var glmAuthPath: URL { codexHome.appendingPathComponent("auth-glm.json") }
-
-    static func glmAuthKey() -> String {
-        guard let data = try? Data(contentsOf: glmAuthPath),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let key = json["OPENAI_API_KEY"] as? String
-        else { return "" }
-        return key
     }
 
     /// DeepSeek（按量计费）的独立鉴权文件，与 auth-glm.json 同设计
@@ -856,7 +821,6 @@ enum TapgoConfig {
     }
 
     static var configPath: URL { codexHome.appendingPathComponent("config.toml") }
-    static var authPath: URL { codexHome.appendingPathComponent("auth.json") }
     static var modelCatalogPath: URL {
         codexHome.appendingPathComponent("model-catalogs/tapgo-catalog.json", isDirectory: false)
     }
@@ -1059,13 +1023,12 @@ enum TapgoConfig {
             throw SetupError.missingAuth(providerRegistryFileURL.path)
         }
 
-        // v0.5.117: 这里只要求 config.toml 存在，不再硬校验某一家的
-        // 模型 slug / provider 段。历史实现校验 "MiniMax-M3" +
-        // "[model_providers.minimax]"，在模型收敛到 DeepSeek 后，旧版本
-        // 写出的文件恰好都不含新 slug，会被判为不可用并抛 setup error，
-        // 于是永远走不到下面的漂移重写 —— 无法自愈。
-        // 实际内容由下方 desiredConfig 的 diff 重写负责修正。
+        // config.toml must mention the DeepSeek provider.
         if !fm.fileExists(atPath: configPath.path) {
+            throw SetupError.missingConfig(configPath.path)
+        }
+        let config = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
+        if !config.contains("[model_providers.deepseek]") {
             throw SetupError.missingConfig(configPath.path)
         }
 
@@ -1095,8 +1058,6 @@ enum TapgoConfig {
         // 401 (1004 login fail) —— 占位符没有任何运行时替换机制。
         let desiredConfig = renderedConfigWithKey(
             region: defaultRegion,
-            authKey: providerAPIKey(.minimax),
-            glmKey: providerAPIKey(.zhipu),
             deepSeekKey: providerAPIKey(.deepseek)
         )
         let installedConfig = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
@@ -1124,17 +1085,17 @@ enum TapgoConfig {
             withIntermediateDirectories: true
         )
 
-        // 1. auth.json
+        // 1. auth-deepseek.json
         let auth: [String: Any] = ["OPENAI_API_KEY": apiKey]
         let authData = try JSONSerialization.data(
             withJSONObject: auth,
             options: [.prettyPrinted, .sortedKeys]
         )
-        try atomicWrite(authData, to: authPath)
-        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: authPath.path)
+        try atomicWrite(authData, to: deepSeekAuthPath)
+        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: deepSeekAuthPath.path)
 
         // 2. config.toml — 占位符替换为真实 key (0600 文件, 与官方备份同设计)。
-        let config = renderedConfigWithKey(region: region, authKey: apiKey)
+        let config = renderedConfigWithKey(region: region, deepSeekKey: apiKey)
         try atomicWrite(Data(config.utf8), to: configPath)
         try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configPath.path)
 
@@ -1176,20 +1137,12 @@ enum TapgoConfig {
     /// 缺了它们请求就会 401。
     static func renderedConfigWithKey(
         region: Region,
-        authKey: String,
-        glmKey: String? = nil,
         deepSeekKey: String? = nil
     ) -> String {
         var config = renderConfig(region: region)
             .replacingOccurrences(
-                of: "__FROM_AUTH_GLM_JSON__",
-                with: tomlBasicStringContent(glmKey ?? glmAuthKey()))
-            .replacingOccurrences(
                 of: "__FROM_AUTH_DEEPSEEK_JSON__",
                 with: tomlBasicStringContent(deepSeekKey ?? deepSeekAuthKey()))
-            .replacingOccurrences(
-                of: "__FROM_AUTH_JSON__",
-                with: tomlBasicStringContent(authKey))
         // 自定义模型 bearer: 占位符 __CUSTOM_<id>__ 以注册表中的 key 替换。
         // Key 为空也必须替换为空串，不能把占位符本身误当成凭据发给上游。
         let registry = providerRegistry()
@@ -1209,7 +1162,7 @@ enum TapgoConfig {
         registry.ensureBuiltinProviders()
         let customSections = registry.customProviders.map { provider -> String in
             """
-            [model_providers.\(configProviderID(for: provider))]
+            [model_providers.\(TomlKey.providerSectionKey(configProviderID(for: provider)))]
             name = "\(tomlBasicStringContent(provider.brand.isEmpty ? "Custom" : provider.brand))"
             base_url = "\(tomlBasicStringContent(provider.baseURL))"
             wire_api = "responses"
@@ -1242,15 +1195,11 @@ enum TapgoConfig {
         model_auto_compact_token_limit = \(autoCompactTokenLimit)
         model_catalog_json = "\(modelCatalogPath.path)"
 
-        # v0.5.117: 模型配置只保留 DeepSeek —— 智谱 / MiniMax 的
-        # [model_providers.*] 段不再生成。需要恢复时把对应 case 加回
-        # TapgoProviderKind.enabledBuiltinKinds，并在此补回段落。
-        #
         # v0.5.35: DeepSeek V4 系列。API 原生支持 OpenAI Responses 协议
         # (api-docs.deepseek.com/quick_start/agent_integrations/codex),
         # wire 必须 responses。鉴权来自独立的 auth-deepseek.json;
         # 文件缺失时 bearer 为空, 选 DeepSeek 的新会话会收到 401。
-        [model_providers.\(TapgoModel.deepSeekV4Flash.providerId)]
+        [model_providers.\(TomlKey.providerSectionKey(TapgoModel.deepSeekV4Flash.providerId))]
         name = "DeepSeek"
         base_url = "\(tomlBasicStringContent(deepSeekBaseURL))"
         wire_api = "responses"
@@ -1264,7 +1213,7 @@ enum TapgoConfig {
 
         [notice]
         # experimental_bearer_token 已由 App 注入真实 key,
-        # 本文件与 auth.json / auth-glm.json / auth-deepseek.json 同为 0600 权限, 请勿外传。
+        # 本文件与 auth-deepseek.json 同为 0600 权限, 请勿外传。
         """
     }
 
@@ -1366,7 +1315,7 @@ enum SetupError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAuth(let path):
-            return "缺少独立 auth.json: \(path)。请先运行 scripts/init-tapgo.sh 写入 MiniMax-M3 凭据。"
+            return "缺少 DeepSeek 凭据: \(path)。请先在模型设置里填写 DeepSeek API Key。"
         case .missingConfig(let path):
             return "缺少独立 config.toml: \(path)。请先运行 scripts/init-tapgo.sh。"
         case .harnessNotFound:

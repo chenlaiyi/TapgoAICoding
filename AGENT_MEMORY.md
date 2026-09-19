@@ -91,3 +91,12 @@
 - **iOS AppIcon**：当前用 Mac 端 logo (`AppBuilder/AppIcon.icns`，1024×1024 ic12 type) 拍平到白底（紫蓝渐变 + 白色 C 形 + 中心绿色三角）；占位，上线前可让设计师优化。
 - **TapgoComputerUse 不能在 iOS 端 import**：`TapgoAICoding.app` 依赖 `TapgoComputerUse` (ComputerUse 截图/输入)，iOS 端 PairingLink 不依赖——但 iOS 真机 install 时仍然因为 TapgoAICoding app 把 TapgoComputerUse.xcframework 链进去而体积较大；这不是问题，仅记录。
 - **E2E 测试脚本**：`mobile/E2E-TEST-v1.0.1.md` 端到端测试清单（Mac 端启 app → PairCode 卡片 → iPhone 扫码/手动输入 → DashboardView 已连接 → 截图归档）。
+
+## Harness daemon（TapgoHarness）部署事实（2026-09-20 增补）
+
+- **daemon 不在 .app 包内**：`TapgoHarness` 是独立可执行文件，装在 `~/.tapgo-aicoding/bin/TapgoHarness`，由 launchd LaunchAgent `com.tapgo.aicoding.harness` 拉起；部署要走 `scripts/install-harness-daemon.sh`（远端机器也要各跑一次），只装 App 不会更新 daemon。
+- **两套日志别混淆**：daemon 的 stdout/stderr 在 `~/Library/Logs/TapgoAICoding/harness.{log,err.log}`（**无空格**，来自 plist 的 StandardOut/ErrorPath）；App 自己的日志在 `~/Library/Logs/Tapgo AICoding/harness.log`（**有空格**，`TapgoConfig.logFileURL`）。
+- **跨机拷贝的 daemon 二进制会被 taskgated 拒杀**：scp 过去的 ad-hoc 签名在目标机 `SIGKILL (Code Signature Invalid)`（崩溃报告 `namespace: CODESIGNING`，launchd 里 `last exit reason = OS_REASON_CODESIGNING`）。可靠做法是在目标机本地编译：TapgoHarness 只依赖 Foundation/Darwin，`xcrun swiftc -O main.swift -o TapgoHarness` 即可；或就地 `codesign --force --sign -` 重签 bincode。
+- **替换二进制后只 `launchctl kickstart -k` 可能仍起不来**（缓存的签名判定），必须先 `launchctl bootout gui/$(id -u)/com.tapgo.aicoding.harness` 再 `launchctl bootstrap gui/$(id -u) <plist>` 重新注册。
+- **daemon 自 v0.5.319 起支持多客户端并发**：此前是单客户端串行，第二条连接只能在 listen backlog 排队，表现为第二个会话 `Harness RPC 超时：initialize`（30 秒）＋「任务未完成，可重试」，一个长任务在跑就足以让整个 App 看起来不可用。daemon 卡在一条未结束会话上的排查命令：`lsof -p <daemon pid> | grep harness.sock`（1=只剩监听，2+=有活跃会话）。
+- **daemon 升级不必中断在跑的会话**：`rm -f <socket>` 后另起一个新 daemon 接管 socket 路径，老 daemon 继续服务已建立的连接；等老会话结束后再 bootout/bootstrap 收敛为单一受管实例。

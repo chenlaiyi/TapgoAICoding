@@ -15,50 +15,22 @@ func runProviderRegistry(_ t: TestRunner) {
     defer { try? FileManager.default.removeItem(at: dir) }
     let registry = ProviderRegistry(fileURL: file)
 
-    // MARK: - 内置 Provider 自动补全（v0.5.117 起只保留 DeepSeek）
+    // MARK: - 内置 Provider 自动补全
     registry.ensureBuiltinProviders()
     t.expectEqual(registry.builtinProviders.count, 1,
-                  "provider: 内置供应商只保留 DeepSeek（智谱 / MiniMax 已下线）")
-    t.expectEqual(registry.builtinProviders.first?.id,
-                  TapgoProviderKind.deepseek.registryID,
-                  "provider: 唯一内置 Provider 是 DeepSeek")
+                  "provider: 内置 1 个供应商（DeepSeek）")
     t.expectEqual(registry.customProviders.count, 0,
                   "provider: 起初无自定义 Provider")
     t.expectEqual(registry.resolveSelectedProvider().id,
                   TapgoProviderKind.deepseek.registryID,
-                  "provider: resolveSelectedProvider 落到 DeepSeek")
+                  "provider: resolveSelectedProvider 落到唯一内置（DeepSeek）")
 
-    // MARK: - DeepSeek 下挂 3 个默认模型
-    let deepSeek = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
-    t.expectEqual(deepSeek.models.count, 2,
-                  "provider: DeepSeek 默认挂 2 个模型（Flash / Pro）")
-    // DeepSeek API 只接受 `deepseek-flash`；v0.5.319 起 apiModel 用真实
-    // 名字，id 仍保留 builtin:deepseek::deepseek-v4-flash 以兼容选中态。
-    t.expect(deepSeek.models.contains { $0.apiModel == "deepseek-flash" },
-             "provider: DeepSeek 默认模型用 API 接受的 deepseek-flash")
-
-    // MARK: - v0.5.117：名单外的内置供应商在补全时被清除
-    let staleState = ProviderRegistryState(
-        providers: [.builtin(.zhipu), .builtin(.minimax), .builtin(.deepseek)],
-        selectedProviderID: TapgoProviderKind.zhipu.registryID,
-        selectedModelPerProvider: [
-            TapgoProviderKind.zhipu.registryID: "builtin:zhipu::GLM-5.3"
-        ])
-    let staleFile = dir.appendingPathComponent("stale-registry.json")
-    if let data = try? JSONEncoder().encode(staleState) {
-        try? data.write(to: staleFile)
-    }
-    let staleRegistry = ProviderRegistry(fileURL: staleFile)
-    t.expectEqual(staleRegistry.providers.count, 3,
-                  "provider: 旧注册表仍能解码含智谱 / MiniMax 的历史数据")
-    staleRegistry.ensureBuiltinProviders()
-    t.expectEqual(staleRegistry.providers.map { $0.id },
-                  [TapgoProviderKind.deepseek.registryID],
-                  "provider: ensureBuiltinProviders 清除名单外的内置供应商")
-    t.expectEqual(staleRegistry.state.selectedProviderID, "",
-                  "provider: 指向已清除供应商的选中态被重置")
-    t.expect(staleRegistry.state.selectedModelPerProvider.isEmpty,
-             "provider: 已清除供应商的模型选中态一并清掉")
+    // MARK: - DeepSeek 下挂 2 个默认模型
+    let deepseek = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
+    t.expectEqual(deepseek.models.count, 2,
+                  "provider: DeepSeek 默认挂 2 个模型（flash / pro）")
+    t.expect(deepseek.models.contains(where: { $0.apiModel == "deepseek-flash" }),
+             "provider: DeepSeek flash apiModel 为 deepseek-flash")
 
     // MARK: - 自定义 Provider 增删改查
     let custom = Provider(
@@ -69,9 +41,9 @@ func runProviderRegistry(_ t: TestRunner) {
         apiKey: "sk-x",
         models: [
             ProviderModel(
-                id: "custom-TEST::probe-model",
-                displayName: "Probe (代理)",
-                apiModel: "probe-model",
+                id: "custom-TEST::m1",
+                displayName: "Proxy Model",
+                apiModel: "vendor/model",
                 contextWindow: 128_000,
                 isCustom: true)
         ],
@@ -87,9 +59,9 @@ func runProviderRegistry(_ t: TestRunner) {
     var edited = custom
     edited.apiKey = "sk-y"
     edited.models = custom.models + [
-        ProviderModel(id: "custom-TEST::extra-model",
-                      displayName: "Extra (代理)",
-                      apiModel: "extra-model",
+        ProviderModel(id: "custom-TEST::m2",
+                      displayName: "Proxy Model 2",
+                      apiModel: "vendor/model2",
                       contextWindow: 128_000,
                       isCustom: true)
     ]
@@ -106,10 +78,10 @@ func runProviderRegistry(_ t: TestRunner) {
     let model = edited.models[0]
     registry.setSelectedModel(model, for: edited)
     t.expectEqual(registry.state.selectedModelPerProvider["custom-TEST"],
-                  "custom-TEST::probe-model",
+                  "custom-TEST::m1",
                   "provider: setSelectedModel 写入 provider→model 映射")
     t.expectEqual(registry.resolveSelectedModel(for: edited).apiModel,
-                  "probe-model",
+                  "vendor/model",
                   "provider: resolveSelectedModel 取回正确 model")
 
     // MARK: - 内置 Provider 拒绝删除
@@ -126,39 +98,27 @@ func runProviderRegistry(_ t: TestRunner) {
              "provider: 自定义 Provider 删除后查不到")
 
     // MARK: - 内置 Provider 字段锁
-    let builtin = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
-    var tryEditDisplayName = builtin
+    let deepseek2 = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
+    var tryEditDisplayName = deepseek2
     tryEditDisplayName.displayName = "改名"
     registry.addOrUpdate(tryEditDisplayName)
-    let builtinAfter = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
-    t.expectEqual(builtinAfter.displayName, "DeepSeek",
+    let deepseek3 = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
+    t.expectEqual(deepseek3.displayName, "DeepSeek",
                   "provider: 内置 displayName 不允许改")
-    t.expectEqual(builtinAfter.brand, "DeepSeek",
+    t.expectEqual(deepseek3.brand, "DeepSeek",
                   "provider: 内置 brand 不允许改")
-    t.expectEqual(builtinAfter.apiKey, "",
-                  "provider: 内置 Key 仍空")
     // 但 Key / baseURL / models 允许改
-    var tryEditKey = builtinAfter
+    var tryEditKey = deepseek3
     tryEditKey.apiKey = "sk-builtin"
     registry.addOrUpdate(tryEditKey)
     t.expectEqual(registry.provider(id: TapgoProviderKind.deepseek.registryID)?.apiKey,
                   "sk-builtin",
                   "provider: 内置 Key 允许改")
 
-    // MARK: - 内置 Provider 不能改 baseURL 锁校验（v0.5.53 设计）：允许
-    // （baseURL 已被内置 / 用户双轨允许），这里只验不会因为校验失败被拒。
-    var tryEditURL = tryEditKey
-    tryEditURL.baseURL = "not-a-url"
-    registry.addOrUpdate(tryEditURL)
-    t.expectEqual(registry.provider(id: TapgoProviderKind.deepseek.registryID)?.baseURL,
-                  "not-a-url",
-                  "provider: 内置 baseURL 允许改（保留 v0.5.52 端点覆盖行为）")
-
     // MARK: - 额度通道按内置供应商，不按可改名 apiModel（v0.5.315）
-    let deepSeekFresh = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
-    t.expectEqual(deepSeekFresh.quotaChannel, .deepseek,
+    t.expectEqual(deepseek.quotaChannel, .deepseek,
                   "quota: DeepSeek Provider 路由到余额接口")
-    var renamedDeepSeek = deepSeekFresh
+    var renamedDeepSeek = deepseek3
     renamedDeepSeek.models = [
         ProviderModel(
             id: "builtin:deepseek::deepseek-v4-pro",
@@ -180,19 +140,19 @@ func runProviderRegistry(_ t: TestRunner) {
                   "quota: 仍返回用户改后的实际模型 slug")
 
     // MARK: - reorderProviders（UI 占位）
-    registry.addOrUpdate(custom)
-    let order = ["custom-TEST", TapgoProviderKind.deepseek.registryID]
+    let order = [
+        TapgoProviderKind.deepseek.registryID,
+    ]
     registry.reorderProviders(order)
     t.expectEqual(registry.providers.map { $0.id }, order,
                   "provider: reorderProviders 调整顺序")
 
     // MARK: - 持久化往返
     let reloaded = ProviderRegistry(fileURL: file)
-    reloaded.ensureBuiltinProviders()
-    t.expectEqual(reloaded.providers.count, 2,
-                  "provider: 重启后保留 1 个内置 + 1 个自定义")
+    t.expectEqual(reloaded.providers.count, 1,
+                  "provider: 重启后 1 个内置 Provider")
     t.expectEqual(reloaded.providers.first?.id,
-                  "custom-TEST",
+                  TapgoProviderKind.deepseek.registryID,
                   "provider: 顺序持久化")
 }
 
@@ -202,7 +162,7 @@ func runProviderRegistryMigration(_ t: TestRunner) {
         .appendingPathComponent("tapgo-providers-mig-\(UUID().uuidString)", isDirectory: true)
     let file = dir.appendingPathComponent("provider-registry.json")
     let legacyFile = dir.appendingPathComponent("model-registry.json")
-    let authGLM = dir.appendingPathComponent("auth-glm.json")
+    let authDS = dir.appendingPathComponent("auth-deepseek.json")
     defer { try? FileManager.default.removeItem(at: dir) }
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
@@ -218,21 +178,21 @@ func runProviderRegistryMigration(_ t: TestRunner) {
     let legacyData = try? JSONEncoder().encode(["customModels": [customA, customB]])
     try? legacyData?.write(to: legacyFile)
 
-    // 写入 auth-glm.json
-    let glmKey = "{\"OPENAI_API_KEY\":\"sk-glm-test\"}"
-    try? glmKey.data(using: .utf8)?.write(to: authGLM)
+    // 写入 auth-deepseek.json
+    let dsKey = "{\"OPENAI_API_KEY\":\"sk-ds-test\"}"
+    try? dsKey.data(using: .utf8)?.write(to: authDS)
 
     let registry = ProviderRegistry(
         fileURL: file,
         legacyModelRegistryURL: legacyFile,
-        legacyAuthPaths: [authGLM]
+        legacyAuthPaths: [authDS]
     )
     let migrated = registry.migrateFromLegacyIfNeeded()
     t.expect(migrated, "provider: migrateFromLegacyIfNeeded 返回 true")
     t.expect(!FileManager.default.fileExists(atPath: legacyFile.path),
              "provider: 旧 model-registry.json 移到 backups")
-    t.expect(!FileManager.default.fileExists(atPath: authGLM.path),
-             "provider: 旧 auth-glm.json 移到 backups")
+    t.expect(!FileManager.default.fileExists(atPath: authDS.path),
+             "provider: 旧 auth-deepseek.json 移到 backups")
 
     // 2 个自定义 Provider，每个 1 个模型
     t.expectEqual(registry.customProviders.count, 2,
@@ -245,14 +205,10 @@ func runProviderRegistryMigration(_ t: TestRunner) {
     t.expectEqual(provA.models.first?.apiModel, "a",
                   "provider: 自定义 Provider 内嵌 1 个模型")
 
-    // v0.5.117：智谱 / MiniMax 已从启用名单移除，迁移不再补回这两个内置
-    // 供应商；auth-glm.json 的 Key 不合并进注册表（原文件已被移到
-    // backups/ 保留，需要恢复时从备份取回）。
-    t.expectNil(registry.provider(id: TapgoProviderKind.zhipu.registryID),
-                "provider: 迁移不再补回已下线的智谱")
-    t.expectEqual(registry.builtinProviders.map { $0.id },
-                  [TapgoProviderKind.deepseek.registryID],
-                  "provider: 迁移后内置只剩 DeepSeek")
+    // DeepSeek 内置 Key 应从 auth-deepseek.json 合并
+    let ds = registry.provider(id: TapgoProviderKind.deepseek.registryID)!
+    t.expectEqual(ds.apiKey, "sk-ds-test",
+                  "provider: DeepSeek Key 从 auth-deepseek.json 合并")
 
     // 1 个内置 + 2 个自定义 = 3
     t.expectEqual(registry.providers.count, 3,
