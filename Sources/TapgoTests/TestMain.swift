@@ -58,6 +58,7 @@ let allSections: [String] = [
     "TapgoHarness daemon: 并发客户端都能拿到 initialize 响应",
     "TomlKey: provider 段名转义",
     "ProviderRegistry: 下线内置供应商清理",
+    "Harness daemon 脚本: key 提取 / 探针 / dry-run",
     "HarnessDaemonLauncher: returns true when launcher socket file exists",
     "HarnessDaemonLauncher: socketPath is the well-known Application Support path",
     "HarnessDaemonLauncher: daemonBinaryPath resolves to installed binary",
@@ -620,6 +621,9 @@ struct TapgoTestMain {
         }
         await runIfInScope(runner, "ProviderRegistry: 下线内置供应商清理") {
             runProviderRegistryRetiredBuiltinPrune(runner)
+        }
+        await runIfInScope(runner, "Harness daemon 脚本: key 提取 / 探针 / dry-run") {
+            runHarnessDaemonScripts(runner)
         }
         await runIfInScope(runner, "HarnessSupervisor: restart start failures consume retry budget") {
             await runHarnessSupervisorGivesUp(runner)

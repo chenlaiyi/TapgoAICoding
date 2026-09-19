@@ -76,7 +76,7 @@ let sessions = SessionCounter()
 // spawn codex app-server
 // 注意：proc 必须在每次客户端连接时重新创建（每个客户端连接都是独立的
 // codex app-server 会话；codex 设计上要求每个 stdio 连接独立 handshake）
-func spawnCodex() throws -> (Process, Pipe, Pipe, Pipe) {
+@Sendable func spawnCodex() throws -> (Process, Pipe, Pipe, Pipe) {
     let proc = Process()
     proc.executableURL = URL(fileURLWithPath: codexPath)
     proc.arguments = ["app-server", "--listen", "stdio://"]
@@ -107,7 +107,7 @@ func spawnCodex() throws -> (Process, Pipe, Pipe, Pipe) {
 
 /// 把一个 fd 上的 codex stdout 全量写进客户端 socket。
 /// 返回 false 表示客户端已不可写（对端关闭/出错），调用方应尽快收尾。
-func pumpStdoutToClient(_ clientFD: Int32, _ handle: FileHandle) -> Bool {
+@Sendable func pumpStdoutToClient(_ clientFD: Int32, _ handle: FileHandle) -> Bool {
     while true {
         let data = handle.availableData
         if data.isEmpty {
@@ -136,7 +136,7 @@ func pumpStdoutToClient(_ clientFD: Int32, _ handle: FileHandle) -> Bool {
 
 /// 服务一条客户端连接：独立 codex app-server + 双向桥接。
 /// 在专属线程上运行，绝不阻塞 accept 循环（v0.5.319）。
-func serveClient(_ clientFD: Int32) {
+@Sendable func serveClient(_ clientFD: Int32) {
     let active = sessions.begin()
     stderrLog("client connected fd=\(clientFD) (active sessions=\(active))")
 

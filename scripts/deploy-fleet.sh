@@ -17,7 +17,8 @@
 #
 # 可覆盖入口（测试/自定义部署，真实环境走默认值）：
 #   EVOLVE_FLEET_APP / LOCAL_DEST / REMOTE_APP / SSH / SCP / RESTART_SCRIPT /
-#   UI_ASSERT_SCRIPT / RESTART_WAIT / TARGETS_OVERRIDE / OPEN / PGREP
+#   UI_ASSERT_SCRIPT / RESTART_WAIT / TARGETS_OVERRIDE / OPEN / PGREP /
+#   EVOLVE_FLEET_DAEMON_SCRIPT / EVOLVE_FLEET_DAEMON(=0 跳过) / EVOLVE_FORCE_DAEMON
 #
 # Usage:
 #   ./scripts/deploy-fleet.sh                 # version from AppBuilder/Info.plist
@@ -26,6 +27,7 @@
 #   ./scripts/deploy-fleet.sh --restart-local # also restart the local GUI app
 #   ./scripts/deploy-fleet.sh --only jkmacmini 0.5.282      # canary host only
 #   ./scripts/deploy-fleet.sh --exclude jkmacmini 0.5.282   # remaining hosts
+#   ./scripts/deploy-fleet.sh --skip-daemon 0.5.319        # 只装 App（daemon 单独发）
 #
 # NOTE: --restart-local kills the currently running Tapgo AICoding, which may
 # terminate the Codex session driving this script. It is opt-in for that reason.
@@ -36,6 +38,7 @@ cd "$ROOT"
 
 DRY_RUN=""
 RESTART_LOCAL=""
+SKIP_DAEMON=""
 ONLY_HOST=""
 EXCLUDE_HOST=""
 VERSION=""
@@ -43,9 +46,10 @@ while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --restart-local) RESTART_LOCAL=1 ;;
+    --skip-daemon) SKIP_DAEMON=1 ;;
     --only) ONLY_HOST="${2:-}"; shift ;;
     --exclude) EXCLUDE_HOST="${2:-}"; shift ;;
-    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
     *) [[ -z "$VERSION" ]] || { echo "ERROR: unexpected arg: $1" >&2; exit 2; }; VERSION="$1" ;;
   esac
   shift
@@ -67,6 +71,7 @@ fi
 SSH_BIN="${EVOLVE_FLEET_SSH:-ssh}"
 SCP_BIN="${EVOLVE_FLEET_SCP:-scp}"
 RESTART_SCRIPT="${EVOLVE_FLEET_RESTART_SCRIPT:-$ROOT/scripts/restart-and-resume.sh}"
+DAEMON_SCRIPT="${EVOLVE_FLEET_DAEMON_SCRIPT:-$ROOT/scripts/deploy-harness-daemon.sh}"
 UI_ASSERT_SCRIPT="${EVOLVE_FLEET_UI_ASSERT_SCRIPT:-$ROOT/scripts/evolution-ui-assert.sh}"
 RESTART_WAIT="${EVOLVE_FLEET_RESTART_WAIT:-3}"
 [[ -d "$APP" ]] || { echo "ERROR: $APP missing; run scripts/build-app.sh first." >&2; exit 3; }
@@ -217,4 +222,22 @@ for target in ${TARGETS[@]+"${TARGETS[@]}"}; do
     FAIL=1
   fi
 done
-[[ "$FAIL" -eq 0 ]]
+[[ "$FAIL" -eq 0 ]] || exit 1
+
+# ---------- daemon（TapgoHarness）----------
+# daemon 不在 .app 包内，只装 App 不会更新它（v0.5.319 的并发修复就是这样漏掉
+# 过远端机器）。默认顺带部署 daemon 并跑并发探针；只想发 App、或目标机正在跑
+# 会话时用 --skip-daemon / EVOLVE_FLEET_DAEMON=0 跳过。
+if [[ -n "$SKIP_DAEMON" || "${EVOLVE_FLEET_DAEMON:-1}" == "0" ]]; then
+  echo "==> daemon 部署跳过（--skip-daemon / EVOLVE_FLEET_DAEMON=0）"
+elif [[ ! -f "$DAEMON_SCRIPT" ]]; then
+  echo "WARN: 找不到 daemon 部署脚本 ${DAEMON_SCRIPT}，跳过" >&2
+else
+  DAEMON_ARGS=()
+  [[ -n "$DRY_RUN" ]] && DAEMON_ARGS+=(--dry-run)
+  [[ -n "$ONLY_HOST" ]] && DAEMON_ARGS+=(--only "$ONLY_HOST")
+  if ! bash "$DAEMON_SCRIPT" ${DAEMON_ARGS[@]+"${DAEMON_ARGS[@]}"}; then
+    echo "ERROR: daemon 部署失败（App 已装好；daemon 可单独重跑 scripts/deploy-harness-daemon.sh）" >&2
+    exit 1
+  fi
+fi

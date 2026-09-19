@@ -45,11 +45,12 @@ cp -f "$BIN_SRC" "$BIN_DIR/TapgoHarness"
 chmod 0755 "$BIN_DIR/TapgoHarness"
 
 echo "[4/5] 写 launchd plist..."
-API_KEY="$(grep experimental_bearer_token "$CODEX_HOME/config.toml" | head -1 | sed 's/.*"\(sk-cp-[^"]*\)".*/\1/')"
-if [ -z "${API_KEY:-}" ]; then
-    echo "ERROR: 找不到 API key，请检查 $CODEX_HOME/config.toml" >&2
+# v0.5.319: 提取逻辑抽到 scripts/harness-api-key.sh（优先 deepseek 段、跳过注释、
+# 接受任意 token 前缀）。旧实现只认 `sk-cp-`，DeepSeek-only 配置会直接失败。
+API_KEY="$("$REPO_ROOT/scripts/harness-api-key.sh" "$CODEX_HOME/config.toml")" || {
+    echo "ERROR: 找不到 API key，请检查 $CODEX_HOME/config.toml 的 experimental_bearer_token" >&2
     exit 1
-fi
+}
 
 PLIST_TEMPLATE="$REPO_ROOT/scripts/launchd/$LABEL.plist"
 sed -e "s|__HARNESS_BIN__|$BIN_DIR/TapgoHarness|g" \

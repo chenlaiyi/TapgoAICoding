@@ -100,3 +100,14 @@
 - **替换二进制后只 `launchctl kickstart -k` 可能仍起不来**（缓存的签名判定），必须先 `launchctl bootout gui/$(id -u)/com.tapgo.aicoding.harness` 再 `launchctl bootstrap gui/$(id -u) <plist>` 重新注册。
 - **daemon 自 v0.5.319 起支持多客户端并发**：此前是单客户端串行，第二条连接只能在 listen backlog 排队，表现为第二个会话 `Harness RPC 超时：initialize`（30 秒）＋「任务未完成，可重试」，一个长任务在跑就足以让整个 App 看起来不可用。daemon 卡在一条未结束会话上的排查命令：`lsof -p <daemon pid> | grep harness.sock`（1=只剩监听，2+=有活跃会话）。
 - **daemon 升级不必中断在跑的会话**：`rm -f <socket>` 后另起一个新 daemon 接管 socket 路径，老 daemon 继续服务已建立的连接；等老会话结束后再 bootout/bootstrap 收敛为单一受管实例。
+- **一键发三台（2026-09-20 起）**：`scripts/deploy-harness-daemon.sh` 负责本机 + 两台远端；`scripts/deploy-fleet.sh` 装完 App 后**默认调用它**（`--skip-daemon` 或 `EVOLVE_FLEET_DAEMON=0` 可跳过）。目标机本地编译 + bootout/bootstrap + 并发探针；源码 sha 记录在 `~/.tapgo-aicoding/bin/.TapgoHarness.src.sha256`，同源且探针通过就跳过重启（不打断在跑的会话；daemon 正在服务会话时默认 WARN 跳过，`--force` 强制）。
+- **健康/并发探针**：`scripts/harness-daemon-probe.sh [socket]` 只读校验「daemon 有响应」+「A 连接占线时 B 的 initialize 仍被服务」；退出码 3=socket 缺失 / 4=单连接超时 / 5=并发被阻塞。
+- **API key 提取**：`scripts/harness-api-key.sh <config.toml>`（优先 `[model_providers.deepseek]` 段、跳过注释行、接受任意 token 前缀）。旧实现只认 `sk-cp-`，供应商精简成 DeepSeek 后配置里是 `sk-…`，会让 `install-harness-daemon.sh` 报「找不到 API key」。
+- **三台机现状（2026-09-20）**：本机 / jkmacmini / chenlaiyi-mbp（macbookpro）都有 launchd 托管的 daemon；第三台是本次首次安装，安装前 App 一直走 `LocalHarnessTransport` 回落。
+
+## Sparkle 签名与发布命令行注意（2026-09-20 增补）
+
+- `sign_update -p`（或 `--ed-key-file <pem> -p`）打印的是 **64 字节私钥 blob**，不是公钥，别拿它跟 `SUPublicEDKey` 比对（会得出假的不匹配结论）。要看公钥用 `generate_keys -p --account com.tapgo.aicoding`。
+- 签名与验签**必须带 `--account com.tapgo.aicoding`**：Sparkle 默认 account 是 `ed25519`，本机没有该条目；不加的后果是 `generate_appcast` 静默跳过签名（appcast item 没有 `sparkle:edSignature`），或 `sign_update --verify` 报 key not found。
+- 验签最可靠的一条：`sign_update --account com.tapgo.aicoding --verify <zip> <appcast 里的 edSignature>` 退出 0。Ed25519 是确定性的，重签同一 zip 应得到逐字节相同的签名，可据此判断某把私钥是不是发布用的那把。
+- 发布链路：`create-github-release-artifacts.sh`（可加 `TAPGO_CANARY=1` 只出产物 + 建 draft）→ `canary-promote.sh <version> <canary-host>`（发布 appcast + draft 提升 + 部署其余机器）→ 本机（被 exclude 的那台）自行安装。
