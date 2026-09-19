@@ -17,6 +17,16 @@ public enum TapgoModel: String, CaseIterable, Identifiable, Codable {
     case deepSeekV4Pro = "deepseek-v4-pro"
     case deepSeekV4FlashVisionExp = "deepseek-v4-flash-vision-exp"
 
+    /// v0.5.117：模型配置只保留 DeepSeek。
+    ///
+    /// MiniMax / GLM 的 case 定义保留（旧 catalog、历史会话记录、
+    /// `clearAPIKey(for:)` 的 switch 仍要能命中），但它们不再出现在
+    /// `allCases` 里，于是 `allModels()` / `renderCatalog()` / 聊天
+    /// 模型选择器都不会再列出这两家的模型。
+    public static var allCases: [TapgoModel] {
+        [.deepSeekV4Flash, .deepSeekV4Pro, .deepSeekV4FlashVisionExp]
+    }
+
     public var id: String { rawValue }
 
     /// 选择菜单 / 状态芯片等 UI 处的展示名：品牌 + 模型名，

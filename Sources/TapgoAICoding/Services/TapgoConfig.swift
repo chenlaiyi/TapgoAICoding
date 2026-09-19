@@ -14,23 +14,25 @@ enum TapgoConfig {
         var id: String { rawValue }
         var displayName: String {
             switch self {
-            case .china: return "中国 (api.minimaxi.com)"
+            case .china: return "中国 (api.deepseek.com)"
             }
         }
         var baseURL: String {
             switch self {
-            case .china: return "https://api.minimaxi.com/v1"
+            case .china: return "https://api.deepseek.com"
             }
         }
     }
 
-    /// 默认模型与 provider（config.toml 顶层缺省值）。v0.5.31 起支持
-    /// 多模型切换：实际每个新会话用哪个由 `selectedModel` 决定，经
-    /// `thread/start` 显式下发；后台任务（记忆整理、额度查询）固定 MiniMax。
-    static let modelName = TapgoModel.minimaxM3.rawValue
-    /// 当前订阅的 MiniMax 套餐显示名 (接口不返回套餐名, 以实际订阅为准)。
+    /// 默认模型与 provider（config.toml 顶层缺省值）。v0.5.117 起模型
+    /// 配置只保留 DeepSeek：智谱 / MiniMax 不再出现在启用名单里，
+    /// config.toml 顶层缺省值相应切到 DeepSeek V4 Flash。
+    /// 实际每个新会话用哪个仍由 `selectedModel` 决定，经 `thread/start`
+    /// 显式下发。
+    static let modelName = TapgoModel.deepSeekV4Flash.rawValue
+    /// 套餐显示名 (接口不返回套餐名, 以实际订阅为准)。
     static let planDisplayName = "Ultra"
-    static let modelProvider = TapgoModel.minimaxM3.providerId
+    static let modelProvider = TapgoModel.deepSeekV4Flash.providerId
     static let serviceName = "tapgo_aicoding"
     static let clientInfoName = "tapgo_aicoding"
     static let clientInfoTitle = "Tapgo AICoding"
@@ -40,7 +42,7 @@ enum TapgoConfig {
     /// into a summary (replaces the user having to manually start a new
     /// session). Sits below `model_context_window` so compaction happens
     /// before the model hits the wall.
-    // MiniMax-M3 currently exposes a 1M context window. Compact at 80%,
+    // DeepSeek V4 系列当前提供 1M 级上下文窗口。Compact at 80%,
     // matching the pressure-based strategy used by current agent harnesses.
     static let autoCompactTokenLimit = 800_000
 
@@ -697,7 +699,7 @@ enum TapgoConfig {
             id: id,
             registry: modelRegistry(),
             selectedModelKey: selectedModelKey,
-            fallbackSelectedID: "builtin:\(TapgoModel.minimaxM3.rawValue)"
+            fallbackSelectedID: "builtin:\(TapgoModel.deepSeekV4Flash.rawValue)"
         )
         syncModelConfigFiles()
         return removed
@@ -803,8 +805,10 @@ enum TapgoConfig {
                 UserDefaults.standard.string(forKey: selectedModelKey) ?? ""
             )
             let slug = id.hasPrefix("builtin:") ? String(id.dropFirst("builtin:".count)) : id
+            // v0.5.117：只保留 DeepSeek，旧值（builtin:MiniMax-M3 等）
+            // 解析不到时回落到 DeepSeek V4 Flash。
             return TapgoModel(rawValue: slug)
-                ?? .minimaxM3
+                ?? .deepSeekV4Flash
         }
         set { UserDefaults.standard.set("builtin:\(newValue.rawValue)", forKey: selectedModelKey) }
     }
@@ -1055,12 +1059,13 @@ enum TapgoConfig {
             throw SetupError.missingAuth(providerRegistryFileURL.path)
         }
 
-        // config.toml must mention MiniMax-M3 + the minimax provider.
+        // v0.5.117: 这里只要求 config.toml 存在，不再硬校验某一家的
+        // 模型 slug / provider 段。历史实现校验 "MiniMax-M3" +
+        // "[model_providers.minimax]"，在模型收敛到 DeepSeek 后，旧版本
+        // 写出的文件恰好都不含新 slug，会被判为不可用并抛 setup error，
+        // 于是永远走不到下面的漂移重写 —— 无法自愈。
+        // 实际内容由下方 desiredConfig 的 diff 重写负责修正。
         if !fm.fileExists(atPath: configPath.path) {
-            throw SetupError.missingConfig(configPath.path)
-        }
-        let config = (try? String(contentsOf: configPath, encoding: .utf8)) ?? ""
-        if !config.contains("MiniMax-M3") || !config.contains("[model_providers.minimax]") {
             throw SetupError.missingConfig(configPath.path)
         }
 
@@ -1224,10 +1229,6 @@ enum TapgoConfig {
         let registry = providerRegistry()
         _ = registry.migrateFromLegacyIfNeeded()
         registry.ensureBuiltinProviders()
-        let minimaxBaseURL = registry.provider(id: TapgoProviderKind.minimax.registryID)?.baseURL
-            ?? effectiveBaseURL
-        let glmBaseURL = registry.provider(id: TapgoProviderKind.zhipu.registryID)?.baseURL
-            ?? TapgoModel.glm53Flash.defaultBaseURL
         let deepSeekBaseURL = registry.provider(id: TapgoProviderKind.deepseek.registryID)?.baseURL
             ?? TapgoModel.deepSeekV4Flash.defaultBaseURL
         return """
@@ -1241,22 +1242,10 @@ enum TapgoConfig {
         model_auto_compact_token_limit = \(autoCompactTokenLimit)
         model_catalog_json = "\(modelCatalogPath.path)"
 
-        [model_providers.\(TapgoModel.minimaxM3.providerId)]
-        name = "MiniMax"
-        base_url = "\(tomlBasicStringContent(minimaxBaseURL))"
-        wire_api = "responses"
-        experimental_bearer_token = "__FROM_AUTH_JSON__"
-
-        # v0.5.31: GLM-5.3-Flash (BigModel Coding Plan)。智谱官方给 Codex 的
-        # OpenAI Responses 协议专属端点, wire 必须是 responses (harness 0.149+
-        # 已移除 chat)。鉴权来自独立的 auth-glm.json; 文件缺失时 bearer 为空,
-        # 选 GLM 的新会话会收到 401。
-        [model_providers.\(TapgoModel.glm53Flash.providerId)]
-        name = "GLM"
-        base_url = "\(tomlBasicStringContent(glmBaseURL))"
-        wire_api = "responses"
-        experimental_bearer_token = "__FROM_AUTH_GLM_JSON__"
-
+        # v0.5.117: 模型配置只保留 DeepSeek —— 智谱 / MiniMax 的
+        # [model_providers.*] 段不再生成。需要恢复时把对应 case 加回
+        # TapgoProviderKind.enabledBuiltinKinds，并在此补回段落。
+        #
         # v0.5.35: DeepSeek V4 系列。API 原生支持 OpenAI Responses 协议
         # (api-docs.deepseek.com/quick_start/agent_integrations/codex),
         # wire 必须 responses。鉴权来自独立的 auth-deepseek.json;

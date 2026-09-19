@@ -62,10 +62,13 @@ func runModelCatalog(_ t: TestRunner) {
         t.expect(slugs.contains(model.rawValue),
                  "catalog: contains slug \(model.rawValue)")
     }
-    t.expect(catalog.contains("powered by MiniMax-M3"),
-             "catalog: MiniMax base_instructions self-describes MiniMax-M3")
-    t.expect(catalog.contains("powered by GLM-5.3-Flash"),
-             "catalog: GLM base_instructions self-describes GLM-5.3-Flash")
+    // v0.5.117：模型配置只保留 DeepSeek，MiniMax / GLM 不再进目录。
+    t.expect(catalog.contains("powered by deepseek-v4-flash"),
+             "catalog: DeepSeek base_instructions self-describes DeepSeek V4 Flash")
+    t.expect(!catalog.contains("powered by MiniMax-M3"),
+             "catalog: 只保留 DeepSeek —— MiniMax 不再进目录")
+    t.expect(!catalog.contains("powered by GLM-5.3-Flash"),
+             "catalog: 只保留 DeepSeek —— GLM 不再进目录")
     t.expect(catalog.contains("input_modalities"),
              "catalog: entries declare input modalities")
     t.expect(catalog.contains("list_apps") && catalog.contains("disableDiffing=true"),

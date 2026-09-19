@@ -19,6 +19,18 @@ public enum TapgoProviderKind: String, Codable, CaseIterable, Equatable {
     case minimax
     case deepseek
 
+    /// v0.5.117：模型配置只保留 DeepSeek。
+    ///
+    /// 三个 case 都保留定义，原因有二：
+    ///   1. 旧 `provider-registry.json` 里 `builtInKindRaw = "zhipu" /
+    ///      "minimax"` 仍能解码，不会因枚举缺 case 导致整份注册表读不出来；
+    ///   2. `Provider.builtin(_:)` 与额度通道仍能构造历史数据。
+    ///
+    /// 但只有本名单内的供应商会被 `ensureBuiltinProviders()` 自动补全并
+    /// 出现在设置页；名单外的内置供应商会被连同 Key 一并清除。
+    /// 需要恢复智谱 / MiniMax 时，把对应 case 加回这里即可。
+    public static let enabledBuiltinKinds: [TapgoProviderKind] = [.deepseek]
+
     public var displayName: String {
         switch self {
         case .zhipu: return "智谱"

@@ -171,11 +171,32 @@ public final class ProviderRegistry {
     // MARK: - 持久化
 
     /// 保证内置 Provider 都存在；缺失则按 kind 补回。
+    /// 补齐启用的内置供应商，并清除名单外的内置供应商（v0.5.117）。
+    ///
+    /// 改动原因：模型配置只保留 DeepSeek。旧实现遍历
+    /// `TapgoProviderKind.allCases` 无条件把智谱 / MiniMax 补回来，
+    /// 导致只删 JSON 里的条目无法生效——设置页一打开就又被加回去。
+    /// 现在改为只看 `enabledBuiltinKinds`，并在检测到内容变化时立即
+    /// 落盘，保证磁盘与内存一致。
+    ///
+    /// 用户自建 Provider（`builtInKindRaw == nil`）不受影响。
     public func ensureBuiltinProviders() {
-        for kind in TapgoProviderKind.allCases {
-            if !state.providers.contains(where: { $0.id == kind.registryID }) {
-                state.providers.append(.builtin(kind))
+        let enabledIDs = Set(TapgoProviderKind.enabledBuiltinKinds.map(\.registryID))
+        let before = state.providers
+        state.providers.removeAll { $0.isBuiltin && !enabledIDs.contains($0.id) }
+        if state.providers != before {
+            if !enabledIDs.contains(state.selectedProviderID) {
+                state.selectedProviderID = ""
             }
+            let liveIDs = Set(state.providers.map(\.id))
+            state.selectedModelPerProvider = state.selectedModelPerProvider
+                .filter { liveIDs.contains($0.key) }
+            save()
+        }
+        for kind in TapgoProviderKind.enabledBuiltinKinds
+        where !state.providers.contains(where: { $0.id == kind.registryID }) {
+            state.providers.append(.builtin(kind))
+            save()
         }
     }
 
@@ -216,7 +237,8 @@ public final class ProviderRegistry {
         if let p = state.providers.first(where: { $0.id == state.selectedProviderID }) {
             return p
         }
-        return state.providers.first ?? .builtin(.zhipu)
+        // v0.5.117：兜底不再是智谱（已从启用名单移除），改为 DeepSeek。
+        return state.providers.first ?? .builtin(.deepseek)
     }
 
     public func resolveSelectedModel(for provider: Provider) -> ProviderModel {

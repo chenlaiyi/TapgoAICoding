@@ -283,6 +283,22 @@ if command -v codesign >/dev/null 2>&1; then
         || "$MAIN_TEAM" != "$SPARKLE_BIN_TEAM" ]]; then
     codesign --force --deep --sign - "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
   fi
+  # v0.5.237: 上面那次 helper 重签对 Developer ID 路径同样会破坏外层
+  # bundle 的密封（codesign 要求 inside-out 顺序，而这里 helper 在 app
+  # 之后才签）。此前只有 ad-hoc 路径有兜底，Developer ID 构建会以
+  # "a sealed resource is missing or invalid" 中止。改为：verify 失败时
+  # 按当前签名身份对整体重签一次再校验。
+  if ! codesign --verify --deep --strict "$APP_BUNDLE_DIR" 2>/dev/null; then
+    echo "==> Signature repair: re-sealing bundle after nested helper re-sign"
+    if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+      codesign --force --deep --sign - "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+    else
+      codesign --force --deep --sign "$SIGNING_IDENTITY" \
+        --entitlements "$ENTITLEMENTS_SRC" \
+        --options runtime \
+        "$APP_BUNDLE_DIR" 2>&1 | sed 's/^/    /'
+    fi
+  fi
   codesign --verify --deep --strict "$APP_BUNDLE_DIR"
   # v0.5.228: 刷新 Launch Services 注册（修复嵌套 helper 签名后 Launchd job spawn failed）
   LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
