@@ -4,7 +4,7 @@
 **Date**: 2026-09-20
 **Commit**: _(see `git log -1 v0.5.319`)_
 **Tag**: v0.5.319
-**Test status**: TapgoTests 3464 通过 / 12 失败（均为既有 SSH/auth.json 环境失败）；daemon 并发 8 + TomlKey 14 + 注册表清理 10 断言；三机 App 0.5.319 UI 断言通过，本机与 jkmacmini 真实回合通过；GitHub Release + 签名 appcast 线上回读通过
+**Test status**: TapgoTests 3464 通过 / 12 失败（均为既有 SSH/auth.json 环境失败）；daemon 并发 8 + TomlKey 14 + 注册表清理 10 断言；三机 App 0.5.319 UI 断言通过，本机与 jkmacmini 真实回合通过；GitHub Release 归档 + 带 edSignature 的 appcast 线上回读通过
 **Changed**:
 - Sources/TapgoHarness/main.swift: accept 循环每条连接起独立线程，serveClient() 持有自己的 codex 子进程/管道；会话结束只影响自身；活跃会话数写入 stderr 日志；listen backlog 8→32；signal(SIGPIPE, SIG_IGN)；accept 后 fd 设 FD_CLOEXEC。
 - Sources/TapgoCore/SocketHarnessTransport.swift: 客户端 socket 设 FD_CLOEXEC，避免 codex/ssh/git/MCP 等子进程继承会话 fd 后 daemon 看不到 EOF。
@@ -13,8 +13,8 @@
 - Sources/TapgoCore/TomlKey.swift (新增): provider id 渲染进 [model_providers.<id>] 段名时按需加双引号 —— 老注册表遗留的 builtin:zhipu / builtin:minimax 精简后被当成自定义 Provider，未加引号的冒号让 codex 拒绝加载整份 config.toml (invalid unquoted key)，harness 起不来。
 - Sources/TapgoAICoding/Services/TapgoConfig.swift + Sources/TapgoCore/RemoteCodexHomeSync.swift: 4 处 model_providers 段名渲染统一走 TomlKey.providerSectionKey。
 - Sources/TapgoTests/TomlKeyTests.swift (新增, 14 断言) + TestMain 注册: 裸键安全判定、遗留 id 加引号、basic string 转义。
-- AppBuilder/Info.plist: SUPublicEDKey 对齐实际发布签名密钥（旧值与发布用私钥不匹配，客户端签名校验失败 → Sparkle 自动更新从未生效；用现有私钥重签 0.5.315 归档可逐字节复现线上签名，证明签名密钥即现有密钥）。0.5.318 及更早客户端带错误公钥，需手动升级一次。
 - AppBuilder/release-notes-0.5.319.md (新增): 本次发布说明。
+- 发布链路校验（2026-09-20 实测）：generate_keys -p --account com.tapgo.aicoding 的公钥与 Info.plist SUPublicEDKey 一致；用同一私钥重签 v0.5.315 归档得到的签名与线上 appcast 逐字节一致，签名密钥/公钥/已发布 feed 自洽。
 
 daemon 从「单客户端串行」改为「每连接一个独立线程 + 独立 codex app-server」；客户端 socket 设 FD_CLOEXEC；daemon 启动时忽略 SIGPIPE。原因是同一时刻只服务一条连接时，第二个会话的 initialize 只能排在 listen backlog 里，App 侧 30s 后必定超时（Harness RPC 超时：initialize / 任务未完成，可重试），一个长任务在跑就足以让整个 App 看起来不可用。
 **Why**: 用户报告 App 无法使用：截图会话连续两次 Harness RPC 超时：initialize；实测 jkmacmini daemon 卡在一条未结束的会话上，另一条连接 initialize 永远无响应。

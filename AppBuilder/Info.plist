@@ -49,7 +49,7 @@
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/chenlaiyi/TapgoAICoding/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>KxpmeI6I0o9/tzVomsQJc6iZVvCa2+ZEkAepeV5S6GRR6nib7CVZ6wCZxi584CaFS8Sojk1xV+euJqHBxEB9Cw==</string>
+	<string>5A1goaZJbt/pwAcSnRMTXx/odqiHKL79cFgs30qnF7I=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>3600</integer>
 </dict>

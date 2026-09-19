@@ -10,11 +10,10 @@ fix(harness): daemon 多客户端并发 + provider 段名 TOML 转义；模型�
 - **provider 段名 TOML 转义**：遗留注册表里的 `builtin:zhipu` / `builtin:minimax` 被当成自定义 Provider 时，未加引号的 `:` 会让 codex 拒绝加载**整份** config.toml（`invalid unquoted key`），harness 连 initialize 都起不来。现在按需加双引号。
 - **遗留内置供应商自动清理**：`ensureBuiltinProviders()` 按启用名单清除已下线的 `builtin:*` 条目连同选中态，不再以自定义 Provider 身份残留（模型选择器里不会再挂着 GLM / MiniMax）。
 
-## 修复：Sparkle 自动更新的签名校验一直不通过
+## 发布链路校验（本次发布前实测）
 
-- App 里的 `SUPublicEDKey` 与实际发布签名用的私钥不匹配（用现有私钥重签 0.5.315 归档，得到的签名与线上 appcast 逐字节一致，证明签名用的是现有密钥），导致客户端下载更新后**签名校验失败**，自动更新从未生效；fleet 一直靠脚本手动安装所以未被发现。
-- 本次把 `SUPublicEDKey` 对齐到实际签名密钥，0.5.319 起 Sparkle 更新链路口径一致。
-- 注意：0.5.318 及更早的客户端带的是错误公钥，**需要手动升级一次**到 0.5.319（`scripts/deploy-fleet.sh` 已覆盖三台机），之后再自动更新即正常。
+- `generate_keys -p --account com.tapgo.aicoding` 输出的公钥与 `AppBuilder/Info.plist` 的 `SUPublicEDKey` 一致；用同一把私钥重签上一版归档（0.5.315）得到的签名与线上 appcast **逐字节一致** —— 签名密钥、App 内置公钥、已发布 appcast 三者自洽。
+- 本次发布的 0.5.319 归档已带 `sparkle:edSignature`；GitHub Release 归档 URL 与 feed URL 均已回读校验。
 
 ## 模型供应商只保留 DeepSeek
 
