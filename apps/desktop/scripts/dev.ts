@@ -10,7 +10,7 @@ import type { DesktopRelease } from '../src/release.ts'
 import { developmentRuntimeDirectory, resolveDesktopBuildTarget } from './desktop-build-paths.mjs'
 import { prepareDevelopmentProject } from './development-project.ts'
 import { prepareDevelopmentApp } from './development-app.ts'
-import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
+import { preparePrimaryRuntime, smokePrimaryRuntime } from './prepare-primary-runtime.ts'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
@@ -120,7 +120,14 @@ async function main(): Promise<void> {
     release,
     target: resolveDesktopBuildTarget(),
   })
-  await preparePrimaryRuntime()
+  const existingRuntime = process.env.DSH_DESKTOP_PRIMARY_RUNTIME_DIR
+  if (existingRuntime === undefined) await preparePrimaryRuntime()
+  else {
+    const runtime = resolve(existingRuntime)
+    const manifest = JSON.parse(readFileSync(join(runtime, 'runtime.json'), 'utf8')) as { desktopVersion?: string }
+    if (manifest.desktopVersion !== version) throw new Error('desktop development: external primary runtime version does not match Desktop')
+    smokePrimaryRuntime(runtime)
+  }
   await launchElectron()
 }
 

@@ -15,7 +15,24 @@ function root(): string {
 const identity = { signingIdentity: 'Example (TEAMID1234)', teamId: 'TEAMID1234' }
 afterEach(() => {
   vi.resetAllMocks()
+  vi.unstubAllEnvs()
   for (const path of roots.splice(0)) rmSync(path, { recursive: true, force: true })
+})
+
+it('permits native libraries in legacy Tapgo interpreters', async () => {
+  vi.stubEnv('DSH_DESKTOP_APP_ID', 'com.tapgo.aicoding')
+  vi.stubEnv('TAPGO_DESKTOP_SKIP_NOTARIZATION', '1')
+  const path = root()
+  for (const name of ['dependencies/python/bin/python3', 'dependencies/python/bin/python3.12', 'dependencies/node/bin/node']) {
+    const file = join(path, name)
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, Buffer.from('cffaedfe00000000', 'hex'))
+  }
+  await signMacOSRuntime(path, 'com.tapgo.aicoding', identity)
+  for (const name of ['dependencies/python/bin/python3', 'dependencies/python/bin/python3.12', 'dependencies/node/bin/node']) {
+    expect(signMacOSRuntimeCode).toHaveBeenCalledWith(join(path, name), expect.any(String), identity,
+      join(import.meta.dirname, '../scripts/tapgo-runtime-entitlements.plist'))
+  }
 })
 it('signs Mach-O files in their final locations and verifies each signature', async () => {
   const path = root()

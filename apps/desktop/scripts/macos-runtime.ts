@@ -8,6 +8,7 @@ import type { MacOSSigningEnvironment } from './desktop-release-environment.mjs'
 import { cachedMacOSSignature, pruneMacOSSignatureCache } from './macos-signature-cache.ts'
 import { macOSCachePolicy } from './macos-cache-policy.ts'
 import { signMacOSRuntimeCode, verifyMacOSRuntimeCode } from './verify-macos-signature.mjs'
+import { skipTapgoNotarization } from './desktop-release-environment.mjs'
 
 const MACH_O_MAGICS = new Set(['cafebabe', 'cafebabf', 'cefaedfe', 'cffaedfe', 'feedface', 'feedfacf', 'bebafeca', 'bfbafeca'])
 
@@ -32,6 +33,7 @@ export async function signMacOSRuntime(
 ): Promise<number> {
   const files = inventoryDesktopRuntime(root).map(file => file.path).filter(path => MACH_O_MAGICS.has(magic(join(root, path))))
   const policy = cacheDirectory === undefined ? undefined : macOSCachePolicy(process.env.DSH_DESKTOP_MACOS_SIGNING_PROBE ?? '')
+  const legacyTapgoSigning = skipTapgoNotarization(process.env)
   let hits = 0
   let misses = 0
   let next = 0
@@ -42,7 +44,11 @@ export async function signMacOSRuntime(
       const identifier = `${appId}.runtime.${createHash('sha256').update(path).digest('hex')}`
       const needsJit = path === 'dependencies/node/bin/node'
         || /^node_modules\/@deepseek-ai\/libreoffice-kit-darwin-(?:arm64|x64)\/bin\/libreoffice-kit$/u.test(path)
-      const entitlements = needsJit ? join(import.meta.dirname, 'jit-entitlements.plist') : undefined
+      const needsLegacyLibraryValidation = legacyTapgoSigning
+        && (needsJit || /^dependencies\/python\/bin\/python3(?:\.12)?$/u.test(path))
+      const entitlements = needsLegacyLibraryValidation
+        ? join(import.meta.dirname, 'tapgo-runtime-entitlements.plist')
+        : needsJit ? join(import.meta.dirname, 'jit-entitlements.plist') : undefined
       const file = join(root, path)
       const thin = ['cefaedfe', 'cffaedfe', 'feedface', 'feedfacf'].includes(magic(file))
       if (cacheDirectory !== undefined && policy !== undefined && thin) {

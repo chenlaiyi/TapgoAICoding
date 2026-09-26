@@ -1,0 +1,105 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Tapgo AICoding</title>
+        <item>
+            <title>0.5.319</title>
+            <pubDate>Sun, 20 Sep 2026 04:54:16 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.319</link>
+            <sparkle:version>0.5.319</sparkle:version>
+            <sparkle:shortVersionString>0.5.319</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.319
+
+fix(harness): daemon 多客户端并发 + provider 段名 TOML 转义；模型供应商只保留 DeepSeek
+
+## 修复：App「无法使用」的根因
+
+- **TapgoHarness daemon 支持多客户端并发**。此前 daemon 是单客户端串行：一条连接占线时，第二条连接只能在 listen backlog 里排队，它的 `initialize` 永远得不到响应，App 侧 30 秒后报 `Harness RPC 超时：initialize` / 「任务未完成，可重试」。只要有一个长任务在跑，整个 App 看起来就不可用。现在每条连接一个独立线程 + 独立 codex app-server，互不阻塞。
+- 实测：daemon 被占用时新连接的 `initialize` 由「必然超时」变为 0.05–0.26 秒返回；App 内并发验证——长任务（`sleep 25`）在跑的同时，另一个会话 3 秒完成一次对话。
+- 客户端 socket 与 daemon accept 后的 fd 均设 `FD_CLOEXEC`，daemon 忽略 `SIGPIPE`，listen backlog 8→32；活跃会话数写入 daemon 日志便于排查。
+- **provider 段名 TOML 转义**：遗留注册表里的 `builtin:zhipu` / `builtin:minimax` 被当成自定义 Provider 时，未加引号的 `:` 会让 codex 拒绝加载**整份** config.toml（`invalid unquoted key`），harness 连 initialize 都起不来。现在按需加双引号。
+- **遗留内置供应商自动清理**：`ensureBuiltinProviders()` 按启用名单清除已下线的 `builtin:*` 条目连同选中态，不再以自定义 Provider 身份残留（模型选择器里不会再挂着 GLM / MiniMax）。
+
+## 发布链路校验（本次发布前实测）
+
+- `generate_keys -p --account com.tapgo.aicoding` 输出的公钥与 `AppBuilder/Info.plist` 的 `SUPublicEDKey` 一致；用同一把私钥重签上一版归档（0.5.315）得到的签名与线上 appcast **逐字节一致** —— 签名密钥、App 内置公钥、已发布 appcast 三者自洽。
+- 本次发布的 0.5.319 归档已带 `sparkle:edSignature`；GitHub Release 归档 URL 与 feed URL 均已回读校验。
+
+## 模型供应商只保留 DeepSeek
+
+- `TapgoProviderKind` / `TapgoQuotaChannel` 只留 `deepseek`；删除 `GLMQuotaClient`、`MiniMaxQuotaClient` 及其测试，`RateLimits` 去掉 MiniMax 快照构建器。
+- 设置页、侧边栏、额度弹窗、L10n、`scripts/init-tapgo.sh` 同步清理。
+- 三个 Mac 的代码已合并到同一个 `main`（合并 jkmacmini 侧已推送的精简实现与本机实现），并清除所有过期分支引用。
+
+## 验证
+
+- `swift build` 通过；TapgoTests 3464 通过 / 12 失败（12 个均为既有环境失败：不可达 SSH 主机、缺少 `auth.json`）。
+- 新增回归测试 32 断言：daemon 并发 8、TomlKey 14、注册表清理 10。
+- 真实界面回归：三台机 App 均 0.5.319，UI 断言通过；本机与 jkmacmini 各跑通真实回合。
+- 线上链路：GitHub Release 归档 + 签名 appcast 已发布，下载 URL 与 appcast URL 均已回读校验。
+
+## Next
+
+- 长任务与普通对话并发的人工回归；把 daemon 版本纳入 fleet 部署脚本（daemon 需单独 `install-harness-daemon.sh`）。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.319/Tapgo-AICoding-0.5.319.zip" length="12716101" type="application/octet-stream" sparkle:edSignature="nrNIegrHCSQzd8KFp1hB99k4G+E4ERXgLf/4/V5W4xSa+GIZ7rKfKnvVVMHb8QeOAROkNwjNu2Z3mOb5vSGqDw=="/>
+        </item>
+        <item>
+            <title>0.5.315</title>
+            <pubDate>Sun, 13 Sep 2026 07:27:45 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.315</link>
+            <sparkle:version>0.5.315</sparkle:version>
+            <sparkle:shortVersionString>0.5.315</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.315
+
+fix(quota): DeepSeek V4.1 改名后仍显示余额
+
+## 变更
+
+- 新增 TapgoQuotaChannel 与 Provider.quotaChannel：内置供应商稳定映射到 MiniMax / GLM / DeepSeek 官方额度通道，自定义 Provider 为 nil。
+- SessionStore、ModelUsagePopover、SidebarView 统一按 provider.quotaChannel 查询、显示来源与空态，不再用 TapgoModel(rawValue: apiModel) 判定额度通道。
+- 回归：DeepSeek 模型 apiModel 改名 deepseek-v4.1-flash 后，builtInKind 与 quotaChannel 均保持 DeepSeek；真实余额接口同轮验证 HTTP 200 返回 ¥13.85 CNY。
+- makeHistory 同步 prepend v0.5.315，修复首轮四方一致性校验暴露的日志同步缺失。
+
+额度通道改按内置供应商身份路由
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.315/Tapgo-AICoding-0.5.315.zip" length="12740899" type="application/octet-stream" sparkle:edSignature="X+pC1Va43v6Vrp1AbqgmbHwybNzzM+qeffck1NibjvsZ0oX4l8x0+6XQ1KCQyRuJjN9xf9mPyCVrbAtXUBqjBA=="/>
+        </item>
+        <item>
+            <title>0.5.314</title>
+            <pubDate>Sun, 13 Sep 2026 07:05:53 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.314</link>
+            <sparkle:version>0.5.314</sparkle:version>
+            <sparkle:shortVersionString>0.5.314</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# v0.5.314
+
+feat(evolution): 本机版本漂移可老化可查询
+
+## 变更
+
+- 新增 scripts/evolution-drift.py（EVO-055）作为漂移真源：releasesBehind（结构化记录里 running < v <= installed 的条数，running 早于最早记录时给 null 而非偏小的错数）、firstSeenAt 跨轮继承、seenRuns 按 run-id 去重（一轮内多次写 state 只算一次）、remediation 与一行可读文案。
+- evolve.sh 接入：write_state 计算并写进 state.localApp.drift（installed/running/stale 保持原位，派生元数据收在 drift 子对象；此时当前版本记录已落盘，计数才准）；漂移时把重启命令作为第一条 nextActions；总结行升级为「运行 x / 已安装 y（落后 N 个版本，自 … 起，已累计 K 轮）」。helper 不可用时回退旧形状，发布流程不会因它中断。
+- 新增 check 子命令：python3 scripts/evolution-drift.py check 一行查询，退出码表达（漂移 1 / 一致 0 / state 不可读 2）；旧 state 形状（无 drift 块）降级成通用提示行而不是误判为已对齐。
+- 新增 scripts/tests/evolution-drift-test.sh 27 项断言（一致/落后、计数、记录不覆盖时 null、跨轮继承、同 run-id 去重、无进程降级、旧形状降级、state 不可读退出 2）；失败注入新增 S36 覆盖 evolve.sh → state 的集成（漂移元数据、待办动作、WARN），全套 169 项；两者接入 run-all.sh。
+- 边界：漂移元数据是只读计算，不重启任何进程——重启会终止当前会话，收敛动作仍由操作者执行；本轮保证的是它不会被忘记、有年龄、可被下一轮自动捞起。
+
+漂移从一次性 WARN 变成跨轮延续的待办
+
+## Next
+
+EVO-021 操作者模型基线: 用真实 runner 跑 3 个任务，记录首份 model_eval_history 与成本（待操作者提供 runner）
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/v0.5.314/Tapgo-AICoding-0.5.314.zip" length="12738403" type="application/octet-stream" sparkle:edSignature="sc3FAc54AbfOwhnVKVVtAPYbud5WWxSu6c3yInHzWQM5lf8a5XxWnnnaatOfWXaSXWCgto0+IO+uPGkJ68N7Cg=="/>
+        </item>
+    </channel>
+</rss>

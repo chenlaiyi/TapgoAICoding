@@ -82,7 +82,7 @@ describe('client build environment', () => {
     const expected = {
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
-      DSH_CLIENT_TITLE: 'DeepSeek Harness',
+      DSH_CLIENT_TITLE: 'Tapgo AICoding',
       DSH_CLIENT_VERSION: '1.2.3',
     } as const
 
@@ -112,7 +112,7 @@ describe('client build environment', () => {
     expect(resolveClientBuildEnvironment(parent)).toEqual({
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
-      DSH_CLIENT_TITLE: 'DeepSeek Harness',
+      DSH_CLIENT_TITLE: 'Tapgo AICoding',
       DSH_CLIENT_VERSION: '1.2.3',
     })
     expect(() => {
@@ -128,13 +128,13 @@ describe('client build environment', () => {
     expect(clientBuildProcessEnvironment(parent, {
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
-      DSH_CLIENT_TITLE: 'DeepSeek Harness',
+      DSH_CLIENT_TITLE: 'Tapgo AICoding',
       DSH_CLIENT_VERSION: '1.2.3',
     })).toEqual({
       PATH: '/bin',
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
-      DSH_CLIENT_TITLE: 'DeepSeek Harness',
+      DSH_CLIENT_TITLE: 'Tapgo AICoding',
       DSH_CLIENT_VERSION: '1.2.3',
     })
     expect(repositoryCommitHash('/unused', { DSH_CLIENT_COMMIT_HASH: COMMIT_HASH })).toBe(COMMIT_HASH.slice(0, 7))
@@ -156,12 +156,23 @@ describe('client build environment', () => {
       DSH_CLIENT_EXTRA: 'preserved',
       DSH_CLIENT_VERSION: '1.2.3-rc.4',
     })
+    expect(repositoryClientBuildEnvironment(fixtureRoot, {
+      DSH_CLIENT_COMMIT_HASH: COMMIT_HASH,
+      TAPGO_DESKTOP_RELEASE_VERSION: '0.6.0',
+    }).DSH_CLIENT_VERSION).toBe('0.6.0')
+    expect(() => repositoryClientBuildEnvironment(fixtureRoot, {
+      DSH_CLIENT_COMMIT_HASH: COMMIT_HASH,
+      TAPGO_DESKTOP_RELEASE_VERSION: '0.6.0+local',
+    })).toThrow(/TAPGO_DESKTOP_RELEASE_VERSION/u)
     expect(officialClientBuildEnvironment(fixtureRoot)).toEqual({
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: commit,
-      DSH_CLIENT_TITLE: 'DeepSeek Harness',
+      DSH_CLIENT_TITLE: 'Tapgo AICoding',
       DSH_CLIENT_VERSION: '1.2.3-rc.4',
     })
+    expect(officialClientBuildEnvironment(fixtureRoot, {
+      TAPGO_DESKTOP_RELEASE_VERSION: '0.6.0',
+    }).DSH_CLIENT_VERSION).toBe('0.6.0')
 
     write(join(fixtureRoot, '.gitignore'), 'ignored.txt\n')
     git(fixtureRoot, ['add', '.gitignore'])
@@ -263,7 +274,7 @@ describe('client build environment', () => {
     const officialEnvironment = {
       DSH_CLIENT_BUILD_PROFILE: 'official',
       DSH_CLIENT_COMMIT_HASH: COMMIT_HASH.slice(0, 7),
-      DSH_CLIENT_TITLE: 'DeepSeek Harness',
+      DSH_CLIENT_TITLE: 'Tapgo AICoding',
       DSH_CLIENT_VERSION: '1.2.3',
     }
     const official = buildFixture(officialEnvironment)

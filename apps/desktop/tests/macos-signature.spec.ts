@@ -41,7 +41,7 @@ describe('desktop macOS release signature', () => {
   it('loads release identifiers from the environment and requires code signing', async () => {
     const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
     const config = createElectronBuilderConfig(RELEASE_ENVIRONMENT, 'darwin', 'arm64')
-    expect(config.protocols).toEqual([{ name: 'DeepSeek Harness', schemes: ['dsh'] }])
+    expect(config.protocols).toEqual([{ name: 'Tapgo AICoding', schemes: ['tapgo-aicoding'] }])
     expect(portablePath(config.directories.output)).toContain('/.desktop-build/targets/mac-arm64/artifacts')
     expect(config.mac.extendInfo.NSMicrophoneUsageDescription).toContain('microphone')
     expect(config.extraResources).toHaveLength(2)
@@ -138,6 +138,22 @@ describe('desktop macOS release signature', () => {
         `TeamIdentifier=${expected.teamId}`,
       ].join('\n'), expected)
     }).not.toThrow()
+  })
+
+  it('accepts the legacy Tapgo certificate only for its explicit release mode', () => {
+    const expected = resolveMacOSSigningEnvironment(RELEASE_ENVIRONMENT)
+    const details = `Authority=Developer ID Application: ${expected.signingIdentity}\nTeamIdentifier=not set`
+    expect(() => assertMacOSSignatureDetails(details, expected)).toThrow(`TeamIdentifier=${expected.teamId}`)
+    vi.stubEnv('DSH_DESKTOP_APP_ID', 'com.tapgo.aicoding')
+    vi.stubEnv('TAPGO_DESKTOP_SKIP_NOTARIZATION', '1')
+    try {
+      expect(() => assertMacOSSignatureDetails(details, expected)).not.toThrow()
+      expect(() => assertMacOSSignatureDetails(details.replace(expected.signingIdentity, 'Other Company (OTHERID123)'), expected))
+        .toThrow(/release identity/u)
+    } finally {
+      vi.stubEnv('DSH_DESKTOP_APP_ID', RELEASE_ENVIRONMENT.DSH_DESKTOP_APP_ID)
+      vi.stubEnv('TAPGO_DESKTOP_SKIP_NOTARIZATION', undefined)
+    }
   })
 
   it('requires a secure timestamp and hardened runtime for runtime code', () => {

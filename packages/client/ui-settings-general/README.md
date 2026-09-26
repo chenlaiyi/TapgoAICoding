@@ -43,6 +43,8 @@ The Coding Tools switch controls the shared `ui-settings.enabled` preference des
 
 The General section holds the built-in Coding Tools and Current version rows alongside rows registered into `settings.general.item` by feature packages. Each registrant owns its row copy and behavior. The Appearance row, for example, lives in ui-theme.
 
+The Current version row reads `DSH_CLIENT_VERSION` from the built client artifact. A Tapgo Desktop release embeds its public `TAPGO_DESKTOP_RELEASE_VERSION` there; the DSH runtime keeps its own source version.
+
 ### Opening the configuration file
 
 On a loopback browser, the shell renders **Open configuration file** only when the Host confirms that a provider-owned local document can be prepared. The action opens that document in the native text editor (bypassing the browser file association on macOS). Remote browsers never register the action and never issue the privileged settings read.

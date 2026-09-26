@@ -1,11 +1,12 @@
 import type { MacOSSigningEnvironment } from './desktop-release-environment.mjs'
 
 /**
- * Reject signature metadata that does not name the company release authority and team.
+ * Reject signatures outside the configured Developer ID authority and expected team.
  * @param details - Output from `codesign --display --verbose=4`.
  * @param expected - Public release identity.
+ * @param allowLegacyTapgoSigning - Accept the existing Tapgo certificate's omitted TeamIdentifier.
  */
-export function assertMacOSSignatureDetails(details: string, expected: MacOSSigningEnvironment): void
+export function assertMacOSSignatureDetails(details: string, expected: MacOSSigningEnvironment, allowLegacyTapgoSigning?: boolean): void
 
 /**
  * Require the signature properties Apple validates for executable runtime content.
@@ -40,8 +41,9 @@ export function verifyMacOSRuntimeCode(path: string, expected: MacOSSigningEnvir
  * Verify the full application signature and its release owner.
  * @param appPath - Path to the packaged `.app` directory.
  * @param expected - Public release identity.
+ * @param allowLegacyTapgoSigning - Accept the existing Tapgo certificate's omitted TeamIdentifier.
  */
-export function verifyMacOSSignature(appPath: string, expected: MacOSSigningEnvironment): void
+export function verifyMacOSSignature(appPath: string, expected: MacOSSigningEnvironment, allowLegacyTapgoSigning?: boolean): void
 
 /**
  * Verify an independently distributed application's signature, ticket, and Gatekeeper acceptance.

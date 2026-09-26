@@ -16,6 +16,10 @@ function origin(value, name) {
  * @returns {{ origin: string, allowedPageOrigins: string[], authentication: 'anonymous' | 'feishu-test', [key: string]: unknown }} Selected policy.
  */
 export function resolveDesktopPolicyEnvironment(environment) {
+  if (environment.TAPGO_DESKTOP_NO_POLICY === '1') return undefined
+  if (environment.TAPGO_DESKTOP_NO_POLICY !== undefined) {
+    throw new Error('desktop package: TAPGO_DESKTOP_NO_POLICY must be 1 when set')
+  }
   const deployment = resolveDesktopAutoUpdateEnvironment(environment)
   const name = deployment === 'test' ? 'DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN' : 'DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN'
   const selected = origin(environment[name], name)

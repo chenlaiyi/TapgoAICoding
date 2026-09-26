@@ -29,7 +29,7 @@ function barrier() {
 async function fixture(arch: 'arm64' | 'x64' = 'arm64') {
   const root = await mkdtemp(join(tmpdir(), 'desktop-parallel-notarization-'))
   const artifactsRoot = join(root, 'artifacts')
-  const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app')
+  const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', 'Tapgo AICoding.app')
   await mkdir(join(appPath, 'Contents', 'Resources'), { recursive: true })
   await writeFile(join(appPath, 'payload'), 'signed content')
   await writeMacOSAppUpdateConfig(join(appPath, 'Contents', 'Resources'), {
@@ -64,6 +64,20 @@ async function fixture(arch: 'arm64' | 'x64' = 'arm64') {
 }
 
 describe('parallel macOS artifacts', () => {
+  it('publishes signed Tapgo artifacts without calling Apple notarization in compatibility mode', async () => {
+    const f = await fixture()
+    try {
+      const apple = { ...f.apple, notarize: vi.fn(f.apple.notarize), verifyNotarization: vi.fn(f.apple.verifyNotarization) }
+      await packageMacOSArtifacts({ ...f.request, environment: {
+        ...f.request.environment, DSH_DESKTOP_APP_ID: 'com.tapgo.aicoding', TAPGO_DESKTOP_SKIP_NOTARIZATION: '1',
+      } }, f.build, apple)
+      expect(apple.notarize).not.toHaveBeenCalled()
+      expect(apple.verifyNotarization).not.toHaveBeenCalled()
+      expect(JSON.parse(await readFile(join(f.request.artifactsRoot, `${f.base}.zip`), 'utf8')).appTicket).toBe(false)
+      expect(f.apple.verifySignature).toHaveBeenCalledTimes(4)
+    } finally { await rm(f.root, { recursive: true, force: true }) }
+  })
+
   it.each(['arm64', 'x64'] as const)('overlaps notarization on isolated %s copies and promotes only completed payloads', async (arch) => {
     const f = await fixture(arch)
     const appStarted = barrier()
@@ -196,7 +210,7 @@ describe('parallel macOS artifacts', () => {
   it('passes the actual App and isolated output directory to each single-target builder', () => {
     const target = resolveDesktopPackageTarget('mac-arm64', 'darwin', 'arm64')
     for (const format of ['zip', 'dmg'] as const) {
-      const appPath = join('private build', format, 'DeepSeek Harness.app')
+      const appPath = join('private build', format, 'Tapgo AICoding.app')
       const output = join(dirname(appPath), 'artifacts')
       expect(desktopElectronBuilderArguments(target, false, { format, appPath, output })).toEqual([
         'exec', 'electron-builder', '--config', 'electron-builder.config.mjs',

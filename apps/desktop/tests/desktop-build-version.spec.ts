@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DESKTOP_BUILD_VERSION_ENV,
+  TAPGO_DESKTOP_RELEASE_VERSION_ENV,
   desktopBuildVersionPrefix,
   resolveDesktopBuildVersion,
   validateDesktopBuildVersion,
@@ -10,6 +11,15 @@ const PRERELEASE = '0.1.6-alpha.2'
 const STABLE = '0.1.6'
 
 describe('desktop build version', () => {
+  it('publishes an independent Tapgo app version while retaining the DSH runtime version', () => {
+    expect(resolveDesktopBuildVersion({ [TAPGO_DESKTOP_RELEASE_VERSION_ENV]: '0.6.0' }, PRERELEASE)).toBe('0.6.0')
+    expect(resolveDesktopBuildVersion({ [TAPGO_DESKTOP_RELEASE_VERSION_ENV]: '0.6.0',
+      [DESKTOP_BUILD_VERSION_ENV]: '0.6.0' }, PRERELEASE)).toBe('0.6.0')
+    expect(() => resolveDesktopBuildVersion({ [TAPGO_DESKTOP_RELEASE_VERSION_ENV]: '0.6.0+local' }, PRERELEASE))
+      .toThrow(/build metadata/u)
+    expect(() => resolveDesktopBuildVersion({ [TAPGO_DESKTOP_RELEASE_VERSION_ENV]: '0.6.0',
+      [DESKTOP_BUILD_VERSION_ENV]: '0.1.6-alpha.2.20260921.1' }, PRERELEASE)).toThrow(/disagree/u)
+  })
   it('publishes the product version when no build version is present', () => {
     expect(resolveDesktopBuildVersion({}, PRERELEASE)).toBe(PRERELEASE)
     expect(resolveDesktopBuildVersion({ [DESKTOP_BUILD_VERSION_ENV]: '   ' }, PRERELEASE)).toBe(PRERELEASE)

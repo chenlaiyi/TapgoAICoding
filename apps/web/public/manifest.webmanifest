@@ -1,14 +1,14 @@
 {
-  "name": "DeepSeek Harness",
-  "short_name": "DSH",
+  "name": "Tapgo AICoding",
+  "short_name": "Tapgo",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "icons": [
     {
-      "src": "favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "tapgo-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

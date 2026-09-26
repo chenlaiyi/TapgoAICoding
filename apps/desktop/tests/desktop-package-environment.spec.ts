@@ -23,6 +23,14 @@ async function withDirectory(action: (directory: string) => Promise<void>): Prom
 }
 
 describe('Desktop local packaging configuration', () => {
+  it('accepts an installed signing identity for the Tapgo compatibility release only', () => {
+    const settings = { DSH_DESKTOP_APP_ID: 'com.tapgo.aicoding', TAPGO_DESKTOP_NO_POLICY: '1',
+      TAPGO_DESKTOP_SKIP_NOTARIZATION: '1', ...MAC_IDENTITY }
+    expect(() => validateDesktopPackageEnvironment(settings, MACOS, { prepareOnly: true })).not.toThrow()
+    expect(() => validateDesktopPackageEnvironment({ ...settings, DSH_DESKTOP_APP_ID: 'com.example.desktop' }, MACOS,
+      { prepareOnly: true })).toThrow(/TAPGO_DESKTOP_SKIP_NOTARIZATION/u)
+  })
+
   it('takes cache concurrency from the Windows file and defaults to four without ambient overrides', async () => {
     await withDirectory(async (directory) => {
       const parent = { DSH_DESKTOP_WINDOWS_SIGNATURE_CACHE_CONCURRENCY: '8' }

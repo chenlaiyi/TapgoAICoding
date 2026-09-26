@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+This repository ships **Tapgo AICoding Desktop**, a derivative of DeepSeek Harness `0.1.7-rc.2`. The [upgrade record](TAPGO_MIGRATION.md) describes the application identity, legacy data, and release limits.
+
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
 It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).

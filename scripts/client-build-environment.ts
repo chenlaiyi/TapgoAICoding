@@ -19,7 +19,7 @@ export const CLIENT_BUILD_PROFILE_SELECTOR = 'DSH_BUILD_CLIENT_PROFILE'
 /** Public client environment required by official DSH artifacts. */
 const OFFICIAL_CLIENT_BUILD_ENVIRONMENT = {
   DSH_CLIENT_BUILD_PROFILE: 'official',
-  DSH_CLIENT_TITLE: 'DeepSeek Harness',
+  DSH_CLIENT_TITLE: 'Tapgo AICoding',
 } as const
 
 /** Public variable carrying the source commit embedded in client artifacts. */
@@ -118,17 +118,22 @@ export function repositoryGitDirty(root: string): boolean | undefined {
 export function repositoryClientBuildEnvironment(
   root: string,
   environment: NodeJS.ProcessEnv = process.env,
-): ClientBuildEnvironment {
+): ClientBuildEnvironment & { readonly DSH_CLIENT_VERSION: string } {
   const inherited = { ...clientBuildEnvironment(environment) }
   delete inherited.DSH_CLIENT_COMMIT_HASH
   delete inherited.DSH_CLIENT_GIT_DIRTY
   delete inherited.DSH_CLIENT_VERSION
   const dirty = repositoryGitDirty(root)
+  const tapgoVersion = environment.TAPGO_DESKTOP_RELEASE_VERSION?.trim()
+  if (tapgoVersion !== undefined && tapgoVersion !== ''
+    && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(tapgoVersion)) {
+    throw new Error('TAPGO_DESKTOP_RELEASE_VERSION must be a canonical semantic version')
+  }
   return {
     ...inherited,
     DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(root, environment),
     ...(dirty === true ? { DSH_CLIENT_GIT_DIRTY: 'true' } : {}),
-    DSH_CLIENT_VERSION: repositoryVersion(root),
+    DSH_CLIENT_VERSION: tapgoVersion || repositoryVersion(root),
   }
 }
 
@@ -144,7 +149,7 @@ export function officialClientBuildEnvironment(
 ): Readonly<Record<`DSH_CLIENT_${string}`, string>> {
   return {
     DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(root, environment),
-    DSH_CLIENT_VERSION: repositoryVersion(root),
+    DSH_CLIENT_VERSION: repositoryClientBuildEnvironment(root, environment).DSH_CLIENT_VERSION,
     ...OFFICIAL_CLIENT_BUILD_ENVIRONMENT,
   }
 }

@@ -24,6 +24,8 @@ import { parse } from 'semver'
 
 /** Environment variable that carries the build version through one packaging and upload run. */
 export const DESKTOP_BUILD_VERSION_ENV = 'DSH_DESKTOP_BUILD_VERSION'
+/** Independent Tapgo release version used when replacing the legacy app. */
+export const TAPGO_DESKTOP_RELEASE_VERSION_ENV = 'TAPGO_DESKTOP_RELEASE_VERSION'
 
 /** Prerelease field that opens a test build's suffix on a stable product version. */
 const STABLE_TEST_FIELD = 'test'
@@ -83,7 +85,15 @@ export function validateDesktopBuildVersion(buildVersion, productVersion) {
  * @returns {string} The build version when one is present, otherwise the product version.
  */
 export function resolveDesktopBuildVersion(env, productVersion) {
+  const tapgoVersion = env[TAPGO_DESKTOP_RELEASE_VERSION_ENV]?.trim()
   const buildVersion = env[DESKTOP_BUILD_VERSION_ENV]?.trim()
+  if (tapgoVersion !== undefined && tapgoVersion !== '') {
+    const release = parseVersion(tapgoVersion, 'Tapgo release version').version
+    if (buildVersion !== undefined && buildVersion !== '' && parseVersion(buildVersion, 'build version').version !== release) {
+      throw new Error(`desktop build version: ${TAPGO_DESKTOP_RELEASE_VERSION_ENV} and ${DESKTOP_BUILD_VERSION_ENV} disagree`)
+    }
+    return release
+  }
   if (buildVersion === undefined || buildVersion === '') return productVersion
   return validateDesktopBuildVersion(buildVersion, productVersion)
 }
