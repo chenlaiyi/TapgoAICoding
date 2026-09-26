@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The iOS app presents the running DSH Web interface in a WebKit view. It accepts an HTTPS URL with DSH's one-process `token` query parameter by scan, paste, or `dsh-mobile://?url=…` deep link. The URL is stored in this device's Keychain; the Web session cookie stays in WebKit. Disconnect removes the saved URL. The Web view stays on the paired origin.
+The iOS app presents the running DSH Web interface in a WebKit view. Its launch-screen declaration gives the Web view the full iPhone viewport. It accepts an HTTPS URL with DSH's one-process `token` query parameter by scan, paste, or `dsh-mobile://?url=…` deep link. The URL is stored in this device's Keychain; the Web session cookie stays in WebKit. Disconnect removes the saved URL. The Web view stays on the paired origin.
 
 Generate the Xcode project with `xcodegen generate` in this directory and build the `DshMobile` scheme. The app uses the existing `com.devtools.terminalSimple` bundle ID; signing and distribution require access to its Apple developer team.
 

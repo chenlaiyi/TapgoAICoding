@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-iOS 应用通过 WebKit 显示运行中的 DSH Web 界面。可扫码、粘贴或使用 `dsh-mobile://?url=…` 深度链接导入带 `token` 参数的 HTTPS 地址。地址保存在本设备 Keychain，Web 会话 Cookie 保存在 WebKit；“断开”会移除已保存地址。Web 界面仅能导航到配对的来源。
+iOS 应用通过 WebKit 显示运行中的 DSH Web 界面。启动屏声明使 Web 视图使用 iPhone 的完整视口。可扫码、粘贴或使用 `dsh-mobile://?url=…` 深度链接导入带 `token` 参数的 HTTPS 地址。地址保存在本设备 Keychain，Web 会话 Cookie 保存在 WebKit；“断开”会移除已保存地址。Web 界面仅能导航到配对的来源。
 
 在本目录运行 `xcodegen generate`，构建 `DshMobile` scheme。应用沿用 `com.devtools.terminalSimple` Bundle ID；签名和分发需要相应 Apple 开发者团队权限。
 
