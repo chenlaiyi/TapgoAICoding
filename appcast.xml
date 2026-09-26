@@ -3,6 +3,20 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.6.0</title>
+            <pubDate>Sat, 26 Sep 2026 23:32:06 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.6.0</link>
+            <sparkle:version>0.6.0</sparkle:version>
+            <sparkle:shortVersionString>0.6.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.6.0
+
+基于 DeepSeek Harness Desktop 的全新派生版。旧会话不会自动导入，手机配对与远程中继功能未移植。原数据保留。此版本已使用 Developer ID 签名，但未通过 Apple 公证；新下载的应用可能需要在系统设置中手动允许。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/desktop-feed-arm64/deepseek-harness-0.6.0-mac-arm64.zip" length="374510005" type="application/octet-stream" sparkle:edSignature="/CckYFqemwGjKOHZVG4jBAgd8gpLWA1Hy9oJeQFuHcTXUo/TxBuzYSDd6RZYcSs9Q5u3GsDtGznLhjzQQCqxAg=="/>
+        </item>
+        <item>
             <title>0.5.319</title>
             <pubDate>Sun, 20 Sep 2026 04:54:16 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.5.319</link>
