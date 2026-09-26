@@ -1,31 +1,55 @@
-# SwiftPM
-.build/
-.swiftpm/
-Package.resolved
-*.xcodeproj/
-
-# macOS
-.DS_Store
-
-# Built apps
-*.app
-*.dSYM
-
-# Build scripts output
-AppBuilder/dist/
-
-# Local test evidence (screenshots / logs)
-test-evidence/
-
-# Editor
-.vscode/
-.idea/
-
-# Local sandbox caches (generated during self-evolution / computer-use)
-.zcode/
-artifacts/
+CLAUDE.local.md
+.env
+apps/desktop/.env.windows
+apps/desktop/.env.macos
+apps/desktop/*.p12
 node_modules/
-scripts/fidelity/
-appcast.xml.bak
-.sparkle/
-.playwright-cli/
+lib/
+*.tsbuildinfo
+pnpm-debug.log
+.pnpm-store/
+.cache/
+examples/*/*.jsonl
+.storages/
+.sessions/
+examples/*/.sessions/
+coverage/
+.coverage-times.json
+.doc-typecheck-*/
+.node-next-types-*/
+.oxlint-contract-*/
+.oxlintrc.contract-*.json
+oxlint-contract-*.ts
+.humanize/
+tmp/
+.claude/commands/
+.claude/launch.json
+.claude/settings.json
+.vscode/
+.DS_Store
+.idea
+mise.toml
+dist-exe/
+/dist/
+apps/desktop/.desktop-build/
+python/sdk-runtime/src/deepseek_harness_runtime/runtime/
+python/**/__pycache__/
+python/**/.pytest_cache/
+packages/**/__pycache__/
+apps/web/dist/
+.artifacts/
+.dsh-build/
+.playwright-mcp/
+.orig
+.worktrees/
+worktrees/
+.agents/worktrees/
+.typert-*/
+native/system/test/bin/
+# Local artifacts retained from the SwiftUI Tapgo checkout during DSH migration.
+/.build/
+/.sparkle/
+/AppBuilder/dist/
+/appcast.xml.bak
+/artifacts/
+/Tapgo AICoding.app/
