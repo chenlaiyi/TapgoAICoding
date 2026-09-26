@@ -3,6 +3,20 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.6.3</title>
+            <pubDate>Sun, 27 Sep 2026 01:20:38 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.6.3</link>
+            <sparkle:version>0.6.3</sparkle:version>
+            <sparkle:shortVersionString>0.6.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.6.3
+
+基于 DeepSeek Harness 0.1.7-rc.2 启用原生 Cua Driver，可通过 `cua_driver_native__` 工具操作桌面。macOS 需为 Tapgo AICoding 授予辅助功能和屏幕录制权限。原 Tapgo Computer Use 工具名称尚未兼容；旧会话不自动导入，原手机配对与远程中继功能尚未移植。安装包已签名，未通过 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/desktop-feed-arm64/deepseek-harness-0.6.3-mac-arm64.zip" length="392737766" type="application/octet-stream" sparkle:edSignature="QHJGraficTWeLc4RmI5dnj4GlZqCBfFXEDUcv0y+p23Z5XAS03jP/Gqvqf8OXuWmCDXFN9YW6fkqApKB3bKXBA=="/>
+        </item>
+        <item>
             <title>0.6.2</title>
             <pubDate>Sun, 27 Sep 2026 00:01:07 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.6.2</link>
