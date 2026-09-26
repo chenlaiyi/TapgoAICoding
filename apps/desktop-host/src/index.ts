@@ -14,6 +14,7 @@ import { installDesktopUpdateTaskControl } from './update-tasks.ts'
 import { installDesktopQuitInspection } from './quit-inspection.ts'
 import { installPlatformSessionPublisher } from './platform-session.ts'
 import { installOfficeEngineResolution } from './office-engine.ts'
+import { resolveMobileOrigin } from './mobile-origin.ts'
 
 async function main(): Promise<void> {
   const runtimeDir = process.argv[2] as string
@@ -22,12 +23,14 @@ async function main(): Promise<void> {
   const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh-desktop-host', 'package.json')
   const profile = loadProfileDirectory('dsh', projectDir, installAnchor)
   reportSkippedBundles('dsh', profile)
+  const environment = loadLayeredEnv('dsh')
+  const mobile = resolveMobileOrigin(process.env.TAPGO_MOBILE_HTTPS_ORIGIN)
   const application = runProfile({
-    environment: loadLayeredEnv('dsh'),
+    environment,
     profile: 'desktop',
     resolvedProfile: { profile, installAnchor },
     patchFiles: [],
-    args: ['--no-open', '--port', '19388'],
+    args: ['--no-open', '--port', '19388', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
     ...(process.argv[5] === undefined ? {} : {
       packageManager: {
         command: process.execPath,
@@ -101,7 +104,8 @@ async function main(): Promise<void> {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })
   const url = ctx.connection.authenticatedUrl(`http://127.0.0.1:${String(ctx.webServer.port)}`)
-  if (process.connected) process.send?.({ type: 'ready', url, injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })
+  const mobileUrl = mobile === undefined ? undefined : ctx.connection.authenticatedUrl(mobile.origin)
+  if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })
 }
 
 /** Upper bound of the startup diagnostic carried over IPC; the head holds the message and stack. */

@@ -386,6 +386,7 @@ async function main(): Promise<void> {
   const appPreload = fileURLToPath(new URL('./preload-app.cjs', import.meta.url))
   const applicationUrl = `${SCHEME}://app/`
   let hostUrl: string | undefined
+  let mobileUrl: string | undefined
   let hostCookie: string | undefined
   const browserGuests = new DesktopBrowserGuests(() => hostUrl)
   let injections: readonly unknown[] = []
@@ -430,6 +431,8 @@ async function main(): Promise<void> {
         const ready = await host.start()
         hostCookie = await authenticateWebHost(ready.url)
         hostUrl = ready.url
+        mobileUrl = ready.mobileUrl
+        refreshApplicationMenu()
         if (ready.injections === undefined) throw new Error('Desktop Host did not provide boot injections')
         injections = ready.injections
         welcomeBackend = await connectDesktopWelcome(ready.url, (input, init) => net.fetch(input, init), async () => (await session.defaultSession.cookies.get({ url: ready.url })).map(cookie => `${cookie.name}=${cookie.value}`).join('; '))
@@ -484,6 +487,10 @@ async function main(): Promise<void> {
       inspectQuit: () => host.inspectQuit(),
     }
   }, (state) => {
+    if (state.phase !== 'ready' && mobileUrl !== undefined) {
+      mobileUrl = undefined
+      refreshApplicationMenu()
+    }
     if (state.phase === 'error') reportFatal(state.failure, 'host')
     else if (!shuttingDown) backendReady = state.phase === 'ready'
   })
@@ -916,6 +923,19 @@ async function main(): Promise<void> {
       : { label: currentDesktopLocale().messages.aboutMenu, role: 'about' },
     { type: 'separator' },
     { label: currentDesktopLocale().messages.checkUpdatesMenu, click: () => { void openUpdatePrompt(true) } },
+    ...(mobileUrl === undefined ? [] : [{ label: currentDesktopLocale().messages.connectMobileMenu, click: () => {
+      if (mobileUrl === undefined) return
+      void dialog.showMessageBox({
+        type: 'info',
+        title: currentDesktopLocale().messages.connectMobileMenu,
+        message: currentDesktopLocale().messages.connectMobileDetail,
+        detail: mobileUrl,
+        buttons: [currentDesktopLocale().messages.copyMobileLink, currentDesktopLocale().messages.cancel],
+        defaultId: 0,
+      }).then(({ response }) => {
+        if (response === 0 && mobileUrl !== undefined) void clipboard.writeText(mobileUrl)
+      }).catch((error: unknown) => { console.error(error) })
+    } }]),
     ...development ? [
       { type: 'separator' as const },
       { label: currentDesktopLocale().messages.reloadPageMenu, role: 'reload' as const },

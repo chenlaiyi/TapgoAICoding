@@ -195,6 +195,7 @@ describe('desktop host process', () => {
   it.each([
     ["process.send({ type: 'fatal', message: 'startup failed' }); process.disconnect()", 'startup failed'],
     ["process.send({ type: 'ready', url: 4 })", 'invalid IPC event'],
+    ["process.send({ type: 'ready', url: 'http://127.0.0.1:3080/', mobileUrl: 'http://public.example/?token=bad' })", 'invalid IPC event'],
     ["process.send({ type: 'fatal', message: 'startup failed', diagnostic: 42 })", 'invalid IPC event'],
     ['process.exit(0)', 'host stopped'],
   ])('rejects startup when the child fails before readiness: %s', async (source, message) => {

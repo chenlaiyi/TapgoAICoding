@@ -8,6 +8,7 @@ import { desktopNodeEnvironment } from './node-environment.ts'
 interface ReadyEvent {
   readonly type: 'ready'
   readonly url: string
+  readonly mobileUrl?: string
   readonly injections?: readonly unknown[] | undefined
 }
 
@@ -57,7 +58,14 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
     case 'shutdown-complete':
       return true
     case 'ready':
-      return typeof candidate.url === 'string'
+      if (typeof candidate.url !== 'string') return false
+      if (candidate.mobileUrl === undefined) return true
+      if (typeof candidate.mobileUrl !== 'string') return false
+      try {
+        const mobile = new URL(candidate.mobileUrl)
+        return mobile.protocol === 'https:' && mobile.pathname === '/' && mobile.username === ''
+          && mobile.password === '' && mobile.searchParams.getAll('token').length === 1
+      } catch { return false }
     case 'platform-session': {
       const session = candidate.session
       if (session === null) return true
@@ -106,6 +114,7 @@ async function exitsWithin(exit: Promise<void>, milliseconds: number): Promise<b
 /** Browser authentication URL reported by the running Web application. */
 export interface DesktopHostReady {
   readonly url: string
+  readonly mobileUrl?: string | undefined
   readonly injections?: readonly unknown[] | undefined
 }
 
@@ -212,7 +221,7 @@ export class DesktopHostProcess {
         child.kill('SIGTERM')
         return
       }
-      if (message.type === 'ready') this.readyResolve({ url: message.url, injections: message.injections })
+      if (message.type === 'ready') this.readyResolve({ url: message.url, mobileUrl: message.mobileUrl, injections: message.injections })
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
       else if (message.type === 'shutdown-complete') {
         if (this.stopping) this.shutdownCompleted = true

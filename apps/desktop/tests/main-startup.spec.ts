@@ -129,11 +129,15 @@ const harness = await vi.hoisted(async () => {
     readonly updateTasks = vi.fn(async (_action: 'inspect' | 'lock' | 'unlock') => false)
     readonly inspectQuit = vi.fn(async () => ({ activeTasks: false, scheduledTasks: false }))
     url = 'http://127.0.0.1:3080/?token=test'
+    mobileUrl: string | undefined
     fetch = vi.fn(async () => Response.json({ hasApiKey: true, writable: true, localePreference: null }))
     readonly ready = deferred()
     readonly exited = deferred()
     readonly stopping = deferred()
-    readonly start = vi.fn(() => { hostStarted.resolve(); return this.ready.promise.then(() => ({ url: this.url, injections: [] })) })
+    readonly start = vi.fn(() => {
+      hostStarted.resolve()
+      return this.ready.promise.then(() => ({ url: this.url, mobileUrl: this.mobileUrl, injections: [] }))
+    })
     readonly stop = vi.fn(() => {
       this.stopping.resolve()
       this.ready.reject(new Error('child stopped'))
@@ -154,8 +158,10 @@ const harness = await vi.hoisted(async () => {
     getPreferredSystemLanguages: () => ['en-US'],
     getVersion: () => '1.0.0',
     getAppPath: (): string => 'desktop-test-app',
+    setName: vi.fn(),
     setAppLogsPath: vi.fn(),
     getPath: vi.fn<(name: string) => string>(),
+    setPath: vi.fn(),
     setAboutPanelOptions: vi.fn<(options: Electron.AboutPanelOptionsOptions) => void>(),
     requestSingleInstanceLock: () => true,
     setAsDefaultProtocolClient: vi.fn(),
@@ -185,7 +191,7 @@ const harness = await vi.hoisted(async () => {
   return {
     failWindow(error: Error) { windowFailure = error },
     windows, hosts, handlers, app, FakeWindow, FakeHost, powerMonitor, nativeTheme, trays, FakeTray, backgroundNotice, shellDialog,
-    menu, popup, socketHeaders: vi.fn(), updateCheck, updateDownload, updateInstall,
+    menu, popup, clipboard: { writeText: vi.fn() }, socketHeaders: vi.fn(), updateCheck, updateDownload, updateInstall,
     platformDispose,
     platformCloseAndWait,
 
@@ -261,6 +267,7 @@ vi.mock('../src/policy-test-auth.ts', () => ({ DesktopPolicyTestAuth: class {
 
 vi.mock('electron', () => ({
   app: harness.app,
+  clipboard: harness.clipboard,
   BrowserWindow: harness.FakeWindow,
   dialog: harness.dialog,
   shell: { openExternal: harness.openExternal },
@@ -469,6 +476,27 @@ describe('desktop main startup', () => {
       { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
     ])
     expect(harness.windows[0]!.options).toMatchObject({ webPreferences: { devTools: true } })
+  })
+
+  it('copies the mobile URL only when the running Host supplies it', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'darwin' })
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    harness.hosts[0]!.mobileUrl = 'https://mac.tailnet.example:8443/?token=mobile-test'
+    harness.hosts[0]!.ready.resolve()
+    await harness.navigated.promise
+    let connect: MenuItemConstructorOptions | undefined
+    await vi.waitFor(() => {
+      const items = harness.menu.mock.lastCall![0][0]?.submenu as MenuItemConstructorOptions[]
+      connect = items.find(item => item.label === en.connectMobileMenu)
+      expect(connect).toBeDefined()
+    })
+    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 })
+    const click = connect!.click as () => void
+    click()
+    await vi.waitFor(() => { expect(harness.clipboard.writeText).toHaveBeenCalledWith(harness.hosts[0]!.mobileUrl) })
   })
 
   it.each([

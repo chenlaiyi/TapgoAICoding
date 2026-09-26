@@ -6,9 +6,11 @@ Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOM
 
 Tapgo AICoding 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aicoding://open` 协议、图标、更新地址与 macOS 更新缓存由 Tapgo 版本独立管理。DeepSeek 账号登录和计费仍由 DeepSeek 提供，也可使用独立 API Key。没有 Tapgo 强制更新策略服务时，发布配置设 `TAPGO_DESKTOP_NO_POLICY=1`；生产更新包必须配置稳定的 Tapgo 发布资产目录 `DOWNLOAD_PROD_FEED_URL`。
 
-`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`；macOS 默认浏览器数据目录修复版为 `0.6.2`；原生 Cua Driver 接入版为 `0.6.3`。运行时元数据仍记录实际内置的 DSH 源码版本。
+`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`；macOS 默认浏览器数据目录修复版为 `0.6.2`；原生 Cua Driver 接入版为 `0.6.3`；iOS 连接入口版为 `0.6.4`。运行时元数据仍记录实际内置的 DSH 源码版本。
 
 原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 Tapgo AICoding 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
+
+[iOS 配套应用](../../mobile/ios/README.zh.md) 可经由 Tailscale Serve HTTPS 使用运行中的桌面 Host。启动 Desktop 前，通过 `~/.tapgo-aicoding/.env` 或启动环境把 `TAPGO_MOBILE_HTTPS_ORIGIN` 设为完整 HTTPS 来源，并将该来源转发到 Host 的本机端口 19388。Desktop 随后信任这一主机，并在应用菜单中提供“连接手机”以复制含认证令牌的链接。Serve 仅在 tailnet 内开放；Host 仍只监听本机。
 
 `TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
 
