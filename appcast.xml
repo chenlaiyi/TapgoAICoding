@@ -3,6 +3,20 @@
     <channel>
         <title>Tapgo AICoding</title>
         <item>
+            <title>0.6.2</title>
+            <pubDate>Sun, 27 Sep 2026 00:01:07 +0800</pubDate>
+            <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.6.2</link>
+            <sparkle:version>0.6.2</sparkle:version>
+            <sparkle:shortVersionString>0.6.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# Tapgo AICoding 0.6.2
+
+修复普通启动与上游 DSH Desktop 共用 Electron 浏览器数据目录的问题。Tapgo 独立使用 ~/.tapgo-aicoding、~/Library/Application Support/Tapgo AICoding Desktop 和端口 19388。旧版 Tapgo 会话不会自动导入；原手机配对与远程中继功能未移植。安装包已签名，但未通过 Apple 公证。
+]]></description>
+            <enclosure url="https://github.com/chenlaiyi/TapgoAICoding/releases/download/desktop-feed-arm64/deepseek-harness-0.6.2-mac-arm64.zip" length="374511402" type="application/octet-stream" sparkle:edSignature="TdBjMCed/HbWv1GYIdASUT7Y05ZCbNv4Hu/TRKXxdJKNM3p83btOmqzUsOPGsjhXbSXYJa2XRhQ10gR9TUs2AQ=="/>
+        </item>
+        <item>
             <title>0.6.1</title>
             <pubDate>Sat, 26 Sep 2026 23:43:09 +0800</pubDate>
             <link>https://github.com/chenlaiyi/TapgoAICoding/releases/tag/v0.6.1</link>
