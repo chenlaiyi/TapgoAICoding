@@ -154,6 +154,9 @@ export class DesktopHostProcess {
     reject: (error: Error) => void
   }>()
 
+  /** Recent Host diagnostics for a packaging smoke failure. */
+  get diagnosticOutput(): string { return this.stderr }
+
   /**
    * @param node - Absolute Electron executable in Node mode.
    * @param runtimeDir - Immutable packages carried by the current application.

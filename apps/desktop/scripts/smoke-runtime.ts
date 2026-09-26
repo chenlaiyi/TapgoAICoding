@@ -61,7 +61,10 @@ export function apply(ctx) {
       const ready = ctx.computerUse.providerName === 'cua-driver-native'
         && ctx.tools.schemas().some(tool => tool.name === 'cua_driver_native__get_window_state')
       response.statusCode = ready ? 200 : 500
-      response.end(ready ? 'cua driver ready' : 'cua driver missing')
+      response.end(ready ? 'cua driver ready' : JSON.stringify({
+        provider: ctx.computerUse?.providerName,
+        tools: ctx.tools?.schemas().filter(tool => tool.name.includes('cua')).map(tool => tool.name),
+      }))
     } }))
   ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: '/desktop-smoke-office-cli',
     async handler(_request, response) {
@@ -118,10 +121,14 @@ export function apply(ctx) {
       throw new Error('desktop runtime: packaged frontend smoke failed')
     }
     const pluginResponse = await fetch(new URL('/desktop-smoke', ready.url), { headers: { cookie } })
-    if (await pluginResponse.text() !== 'plugin route ready') throw new Error('desktop runtime: plugin HTTP route failed')
+    const pluginBody = await pluginResponse.text()
+    if (pluginBody !== 'plugin route ready') {
+      throw new Error(`desktop runtime: plugin HTTP route failed (${pluginResponse.status}, ${JSON.stringify(pluginBody.slice(0, 160))}); Host diagnostics: ${host.diagnosticOutput.slice(-4000)}`)
+    }
     const cuaResponse = await fetch(new URL('/desktop-smoke-cua', ready.url), { headers: { cookie } })
-    if (!cuaResponse.ok || await cuaResponse.text() !== 'cua driver ready') {
-      throw new Error('desktop runtime: native Cua Driver did not register its tools')
+    const cuaBody = await cuaResponse.text()
+    if (!cuaResponse.ok || cuaBody !== 'cua driver ready') {
+      throw new Error(`desktop runtime: native Cua Driver did not register its tools (${cuaResponse.status}, ${cuaBody}); Host diagnostics: ${host.diagnosticOutput.slice(-4000)}`)
     }
     for (const { extension } of inputs) {
       const converted = await fetch(new URL(`/desktop-smoke-office/${extension}`, ready.url), {
