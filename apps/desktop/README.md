@@ -2,11 +2,11 @@
 
 English | [中文](README.zh.md)
 
-Tapgo defaults `DSH_HOME` to `~/.tapgo-aicoding`, preserving any explicit `DSH_HOME` override; upstream DSH keeps its own `~/.dsh` profile and sessions.
+Tapgo defaults `DSH_HOME` to `~/.tapgo-aicoding`, preserving any explicit `DSH_HOME` override; upstream DSH keeps its own `~/.dsh` profile and sessions. The packaged macOS app keeps Electron browser data in `~/Library/Application Support/Tapgo AICoding Desktop`, apart from both legacy Tapgo and upstream DSH; an explicit `--user-data-dir` still isolates test runs.
 
 Tapgo AICoding is derived from the open-source DeepSeek Harness Desktop. The application ID, URL scheme (`tapgo-aicoding://open`), icon, update origin, and macOS updater cache belong to the Tapgo release. DeepSeek account login and billing remain DeepSeek services; an independent API key is also supported. Set `TAPGO_DESKTOP_NO_POLICY=1` for releases without a Tapgo mandatory-update policy service, and set `DOWNLOAD_PROD_FEED_URL` to a stable Tapgo release-asset directory before packaging production updates.
 
-`TAPGO_DESKTOP_RELEASE_VERSION` sets the Tapgo application's public version independently of the bundled DSH source version. The first replacement release used `0.6.0`; the isolated-home fix uses `0.6.1` so it advances from the legacy `0.5.319` application; runtime metadata continues to identify the exact DSH version.
+`TAPGO_DESKTOP_RELEASE_VERSION` sets the Tapgo application's public version independently of the bundled DSH source version. The first replacement release used `0.6.0`; the isolated-home fix used `0.6.1`; the macOS browser-data fix uses `0.6.2` so it advances from the legacy `0.5.319` application; runtime metadata continues to identify the exact DSH version.
 
 `TAPGO_DESKTOP_SKIP_NOTARIZATION=1` uses the installed Developer ID signing identity and produces an unnotarized distribution. This certificate reports no TeamIdentifier in macOS code-signing metadata, so the release checks its exact Developer ID authority and grants bundled interpreters permission to load their signed native libraries. macOS may block a fresh download through Gatekeeper. Remove this setting and provide a signing p12 plus Apple notarization credentials for a notarized public release.
 

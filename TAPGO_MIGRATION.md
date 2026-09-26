@@ -1,6 +1,6 @@
 # Tapgo AICoding Desktop 升级记录
 
-本项目以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现。新版应用沿用 `com.tapgo.aicoding`，公开版本从 `0.5.319` 提升至 `0.6.1`；旧版源码保留在 Git 标签 `v0.5.319`。
+本项目以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现。新版应用沿用 `com.tapgo.aicoding`，公开版本从 `0.5.319` 提升至 `0.6.2`；旧版源码保留在 Git 标签 `v0.5.319`。
 
 ## 新版行为
 

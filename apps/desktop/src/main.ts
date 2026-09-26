@@ -1,6 +1,7 @@
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
+import { mkdirSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -78,6 +79,13 @@ const rendererConsole = new RendererConsoleTail()
 // Tapgo keeps its profile and sessions apart from an installed upstream DSH Desktop.
 if (process.env.DSH_HOME?.trim() === '' || process.env.DSH_HOME === undefined) {
   process.env.DSH_HOME = join(homedir(), '.tapgo-aicoding')
+}
+
+app.setName('Tapgo AICoding')
+if (process.platform === 'darwin' && app.isPackaged && !process.argv.some(arg => arg.startsWith('--user-data-dir='))) {
+  const userData = join(app.getPath('appData'), 'Tapgo AICoding Desktop')
+  mkdirSync(userData, { recursive: true, mode: 0o700 })
+  app.setPath('userData', userData)
 }
 
 // Platform-conventional logs directory (macOS ~/Library/Logs/<name>, otherwise under userData);

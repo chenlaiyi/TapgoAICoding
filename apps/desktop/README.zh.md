@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOME` 覆盖仍然有效；上游 DSH 保留自己的 `~/.dsh` profile 与会话。
+Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOME` 覆盖仍然有效；上游 DSH 保留自己的 `~/.dsh` profile 与会话。macOS 正式版另将 Electron 浏览器数据放在 `~/Library/Application Support/Tapgo AICoding Desktop`，与旧 Tapgo 和上游 DSH 分开；显式 `--user-data-dir` 覆盖仍用于隔离测试。
 
 Tapgo AICoding 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aicoding://open` 协议、图标、更新地址与 macOS 更新缓存由 Tapgo 版本独立管理。DeepSeek 账号登录和计费仍由 DeepSeek 提供，也可使用独立 API Key。没有 Tapgo 强制更新策略服务时，发布配置设 `TAPGO_DESKTOP_NO_POLICY=1`；生产更新包必须配置稳定的 Tapgo 发布资产目录 `DOWNLOAD_PROD_FEED_URL`。
 
-`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。首次替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`，高于旧版 `0.5.319`；运行时元数据仍记录实际内置的 DSH 源码版本。
+`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。首次替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`，macOS 默认浏览器数据目录修复版为 `0.6.2`，高于旧版 `0.5.319`；运行时元数据仍记录实际内置的 DSH 源码版本。
 
 `TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
 
