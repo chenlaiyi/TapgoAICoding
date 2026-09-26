@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /tapgo-aicoding-desktop:
-  en: 2af80b1b9ac4a5ce
-  zh: b3cceaad4cc54ad4
+  en: d723af7fee86c6a1
+  zh: ea03989495cb8b0f
 /tapgo-aicoding-desktop/closing-the-window-and-quitting:
   en: ddad7e9019af6318
   zh: 10d0abbe858e2862
@@ -21,8 +21,8 @@
   en: 0d11af8639977a6d
   zh: 86b086b12d2210d3
 /tapgo-aicoding-desktop/develop:
-  en: 918be07997c695d5
-  zh: 486c721b993beecd
+  en: 9e0f0762f171dfc4
+  zh: b89ae9e7c605c39b
 /tapgo-aicoding-desktop/develop/startup-onboarding:
   en: 84a52c4902822eb1
   zh: cae8e506b7f37fcb
