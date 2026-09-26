@@ -21,6 +21,7 @@ import {
 } from './verify-client-packages.ts'
 
 const EXPERIMENTAL_PREFIX = '@deepseek-ai/dsh-experimental-'
+const TAPGO_DESKTOP_CUA_PROVIDER = '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
 // The independently published entry package owns platform-engine dependencies.
 const EXTERNAL_KIT_PACKAGES = new Set(['@deepseek-ai/libreoffice-kit'])
 const PROFILE_SOURCE = 'packages/boot/app-boot/src/profile.ts'
@@ -111,6 +112,8 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
     || display(pkg.directory).startsWith('packages/experimental/')
   const add = (pkg: Package, origin: string): void => {
     if (isExperimental(pkg)) {
+      // The Tapgo Desktop Host explicitly selects this native provider; the DSH CLI and Web defaults remain separate.
+      if (origin === '@deepseek-ai/dsh-desktop-host dependencies' && pkg.manifest.name === TAPGO_DESKTOP_CUA_PROVIDER) return
       failures.push(`${origin} -> ${pkg.manifest.name}: default product must not include experimental packages`)
     } else if (!visited.has(pkg.directory)) {
       visited.add(pkg.directory)
@@ -137,6 +140,7 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
     }
     const packageName = barePackageName(name)
     if (packageName.startsWith(EXPERIMENTAL_PREFIX)) {
+      if (origin === '@deepseek-ai/dsh-desktop-host dependencies' && packageName === TAPGO_DESKTOP_CUA_PROVIDER) return
       failures.push(`${origin} -> ${name}: default product must not include experimental packages`)
       return
     }

@@ -102,6 +102,8 @@ macOS 上自定义菜单保留 Electron 的标准 Window 菜单及应用隐藏�
 
 ### 运行时与插件激活
 
+Desktop 首次启动或升级时，在 profile patch 中加入原生 Cua Driver 电脑操作服务和提供者，之后不覆盖用户修改。这两个包随签名运行时交付；原生恢复可禁用提供者。Host 操作桌面和截图需要 macOS 辅助功能与屏幕录制权限。工具使用 `cua_driver_native__` 前缀，不沿用旧 Tapgo Computer Use Helper 的工具名。
+
 签名资源中的 `resources/app.asar/dsh/desktop-runtime.json` 绑定 shell 版本、Electron 的 Node 版本、平台、架构、共享包版本和最终文件清单。启动读取元数据，并检查共享包记录。发布 schema、shell 版本、目标兼容性和文件完整性在打包时验证。首次启动不会把核心包复制到 profile 存储或通过 pnpm 安装核心包。
 
 1. 主窗口在 profile 准备或后端启动前，从打包静态资源于屏幕外加载共享 Web 加载页。共享 profile 初始化创建缺失的 manifest、空用户 patch 与 pnpm workspace 文件，不覆盖现有文件。

@@ -14,6 +14,7 @@ import {
   writeSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import {
   DESKTOP_HOST_PACKAGE,
   desktopCorePackageOverrides,
@@ -23,7 +24,7 @@ import type { DesktopPaths } from './paths.ts'
 import type { DesktopRelease } from './release.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
 import {
-  initProfile, PROFILE_TEMPLATES, removeLinkProjections, sanitizeProfile, type ProfileTemplate,
+  initProfile, loadOverlayPatches, PROFILE_TEMPLATES, removeLinkProjections, sanitizeProfile, type ProfileTemplate,
 } from '@deepseek-ai/dsh-app-boot'
 
 const PROJECT_NAME = '@deepseek-ai/dsh-desktop-runtime'
@@ -31,6 +32,30 @@ const DSH_PACKAGE = '@deepseek-ai/dsh'
 const CORE_BUILD_PACKAGE = '@deepseek-ai/dsh-subprocess-local'
 const WEB_PROFILE = PROFILE_TEMPLATES.web as ProfileTemplate
 const WORKSPACE_SETTINGS = 'nodeLinker: hoisted\nautoInstallPeers: false\n'
+const COMPUTER_USE_MARKER = 'desktop-computer-use-v1'
+const COMPUTER_USE_PATCH = `- insert:
+    - id: computer-use
+      name: '@deepseek-ai/dsh-computer-use'
+    - id: computer-use-cua-driver-native
+      name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
+`
+
+async function enableDesktopComputerUse(projectDir: string): Promise<void> {
+  const marker = join(projectDir, COMPUTER_USE_MARKER)
+  if (existsSync(marker)) return
+  const path = join(projectDir, 'cordis.patch.yml')
+  const source = readFileSync(path, 'utf8')
+  const entries = loadOverlayPatches('dsh', path)
+  const ownsComputerUse = entries.some(entry => entry.id === 'computer-use'
+    || entry.id === 'computer-use-cua-driver-native'
+    || entry.insert?.some(row => row.name === '@deepseek-ai/dsh-computer-use'
+      || row.name === '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'))
+  if (!ownsComputerUse) {
+    const withoutEmptyArray = source.replace(/^[ \t]*\[\][ \t]*(?=#|$)/mu, '')
+    await writeFileAtomic(path, `${withoutEmptyArray.trimEnd()}\n${COMPUTER_USE_PATCH}`, { mode: 0o600 })
+  }
+  await writeFileAtomic(marker, '1\n', { mode: 0o600 })
+}
 function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, undefined, 2)}\n`, { mode: 0o600 })
 }
@@ -81,11 +106,11 @@ export class DesktopProjectManager {
    * Load application metadata and prepare the external plugin profile without installing packages.
    */
   async applyRelease(): Promise<void> {
-    await this.withLock(() => {
+    await this.withLock(async () => {
       // Validation only: an unreadable or mismatched runtime descriptor stops preparation before the Host starts.
       readDesktopRuntime(this.runtime.dsh)
       migrateProfileSettings(this.paths.profile)
-      createPluginProfile(this.paths.profile)
+      await createPluginProfile(this.paths.profile)
       removeLinkProjections(this.paths.profile)
     })
   }
@@ -171,6 +196,7 @@ export function createDevelopmentProjectMetadata(projectDir: string, release: De
 }
 
 /** Create the first external plugin profile without running a package manager. */
-export function createPluginProfile(projectDir: string): void {
+export async function createPluginProfile(projectDir: string): Promise<void> {
   initProfile(projectDir, WEB_PROFILE.bundles)
+  await enableDesktopComputerUse(projectDir)
 }

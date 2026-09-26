@@ -28,8 +28,15 @@ describe('desktop package-set selection', () => {
         optionalDependencies: { '@deepseek-ai/platform-package': '1.0.0', '@deepseek-ai/missing-platform': '1.0.0' },
       })],
       ['@deepseek-ai/dsh-desktop-host', packed('@deepseek-ai/dsh-desktop-host', {
-        dependencies: { '@deepseek-ai/dsh': '^1.0.0' },
+        dependencies: {
+          '@deepseek-ai/dsh': '^1.0.0',
+          '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native': '^1.0.0',
+        },
       })],
+      ['@deepseek-ai/dsh-experimental-computer-use-cua-driver-native', packed('@deepseek-ai/dsh-experimental-computer-use-cua-driver-native', {
+        peerDependencies: { '@deepseek-ai/dsh-computer-use': '^1.0.0' },
+      })],
+      ['@deepseek-ai/dsh-computer-use', packed('@deepseek-ai/dsh-computer-use')],
       ['@deepseek-ai/dsh-base', packed('@deepseek-ai/dsh-base', {
         peerDependencies: { '@deepseek-ai/cordis': '^1.0.0' },
       })],
@@ -41,7 +48,9 @@ describe('desktop package-set selection', () => {
       '@deepseek-ai/cordis',
       '@deepseek-ai/dsh',
       '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-computer-use',
       '@deepseek-ai/dsh-desktop-host',
+      '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native',
       '@deepseek-ai/platform-package',
     ])
   })

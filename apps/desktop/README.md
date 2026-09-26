@@ -100,6 +100,8 @@ On macOS the custom menu retains Electron's standard Window menu and application
 
 ### Runtime and plugin activation
 
+Desktop adds the native Cua Driver computer-use service and provider to its profile patch once on upgrade or first launch. The two packages ship with the signed runtime; the user's later patch edits remain in control, and native recovery can disable the provider. The Host needs macOS Accessibility and Screen Recording permission for desktop input and screenshots. Its tools use the `cua_driver_native__` prefix and do not preserve the former Tapgo Computer Use helper's tool names.
+
 The signed `resources/app.asar/dsh/desktop-runtime.json` binds the shell version, Electron's Node version, platform, architecture, shared package versions, and final file inventory. Startup reads the metadata and checks shared package records. Release schema, shell version, target compatibility, and file integrity are verified during packaging. Core packages are never copied into profile storage or installed by pnpm at first launch.
 
 1. The main window loads the shared Web loading page offscreen from packaged static assets before profile preparation or backend startup. Shared profile initialization creates missing manifest, empty user patch, and pnpm workspace files without overwriting existing files.

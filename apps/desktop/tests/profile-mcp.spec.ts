@@ -8,11 +8,11 @@ import { expect, it } from 'vitest'
 import { composeEntries, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
 import { createPluginProfile } from '../src/project-manager.ts'
 
-it('retains one shared resource consumer in the Desktop Web profile', () => {
+it('retains one shared resource consumer in the Desktop Web profile', async () => {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-profile-mcp-'))
   try {
     const profileDir = join(home, 'profiles', 'desktop')
-    createPluginProfile(profileDir)
+    await createPluginProfile(profileDir)
     const installAnchor = fileURLToPath(new URL('../../cli/package.json', import.meta.url))
     const profile = loadProfileDirectory('dsh desktop', profileDir, installAnchor)
     const warnings: string[] = []
@@ -25,6 +25,10 @@ it('retains one shared resource consumer in the Desktop Web profile', () => {
       { id: 'mcp-resources', name: '@deepseek-ai/dsh-mcp-resources' },
     ])
     expect(rows.filter(row => row.name === '@deepseek-ai/dsh-mcp-client')).toEqual([])
+    expect(rows.find(row => row.id === 'computer-use')).toMatchObject({ name: '@deepseek-ai/dsh-computer-use' })
+    expect(rows.find(row => row.id === 'computer-use-cua-driver-native')).toMatchObject({
+      name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native',
+    })
     expect(rows.find(row => row.id === 'webserver')).toMatchObject({ name: '@deepseek-ai/dsh-host-webserver' })
     expect(rows.find(row => row.id === 'webserver')?.disabled).not.toBe(true)
     expect(warnings).toEqual([])
