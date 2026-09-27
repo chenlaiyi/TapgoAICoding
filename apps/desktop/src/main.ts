@@ -58,6 +58,7 @@ import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
 import { mobilePairingPage } from './mobile-pairing.ts'
+import { namedMobileUrl, readComputerName, saveComputerName, systemComputerName } from './computer-name.ts'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -927,19 +928,39 @@ async function main(): Promise<void> {
     ...(mobileUrl === undefined ? [] : [{ label: currentDesktopLocale().messages.connectMobileMenu, click: () => {
       if (mobileUrl === undefined) return
       const url = mobileUrl
-      void mobilePairingPage(url, currentDesktopLocale().messages).then(async (page) => {
+      const namePath = join(app.getPath('userData'), 'computer-name')
+      const render = async (window: BrowserWindow): Promise<void> => {
+        const name = readComputerName(namePath, systemComputerName())
+        const page = await mobilePairingPage(namedMobileUrl(url, name), name, currentDesktopLocale().messages)
+        await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
+      }
+      void (async () => {
         const parent = currentMainWindow()
         const window = new BrowserWindow({
-          width: 390, height: 570, minWidth: 350, minHeight: 520,
+          width: 420, height: 620, minWidth: 380, minHeight: 590,
           ...(parent === undefined ? {} : { parent }), modal: false, show: false,
           title: currentDesktopLocale().messages.connectMobileMenu,
           webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
         })
         window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-        window.webContents.on('will-navigate', (event) => { event.preventDefault() })
-        await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
+        window.webContents.on('will-navigate', (event, destination) => {
+          event.preventDefault()
+          const submitted = new URL(destination)
+          if (submitted.protocol !== 'tapgo-pairing:' || submitted.host !== 'computer-name') return
+          try {
+            const value = submitted.searchParams.get('value')
+            if (value === null) return
+            saveComputerName(namePath, value)
+            void render(window).catch((error: unknown) => { console.error(error) })
+          } catch (error) {
+            console.error(error)
+            dialog.showErrorBox(currentDesktopLocale().messages.connectMobileMenu,
+              currentDesktopLocale().messages.mobileComputerNameSaveFailed)
+          }
+        })
+        await render(window)
         if (!window.isDestroyed()) window.show()
-      }).catch((error: unknown) => { console.error(error) })
+      })().catch((error: unknown) => { console.error(error) })
     } }]),
     ...development ? [
       { type: 'separator' as const },

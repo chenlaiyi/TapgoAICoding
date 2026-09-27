@@ -6,6 +6,8 @@ import WebKit
 @main
 struct DshMobileApp: App {
     @StateObject private var connection = MobileConnection()
+    @State private var renaming = false
+    @State private var name = ""
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +23,10 @@ struct DshMobileApp: App {
                                 Text(computer.id).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }
                             Spacer(minLength: 4)
+                            Button("改名") {
+                                name = computer.name
+                                renaming = true
+                            }
                             Button("切换") { connection.leave() }
                         }
                         .padding(.horizontal, 16)
@@ -33,6 +39,13 @@ struct DshMobileApp: App {
                 }
             }
             .onOpenURL { connection.connect($0) }
+            .alert("电脑名称", isPresented: $renaming) {
+                TextField("电脑名称", text: $name)
+                Button("取消", role: .cancel) {}
+                Button("保存") { connection.renameActive(name) }
+            } message: {
+                Text("只修改这台 iPhone 上显示的名称")
+            }
         }
     }
 }
@@ -41,6 +54,8 @@ struct SavedComputer: Codable, Equatable, Identifiable {
     let id: String
     var name: String
     var url: String
+    var sourceName: String? = nil
+    var customName: String? = nil
 }
 
 private struct SavedComputers: Codable {
@@ -144,10 +159,31 @@ final class MobileConnection: ObservableObject {
         }
         let id = "https://\(host)\(destination.port.map { ":\($0)" } ?? "")"
         let previous = computers.first(where: { $0.id == id })
+        let transmittedName = URLComponents(url: destination, resolvingAgainstBaseURL: false)?
+            .queryItems?.first(where: { $0.name == "name" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let sourceName = transmittedName.flatMap { $0.isEmpty ? nil : String($0.prefix(80)) } ?? host
         let label = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let computer = SavedComputer(id: id, name: label.isEmpty ? (previous?.name ?? host) : label,
-                                     url: destination.absoluteString)
+        let legacyName = previous?.sourceName == nil && previous?.name != host ? previous?.name : nil
+        let customName = label.isEmpty ? (previous?.customName ?? legacyName) : label
+        let computer = SavedComputer(id: id, name: customName ?? sourceName,
+                                     url: destination.absoluteString, sourceName: sourceName,
+                                     customName: customName)
         commit(computers.filter { $0.id != id } + [computer], active: id)
+    }
+
+    func renameActive(_ value: String) {
+        guard let activeID else { return }
+        let label = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !label.isEmpty, label.count <= 80 else {
+            error = "电脑名称需为 1–80 个字符"
+            return
+        }
+        var updated = computers
+        guard let index = updated.firstIndex(where: { $0.id == activeID }) else { return }
+        updated[index].name = label
+        updated[index].customName = label
+        commit(updated, active: activeID)
     }
 
     func select(_ id: String) { commit(computers, active: id) }
@@ -168,7 +204,6 @@ private extension Optional where Wrapped == String {
 struct ConnectView: View {
     @ObservedObject var connection: MobileConnection
     @State private var text = ""
-    @State private var name = ""
     @State private var scanning = false
 
     var body: some View {
@@ -191,8 +226,7 @@ struct ConnectView: View {
                     }
                 }
                 Section("连接 Mac") {
-                    Text("从要连接的 Mac 复制链接。可给每台电脑起名，随后在上方切换。")
-                    TextField("电脑名称（可选）", text: $name)
+                    Text("从 Mac 扫码或粘贴连接链接，电脑名称会自动识别。连接后可在手机上改名。")
                     Button("扫描二维码") { scanning = true }
                     TextField("https://…?token=…", text: $text)
                         .textInputAutocapitalization(.never)
@@ -200,7 +234,7 @@ struct ConnectView: View {
                         .keyboardType(.URL)
                     Button("连接") {
                         if let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                            connection.connect(url, name: name)
+                            connection.connect(url)
                         } else {
                             connection.error = "连接链接无效"
                         }
@@ -214,7 +248,7 @@ struct ConnectView: View {
             .sheet(isPresented: $scanning) {
                 QRScanner { value in
                     scanning = false
-                    if let url = URL(string: value) { connection.connect(url, name: name) }
+                    if let url = URL(string: value) { connection.connect(url) }
                     else { connection.error = "二维码不是连接链接" }
                 }
             }
