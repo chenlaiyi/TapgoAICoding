@@ -478,7 +478,7 @@ describe('desktop main startup', () => {
     expect(harness.windows[0]!.options).toMatchObject({ webPreferences: { devTools: true } })
   })
 
-  it('copies the mobile URL only when the running Host supplies it', async () => {
+  it('opens a scannable pairing window only when the running Host supplies a mobile URL', async () => {
     vi.stubGlobal('process', { ...process, platform: 'darwin' })
     await import('../src/main.ts')
     await harness.preparing.promise
@@ -493,10 +493,15 @@ describe('desktop main startup', () => {
       connect = items.find(item => item.label === en.connectMobileMenu)
       expect(connect).toBeDefined()
     })
-    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 })
     const click = connect!.click as () => void
     click()
-    await vi.waitFor(() => { expect(harness.clipboard.writeText).toHaveBeenCalledWith(harness.hosts[0]!.mobileUrl) })
+    await vi.waitFor(() => { expect(harness.windows.at(-1)?.urls[0]).toContain('data:text/html') })
+    const page = decodeURIComponent(harness.windows.at(-1)!.urls[0]!)
+    expect(page).toContain('data:image/png;base64,')
+    expect(page).toContain(harness.hosts[0]!.mobileUrl)
+    expect(harness.windows.at(-1)!.options).toMatchObject({
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+    })
   })
 
   it.each([

@@ -10,15 +10,23 @@ struct DshMobileApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if let url = connection.url {
-                    NavigationStack {
-                        DshWebView(url: url, onUnauthorized: connection.disconnect)
-                            .ignoresSafeArea(edges: .bottom)
-                            .navigationTitle("点点够终端")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                Button("断开", action: connection.disconnect)
+                if let computer = connection.activeComputer, let url = URL(string: computer.url) {
+                    VStack(spacing: 0) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "desktopcomputer")
+                                .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("当前电脑").font(.caption2).foregroundStyle(.secondary)
+                                Text(computer.name).font(.headline).lineLimit(1)
+                                Text(computer.id).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }
+                            Spacer(minLength: 4)
+                            Button("切换") { connection.leave() }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        DshWebView(url: url, onUnauthorized: connection.expireActive)
+                            .id(computer.url)
                     }
                 } else {
                     ConnectView(connection: connection)
@@ -29,27 +37,38 @@ struct DshMobileApp: App {
     }
 }
 
+struct SavedComputer: Codable, Equatable, Identifiable {
+    let id: String
+    var name: String
+    var url: String
+}
+
+private struct SavedComputers: Codable {
+    var items: [SavedComputer]
+    var activeID: String?
+}
+
 @MainActor
 final class MobileConnection: ObservableObject {
-    @Published private(set) var url: URL?
+    @Published private(set) var computers: [SavedComputer] = []
+    @Published private(set) var activeID: String?
     @Published var error: String?
-    private let service = "com.devtools.terminalSimple.dsh-url"
-    private let account = "connection-url"
+    var activeComputer: SavedComputer? { computers.first(where: { $0.id == activeID }) }
+    private let service = "com.devtools.terminalSimple.dsh-computers"
+    private let account = "connections"
 
     init() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var item: CFTypeRef?
-        if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-           let data = item as? Data,
-           let text = String(data: data, encoding: .utf8),
-           let saved = URL(string: text) {
+        if let data = read(service: service, account: account),
+           let saved = try? JSONDecoder().decode(SavedComputers.self, from: data) {
+            computers = saved.items
+            activeID = saved.activeID
+        } else if let data = read(service: "com.devtools.terminalSimple.dsh-url", account: "connection-url"),
+                  let text = String(data: data, encoding: .utf8), let saved = URL(string: text) {
             connect(saved)
+            if activeComputer != nil {
+                SecItemDelete(query(service: "com.devtools.terminalSimple.dsh-url",
+                                    account: "connection-url") as CFDictionary)
+            }
         }
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
@@ -61,7 +80,48 @@ final class MobileConnection: ObservableObject {
         #endif
     }
 
-    func connect(_ candidate: URL) {
+    private func query(service: String, account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account]
+    }
+
+    private func read(service: String, account: String) -> Data? {
+        var lookup = query(service: service, account: account)
+        lookup[kSecReturnData as String] = true
+        lookup[kSecMatchLimit as String] = kSecMatchLimitOne
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(lookup as CFDictionary, &item) == errSecSuccess else { return nil }
+        return item as? Data
+    }
+
+    private func commit(_ items: [SavedComputer], active: String?) {
+        guard let data = try? JSONEncoder().encode(SavedComputers(items: items, activeID: active)) else {
+            error = "无法保存电脑列表"
+            return
+        }
+        let lookup = query(service: service, account: account)
+        let attributes: [String: Any] = [kSecValueData as String: data]
+        let existing = SecItemUpdate(lookup as CFDictionary, attributes as CFDictionary)
+        var status = existing
+        if existing == errSecItemNotFound {
+            var insert = lookup
+            insert[kSecValueData as String] = data
+            insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            status = SecItemAdd(insert as CFDictionary, nil)
+        }
+        if status != errSecSuccess {
+            #if !targetEnvironment(simulator)
+            error = "无法安全保存电脑列表"
+            return
+            #endif
+        }
+        computers = items
+        activeID = active
+        error = nil
+    }
+
+    func connect(_ candidate: URL, name: String = "") {
         let destination: URL
         if candidate.scheme == "dsh-mobile",
            let encoded = URLComponents(url: candidate, resolvingAgainstBaseURL: false)?
@@ -71,7 +131,8 @@ final class MobileConnection: ObservableObject {
         } else {
             destination = candidate
         }
-        guard destination.scheme == "https", destination.host != nil,
+        guard destination.scheme == "https", let host = destination.host,
+              destination.user == nil, destination.password == nil,
               destination.path.isEmpty || destination.path == "/" else {
             error = "请输入 HTTPS DSH 连接链接"
             return
@@ -81,35 +142,22 @@ final class MobileConnection: ObservableObject {
             error = "连接链接缺少认证令牌"
             return
         }
-        let data = Data(destination.absoluteString.utf8)
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrService as String: service,
-                                    kSecAttrAccount as String: account]
-        SecItemDelete(query as CFDictionary)
-        var insert = query
-        insert[kSecValueData as String] = data
-        insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let status = SecItemAdd(insert as CFDictionary, nil)
-        guard status == errSecSuccess else {
-            #if targetEnvironment(simulator)
-            url = destination
-            error = nil
-            return
-            #else
-            error = "无法安全保存连接链接"
-            return
-            #endif
-        }
-        url = destination
-        error = nil
+        let id = "https://\(host)\(destination.port.map { ":\($0)" } ?? "")"
+        let previous = computers.first(where: { $0.id == id })
+        let label = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let computer = SavedComputer(id: id, name: label.isEmpty ? (previous?.name ?? host) : label,
+                                     url: destination.absoluteString)
+        commit(computers.filter { $0.id != id } + [computer], active: id)
     }
 
-    func disconnect() {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrService as String: service,
-                                    kSecAttrAccount as String: account]
-        SecItemDelete(query as CFDictionary)
-        url = nil
+    func select(_ id: String) { commit(computers, active: id) }
+    func leave() { commit(computers, active: nil) }
+    func expireActive() {
+        leave()
+        error = "连接已失效，请从这台 Mac 重新复制连接链接"
+    }
+    func remove(_ id: String) {
+        commit(computers.filter { $0.id != id }, active: activeID == id ? nil : activeID)
     }
 }
 
@@ -120,13 +168,31 @@ private extension Optional where Wrapped == String {
 struct ConnectView: View {
     @ObservedObject var connection: MobileConnection
     @State private var text = ""
+    @State private var name = ""
     @State private var scanning = false
 
     var body: some View {
         NavigationStack {
             Form {
+                if !connection.computers.isEmpty {
+                    Section("已配对的 Mac") {
+                        ForEach(connection.computers) { computer in
+                            Button { connection.select(computer.id) } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(computer.name).font(.headline)
+                                    Text(computer.id).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .onDelete { offsets in
+                            let ids = offsets.map { connection.computers[$0].id }
+                            for id in ids { connection.remove(id) }
+                        }
+                    }
+                }
                 Section("连接 Mac") {
-                    Text("手机与 Mac 加入同一 Tailscale 网络后，从 Mac 应用菜单复制 HTTPS 连接链接并粘贴到这里；也可扫描该链接的二维码。")
+                    Text("从要连接的 Mac 复制链接。可给每台电脑起名，随后在上方切换。")
+                    TextField("电脑名称（可选）", text: $name)
                     Button("扫描二维码") { scanning = true }
                     TextField("https://…?token=…", text: $text)
                         .textInputAutocapitalization(.never)
@@ -134,7 +200,7 @@ struct ConnectView: View {
                         .keyboardType(.URL)
                     Button("连接") {
                         if let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                            connection.connect(url)
+                            connection.connect(url, name: name)
                         } else {
                             connection.error = "连接链接无效"
                         }
@@ -148,7 +214,7 @@ struct ConnectView: View {
             .sheet(isPresented: $scanning) {
                 QRScanner { value in
                     scanning = false
-                    if let url = URL(string: value) { connection.connect(url) }
+                    if let url = URL(string: value) { connection.connect(url, name: name) }
                     else { connection.error = "二维码不是连接链接" }
                 }
             }

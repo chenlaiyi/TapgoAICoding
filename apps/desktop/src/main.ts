@@ -57,6 +57,7 @@ import { DesktopUpdateOverlays } from './update-overlay.ts'
 import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
+import { mobilePairingPage } from './mobile-pairing.ts'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -925,15 +926,19 @@ async function main(): Promise<void> {
     { label: currentDesktopLocale().messages.checkUpdatesMenu, click: () => { void openUpdatePrompt(true) } },
     ...(mobileUrl === undefined ? [] : [{ label: currentDesktopLocale().messages.connectMobileMenu, click: () => {
       if (mobileUrl === undefined) return
-      void dialog.showMessageBox({
-        type: 'info',
-        title: currentDesktopLocale().messages.connectMobileMenu,
-        message: currentDesktopLocale().messages.connectMobileDetail,
-        detail: mobileUrl,
-        buttons: [currentDesktopLocale().messages.copyMobileLink, currentDesktopLocale().messages.cancel],
-        defaultId: 0,
-      }).then(({ response }) => {
-        if (response === 0 && mobileUrl !== undefined) void clipboard.writeText(mobileUrl)
+      const url = mobileUrl
+      void mobilePairingPage(url, currentDesktopLocale().messages).then(async (page) => {
+        const parent = currentMainWindow()
+        const window = new BrowserWindow({
+          width: 390, height: 570, minWidth: 350, minHeight: 520,
+          ...(parent === undefined ? {} : { parent }), modal: false, show: false,
+          title: currentDesktopLocale().messages.connectMobileMenu,
+          webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+        })
+        window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+        window.webContents.on('will-navigate', (event) => { event.preventDefault() })
+        await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
+        if (!window.isDestroyed()) window.show()
       }).catch((error: unknown) => { console.error(error) })
     } }]),
     ...development ? [

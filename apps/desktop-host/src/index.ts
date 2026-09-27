@@ -2,6 +2,7 @@
 
 import { delimiter, join } from 'node:path'
 import { inspect } from 'node:util'
+import { fileURLToPath } from 'node:url'
 import { loadLayeredEnv, loadProfileDirectory, reportSkippedBundles } from '@deepseek-ai/dsh-app-boot'
 import { runProfile } from '@deepseek-ai/dsh/profile-boot'
 import type {} from '@deepseek-ai/dsh-client-connection'
@@ -29,7 +30,7 @@ async function main(): Promise<void> {
     environment,
     profile: 'desktop',
     resolvedProfile: { profile, installAnchor },
-    patchFiles: [],
+    patchFiles: mobile === undefined ? [] : [fileURLToPath(new URL('../mobile-picker.overlay.yml', import.meta.url))],
     args: ['--no-open', '--port', '19388', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
     ...(process.argv[5] === undefined ? {} : {
       packageManager: {

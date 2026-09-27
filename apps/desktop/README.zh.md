@@ -6,11 +6,11 @@ Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOM
 
 Tapgo AICoding 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aicoding://open` 协议、图标、更新地址与 macOS 更新缓存由 Tapgo 版本独立管理。DeepSeek 账号登录和计费仍由 DeepSeek 提供，也可使用独立 API Key。没有 Tapgo 强制更新策略服务时，发布配置设 `TAPGO_DESKTOP_NO_POLICY=1`；生产更新包必须配置稳定的 Tapgo 发布资产目录 `DOWNLOAD_PROD_FEED_URL`。
 
-`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`；macOS 默认浏览器数据目录修复版为 `0.6.2`；原生 Cua Driver 接入版为 `0.6.3`；iOS 连接入口版为 `0.6.4`。运行时元数据仍记录实际内置的 DSH 源码版本。
+`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`；macOS 默认浏览器数据目录修复版为 `0.6.2`；原生 Cua Driver 接入版为 `0.6.3`；iOS 连接入口版为 `0.6.4`；远程工作区浏览版为 `0.6.5`。运行时元数据仍记录实际内置的 DSH 源码版本。
 
 原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 Tapgo AICoding 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
 
-[iOS 配套应用](../../mobile/ios/README.zh.md) 可经由 Tailscale Serve HTTPS 使用运行中的桌面 Host。启动 Desktop 前，通过 `~/.tapgo-aicoding/.env` 或启动环境把 `TAPGO_MOBILE_HTTPS_ORIGIN` 设为完整 HTTPS 来源，并将该来源转发到 Host 的本机端口 19388。Desktop 随后信任这一主机，并在应用菜单中提供“连接手机”以复制含认证令牌的链接。Serve 仅在 tailnet 内开放；Host 仍只监听本机。
+[iOS 配套应用](../../mobile/ios/README.zh.md) 可经由 Tailscale Serve HTTPS 使用运行中的桌面 Host。启动 Desktop 前，通过 `~/.tapgo-aicoding/.env` 或启动环境把 `TAPGO_MOBILE_HTTPS_ORIGIN` 设为完整 HTTPS 来源，并将该来源转发到 Host 的本机端口 19388。Desktop 随后信任这一主机，为手机工作区使用页面内 Host 目录浏览，并在应用菜单中提供带二维码和可复制认证链接的“连接手机”窗口。每台 Mac 均需单独配置和配对。Serve 仅在 tailnet 内开放；Host 仍只监听本机。
 
 `TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
 
@@ -18,7 +18,7 @@ Tapgo AICoding 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aic
 
 应用菜单第一项“**关于 DeepSeek Harness**”打开 Electron 原生关于面板，展示应用图标、产品名称和当前安装的发布版本。菜单文案跟随桌面壳的语言。macOS 的隐藏、隐藏其他、显示全部和退出条目使用本地化文案，隐藏和退出条目包含 DeepSeek Harness 产品名称。这些条目保留原生动作和快捷键。macOS 从应用包读取图标，因此未打包的开发启动会显示 Electron 图标；Windows 使用随包分发的 PNG。
 
-Desktop 的本地原生目录流程打开绑定应用窗口的 Electron 文件夹对话框，并先恢复、显示和聚焦该窗口。并发请求共用一个对话框；取消不返回路径，失败后可以重试。普通 Web 使用 Host 选择器。浏览模式列出 Host 目录。Linux 缺少 zenity 或 kdialog 时，自动选择使用浏览模式，不使用 Electron 对话框。
+Desktop 的本地原生目录流程打开绑定应用窗口的 Electron 文件夹对话框，并先恢复、显示和聚焦该窗口。并发请求共用一个对话框；取消不返回路径，失败后可以重试。启用手机连接的 Desktop 为桌面和手机客户端统一使用页面内 Host 目录浏览。普通 Web 使用 Host 选择器。浏览模式列出 Host 目录。Linux 缺少 zenity 或 kdialog 时，自动选择使用浏览模式，不使用 Electron 对话框。
 
 Creator 和 Web Plugin Manager 在 Electron Node 模式下使用 Desktop 内置 pnpm，无需 PATH 中存在 pnpm。私有 Node 启动器环境仅应用于包操作。
 

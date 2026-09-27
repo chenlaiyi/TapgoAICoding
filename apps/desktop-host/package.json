@@ -7,7 +7,8 @@
   "type": "module",
   "main": "lib/index.js",
   "files": [
-    "lib/index.js"
+    "lib/index.js",
+    "mobile-picker.overlay.yml"
   ],
   "dependencies": {
     "@deepseek-ai/libreoffice-kit": "^0.1.1",
@@ -16,7 +17,9 @@
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-app-boot": "workspace:*",
     "@deepseek-ai/dsh-client-connection": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-directory-picker-browse": "workspace:*",
     "@deepseek-ai/dsh-host-webserver": "workspace:*",
+    "@deepseek-ai/dsh-host-directory-picker-browse": "workspace:*",
     "@deepseek-ai/dsh-home-paths": "workspace:*",
     "@deepseek-ai/dsh-jobs": "workspace:*",
     "@deepseek-ai/dsh-schedule": "workspace:*",
