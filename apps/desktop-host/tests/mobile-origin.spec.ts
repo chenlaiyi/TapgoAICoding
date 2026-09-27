@@ -7,6 +7,9 @@ describe('mobile HTTPS origin', () => {
     expect(resolveMobileOrigin('https://mac.tailnet.example:8443')).toEqual({
       origin: 'https://mac.tailnet.example:8443', authority: 'mac.tailnet.example:8443',
     })
+    expect(resolveMobileOrigin('https://dsh-macmini.itapgo.com')).toEqual({
+      origin: 'https://dsh-macmini.itapgo.com', authority: 'dsh-macmini.itapgo.com',
+    })
     for (const value of ['http://mac.tailnet.example', 'https://mac.tailnet.example/path',
       'https://mac.tailnet.example/?token=secret', 'https://user:pass@mac.tailnet.example', 'invalid']) {
       expect(() => resolveMobileOrigin(value)).toThrow('TAPGO_MOBILE_HTTPS_ORIGIN')
