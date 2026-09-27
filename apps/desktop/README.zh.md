@@ -10,7 +10,7 @@ Tapgo AICoding 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aic
 
 原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 Tapgo AICoding 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
 
-[iOS 配套应用](../../mobile/ios/README.zh.md) 可经由 Tailscale Serve HTTPS 使用运行中的桌面 Host。启动 Desktop 前，通过 `~/.tapgo-aicoding/.env` 或启动环境把 `TAPGO_MOBILE_HTTPS_ORIGIN` 设为完整 HTTPS 来源，并将该来源转发到 Host 的本机端口 19388。Desktop 随后信任这一主机，为手机工作区使用页面内 Host 目录浏览，并在应用菜单中提供带二维码和可复制认证链接的“连接手机”窗口。每台 Mac 均需单独配置和配对。Serve 仅在 tailnet 内开放；Host 仍只监听本机。
+[iOS 配套应用](../../mobile/ios/README.zh.md) 可经由 Tailscale Serve HTTPS 使用运行中的桌面 Host。启动 Desktop 前，通过 `~/.tapgo-aicoding/.env` 或启动环境把 `TAPGO_MOBILE_HTTPS_ORIGIN` 设为完整 HTTPS 来源，并将该来源直接或经可信 Mac 的持久隧道转发到 Host 的本机端口 19388。Desktop 随后信任这一主机，为手机工作区使用页面内 Host 目录浏览，并在应用菜单中提供带二维码和可复制认证链接的“连接手机”窗口。每台 Mac 均需单独配置和配对。Serve 仅在 tailnet 内开放；Host 仍只监听本机。
 
 `TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
 
