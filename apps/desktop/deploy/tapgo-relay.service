@@ -1,0 +1,20 @@
+[Unit]
+Description=Tapgo shared mobile relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tapgo-relay
+Group=tapgo-relay
+ExecStart=/opt/tapgo-relay/frps -c /etc/tapgo-relay/frps.toml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/tapgo-relay
+
+[Install]
+WantedBy=multi-user.target

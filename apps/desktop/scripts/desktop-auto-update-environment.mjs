@@ -14,8 +14,8 @@ const UPDATE_ENVIRONMENTS = {
     secretKeyEnvName: 'DOWNLOAD_TEST_COS_SECRET_KEY',
   },
   production: {
-    originEnvName: undefined,
-    fixedOrigin: 'https://download.deepseek.com',
+    fixedOrigin: undefined,
+    originEnvName: 'DOWNLOAD_PROD_ORIGIN',
     bucketEnvName: 'DOWNLOAD_PROD_COS_BUCKET',
     secretIdEnvName: 'DOWNLOAD_PROD_COS_SECRET_ID',
     secretKeyEnvName: 'DOWNLOAD_PROD_COS_SECRET_KEY',
@@ -120,6 +120,23 @@ function httpsOrigin(value, name) {
 }
 
 /**
+ * Normalize a stable HTTPS directory that serves electron-updater metadata and archives.
+ * @param {string} value - Feed directory.
+ * @param {string} name - Environment variable used in diagnostics.
+ * @returns {string} Directory URL with one trailing slash.
+ */
+function httpsFeedDirectory(value, name) {
+  let parsed
+  try { parsed = new URL(value) }
+  catch { throw new Error(`desktop auto-update: ${name} must be an absolute HTTPS directory URL`) }
+  if (parsed.protocol !== 'https:' || parsed.username !== '' || parsed.password !== ''
+    || parsed.search !== '' || parsed.hash !== '' || parsed.pathname === '/') {
+    throw new Error(`desktop auto-update: ${name} must be an HTTPS directory URL without credentials, query, or fragment`)
+  }
+  return `${parsed.origin}${parsed.pathname.replace(/\/+$/u, '')}/`
+}
+
+/**
  * Resolve the public updater URL and object prefixes for one release target.
  * @param {NodeJS.ProcessEnv} env - Packaging or upload environment.
  * @param {NodeJS.Platform} platform - Target Node.js platform.
@@ -131,6 +148,15 @@ export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
   const environment = resolveDesktopAutoUpdateEnvironment(env)
   const target = resolveDesktopAutoUpdateTarget(platform, arch)
   const deployment = UPDATE_ENVIRONMENTS[environment]
+  const releaseFeed = env.DOWNLOAD_PROD_FEED_URL?.trim()
+  if (releaseFeed !== undefined && releaseFeed !== '') {
+    if (environment !== 'production' || env.DOWNLOAD_PROD_ORIGIN?.trim()) {
+      throw new Error('desktop auto-update: DOWNLOAD_PROD_FEED_URL requires production without DOWNLOAD_PROD_ORIGIN')
+    }
+    const publicUrl = httpsFeedDirectory(releaseFeed, 'DOWNLOAD_PROD_FEED_URL')
+    return { environment, target, origin: new URL(publicUrl).origin,
+      keyPrefix: `dsh-desk/feeds/${target}`, binaryKeyPrefix: `dsh-desk/bin/${target}`, publicUrl }
+  }
   let origin = deployment.fixedOrigin
   if (origin === undefined) {
     const { originEnvName } = deployment
@@ -165,6 +191,9 @@ export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
  * @throws {Error} When the selected deployment lacks a bucket or valid updater configuration.
  */
 export function resolveDesktopUploadConfig(env, platform, arch) {
+  if (env.DOWNLOAD_PROD_FEED_URL?.trim()) {
+    throw new Error('desktop auto-update: release-asset feeds require publication through the release host')
+  }
   const update = resolveDesktopAutoUpdateConfig(env, platform, arch)
   const deployment = UPDATE_ENVIRONMENTS[update.environment]
   return {

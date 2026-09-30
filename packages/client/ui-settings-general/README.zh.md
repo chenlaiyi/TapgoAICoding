@@ -39,11 +39,15 @@ kind: "package-reference"
 
 ### 「通用」分区
 
+桌面端在“通用设置”中提供可编辑的电脑名称。默认值取系统电脑名称，保存值与手机配对窗口共用；新生成的配对链接会在 iOS 显示此名称。
+
 Web 与桌面端的通用设置底部显示当前发布版本，使用构建注入的 `DSH_CLIENT_VERSION` 元数据和当前语言。缺少版本元数据的局部构建不显示该行。
 
 代码工作工具开关控制 [ui-settings](../ui-settings/README.zh.md#use-this-package) 定义的共享偏好 `ui-settings.enabled`。Web 和桌面端均提供此开关，立即跟随已接受的变更，并在写入完成前禁用重复输入。写入失败时显示本地化的重试提示。
 
 「通用」分区承载内置的代码工作工具行与当前版本行，以及功能包注册进 `settings.general.item` 的行。每个注册方拥有自己的行文案与行为。例如「外观」行位于 ui-theme。
+
+当前版本行读取客户端构建时写入的 `DSH_CLIENT_VERSION`。Tapgo Desktop 发布包在此写入公开版本 `TAPGO_DESKTOP_RELEASE_VERSION`；DSH 运行时仍保留自己的源码版本。
 
 ### 打开配置文件
 

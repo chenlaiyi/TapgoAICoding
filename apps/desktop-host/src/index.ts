@@ -2,6 +2,7 @@
 
 import { delimiter, join } from 'node:path'
 import { inspect } from 'node:util'
+import { fileURLToPath } from 'node:url'
 import { loadLayeredEnv, loadProfileDirectory, reportSkippedBundles } from '@deepseek-ai/dsh-app-boot'
 import { runProfile } from '@deepseek-ai/dsh/profile-boot'
 import type {} from '@deepseek-ai/dsh-client-connection'
@@ -14,20 +15,28 @@ import { installDesktopUpdateTaskControl } from './update-tasks.ts'
 import { installDesktopQuitInspection } from './quit-inspection.ts'
 import { installPlatformSessionPublisher } from './platform-session.ts'
 import { installOfficeEngineResolution } from './office-engine.ts'
+import { resolveMobileOrigin } from './mobile-origin.ts'
+import { relayDeviceId, remoteRelayOrigin, resolveRemoteRelay, startRemoteRelay } from './remote-relay.ts'
 
 async function main(): Promise<void> {
   const runtimeDir = process.argv[2] as string
   const projectDir = process.argv[3] as string
   installOfficeEngineResolution(runtimeDir)
-  const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
+  const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh-desktop-host', 'package.json')
   const profile = loadProfileDirectory('dsh', projectDir, installAnchor)
   reportSkippedBundles('dsh', profile)
+  const environment = loadLayeredEnv('dsh')
+  const relay = resolveRemoteRelay(process.env, join(resolveDshHome(), 'tapgo-mobile-relay'), join(runtimeDir, '..', '..', 'frpc'))
+  const relayId = relay === undefined ? undefined : relayDeviceId(relay.stateDirectory)
+  const mobile = resolveMobileOrigin(relay === undefined
+    ? process.env.TAPGO_MOBILE_HTTPS_ORIGIN
+    : remoteRelayOrigin(relay, relayId ?? relayDeviceId(relay.stateDirectory)))
   const application = runProfile({
-    environment: loadLayeredEnv('dsh'),
+    environment,
     profile: 'desktop',
     resolvedProfile: { profile, installAnchor },
-    patchFiles: [],
-    args: ['--no-open', '--port', '19387'],
+    patchFiles: mobile === undefined ? [] : [fileURLToPath(new URL('../mobile-picker.overlay.yml', import.meta.url))],
+    args: ['--no-open', '--port', '19388', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
     ...(process.argv[5] === undefined ? {} : {
       packageManager: {
         command: process.execPath,
@@ -41,6 +50,7 @@ async function main(): Promise<void> {
     }),
   })
   let stopping: Promise<void> | undefined
+  let closeRelay: (() => Promise<void>) | undefined
   const control: {
     updateTasks?: ReturnType<typeof installDesktopUpdateTaskControl>
     quitInspection?: ReturnType<typeof installDesktopQuitInspection>
@@ -51,6 +61,7 @@ async function main(): Promise<void> {
   })
   const stop = (): Promise<void> => stopping ??= (async () => {
     // Startup failure is reported by main; shutdown only owns a tree that booted.
+    await closeRelay?.()
     const running = await application.catch(() => undefined)
     await running?.shutdown.shutdown(0)
     await send({ type: 'shutdown-complete' })
@@ -75,6 +86,31 @@ async function main(): Promise<void> {
       })().catch((error: unknown) => { console.error(error) })
       return
     }
+    if (message.type === 'mobile-pairing') {
+      if (!('requestId' in message) || !Number.isSafeInteger(message.requestId)
+        || !('action' in message) || !['create', 'list', 'revoke'].includes(String(message.action))) return
+      void (async () => {
+        try {
+          if (stopping !== undefined || mobile === undefined) throw new Error('mobile pairing is unavailable')
+          if (message.action === 'create') {
+            if (!('name' in message) || typeof message.name !== 'string' || ctx.connection.createMobilePairing === undefined) return
+            const created = await ctx.connection.createMobilePairing(mobile.origin, message.name)
+            await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'create', ...created })
+          } else if (message.action === 'list') {
+            await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'list',
+              pairings: ctx.connection.listMobilePairings?.() ?? [] })
+          } else {
+            if (!('id' in message) || typeof message.id !== 'string' || ctx.connection.revokeMobilePairing === undefined) return
+            await ctx.connection.revokeMobilePairing(message.id)
+            await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'revoke' })
+          }
+        } catch (error) {
+          await send({ type: 'mobile-pairing', requestId: message.requestId, action: message.action,
+            error: error instanceof Error ? error.message : String(error) })
+        }
+      })().catch((error: unknown) => { console.error(error) })
+      return
+    }
     if (message.type !== 'update-tasks' || !('requestId' in message) || !Number.isSafeInteger(message.requestId)
       || !('action' in message) || !['inspect', 'lock', 'unlock'].includes(String(message.action))) return
     void (async () => {
@@ -90,6 +126,7 @@ async function main(): Promise<void> {
   })
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
+  if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId)
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   control.quitInspection = installDesktopQuitInspection(ctx)
   await ctx.plugin(desktopOffice, {
@@ -101,7 +138,9 @@ async function main(): Promise<void> {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })
   const url = ctx.connection.authenticatedUrl(`http://127.0.0.1:${String(ctx.webServer.port)}`)
-  if (process.connected) process.send?.({ type: 'ready', url, injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })
+  const mobileUrl = mobile === undefined ? undefined : ctx.connection.authenticatedUrl(mobile.origin)
+  if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, mobileOrigin: mobile?.origin,
+    injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })
 }
 
 /** Upper bound of the startup diagnostic carried over IPC; the head holds the message and stack. */

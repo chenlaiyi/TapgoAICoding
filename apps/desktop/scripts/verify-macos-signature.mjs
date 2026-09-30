@@ -2,20 +2,26 @@
 
 import { spawn, spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
-import { resolveMacOSSigningEnvironment } from './desktop-release-environment.mjs'
+import { resolveMacOSSigningEnvironment, skipTapgoNotarization } from './desktop-release-environment.mjs'
 import { loadDesktopPackageEnvironment } from './desktop-package-environment.mjs'
 
 /**
- * Reject signature metadata that does not name the company release authority and team.
+ * Reject signatures outside the configured Developer ID authority and expected team.
+ * The existing Tapgo certificate omits TeamIdentifier from codesign output; its explicit
+ * non-notarized mode requires the exact authority name ending in the configured team ID.
  * @param {string} details - Output from `codesign --display --verbose=4`.
  * @param {{ signingIdentity: string, teamId: string }} expected - Public release identity.
+ * @param {boolean} [allowLegacyTapgoSigning] - Accept this certificate's missing TeamIdentifier only in its explicit release mode.
  * @returns {void}
  */
-export function assertMacOSSignatureDetails(details, expected) {
+export function assertMacOSSignatureDetails(details, expected, allowLegacyTapgoSigning = skipTapgoNotarization(process.env)) {
   const fields = new Set(details.split(/\r?\n/u).map(line => line.trim()))
   const expectedAuthority = `Authority=Developer ID Application: ${expected.signingIdentity}`
   const expectedTeam = `TeamIdentifier=${expected.teamId}`
-  const missing = [expectedAuthority, expectedTeam].filter(field => !fields.has(field))
+  const legacyTeam = allowLegacyTapgoSigning
+    && expected.signingIdentity.endsWith(`(${expected.teamId})`)
+    && fields.has('TeamIdentifier=not set')
+  const missing = [expectedAuthority, ...(legacyTeam ? [] : [expectedTeam])].filter(field => !fields.has(field))
   if (missing.length > 0) {
     throw new Error(`desktop macOS signing: signature does not match the release identity; missing ${missing.join(', ')}`)
   }
@@ -119,7 +125,7 @@ export async function signMacOSRuntimeCode(path, identifier, expected, entitleme
   if (!keychain) throw new Error('desktop macOS signing: run through the package command to prepare the signing keychain')
   await runAppleCommandAsync('/usr/bin/codesign', [
     '--force',
-    '--sign', expected.signingIdentity,
+    '--sign', `Developer ID Application: ${expected.signingIdentity}`,
     '--keychain', keychain,
     '--identifier', identifier,
     '--timestamp',
@@ -145,12 +151,13 @@ export function verifyMacOSRuntimeCode(path, expected) {
  * Verify the full application signature and its release owner.
  * @param {string} appPath - Path to the packaged `.app` directory.
  * @param {{ signingIdentity: string, teamId: string }} expected - Public release identity.
+ * @param {boolean} [allowLegacyTapgoSigning] - Explicit Tapgo compatibility mode from the packaging environment.
  * @returns {void}
  */
-export function verifyMacOSSignature(appPath, expected) {
+export function verifyMacOSSignature(appPath, expected, allowLegacyTapgoSigning = skipTapgoNotarization(process.env)) {
   runCodeSign(['--verify', '--deep', '--strict', '--verbose=2', appPath])
   const details = runCodeSign(['--display', '--verbose=4', appPath])
-  assertMacOSSignatureDetails(details, expected)
+  assertMacOSSignatureDetails(details, expected, allowLegacyTapgoSigning)
 }
 
 /**

@@ -43,6 +43,32 @@ afterEach(() => {
 })
 
 describe('desktop external plugin profile', () => {
+  it('enables native computer use once and preserves later user changes', async () => {
+    const { manager } = setup()
+    const profile = manager.paths.profile
+    mkdirSync(profile, { recursive: true })
+    writeFileSync(join(profile, 'cordis.patch.yml'), '- id: locale\n  config:\n    preference: zh\n')
+    await manager.applyRelease()
+    const patch = join(profile, 'cordis.patch.yml')
+    const enabled = readFileSync(patch, 'utf8')
+    expect(enabled).toContain('preference: zh')
+    expect(enabled).toContain("name: '@deepseek-ai/dsh-computer-use'")
+    expect(enabled).toContain("name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'")
+    writeFileSync(patch, '- id: locale\n  config:\n    preference: en\n')
+    await manager.applyRelease()
+    expect(readFileSync(patch, 'utf8')).toBe('- id: locale\n  config:\n    preference: en\n')
+  })
+
+  it('keeps an existing computer-use choice during first launch', async () => {
+    const { manager } = setup()
+    mkdirSync(manager.paths.profile, { recursive: true })
+    const path = join(manager.paths.profile, 'cordis.patch.yml')
+    const custom = '- id: computer-use-cua-driver-native\n  disabled: true\n'
+    writeFileSync(path, custom)
+    await manager.applyRelease()
+    expect(readFileSync(path, 'utf8')).toBe(custom)
+  })
+
   it('preserves installed packages, profile state, and the lockfile when preparing a launch', async () => {
     const { manager } = setup()
     await manager.applyRelease()
@@ -182,7 +208,7 @@ describe('desktop external plugin profile', () => {
     await expect(manager.applyRelease()).resolves.toBeUndefined()
     expect(readFileSync(join(manager.paths.profile, '.DS_Store'), 'utf8')).toBe('metadata')
     expect(readFileSync(join(manager.paths.profile, 'user-file'), 'utf8')).toBe('retain')
-    expect(readFileSync(join(manager.paths.profile, 'cordis.patch.yml'), 'utf8')).toContain('[]')
+    expect(readFileSync(join(manager.paths.profile, 'cordis.patch.yml'), 'utf8')).toContain('computer-use-cua-driver-native')
     expect(existsSync(join(manager.paths.profile, 'desktop-runtime-state.json'))).toBe(false)
   })
 

@@ -8,6 +8,22 @@ export const MACOS_SIGNING_IDENTITY_ENV = 'DSH_DESKTOP_MACOS_SIGNING_IDENTITY'
 
 /** Environment variable that supplies the expected Apple Developer Team ID. */
 export const MACOS_TEAM_ID_ENV = 'DSH_DESKTOP_MACOS_TEAM_ID'
+/** Explicit Tapgo compatibility release mode for the existing non-notarized distribution. */
+export const TAPGO_SKIP_NOTARIZATION_ENV = 'TAPGO_DESKTOP_SKIP_NOTARIZATION'
+
+/**
+ * Select the legacy Tapgo distribution mode without accepting unrelated release identities.
+ * @param {NodeJS.ProcessEnv} env - Packaging environment.
+ * @returns {boolean} Whether Apple notarization is skipped.
+ */
+export function skipTapgoNotarization(env) {
+  const value = env[TAPGO_SKIP_NOTARIZATION_ENV]
+  if (value === undefined) return false
+  if (value !== '1' || env[DESKTOP_APP_ID_ENV] !== 'com.tapgo.aicoding') {
+    throw new Error(`desktop release environment: ${TAPGO_SKIP_NOTARIZATION_ENV} requires 1 and com.tapgo.aicoding`)
+  }
+  return true
+}
 
 /** Environment variable that selects the npm registry used for the bundled runtime install. */
 export const NPM_REGISTRY_ENV = 'DSH_DESKTOP_NPM_REGISTRY'

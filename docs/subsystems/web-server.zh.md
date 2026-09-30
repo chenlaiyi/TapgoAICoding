@@ -104,6 +104,23 @@ authorizeIndex(request: ConnectionIndexRequest, response: ConnectionIndexRespons
  * @returns tokenized URL for initial login; a mount proxy strips its prefix before {@link authorizeIndex}.
  */
 authenticatedUrl(baseUrl: string): string
+
+/** Create one durable mobile pairing URL for an HTTPS Host origin.
+ * @param baseUrl - Clean HTTPS origin for this Mac.
+ * @param name - Local label for the pairing link.
+ * @returns Authenticated URL and revocable pairing metadata.
+ */
+createMobilePairing?(baseUrl: string, name: string): Promise<{ url: string pairing: { id: string; name: string; authority: string; createdAt: number } }>
+
+/** List active pairing identities without their bearer tokens.
+ * @returns Pairing metadata for display and revocation.
+ */
+listMobilePairings?(): readonly { id: string; name: string; authority: string; createdAt: number }[]
+
+/** Revoke one mobile identity and all its authenticated cookies.
+ * @param id - Pairing ID returned by {@link listMobilePairings}.
+ */
+revokeMobilePairing?(id: string): Promise<void>
 ```
 
 Source: [`packages/client/connection/src/rpc.ts`](../../packages/client/connection/src/rpc.ts)

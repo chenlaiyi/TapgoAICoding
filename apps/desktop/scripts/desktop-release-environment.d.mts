@@ -6,6 +6,10 @@ export const MACOS_SIGNING_IDENTITY_ENV: 'DSH_DESKTOP_MACOS_SIGNING_IDENTITY'
 
 /** Environment variable that supplies the expected Apple Developer Team ID. */
 export const MACOS_TEAM_ID_ENV: 'DSH_DESKTOP_MACOS_TEAM_ID'
+export const TAPGO_SKIP_NOTARIZATION_ENV: 'TAPGO_DESKTOP_SKIP_NOTARIZATION'
+
+/** Whether the Tapgo compatibility release omits Apple's notarization step. */
+export function skipTapgoNotarization(env: NodeJS.ProcessEnv): boolean
 
 /** Environment variable that selects the npm registry used for the bundled runtime install. */
 export const NPM_REGISTRY_ENV: 'DSH_DESKTOP_NPM_REGISTRY'

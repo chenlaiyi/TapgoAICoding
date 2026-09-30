@@ -7,12 +7,18 @@ const origins = { DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://test.exampl
   DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN: 'https://prod.example.com' }
 const auth = { DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }) }
 
+it('omits mandatory policy only for an explicit Tapgo release setting', () => {
+  expect(resolveDesktopPolicyEnvironment({ TAPGO_DESKTOP_NO_POLICY: '1' })).toBeUndefined()
+  expect(() => resolveDesktopPolicyEnvironment({ TAPGO_DESKTOP_NO_POLICY: '0' })).toThrow('TAPGO_DESKTOP_NO_POLICY')
+})
+
 it.each(['test', 'production'] as const)('selects the %s policy and authentication together', (deployment) => {
   const policy = resolveDesktopPolicyEnvironment({ ...origins, ...(deployment === 'test' ? auth : {}), DSH_DESKTOP_AUTO_UPDATE_ENV: deployment })
   const origin = deployment === 'test' ? origins.DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN : origins.DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN
   expect(policy).toEqual({ origin, allowedPageOrigins: [origin],
     ...(deployment === 'test' ? { allowedAuthOrigins: ['https://login.example.com'] } : {}),
     authentication: deployment === 'test' ? 'feishu-test' : 'anonymous' })
+  if (policy === undefined) throw new Error('expected policy configuration')
   expect(resolveDesktopPolicyConfig(policy)).toMatchObject(policy)
 })
 

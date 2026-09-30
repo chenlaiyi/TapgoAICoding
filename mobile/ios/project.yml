@@ -1,0 +1,41 @@
+name: DshMobile
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: zh-Hans
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.49"
+    CURRENT_PROJECT_VERSION: "51"
+    DEVELOPMENT_TEAM: "KF2CE24685"
+    CODE_SIGN_STYLE: "Automatic"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+targets:
+  DshMobile:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: "com.devtools.terminalSimple"
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_NAME: "点点够终端"
+        INFOPLIST_FILE: "Info.plist"
+        GENERATE_INFOPLIST_FILE: "NO"
+        SUPPORTS_MACCATALYST: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+  DshMobileUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: "com.devtools.terminalSimple.uitests"
+    dependencies:
+      - target: DshMobile

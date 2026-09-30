@@ -9,6 +9,7 @@ import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.
 import type { TriggerContentProps } from '../src/client/chrome.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import { DeveloperToolsRow } from '../src/client/DeveloperToolsRow.tsx'
+import { ComputerNameRow } from '../src/client/ComputerNameRow.tsx'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { SettingsDocumentStore } from '../src/client/settings-document-store.ts'
@@ -89,6 +90,17 @@ it('toggles developer tools using the accepted setting and disables duplicate wr
   finish()
   await waitFor(() => { expect(toggle.getAttribute('aria-checked')).toBe('true') })
   expect(toggle.hasAttribute('disabled')).toBe(false)
+})
+
+it('loads and saves the Desktop computer name in General Settings', async () => {
+  const computerName = { get: vi.fn(async () => 'System Mac'), set: vi.fn(async (name: string) => name) }
+  render(<ComputerNameRow {...kit} t={t} computerName={computerName} />)
+  const input = await screen.findByRole('textbox', { name: 'Computer name' })
+  await waitFor(() => { expect((input as HTMLInputElement).value).toBe('System Mac') })
+  fireEvent.change(input, { target: { value: 'Studio Mac' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => { expect(computerName.set).toHaveBeenCalledWith('Studio Mac') })
+  await waitFor(() => { expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true) })
 })
 
 describe('chrome content', () => {

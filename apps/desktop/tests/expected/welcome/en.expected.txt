@@ -1,6 +1,6 @@
-DeepSeek Harness
-DeepSeek Harness
-Welcome to DeepSeek Harness
+点点够终端
+点点够终端
+点点够，一切都一点点变好！
 Build potential. Explore intelligence.
 Sign in
 Add API Key

@@ -46,3 +46,10 @@ worktrees/
 .agents/worktrees/
 .typert-*/
 native/system/test/bin/
+# Local artifacts retained from the SwiftUI Tapgo checkout during DSH migration.
+/.build/
+/.sparkle/
+/AppBuilder/dist/
+/appcast.xml.bak
+/artifacts/
+/Tapgo AICoding.app/

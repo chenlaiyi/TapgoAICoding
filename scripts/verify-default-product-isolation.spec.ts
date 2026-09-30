@@ -52,6 +52,18 @@ afterEach(() => {
 })
 
 describe('default product isolation', () => {
+  it('limits the Tapgo Desktop native Cua exception to its private Host dependency', () => {
+    const root = fixture()
+    const provider = '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
+    write(root, 'packages/experimental/computer-use-cua-driver-native/package.json', { name: provider })
+    write(root, 'apps/desktop-host/package.json', { name: '@deepseek-ai/dsh-desktop-host', dependencies: { [provider]: 'workspace:*' } })
+    expect(verifyDefaultProductIsolation(root).failures).toEqual([])
+    manifest(root, 'apps/cli/package.json', { dependencies: { [core]: 'workspace:^', [provider]: 'workspace:*' } })
+    expect(verifyDefaultProductIsolation(root).failures.join('\n')).toContain(`@deepseek-ai/dsh dependencies -> ${provider}`)
+    manifest(root, 'apps/desktop-host/package.json', { dependencies: { [experimental]: 'workspace:*' } })
+    expect(verifyDefaultProductIsolation(root).failures.join('\n')).toContain(`@deepseek-ai/dsh-desktop-host dependencies -> ${experimental}`)
+  })
+
   it.each(['@deepseek-ai/libreoffice-kit'])(
     'accepts independently published %s but rejects unknown workspace packages', (name) => {
       const root = fixture()

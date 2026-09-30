@@ -17,6 +17,7 @@ type InvokeEvent = { sender?: unknown; senderFrame: { url: string } }
 type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
 
 vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
+vi.mock('../src/mobile-diagnostics.ts', () => ({ probeMobileConnection: vi.fn(async () => ({ state: 'connected', checkedAt: 1 })) }))
 // Report persistence has its own unit tests; here it resolves within microtasks so the fatal
 // dialog never outlives the test that triggered it.
 vi.mock('../src/crash-report.ts', async importOriginal => ({
@@ -76,6 +77,7 @@ const harness = await vi.hoisted(async () => {
       insertCSS: vi.fn(async () => 'blur'),
       removeInsertedCSS: vi.fn(async () => {}),
       openDevTools: vi.fn(),
+      executeJavaScript: vi.fn(async () => {}),
       getURL: () => this.urls.at(-1) ?? '',
       mainFrame: { url: '' },
       getZoomFactor: () => 1,
@@ -133,11 +135,22 @@ const harness = await vi.hoisted(async () => {
     readonly updateTasks = vi.fn(async (_action: 'inspect' | 'lock' | 'unlock') => false)
     readonly inspectQuit = vi.fn(async () => ({ activeTasks: false, scheduledTasks: false }))
     url = 'http://127.0.0.1:3080/?token=test'
+    mobileUrl: string | undefined
+    mobileOrigin: string | undefined
+    readonly createMobilePairing = vi.fn(async () => ({ url: 'https://mac.remote.example/?token=device-test',
+      pairing: { id: 'abcdefghijklmnopqrstuv', name: 'iPhone pairing', authority: 'mac.remote.example', createdAt: 1 } }))
+    readonly listMobilePairings = vi.fn(async () => [{ id: 'abcdefghijklmnopqrstuv', name: 'iPhone pairing',
+      authority: 'mac.remote.example', createdAt: 1 }])
+    readonly revokeMobilePairing = vi.fn(async (_id: string) => {})
     fetch = vi.fn(async () => Response.json({ hasApiKey: true, writable: true, localePreference: null }))
     readonly ready = deferred()
     readonly exited = deferred()
     readonly stopping = deferred()
-    readonly start = vi.fn(() => { hostStarted.resolve(); return this.ready.promise.then(() => ({ url: this.url, injections: [] })) })
+    readonly start = vi.fn(() => {
+      hostStarted.resolve()
+      return this.ready.promise.then(() => ({ url: this.url, mobileUrl: this.mobileUrl,
+        mobileOrigin: this.mobileOrigin, injections: [] }))
+    })
     readonly stop = vi.fn(() => {
       this.stopping.resolve()
       this.ready.reject(new Error('child stopped'))
@@ -158,8 +171,10 @@ const harness = await vi.hoisted(async () => {
     getPreferredSystemLanguages: () => ['en-US'],
     getVersion: () => '1.0.0',
     getAppPath: (): string => 'desktop-test-app',
+    setName: vi.fn(),
     setAppLogsPath: vi.fn(),
     getPath: vi.fn<(name: string) => string>(),
+    setPath: vi.fn(),
     setAboutPanelOptions: vi.fn<(options: Electron.AboutPanelOptionsOptions) => void>(),
     requestSingleInstanceLock: () => true,
     setAsDefaultProtocolClient: vi.fn(),
@@ -191,9 +206,9 @@ const harness = await vi.hoisted(async () => {
   const shellDialog = { isOpen: false, focus: vi.fn() }
   return {
     failWindow(error: Error) { windowFailure = error },
-    windows, hosts, handlers, app, FakeWindow, FakeHost, powerMonitor, nativeTheme, analytics,
-    trays, FakeTray, backgroundNotice, shellDialog,
-    menu, popup, socketHeaders: vi.fn(), loginShell, readLoginShell, updateCheck, updateDownload, updateInstall,
+    windows, hosts, handlers, app, FakeWindow, FakeHost, powerMonitor, nativeTheme, trays, FakeTray, backgroundNotice, shellDialog,
+    menu, popup, clipboard: { writeText: vi.fn() }, socketHeaders: vi.fn(), loginShell, readLoginShell, analytics,
+    updateCheck, updateDownload, updateInstall,
     platformDispose,
     platformCloseAndWait,
 
@@ -276,6 +291,7 @@ vi.mock('../src/policy-test-auth.ts', () => ({ DesktopPolicyTestAuth: class {
 
 vi.mock('electron', () => ({
   app: harness.app,
+  clipboard: harness.clipboard,
   BrowserWindow: harness.FakeWindow,
   dialog: harness.dialog,
   shell: { openExternal: harness.openExternal },
@@ -494,6 +510,58 @@ describe('desktop main startup', () => {
     expect(harness.windows[0]!.options).toMatchObject({ webPreferences: { devTools: true } })
   })
 
+  it('opens a scannable pairing window only when the running Host supplies a mobile URL', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'darwin' })
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    harness.hosts[0]!.mobileUrl = 'https://mac.tailnet.example:8443/?token=mobile-test'
+    harness.hosts[0]!.ready.resolve()
+    await harness.navigated.promise
+    let connect: MenuItemConstructorOptions | undefined
+    await vi.waitFor(() => {
+      const items = harness.menu.mock.lastCall![0][0]?.submenu as MenuItemConstructorOptions[]
+      connect = items.find(item => item.label === en.connectMobileMenu)
+      expect(connect).toBeDefined()
+    })
+    const click = connect!.click as () => void
+    click()
+    await vi.waitFor(() => { expect(harness.windows.at(-1)?.urls[0]).toContain('data:text/html') })
+    const page = decodeURIComponent(harness.windows.at(-1)!.urls[0]!)
+    expect(page).toContain('data:image/png;base64,')
+    expect(page).toContain(harness.hosts[0]!.mobileUrl)
+    expect(harness.windows.at(-1)!.options).toMatchObject({
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+    })
+  })
+
+  it('uses a separate revocable pairing credential for the public mobile origin', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'darwin' })
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    harness.hosts[0]!.mobileOrigin = 'https://mac.remote.example/'
+    harness.hosts[0]!.ready.resolve()
+    await harness.navigated.promise
+    let connect: MenuItemConstructorOptions | undefined
+    await vi.waitFor(() => {
+      const items = harness.menu.mock.lastCall![0][0]?.submenu as MenuItemConstructorOptions[]
+      connect = items.find(item => item.label === en.connectMobileMenu)
+      expect(connect).toBeDefined()
+    })
+    ;(connect!.click as () => void)()
+    await vi.waitFor(() => { expect(harness.windows.at(-1)?.urls[0]).toContain('data:text/html') })
+    const host = harness.hosts[0]!
+    expect(host.createMobilePairing).toHaveBeenCalledWith(en.mobilePairingName)
+    expect(host.listMobilePairings).toHaveBeenCalledOnce()
+    const page = decodeURIComponent(harness.windows.at(-1)!.urls[0]!)
+    expect(page).toContain('token=device-test')
+    expect(page).toContain(en.mobilePairings)
+    expect(page).toContain('data-revoke="abcdefghijklmnopqrstuv"')
+  })
+
   it.each([
     ['darwin', true, 'en-US'],
     ['darwin', false, 'zh-CN'],
@@ -521,7 +589,7 @@ describe('desktop main startup', () => {
     await vi.advanceTimersByTimeAsync(0)
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: 'info', title: zh ? '关于 DeepSeek Harness' : 'About DeepSeek Harness', message: 'DeepSeek Harness',
+      type: 'info', title: zh ? '关于 点点够终端' : 'About 点点够终端', message: '点点够终端',
       detail: zh ? '版本 V1.0.0' : 'Version V1.0.0', buttons: [zh ? '确定' : 'OK'], cancelId: 0,
     }))
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
@@ -845,7 +913,7 @@ describe('desktop main startup', () => {
     expect(() => handler(event, 'application', NaN, 34)).toThrow('invalid popup request')
     const application = handler(event, 'application', 48, 34)
     expect(harness.menu.buildFromTemplate.mock.lastCall![0].map(item => item.label ?? item.type)).toEqual([
-      '关于 DeepSeek Harness', 'separator', '检查更新…', '管理 dsh 命令…', 'separator', '退出',
+      '关于 点点够终端', 'separator', '检查更新…', '管理 dsh 命令…', 'separator', '退出',
     ])
     expect(harness.popup.mock.lastCall![0]).toMatchObject({ window, x: 48, y: 34 })
     expect(harness.popup.mock.lastCall![0].callback).toBeTypeOf('function')
@@ -976,6 +1044,21 @@ describe('desktop main startup', () => {
     expect(harness.dialog.showOpenDialog).toHaveBeenCalledExactlyOnceWith(window, { properties: ['openDirectory', 'createDirectory'] })
     window.webContents.mainFrame.url = 'https://other.example/'
     await expect(handler(event)).rejects.toThrow('unowned renderer')
+  })
+
+  it('reads and saves the pairing computer name only for the application window', async () => {
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    const get = harness.handlers.get(DESKTOP_IPC.computerNameGet)!
+    const set = harness.handlers.get(DESKTOP_IPC.computerNameSet)!
+    const sender = harness.windows[0]!.webContents
+    const event = { sender, senderFrame: sender.mainFrame }
+    expect(get(event)).toBeTypeOf('string')
+    expect(set(event, 'Studio Mac')).toBe('Studio Mac')
+    expect(get(event)).toBe('Studio Mac')
+    expect(readFileSync(join(harness.app.getPath('userData'), 'computer-name'), 'utf8')).toBe('Studio Mac')
+    expect(() => set(event, ' ')).toThrow('Invalid computer name')
+    expect(() => set({ senderFrame: { url: 'dsh-app://shell/index.html' } }, 'Foreign')).toThrow()
   })
 
   it('holds boot injections until the Host is ready and rejects foreign boot callers', async () => {

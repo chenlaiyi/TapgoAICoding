@@ -25,15 +25,37 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
+  width: min(100% - 40px, 440px);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.mark {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
 }
 
 .wordmark {
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 500;
   color: var(--dsw-alias-label-primary, var(--dsh-boot-label-primary));
+}
+
+.slogan {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary, var(--dsh-boot-label-primary));
+  text-wrap: balance;
 }
 
 .hint {
@@ -79,7 +101,7 @@
 .failedTitle {
   font-size: 14px;
   line-height: 22px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--dsw-alias-label-primary, var(--dsh-boot-label-primary));
 }
 
