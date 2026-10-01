@@ -43,25 +43,54 @@ struct DshMobileApp: App {
     }
 }
 
-private struct MobileLaunchView: View {
+/// Brand header shared by startup and the unpaired welcome page.
+struct MobileWelcomeBrand: View {
     var body: some View {
-        VStack(spacing: 14) {
+        HStack(spacing: 12) {
             Image("SplashMark")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 100, height: 100)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             Text("点点够终端")
                 .font(.system(size: 28, weight: .bold))
-            Text("点点够，一切都一点点变好！")
-                .font(.system(size: 18, weight: .medium))
-                .multilineTextAlignment(.center)
+                .foregroundStyle(.primary)
         }
-        .foregroundStyle(.primary)
-        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("welcomeBrand")
+    }
+}
+
+/// Desktop welcome copy with semantic colors and Dynamic Type support.
+struct MobileWelcomeMessage: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            (Text("点点够").bold() + Text("，一切都一点点变好！"))
+                .foregroundStyle(.primary)
+            Text("组装无限可能，共探智能上限")
+                .foregroundStyle(.secondary)
+        }
+        .font(.title3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("welcomeMessage")
+    }
+}
+
+private struct MobileLaunchView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            MobileWelcomeBrand()
+            Spacer()
+            MobileWelcomeMessage()
+            Spacer()
+        }
+        .padding(.horizontal, 32)
+        .padding(.top, 44)
+        .padding(.bottom, 100)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
-        .ignoresSafeArea()
+        .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     }
 }
 
@@ -89,6 +118,12 @@ final class MobileConnection: ObservableObject {
     private var ephemeralFixture = false
 
     init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-welcome") {
+            ephemeralFixture = true
+            return
+        }
+        #endif
         if let data = read(service: service, account: account),
            let saved = try? JSONDecoder().decode(SavedComputers.self, from: data) {
             computers = saved.items
@@ -254,7 +289,7 @@ struct ConnectView: View {
                     }
                 }
                 Section("连接 Mac") {
-                    Text("从 Mac 扫码或粘贴连接链接，电脑名称会自动识别。连接后可在手机上改名。")
+                    Text("从电脑扫码或粘贴连接链接，电脑名称会自动识别。连接后可在手机上改名。")
                     Button("扫描二维码") { scanning = true }
                     TextField("https://…?token=…", text: $text)
                         .textInputAutocapitalization(.never)

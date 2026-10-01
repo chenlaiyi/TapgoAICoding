@@ -1,6 +1,21 @@
 import XCTest
 
 final class MobileConnectionUITests: XCTestCase {
+    func testWelcomeBrandAndComputerConnection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-welcome"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["welcomeBrand"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["组装无限可能，共探智能上限"].exists)
+        XCTAssertTrue(app.buttons["连接电脑"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["在电脑应用中打开“连接手机”，扫码或粘贴链接后即可查看项目和对话"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["连接电脑"].tap()
+        XCTAssertTrue(app.buttons["扫描二维码"].waitForExistence(timeout: 5))
+    }
+
     func testProjectMenuAndAddFolderEntry() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
@@ -428,7 +443,7 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Studio Mac 工作"].exists)
 
         app.buttons["远程, Studio Mac 工作"].tap()
-        XCTAssertTrue(app.staticTexts["已配对的 Mac"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["已配对的电脑"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Studio Mac 工作"].exists)
         XCTAssertFalse(app.buttons["重命名当前电脑"].exists)
         XCTAssertFalse(app.buttons["连接其他 Mac"].exists)
