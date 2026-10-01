@@ -27,7 +27,7 @@ await Promise.all([
 ].map((path) => writeFile(at(path), mark)))
 
 const small = await sharp(mark).resize(48, 48).png().toBuffer()
-const brand = `<svg xmlns="http://www.w3.org/2000/svg" width="472" height="48" viewBox="0 0 472 48"><image href="data:image/png;base64,${small.toString('base64')}" width="48" height="48"/><text x="62" y="34" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="30" font-weight="700" fill="#eef2ff">点点够终端</text></svg>\n`
+const brand = `<svg xmlns="http://www.w3.org/2000/svg" width="472" height="48" viewBox="0 0 472 48"><style>text{fill:#0f1115}@media(prefers-color-scheme:dark){text{fill:#f9fafb}}</style><image href="data:image/png;base64,${small.toString('base64')}" width="48" height="48"/><text x="62" y="34" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="30" font-weight="700">点点够终端</text></svg>\n`
 await writeFile(at('renderer/assets/welcome-brand.svg'), brand)
 
 for (const dark of [false, true]) {
