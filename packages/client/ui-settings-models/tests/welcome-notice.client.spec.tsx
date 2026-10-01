@@ -107,7 +107,7 @@ describe('WelcomeNotice', () => {
   it('uses the exact owner copy in both GUI locales', () => {
     expect(WELCOME_NOTICE_COPY.en).toEqual({
       title: 'Internal Testing Notice',
-      body: 'Tapgo AICoding is based on the open-source DeepSeek Harness preview. This version is still evolving; plugins, APIs, and saved data formats may change. Please back up important work and send feedback when something fails.',
+      body: '点点够终端 is based on the open-source DeepSeek Harness preview. This version is still evolving; plugins, APIs, and saved data formats may change. Please back up important work and send feedback when something fails.',
       continueLabel: 'Continue',
     })
     expect(en.welcomeBody).toBe(WELCOME_NOTICE_COPY.en.body)
@@ -132,8 +132,8 @@ describe('WelcomeNotice', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
-  it('completes only after the acknowledgement write commits', async () => {
-    const h = mount()
+  it('requires a fresh acknowledgement after the 0.1 notice', async () => {
+    const h = mount('2026-08-13.1')
     await screen.findByRole('dialog')
     fireEvent.click(screen.getByRole('button', { name: WELCOME_NOTICE_COPY.zh.continueLabel }))
     await act(async () => { await Promise.resolve() })

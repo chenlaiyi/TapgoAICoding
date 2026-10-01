@@ -2,69 +2,78 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
-/tapgo-aicoding-desktop:
-  en: b19efea65f8c8440
-  zh: ec7cdb6a07dadb30
-/tapgo-aicoding-desktop/closing-the-window-and-quitting:
-  en: ddad7e9019af6318
-  zh: 10d0abbe858e2862
-/tapgo-aicoding-desktop/key-technical-decisions:
-  en: 069fdfd72d2ea26a
-  zh: 76ae549d43c99bb4
-/tapgo-aicoding-desktop/key-technical-decisions/bundled-workspace-dependencies:
-  en: ad5989ceba44d512
-  zh: d78b4faec9b8a9d0
-/tapgo-aicoding-desktop/installation-ownership:
-  en: 8307baf6c5b691d0
-  zh: 86e46b9552017ff6
-/tapgo-aicoding-desktop/installation-ownership/runtime-and-plugin-activation:
+/desktop:
+  en: aa0dec77f75bb79c
+  zh: c442f82ee21706ed
+/desktop/terminal-command:
+  en: bef92953c237363f
+  zh: d21d6effd21b8c00
+/desktop/closing-the-window-and-quitting:
+  en: 931d6b3facb3b120
+  zh: 9d38bc02b30d13f2
+/desktop/key-technical-decisions:
+  en: f0a8763b86990b0c
+  zh: f0c57dc1451b3a74
+/desktop/key-technical-decisions/bundled-workspace-dependencies:
+  en: ff3eb15465463f39
+  zh: 9a1aac61bb2404e7
+/desktop/bundled-command-runtime:
+  en: beecf076aa2f0796
+  zh: c9001ce0f22d2379
+/desktop/installation-ownership:
+  en: 22153a298a6662e1
+  zh: 3600803c8c9d0274
+/desktop/installation-ownership/runtime-and-plugin-activation:
   en: dcb6172064113f26
   zh: d2da6cc82424be5d
-/tapgo-aicoding-desktop/develop:
-  en: 9e0f0762f171dfc4
-  zh: b89ae9e7c605c39b
-/tapgo-aicoding-desktop/develop/startup-onboarding:
-  en: 84a52c4902822eb1
-  zh: cae8e506b7f37fcb
-/tapgo-aicoding-desktop/develop/welcome-window-appearance:
-  en: 7220801ccc3b2e6b
-  zh: 042dc97976aef979
-/tapgo-aicoding-desktop/package:
+/desktop/installation-ownership/host-environment:
+  en: 84a9cc7ca9455aa8
+  zh: 4091b8aa8231b74a
+/desktop/develop:
+  en: 6cb443244816113a
+  zh: bed79454d396c582
+/desktop/develop/startup-onboarding:
+  en: f61da77488d06957
+  zh: b0f908bd973a77d3
+/desktop/develop/welcome-window-appearance:
+  en: ae319a496639b38d
+  zh: ef044103240ac9da
+/desktop/package:
   en: 4cd8a8da6977928d
   zh: 9f624855a2edac37
-/tapgo-aicoding-desktop/package/release-versions:
+/desktop/package/release-versions:
   en: f461b255133384cc
   zh: 2b9db718f22fdd04
-/tapgo-aicoding-desktop/package/runtime-file-selection:
+/desktop/package/runtime-file-selection:
   en: f0e345fd89868803
   zh: fd2c775ad23fa2f0
-/tapgo-aicoding-desktop/package/upload-updates:
-  en: c64d7fe2fe2534b7
-  zh: 2188e1ae99ab4b33
-/tapgo-aicoding-desktop/package/unsigned-windows-test-installer:
+/desktop/package/upload-updates:
+  en: 72073b2e72590067
+  zh: 63b1f9790395c37d
+/desktop/package/unsigned-windows-test-installer:
   en: cfd5780dd26a8e46
   zh: f7a16b1ede793b7b
-/tapgo-aicoding-desktop/package/windows-installer-interface:
+/desktop/package/windows-installer-interface:
   en: f176a8b1c7de3064
   zh: 6ea2dbe6bb808c34
-/tapgo-aicoding-desktop/package/windows-ev-signing:
+/desktop/package/windows-ev-signing:
   en: 204d393cbb3d9121
   zh: bd122634fb953fbe
-/tapgo-aicoding-desktop/updates:
+/desktop/updates:
   en: d0df867b69cbffa4
   zh: eeb47b79b86fe5ee
-/tapgo-aicoding-desktop/updates/mandatory-update-policy:
+/desktop/updates/mandatory-update-policy:
   en: 2f789a4949fafb12
   zh: d8b28c01cfee11b7
-/tapgo-aicoding-desktop/updates/local-updater-qualification:
+/desktop/updates/local-updater-qualification:
   en: bc50fd8a4d96c227
   zh: fb0a6ce80c31cda6
-/tapgo-aicoding-desktop/low-level-development-overrides:
+/desktop/low-level-development-overrides:
   en: 0b225f914142ef0b
   zh: 9ffd07768d37824e
-/tapgo-aicoding-desktop/known-limitations:
+/desktop/known-limitations:
   en: 8a3e82f94481516c
   zh: 3508b8d44e85764b
-/tapgo-aicoding-desktop/dev-note:
+/desktop/dev-note:
   en: 8e26b460ba31f21b
   zh: fbcd0307b3867125

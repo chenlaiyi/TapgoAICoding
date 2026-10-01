@@ -1,3 +1,4 @@
+import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/types'
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
@@ -25,15 +26,17 @@ import {
 } from 'electron'
 import { resolveDesktopPaths } from './paths.ts'
 import { DesktopProjectManager } from './project-manager.ts'
-import { DesktopHostFatalError, DesktopHostProcess, DesktopHostUncleanExitError } from './host-process.ts'
+import { DesktopHostFatalError, DesktopHostProcess, DesktopHostUncleanExitError, type DesktopMobilePairing } from './host-process.ts'
 import { DesktopPlatformView, PLATFORM_IPC, platformBounds } from './platform-view.ts'
 import { installDesktopDirectoryPicker } from './directory-picker.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { DesktopBackendController } from './backend-controller.ts'
 import { DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
+import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import { claimDesktopSingleInstance } from './single-instance.ts'
 import { DesktopUpdateCoordinator } from './update-coordinator.ts'
+import { DesktopCommandManager } from './command-management.ts'
 import { serveWebDocument, authenticateWebHost, forwardWebRequest } from './web-document.ts'
 import { DesktopFatalRecovery } from './fatal-recovery.ts'
 import { pruneCrashReports, RendererConsoleTail, writeCrashReport, type CrashReportSource } from './crash-report.ts'
@@ -45,8 +48,9 @@ import { DesktopUpdatePreparationError } from './update-error.ts'
 import { DesktopUpdateSchedule, resolveDesktopUpdateScheduleConfig } from './update-schedule.ts'
 import { desktopUpdateErrorSummary, presentDesktopUpdate } from './update-presentation.ts'
 import { desktopErrorState } from './startup-error.ts'
+import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopMandatoryUpdatePolicy, resolveDesktopPolicyConfig, type DesktopPolicyState } from './mandatory-update-policy.ts'
-import { desktopClientMetadata } from './client-metadata.ts'
+import { desktopClientMetadata, desktopClientVersion } from './client-metadata.ts'
 import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
@@ -58,6 +62,7 @@ import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
 import { mobilePairingPage } from './mobile-pairing.ts'
+import { probeMobileConnection, type MobileConnectionState } from './mobile-diagnostics.ts'
 import { namedMobileUrl, readComputerName, saveComputerName, systemComputerName } from './computer-name.ts'
 
 let focusPrimaryWindow = (): void => {}
@@ -83,7 +88,7 @@ if (process.env.DSH_HOME?.trim() === '' || process.env.DSH_HOME === undefined) {
   process.env.DSH_HOME = join(homedir(), '.tapgo-aicoding')
 }
 
-app.setName('Tapgo AICoding')
+app.setName('点点够终端')
 if (process.platform === 'darwin' && app.isPackaged && !process.argv.some(arg => arg.startsWith('--user-data-dir='))) {
   const userData = join(app.getPath('appData'), 'Tapgo AICoding Desktop')
   mkdirSync(userData, { recursive: true, mode: 0o700 })
@@ -252,9 +257,8 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
     return { action: 'deny' }
   })
-  if (process.platform === 'darwin') {
-    // macOS hides the traffic lights in fullscreen; the page drops its
-    // clearance for them off the html[data-fullscreen] flag this feeds.
+  if (process.platform === 'darwin' || process.platform === 'win32') {
+    // Fullscreen hides native window controls; overlays drop their caption clearance.
     const sendFullscreen = (): void => {
       if (!window.isDestroyed()) window.webContents.send(DESKTOP_IPC.windowFullscreen, window.isFullScreen())
     }
@@ -263,6 +267,8 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     // Reloads and navigations re-register the preload listener; resend the
     // current state so a fullscreen reload does not fall back to windowed CSS.
     window.webContents.on('did-finish-load', sendFullscreen)
+  }
+  if (process.platform === 'darwin') {
     // Deminiaturize reattaches the NSVisualEffectView material late
     // (electron/electron#25368), so a transparent window shows the desktop
     // through the sidebar until then. Paint an opaque base while minimized or
@@ -335,6 +341,18 @@ async function main(): Promise<void> {
     : join(process.resourcesPath, 'runtime', 'primary-runtime')
   const activeProject = paths.profile
   const manager = new DesktopProjectManager(paths, resources)
+  // Dock and Finder launches inherit only launchd's environment; every Host shares one login-shell read.
+  const loginShellRead = new AbortController()
+  // The probe runs in its own process group, which outlives Desktop unless the read is aborted.
+  app.on('will-quit', () => { loginShellRead.abort() })
+  const loginShell = readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), {
+    signal: loginShellRead.signal,
+  }).then((result) => {
+    for (const failure of result.failures) console.warn(`desktop login shell: ${failure.shell} failed (${failure.reason})`)
+    return result.environment
+  })
+  let hostEnvironment: NodeJS.ProcessEnv = process.env
+  const prepareHostEnvironment = async (): Promise<void> => { hostEnvironment = await loginShell }
   let quitting = false
   let startup: Promise<void> | undefined
   let workspaceRecovery: Promise<void> | undefined
@@ -385,14 +403,33 @@ async function main(): Promise<void> {
       detail: formatDesktopMessage(locale.messages.aboutVersion, { version: app.getVersion() }),
       buttons: [locale.messages.updateAcknowledge], cancelId: 0 })
   }
+  const commandManager = new DesktopCommandManager({
+    resources: process.resourcesPath,
+    isPackaged: app.isPackaged,
+    isInstalledLocation: () => process.platform !== 'darwin' || app.isInApplicationsFolder(),
+    isInstalling: () => updateState.phase === 'installing',
+    isQuitting,
+    messages: () => currentDesktopLocale().messages,
+    show: ordinaryMessageBox,
+  })
   const appPreload = fileURLToPath(new URL('./preload-app.cjs', import.meta.url))
   const applicationUrl = `${SCHEME}://app/`
   let hostUrl: string | undefined
   let mobileUrl: string | undefined
+  let mobileOrigin: string | undefined
+  let mobileHost: DesktopHostProcess | undefined
   let hostCookie: string | undefined
   const browserGuests = new DesktopBrowserGuests(() => hostUrl)
   let injections: readonly unknown[] = []
   let welcomeBackend: DesktopWelcomeBackend | undefined
+  let reportedLaunch = false
+  let analyticsEnabled = false
+  const track = async <K extends keyof ProductEventMap>(eventName: K, attributes: ProductEventMap[K]): Promise<void> => {
+    const event = { eventName, attributes, timestamp: Date.now() } as ProductEvent
+    try {
+      if (analyticsEnabled) await welcomeBackend?.report(event)
+    } catch (_error) { /* Analytics cannot interrupt native actions. */ }
+  }
   let stopAccount: (() => void) | undefined
   let openedAttempt: string | undefined
   let returnedAttempt: string | undefined
@@ -425,7 +462,7 @@ async function main(): Promise<void> {
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
-      hostInspectPort, process.env, onFailure,
+      hostInspectPort, { ...hostEnvironment, DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
       primaryRuntime,
       resources, (next) => { platformView.setSession(next) })
     return {
@@ -434,10 +471,14 @@ async function main(): Promise<void> {
         hostCookie = await authenticateWebHost(ready.url)
         hostUrl = ready.url
         mobileUrl = ready.mobileUrl
+        mobileOrigin = ready.mobileOrigin
+        mobileHost = host
         refreshApplicationMenu()
         if (ready.injections === undefined) throw new Error('Desktop Host did not provide boot injections')
         injections = ready.injections
         welcomeBackend = await connectDesktopWelcome(ready.url, (input, init) => net.fetch(input, init), async () => (await session.defaultSession.cookies.get({ url: ready.url })).map(cookie => `${cookie.name}=${cookie.value}`).join('; '))
+        analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
+        if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
         stopAccount?.()
         const accountBackend = welcomeBackend.account
         stopAccount = accountBackend.watch((state) => {
@@ -475,9 +516,11 @@ async function main(): Promise<void> {
             const state = await accountBackend.state()
             if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.webContents.send(WELCOME_IPC.state, state)
           }).catch(() => undefined)
-        })
+        }, (enabled) => { analyticsEnabled = enabled })
       },
       stop: async () => {
+        analyticsEnabled = false
+        stopAccount?.()
         try { await host.stop(requireCleanStop) }
         catch (error) {
           if (!requireCleanStop || !(error instanceof DesktopHostUncleanExitError)) throw error
@@ -489,8 +532,10 @@ async function main(): Promise<void> {
       inspectQuit: () => host.inspectQuit(),
     }
   }, (state) => {
-    if (state.phase !== 'ready' && mobileUrl !== undefined) {
+    if (state.phase !== 'ready' && (mobileUrl !== undefined || mobileOrigin !== undefined)) {
       mobileUrl = undefined
+      mobileOrigin = undefined
+      mobileHost = undefined
       refreshApplicationMenu()
     }
     if (state.phase === 'error') reportFatal(state.failure, 'host')
@@ -523,7 +568,7 @@ async function main(): Promise<void> {
       updateStoppedHost = false
       if (restoreHost) {
         // Only confirmed process exit permits replacement before another installation confirmation.
-        const hostReady = backend.start(async () => {})
+        const hostReady = backend.start(prepareHostEnvironment)
         startup = hostReady
         const recovery = hostReady.then(async () => {
           if (quitting) return
@@ -553,7 +598,7 @@ async function main(): Promise<void> {
     startup ??= (async () => {
       await navigateMain(applicationUrl)
       await backend.start(async () => {
-        await manager.applyRelease()
+        await Promise.all([manager.applyRelease(), prepareHostEnvironment()])
       })
       if (backend.host !== undefined) await openInitialWindow()
       if (backend.host !== undefined) updateJournal?.action('workspace-ready')
@@ -569,6 +614,7 @@ async function main(): Promise<void> {
   const updates = new DesktopUpdateCoordinator(
     publishUpdate,
     async () => {
+      await commandManager.idle()
       await workspaceRecovery
       await startup?.catch(() => undefined)
       const host = backend.host
@@ -590,6 +636,8 @@ async function main(): Promise<void> {
         const result = await updateDialog.show(parent, confirmation)
         if (result.response !== 0 || isMandatory()) return false
       }
+      // The update lock rejects new HTTP requests, including analytics intake.
+      await track('desktop_upgrade_install_restart_click', {})
       if (backend.host !== host) throw new DesktopUpdatePreparationError('tasks-unavailable', locale.messages.updateTasksUnavailable)
       try {
         const stillActive = await host.updateTasks('lock')
@@ -614,11 +662,15 @@ async function main(): Promise<void> {
       }
       return true
     },
+    undefined, undefined, undefined,
+    (success, reason) => { void track('desktop_upgrade_download_result', { is_success: success, ...reason === undefined ? {} : { error_reason: reason } }) },
+
   )
 
   const updateSchedule = new DesktopUpdateSchedule(updates, resolveDesktopUpdateScheduleConfig(process.env))
 
   const downloadUpdate = async (version: string): Promise<DesktopUpdateState> => {
+    void track('desktop_upgrade_click', {})
     updateJournal?.action('download-requested')
     const state = await updates.download(version)
     if (state.phase !== 'ready' || quitting) return state
@@ -665,6 +717,15 @@ async function main(): Promise<void> {
     await startup
     if (backend.host === undefined || hostUrl === undefined) throw new Error('Desktop Host is unavailable')
     return { injections, streamBaseUrl: new URL(hostUrl).origin }
+  })
+  ipcMain.handle(DESKTOP_IPC.computerNameGet, (event) => {
+    assertProductSender(event)
+    return readComputerName(join(app.getPath('userData'), 'computer-name'), systemComputerName())
+  })
+  ipcMain.handle(DESKTOP_IPC.computerNameSet, (event, name: unknown) => {
+    assertProductSender(event)
+    if (typeof name !== 'string') throw new Error('Invalid computer name')
+    return saveComputerName(join(app.getPath('userData'), 'computer-name'), name)
   })
 
   ipcMain.handle(DESKTOP_IPC.bootFailed, (event, message: unknown) => {
@@ -746,6 +807,10 @@ async function main(): Promise<void> {
     assertProductSender(event)
     return presentDesktopUpdate(updates.state)
   })
+  ipcMain.handle(DESKTOP_IPC.deviceInfo, (event) => {
+    assertProductSender(event)
+    return readDeviceInfo()
+  })
   ipcMain.handle(DESKTOP_IPC.onboardingApiKey, async (event) => {
     assertProductSender(event)
     return (await readWelcomeState()).hasApiKey
@@ -801,7 +866,8 @@ async function main(): Promise<void> {
         if (state.phase === 'error' && state.failedOperation === 'check') { await showUpdateFailure(state); return }
         if (state.phase === 'idle') {
           await ordinaryMessageBox({ type: 'info', title: locale.messages.updateCheckTitle,
-            message: formatDesktopMessage(locale.messages.updateCurrent, { version: app.getVersion() }) })
+            message: locale.messages.updateCurrent,
+            detail: formatDesktopMessage(locale.messages.updateCurrentDetail, { version: app.getVersion() }) })
           return
         }
         if (state.phase === 'ready' || (state.phase === 'error' && state.failedOperation === 'install')) {
@@ -813,8 +879,9 @@ async function main(): Promise<void> {
         }
         if (state.phase !== 'available' && !(state.phase === 'error' && state.failedOperation === 'download')) return
         if (manual) {
-          const result = await ordinaryMessageBox({ title: locale.messages.updateCheckTitle, message: locale.messages.updateAvailable,
-            detail: formatDesktopMessage(locale.messages.updateDetail, { version: state.version ?? '' }),
+          const result = await ordinaryMessageBox({ title: locale.messages.updateCheckTitle,
+            message: formatDesktopMessage(locale.messages.updateAvailable, { version: state.version ?? '' }),
+            detail: locale.messages.updateDetail,
             buttons: [locale.messages.updateDownload], cancelId: 1 })
           if (result.response !== 0) return
         }
@@ -897,7 +964,7 @@ async function main(): Promise<void> {
   const applicationIconPath = development ? join(app.getAppPath(), 'resources', 'icon-windows.png')
     : join(process.resourcesPath, 'icon.png')
   app.setAboutPanelOptions({
-    applicationName: 'Tapgo AICoding',
+    applicationName: '点点够终端',
     applicationVersion: app.getVersion(),
     // The release has no separate build number; omit Electron's bundle version.
     version: '',
@@ -925,43 +992,118 @@ async function main(): Promise<void> {
       : { label: currentDesktopLocale().messages.aboutMenu, role: 'about' },
     { type: 'separator' },
     { label: currentDesktopLocale().messages.checkUpdatesMenu, click: () => { void openUpdatePrompt(true) } },
-    ...(mobileUrl === undefined ? [] : [{ label: currentDesktopLocale().messages.connectMobileMenu, click: () => {
-      if (mobileUrl === undefined) return
-      const url = mobileUrl
-      const namePath = join(app.getPath('userData'), 'computer-name')
-      const render = async (window: BrowserWindow): Promise<void> => {
-        const name = readComputerName(namePath, systemComputerName())
-        const page = await mobilePairingPage(namedMobileUrl(url, name), name, currentDesktopLocale().messages)
-        await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
-      }
-      void (async () => {
-        const parent = currentMainWindow()
-        const window = new BrowserWindow({
-          width: 420, height: 620, minWidth: 380, minHeight: 590,
-          ...(parent === undefined ? {} : { parent }), modal: false, show: false,
-          title: currentDesktopLocale().messages.connectMobileMenu,
-          webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
-        })
-        window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-        window.webContents.on('will-navigate', (event, destination) => {
-          event.preventDefault()
-          const submitted = new URL(destination)
-          if (submitted.protocol !== 'tapgo-pairing:' || submitted.host !== 'computer-name') return
-          try {
-            const value = submitted.searchParams.get('value')
-            if (value === null) return
-            saveComputerName(namePath, value)
-            void render(window).catch((error: unknown) => { console.error(error) })
-          } catch (error) {
-            console.error(error)
-            dialog.showErrorBox(currentDesktopLocale().messages.connectMobileMenu,
-              currentDesktopLocale().messages.mobileComputerNameSaveFailed)
+    ...(mobileUrl === undefined && mobileOrigin === undefined ? [] : [{
+      label: currentDesktopLocale().messages.connectMobileMenu, click: () => {
+        if (mobileUrl === undefined && mobileOrigin === undefined) return
+        const namePath = join(app.getPath('userData'), 'computer-name')
+        const statusCopy = (state: MobileConnectionState): string => {
+          const messages = currentDesktopLocale().messages
+          switch (state) {
+            case 'connected': return messages.mobileConnectionConnected
+            case 'network': return messages.mobileConnectionNetwork
+            case 'tls': return messages.mobileConnectionTls
+            case 'relay': return messages.mobileConnectionRelay
+            case 'authentication': return messages.mobileConnectionAuthentication
+            case 'websocket': return messages.mobileConnectionWebsocket
           }
-        })
-        await render(window)
-        if (!window.isDestroyed()) window.show()
-      })().catch((error: unknown) => { console.error(error) })
-    } }]),
+        }
+        void (async () => {
+          const host = mobileOrigin === undefined ? undefined : mobileHost
+          const created = host === undefined ? undefined : await host.createMobilePairing(currentDesktopLocale().messages.mobilePairingName)
+          const initialUrl = created?.url ?? mobileUrl
+          if (initialUrl === undefined) throw new Error('mobile pairing URL is unavailable')
+          let url: string = initialUrl
+          let currentPairingId = created?.pairing.id
+          let pairings: readonly DesktopMobilePairing[] = host === undefined ? [] : await host.listMobilePairings()
+          const render = async (window: BrowserWindow): Promise<void> => {
+            const name = readComputerName(namePath, systemComputerName())
+            const page = await mobilePairingPage(namedMobileUrl(url, name), name, currentDesktopLocale().messages,
+              app.getVersion(), pairings)
+            await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
+          }
+          const parent = currentMainWindow()
+          const window = new BrowserWindow({
+            width: 420, height: 680, minWidth: 380, minHeight: 640,
+            ...(parent === undefined ? {} : { parent }), modal: false, show: false,
+            title: currentDesktopLocale().messages.connectMobileMenu,
+            webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+          })
+          let checking = false
+          const checkConnection = async (): Promise<void> => {
+            if (checking || window.isDestroyed()) return
+            checking = true
+            try {
+              const result = await probeMobileConnection(url)
+              if (window.isDestroyed()) return
+              const message = statusCopy(result.state)
+              await window.webContents.executeJavaScript(`document.getElementById('connection-status').textContent = ${JSON.stringify(message)}`)
+            } finally { checking = false }
+          }
+          const timer = setInterval(() => { void checkConnection().catch((error: unknown) => { console.error(error) }) }, 20_000)
+          window.once('closed', () => { clearInterval(timer) })
+          window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+          window.webContents.on('will-navigate', (event, destination) => {
+            event.preventDefault()
+            const submitted = new URL(destination)
+            if (submitted.protocol === 'tapgo-pairing:' && submitted.host === 'check-connection') {
+              void checkConnection().catch((error: unknown) => { console.error(error) })
+              return
+            }
+            if (submitted.protocol === 'tapgo-pairing:' && submitted.host === 'new' && host !== undefined) {
+              const name = submitted.searchParams.get('name')
+              if (name === null) return
+              void (async () => {
+                const next = await host.createMobilePairing(name)
+                url = next.url
+                currentPairingId = next.pairing.id
+                pairings = await host.listMobilePairings()
+                if (!window.isDestroyed()) await render(window)
+                await checkConnection()
+              })().catch(() => { dialog.showErrorBox(currentDesktopLocale().messages.connectMobileMenu,
+                currentDesktopLocale().messages.mobilePairingFailed) })
+              return
+            }
+            if (submitted.protocol === 'tapgo-pairing:' && submitted.host === 'revoke' && host !== undefined) {
+              const id = submitted.searchParams.get('id')
+              if (id === null || !pairings.some(pairing => pairing.id === id)) return
+              void (async () => {
+                const { response } = await dialog.showMessageBox(window, {
+                  type: 'warning', message: currentDesktopLocale().messages.mobileRevokeConfirm,
+                  buttons: [currentDesktopLocale().messages.cancel, currentDesktopLocale().messages.mobileRevoke],
+                  cancelId: 0, defaultId: 0,
+                })
+                if (response !== 1) return
+                await host.revokeMobilePairing(id)
+                pairings = await host.listMobilePairings()
+                if (id === currentPairingId) {
+                  const next = await host.createMobilePairing(currentDesktopLocale().messages.mobilePairingName)
+                  url = next.url
+                  currentPairingId = next.pairing.id
+                  pairings = await host.listMobilePairings()
+                }
+                if (!window.isDestroyed()) await render(window)
+                await checkConnection()
+              })().catch(() => { dialog.showErrorBox(currentDesktopLocale().messages.connectMobileMenu,
+                currentDesktopLocale().messages.mobileRevokeFailed) })
+              return
+            }
+            if (submitted.protocol !== 'tapgo-pairing:' || submitted.host !== 'computer-name') return
+            try {
+              const value = submitted.searchParams.get('value')
+              if (value === null) return
+              saveComputerName(namePath, value)
+              void render(window).then(() => checkConnection()).catch((error: unknown) => { console.error(error) })
+            } catch (error) {
+              console.error(error)
+              dialog.showErrorBox(currentDesktopLocale().messages.connectMobileMenu,
+                currentDesktopLocale().messages.mobileComputerNameSaveFailed)
+            }
+          })
+          await render(window)
+          if (!window.isDestroyed()) window.show()
+          void checkConnection().catch((error: unknown) => { console.error(error) })
+        })().catch((error: unknown) => { console.error(error) })
+      } }]),
     ...development ? [
       { type: 'separator' as const },
       { label: currentDesktopLocale().messages.reloadPageMenu, role: 'reload' as const },
@@ -971,6 +1113,8 @@ async function main(): Promise<void> {
         quitWithoutConfirmation()
       } },
     ] : [],
+    ...process.platform === 'darwin' || process.platform === 'win32'
+      ? [{ label: currentDesktopLocale().messages.cliCommandMenu, click: () => { void commandManager.show() } }] : [],
     { type: 'separator' },
     ...hideCommands,
     { role: 'quit', ...(darwin ? { label: currentDesktopLocale().messages.quitApplication }
@@ -1143,12 +1287,15 @@ async function main(): Promise<void> {
   const showWelcome = (): Promise<void> => {
     if (quitting) return Promise.resolve()
     if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) {
+      if (!welcomeWindow.isVisible()) void track('auth_page_view', {})
       welcomeWindow.show()
       welcomeWindow.focus()
       return Promise.resolve()
     }
     openingWelcome ??= (async () => {
       welcomeWindow = await openWelcomeWindow(locale, {
+        analytics: track,
+        analyticsEnabled: () => Promise.resolve(analyticsEnabled),
         takeNotice: () => {
           const notice = pendingWelcomeNotice
           pendingWelcomeNotice = undefined

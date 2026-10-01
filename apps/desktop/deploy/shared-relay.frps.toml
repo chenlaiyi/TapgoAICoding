@@ -1,0 +1,12 @@
+bindAddr = "127.0.0.1"
+bindPort = 19420
+proxyBindAddr = "127.0.0.1"
+vhostHTTPPort = 19421
+vhostHTTPTimeout = 3600
+subDomainHost = "remote.itapgo.com"
+auth.method = "token"
+auth.tokenSource.type = "file"
+auth.tokenSource.file.path = "/etc/tapgo-relay/token"
+transport.tls.force = false
+transport.tls.certFile = "/etc/tapgo-relay/fullchain.pem"
+transport.tls.keyFile = "/etc/tapgo-relay/privkey.pem"

@@ -40,7 +40,7 @@ export function prepareDevelopmentApp(options: DevelopmentAppOptions): string {
       CFBundleName: 'Tapgo Dev',
       CFBundleDisplayName: 'Tapgo Dev',
       CFBundleExecutable: 'TapgoDev',
-      CFBundleURLTypes: [{ CFBundleURLName: 'Tapgo AICoding', CFBundleURLSchemes: ['tapgo-aicoding'], CFBundleTypeRole: 'Viewer' }],
+      CFBundleURLTypes: [{ CFBundleURLName: '点点够终端', CFBundleURLSchemes: ['tapgo-aicoding'], CFBundleTypeRole: 'Viewer' }],
     }
     for (const [key, value] of Object.entries(values)) {
       execFileSync('/usr/bin/plutil', ['-replace', key, '-json', JSON.stringify(value), plist])

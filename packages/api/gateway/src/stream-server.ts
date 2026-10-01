@@ -44,6 +44,7 @@ export class RemoteStreamMuxServer {
   private readonly server = new WebSocketServer({ noServer: true })
   private readonly connections = new Set<Promise<void>>()
   private readonly missedHeartbeats = new WeakMap<WebSocket, number>()
+  private readonly authorizationChecks = new WeakMap<WebSocket, () => boolean>()
   private heartbeatTimer: NodeJS.Timeout | undefined
 
   /**
@@ -51,12 +52,14 @@ export class RemoteStreamMuxServer {
    * @param failure - Gateway error-to-wire mapper.
    * @param heartbeatIntervalMs - interval between WebSocket Ping control frames.
    * @param streamInboxBytes - buffered uplink frame bytes one logical stream may hold before it fails.
+   * @param isAuthorized - Recheck the upgraded request while its socket remains open.
    */
   constructor(
     private readonly open: RemoteStreamOpener,
     private readonly failure: RemoteStreamFailureMapper,
     private readonly heartbeatIntervalMs: number,
     private readonly streamInboxBytes: number,
+    private readonly isAuthorized: (request: IncomingMessage) => boolean,
   ) {}
 
   /**
@@ -73,6 +76,7 @@ export class RemoteStreamMuxServer {
       const release = bindPeer(websocket, peer)
       if (release === undefined) return
       this.missedHeartbeats.set(websocket, 0)
+      this.authorizationChecks.set(websocket, () => this.isAuthorized(req))
       websocket.on('pong', () => { this.missedHeartbeats.set(websocket, 0) })
       this.startHeartbeat()
       const bound: BoundStreamOpener = (endpoint, payload, uplink, control) =>
@@ -107,6 +111,10 @@ export class RemoteStreamMuxServer {
     this.heartbeatTimer = setInterval(() => {
       for (const socket of this.server.clients) {
         if (socket.readyState !== WebSocket.OPEN) continue
+        if (this.authorizationChecks.get(socket)?.() !== true) {
+          socket.terminate()
+          continue
+        }
         const missed = this.missedHeartbeats.get(socket) as number
         if (missed >= MAX_MISSED_HEARTBEATS) {
           setImmediate(() => {

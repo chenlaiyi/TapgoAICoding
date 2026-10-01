@@ -14,6 +14,7 @@ function createProductApi(): DshDesktopProductApi {
   return {
     protocolVersion: 1,
     browser: createDesktopBrowserBridge(),
+    deviceInfo: () => ipcRenderer.invoke(DESKTOP_IPC.deviceInfo) as Promise<string>,
     keyboard: {
       closeWindow: revision => ipcRenderer.invoke(DESKTOP_IPC.shortcutsCloseWindow, revision) as Promise<void>,
       subscribe: (listener) => {
@@ -53,6 +54,10 @@ function createProductApi(): DshDesktopProductApi {
         ipcRenderer.on(DESKTOP_IPC.updatesPresentation, handle)
         return () => { ipcRenderer.off(DESKTOP_IPC.updatesPresentation, handle) }
       },
+    },
+    computerName: {
+      get: () => ipcRenderer.invoke(DESKTOP_IPC.computerNameGet) as Promise<string>,
+      set: name => ipcRenderer.invoke(DESKTOP_IPC.computerNameSet, name) as Promise<string>,
     },
   }
 }

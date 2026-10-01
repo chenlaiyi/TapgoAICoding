@@ -1,5 +1,5 @@
 ---
-description: "Tapgo AICoding 在侧栏与会话首屏的品牌填充。"
+description: "点点够终端 在侧栏与会话首屏的品牌填充。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包让 `official` profile 构建的客户端在侧栏显示 Tapgo AICoding 图标与本地化产品名，并在会话首屏显示 Tapgo 图标。`brand-official` 词典管理两种语言中的名称。其他构建 profile 保留本地构建回退内容。本包不保留运行时状态，也不影响模型请求。
+本包让 `official` profile 构建的客户端在侧栏显示 点点够终端 图标与本地化产品名，并在会话首屏显示 Tapgo 图标。`brand-official` 词典管理两种语言中的名称。其他构建 profile 保留本地构建回退内容。本包不保留运行时状态，也不影响模型请求。
 
 ## 目录
 

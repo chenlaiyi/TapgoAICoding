@@ -113,11 +113,11 @@ export const WELCOME_NOTICE_SETTINGS_NAMESPACE = 'ui-settings-general'
 /** The installed bundle carrying the scaffold's deployment defaults; the plugin manager lists it beside fixture bundles. */
 export const SCAFFOLD_DEFAULTS_BUNDLE = 'dsh-web-scaffold-defaults'
 export const WELCOME_NOTICE_ACK_FIELD = 'welcomeNoticeVersion'
-export const WELCOME_NOTICE_VERSION = '2026-08-13.1'
+export const WELCOME_NOTICE_VERSION = '2026-09-28.1'
 export const WELCOME_NOTICE_COPY = {
   zh: {
     title: '内测声明',
-    body: 'Tapgo AICoding 基于开源 DeepSeek Harness 预览版。当前版本仍在演进，插件、API 和存储格式可能变化。请备份重要工作，遇到问题时向我们反馈。',
+    body: '点点够终端 基于开源 DeepSeek Harness 预览版。当前版本仍在演进，插件、API 和存储格式可能变化。请备份重要工作，遇到问题时向我们反馈。',
     continueLabel: '继续',
   },
 } as const
@@ -682,7 +682,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   // Live fields use a shared deployment layer; process-specific ports and roots stay in CLI overlays.
   const formEntries = new Set(['agent-default-model', 'agent-preset-registry', 'llm-deepseek', 'llm-pi-ai',
     'web-search-deepseek', 'agent-loop', 'subagent', 'bash-sandbox', 'pwsh-sandbox',
-    'ui-theme', 'locale', 'ui-chat', 'ui-conversation', 'ui-settings', 'ui-settings-general', 'permission'])
+    'session-log-deepseek', 'ui-theme', 'locale', 'ui-chat', 'ui-conversation', 'ui-settings', 'ui-settings-general', 'permission'])
   const formDefaults: PatchOptions[] = []
   const processOverlays = overlayPatches.map((patch) => {
     if (patch.id === undefined || !formEntries.has(patch.id) || patch.config === undefined) return patch

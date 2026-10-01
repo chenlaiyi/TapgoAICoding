@@ -9,7 +9,26 @@ interface ReadyEvent {
   readonly type: 'ready'
   readonly url: string
   readonly mobileUrl?: string
+  readonly mobileOrigin?: string
   readonly injections?: readonly unknown[] | undefined
+}
+
+/** Public metadata for a phone's revocable pairing credential. */
+export interface DesktopMobilePairing {
+  readonly id: string
+  readonly name: string
+  readonly authority: string
+  readonly createdAt: number
+}
+
+interface MobilePairingEvent {
+  readonly type: 'mobile-pairing'
+  readonly requestId: number
+  readonly action: 'create' | 'list' | 'revoke'
+  readonly url?: string
+  readonly pairing?: DesktopMobilePairing
+  readonly pairings?: readonly DesktopMobilePairing[]
+  readonly error?: string
 }
 
 interface FatalEvent {
@@ -24,7 +43,7 @@ interface PlatformSessionEvent {
   readonly session: PlatformSession | null
 }
 
-type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | { readonly type: 'shutdown-complete' } | {
+type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | MobilePairingEvent | { readonly type: 'shutdown-complete' } | {
   readonly type: 'update-tasks'
   readonly requestId: number
   readonly active: boolean
@@ -51,6 +70,14 @@ export const QUIT_INSPECTION_DEADLINE_MS = 2_000
 
 const MAX_HOST_DIAGNOSTIC_CHARS = 64 * 1024
 
+function isMobilePairing(value: unknown): value is DesktopMobilePairing {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Record<string, unknown>
+  return typeof item.id === 'string' && /^[A-Za-z0-9_-]{22}$/u.test(item.id)
+    && typeof item.name === 'string' && item.name.length > 0 && item.name.length <= 80
+    && typeof item.authority === 'string' && Number.isSafeInteger(item.createdAt)
+}
+
 function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
   if (typeof message !== 'object' || message === null || !('type' in message)) return false
   const candidate = message as Record<string, unknown>
@@ -59,6 +86,13 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
       return true
     case 'ready':
       if (typeof candidate.url !== 'string') return false
+      if (candidate.mobileOrigin !== undefined) {
+        if (typeof candidate.mobileOrigin !== 'string') return false
+        try {
+          const origin = new URL(candidate.mobileOrigin)
+          if (origin.protocol !== 'https:' || origin.href !== `${origin.origin}/`) return false
+        } catch { return false }
+      }
       if (candidate.mobileUrl === undefined) return true
       if (typeof candidate.mobileUrl !== 'string') return false
       try {
@@ -87,6 +121,22 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
     }
     case 'fatal':
       return typeof candidate.message === 'string' && (candidate.diagnostic === undefined || typeof candidate.diagnostic === 'string')
+    case 'mobile-pairing':
+      if (!Number.isSafeInteger(candidate.requestId)
+        || !['create', 'list', 'revoke'].includes(String(candidate.action))
+        || (candidate.error !== undefined && typeof candidate.error !== 'string')) return false
+      if (candidate.error !== undefined) return true
+      if (candidate.action === 'create') {
+        if (!isMobilePairing(candidate.pairing) || typeof candidate.url !== 'string') return false
+        try {
+          const url = new URL(candidate.url)
+          return url.protocol === 'https:' && url.pathname === '/' && url.host === candidate.pairing.authority
+            && url.searchParams.getAll('token').length === 1
+        } catch { return false }
+      }
+      if (candidate.action === 'list') return Array.isArray(candidate.pairings)
+        && candidate.pairings.every(isMobilePairing)
+      return true
     case 'update-tasks':
       return Number.isSafeInteger(candidate.requestId) && typeof candidate.active === 'boolean'
         && (candidate.error === undefined || typeof candidate.error === 'string')
@@ -115,6 +165,7 @@ async function exitsWithin(exit: Promise<void>, milliseconds: number): Promise<b
 export interface DesktopHostReady {
   readonly url: string
   readonly mobileUrl?: string | undefined
+  readonly mobileOrigin?: string | undefined
   readonly injections?: readonly unknown[] | undefined
 }
 
@@ -221,7 +272,8 @@ export class DesktopHostProcess {
         child.kill('SIGTERM')
         return
       }
-      if (message.type === 'ready') this.readyResolve({ url: message.url, mobileUrl: message.mobileUrl, injections: message.injections })
+      if (message.type === 'ready') this.readyResolve({ url: message.url, mobileUrl: message.mobileUrl,
+        mobileOrigin: message.mobileOrigin, injections: message.injections })
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
       else if (message.type === 'shutdown-complete') {
         if (this.stopping) this.shutdownCompleted = true
@@ -269,13 +321,40 @@ export class DesktopHostProcess {
     return { activeTasks: response.activeTasks, scheduledTasks: response.scheduledTasks }
   }
 
+  /** Create one independently revocable phone link. */
+  async createMobilePairing(name: string): Promise<{ url: string; pairing: DesktopMobilePairing }> {
+    const response = await this.control({ type: 'mobile-pairing', action: 'create', name }, 10_000, 'mobile pairing timed out')
+    if (response.type !== 'mobile-pairing' || response.action !== 'create'
+      || response.url === undefined || response.pairing === undefined) throw new Error('invalid mobile pairing response')
+    return { url: response.url, pairing: response.pairing }
+  }
+
+  /** Read active phone pairing metadata. */
+  async listMobilePairings(): Promise<readonly DesktopMobilePairing[]> {
+    const response = await this.control({ type: 'mobile-pairing', action: 'list' }, 10_000, 'mobile pairing list timed out')
+    if (response.type !== 'mobile-pairing' || response.action !== 'list' || response.pairings === undefined) {
+      throw new Error('invalid mobile pairing list response')
+    }
+    return response.pairings
+  }
+
+  /** Revoke one phone's link and cookies. */
+  async revokeMobilePairing(id: string): Promise<void> {
+    const response = await this.control({ type: 'mobile-pairing', action: 'revoke', id }, 10_000, 'mobile pairing revoke timed out')
+    if (response.type !== 'mobile-pairing' || response.action !== 'revoke') throw new Error('invalid mobile pairing revoke response')
+  }
+
   private async control(
-    request: { readonly type: 'update-tasks'; readonly action: 'inspect' | 'lock' | 'unlock' } | { readonly type: 'quit-inspection' },
+    request: { readonly type: 'update-tasks'; readonly action: 'inspect' | 'lock' | 'unlock' }
+      | { readonly type: 'quit-inspection' }
+      | { readonly type: 'mobile-pairing'; readonly action: 'create'; readonly name: string }
+      | { readonly type: 'mobile-pairing'; readonly action: 'list' }
+      | { readonly type: 'mobile-pairing'; readonly action: 'revoke'; readonly id: string },
     deadlineMs: number, deadlineMessage: string,
   ): Promise<DesktopHostControlResponse> {
     const child = this.child
     if (child === undefined || !child.connected || this.failureReported || this.stopping) {
-      throw new Error(`${request.type === 'update-tasks' ? 'desktop update' : 'desktop quit'}: Host is unavailable`)
+      throw new Error(`${request.type === 'update-tasks' ? 'desktop update' : request.type === 'quit-inspection' ? 'desktop quit' : 'mobile pairing'}: Host is unavailable`)
     }
     const requestId = this.nextControlId++
     let timer: ReturnType<typeof setTimeout> | undefined

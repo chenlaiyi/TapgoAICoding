@@ -1,4 +1,5 @@
 /** Desktop account settings registration and reconnecting Remote subscription. */
+import type {} from '@deepseek-ai/dsh-client-product-analytics/client'
 import type { TranscriptViewMode } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -6,6 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { AccountView, AccountDetails } from '@deepseek-ai/dsh-deepseek-account/types'
@@ -18,13 +20,14 @@ import { AccountPlatformHost, type AccountPlatformHostInjected } from './Account
 import { AccountMenu } from './AccountMenu.tsx'
 import { createPlatformPages, type PlatformPages } from './platform-pages.ts'
 import { AccountSection, type AccountSnapshot, type AccountSectionInjected } from './AccountSection.tsx'
+import { AccountComposerBalance, type AccountComposerBalanceInjected } from './AccountComposerBalance.tsx'
 import { createBonusNoticeController } from './bonus-notices.ts'
 import { accountClientMetadata } from './client-metadata.ts'
 import { en, zh, type AccountKey } from './locales.ts'
 import { AccountQuotaNotice, type AccountQuotaNoticeInjected } from './AccountQuotaNotice.tsx'
 import { DESKTOP_ONBOARDING_NAMESPACE, type OnboardingSettings } from '../onboarding-settings.ts'
 import { DesktopOnboardingController } from './onboarding-state.ts'
-import { DesktopOnboardingEntry } from './DesktopOnboardingEntry.tsx'
+import { DesktopOnboardingEntry, type DesktopOnboardingInjected } from './DesktopOnboardingEntry.tsx'
 import { readOnboardingApiKeyPresence } from './onboarding-credentials.ts'
 import { refreshAfterReturn } from './account-refresh.ts'
 export type { AccountSectionInjected, AccountSectionProps } from './AccountSection.tsx'
@@ -160,12 +163,34 @@ export function apply(ctx: Context): void {
     ...nativePlatform === undefined ? {} : { openPlatformPage: platformPageOpener(refreshAccount) },
     refreshAccount,
     contactUs() {
-      const url = contactUrl(config, {
+      // Sample the account, build and environment before awaiting native information, so
+      // a profile the read outlasts cannot replace the UID this click reported.
+      const profile = snapshot.details?.profile
+      const context = {
+        uid: profile?.status === 'ready' ? profile.value.id : null,
         version: process.env.DSH_CLIENT_VERSION,
         locale: ctx.locale.getSnapshot().active === 'zh' ? 'zh-CN' : 'en',
         width: window.screen.width, height: window.screen.height, pixelRatio: window.devicePixelRatio,
-      })
-      window.open(url, '_blank', 'noopener,noreferrer')
+      }
+      const openForm = (deviceInfo: string): void => {
+        window.open(contactUrl(config, { ...context, deviceInfo }), '_blank', 'noopener,noreferrer')
+      }
+      const readDeviceInfo = (globalThis as typeof globalThis & {
+        dshDesktop?: { deviceInfo?: () => Promise<string> }
+      }).dshDesktop?.deviceInfo
+      if (readDeviceInfo === undefined) {
+        // A Desktop bridge without the optional reader reports the renderer user agent.
+        openForm(navigator.userAgent)
+        return
+      }
+      void (async () => {
+        let deviceInfo = ''
+        try { deviceInfo = await readDeviceInfo() }
+        catch (_error) {
+          // Native information is optional; the questionnaire opens without it.
+        }
+        openForm(deviceInfo)
+      })()
     },
     showLogin(visible) { publish({ ...snapshot, loginVisible: visible }) },
     setOnboarding(active) { publish({ ...snapshot, onboarding: active }) },
@@ -211,7 +236,7 @@ export function apply(ctx: Context): void {
   if ('dshDesktop' in globalThis) {
     const controller = new DesktopOnboardingController(
       ctx.configForms.get<OnboardingSettings>(DESKTOP_ONBOARDING_NAMESPACE),
-      ctx.configForms.get<{ transcriptView: TranscriptViewMode; performanceUsage: 'compact' | 'detailed' }>('ui-chat'),
+      ctx.configForms.get<{ transcriptView?: TranscriptViewMode | null; performanceUsage: 'compact' | 'detailed' }>('ui-chat'),
       enabled => ctx.configForms.developerTools.setEnabled(enabled),
       operations.hooks.account,
       readOnboardingApiKeyPresence,
@@ -229,13 +254,14 @@ export function apply(ctx: Context): void {
     }, 'account: desktop credential readiness')
     ctx.slots.inject('shell.overlay', () => ctx.slots.register({
       name: 'shell.overlay', id: 'desktop-onboarding', locale: 'settings.account',
-      inject: () => ({
+      inject: (): DesktopOnboardingInjected => ({
         hooks: { account: operations.hooks.account, onboarding: controller.state },
         // Onboarding's recharge return re-reads profile and balance only.
         ...nativePlatform === undefined ? {} : { openPlatformPage: platformPageOpener(refresh) },
         update: (change: OnboardingChange) => controller.update(change),
         complete: (reason: 'completed' | 'skipped') => controller.complete(reason),
         retry: () => controller.retry(),
+        track: (name, attributes) => ctx.get('productAnalytics')?.track(name, attributes),
       }),
     }, DesktopOnboardingEntry))
   }
@@ -262,6 +288,10 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('settings.launcher', () => ctx.slots.register({
     name: 'settings.launcher', locale: 'settings.account', inject: () => operations,
   }, AccountMenu))
+  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
+    name: 'conversation.input.right', id: 'account-balance', locale: 'settings.account',
+    inject: (): AccountComposerBalanceInjected => ({ hooks: { account: operations.hooks.account } }),
+  }, AccountComposerBalance))
   ctx.slots.inject('settings.section', () => {
     let unregister: (() => void) | undefined
     const update = () => {

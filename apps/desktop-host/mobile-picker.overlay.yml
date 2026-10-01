@@ -1,5 +1,8 @@
 - id: directory-picker
   disabled: true
+- id: typert-gateway
+  config:
+    websocketHeartbeatIntervalMs: 15000
 - insert:
     - id: directory-picker-browse
       name: '@deepseek-ai/dsh-host-directory-picker-browse'

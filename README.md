@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-This repository ships **Tapgo AICoding Desktop**, a derivative of DeepSeek Harness `0.1.7-rc.2`. The [upgrade record](TAPGO_MIGRATION.md) describes the application identity, legacy data, and release limits.
+This repository ships **点点够终端 Desktop**, a derivative of DeepSeek Harness `0.1.7-rc.2`. The [upgrade record](TAPGO_MIGRATION.md) describes the application identity, legacy data, and release limits.
 
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
@@ -46,7 +46,7 @@ pnpm dsh web
 
 - Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
 - Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+- Join <a href="https://discord.gg/4MrtZUhpxg">DeepSeek Harness Discord community</a>.
 
 ## Contributing
 

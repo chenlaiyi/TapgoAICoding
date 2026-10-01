@@ -102,14 +102,14 @@ export function createElectronBuilderConfig(
   const updaterCacheName = appId === 'com.tapgo.aicoding' ? 'tapgo-aicoding-updater' : undefined
   return {
     appId,
-    protocols: [{ name: 'Tapgo AICoding', schemes: ['tapgo-aicoding'] }],
+    protocols: [{ name: '点点够终端', schemes: ['tapgo-aicoding'] }],
     extraMetadata: {
       dshDesktopAppId: appId,
       dshMandatoryUpdatePolicy: policy,
       ...buildVersion === productVersion ? {} : { version: buildVersion },
       ...packaged === undefined ? {} : { dshBuildCommit: packaged.commit, dshBuildDirty: packaged.dirty },
     },
-    productName: 'Tapgo AICoding',
+    productName: '点点够终端',
     // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.
     artifactName: `deepseek-harness-\${version}-\${os}-\${arch}${unsigned ? '-unsigned' : ''}.\${ext}`,
     directories: { output: unsigned ? buildPaths.unsignedArtifacts : buildPaths.artifacts },
@@ -147,6 +147,7 @@ export function createElectronBuilderConfig(
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
       { from: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
+      ...(packagesMacOS ? [{ from: join(buildPaths.root, 'relay-client', 'frpc'), to: 'frpc' }] : []),
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
     ],
@@ -156,8 +157,10 @@ export function createElectronBuilderConfig(
       // macOS matches the application locale against this bundle, not Electron Framework resources.
       extendInfo: {
         CFBundleLocalizations: ['en', 'zh_CN'],
-        NSMicrophoneUsageDescription: 'Tapgo AICoding uses your microphone to transcribe speech into message drafts.',
+        NSMicrophoneUsageDescription: '点点够终端使用麦克风将语音转写为消息草稿。',
       },
+      entitlements: fileURLToPath(new URL('./macos-entitlements.plist', import.meta.url)),
+      entitlementsInherit: fileURLToPath(new URL('./macos-entitlements.plist', import.meta.url)),
       identity: macOSSigning?.signingIdentity,
       forceCodeSigning: true,
       hardenedRuntime: true,

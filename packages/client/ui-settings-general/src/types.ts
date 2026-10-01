@@ -27,6 +27,12 @@ export interface DesktopUpdateBridge {
   subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
 }
 
+/** Computer name stored by the Desktop shell and carried by new pairing links. */
+export interface DesktopComputerNameBridge {
+  get(): Promise<string>
+  set(name: string): Promise<string>
+}
+
 /** Shared carrier status for the account row and collapsed sidebar badge. */
 export interface DesktopUpdateView {
   readonly presentation?: DesktopUpdatePresentation

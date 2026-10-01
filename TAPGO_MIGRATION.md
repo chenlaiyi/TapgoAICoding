@@ -1,12 +1,12 @@
-# Tapgo AICoding Desktop 升级记录
+# 点点够终端 Desktop 升级记录
 
-本项目以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现。新版应用沿用 `com.tapgo.aicoding`，公开版本从 `0.5.319` 提升至 `0.6.2`；旧版源码保留在 Git 标签 `v0.5.319`。
+本项目最初以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现，现已将源码更新至 `0.2.0-rc.2`。应用沿用 `com.tapgo.aicoding`，公开版本从 `0.5.319` 提升至 `0.6.2`；旧版源码保留在 Git 标签 `v0.5.319`。
 
 ## 新版行为
 
 - 桌面应用、网页入口、图标、URL scheme 和更新源使用 Tapgo 标识。DeepSeek 账户登录及计费仍由 DeepSeek 提供，也可使用独立 API Key。
 - 新版会话使用 DSH 的持久化格式与 `$DSH_HOME`。旧版 Tapgo 的 `~/Library/Application Support/Tapgo AICoding/state` 不会被安装程序修改，但旧对话不会自动出现在新版会话列表。
-- 旧版手机配对、手机遥控和公网中继尚未移植。保留旧 App 与数据备份可供查看历史或回退。
+- 当前手机配对、远程对话和公网中继由新的 iOS 配套应用与 Desktop Host 提供。保留旧 App 与数据备份可供查看历史或回退。
 - 本次 macOS 发布使用现有 Developer ID 身份签名，尚无 Apple 公证票据。首次从网络下载时，macOS Gatekeeper 可能阻止启动。
 
 ## 验证与发布

@@ -12,7 +12,7 @@ import { clientRequestSchema } from './rpc-schema.ts'
 import { bridge } from './http-bridge.ts'
 import { isTrustedApiRequest } from './api-request-trust.ts'
 import { API_PATH } from './api-path.ts'
-import type { BrowserAuth } from './browser-auth.ts'
+import type { BrowserAuth, MobilePairing } from './browser-auth.ts'
 import { OperatorPeer } from './operator-peer.ts'
 import type {
   PeerAdmission,
@@ -120,6 +120,21 @@ export class HostConnectionService extends Service implements HostConnectionHand
   /** Add this process's launch token to the clean application URL. */
   authenticatedUrl(baseUrl: string): string {
     return this.browserAuth.authenticatedUrl(baseUrl)
+  }
+
+  /** Issue one independently revocable mobile pairing URL. */
+  createMobilePairing(baseUrl: string, name: string): Promise<{ url: string; pairing: MobilePairing }> {
+    return this.browserAuth.createMobilePairing(baseUrl, name)
+  }
+
+  /** List active mobile pairing metadata. */
+  listMobilePairings(): readonly MobilePairing[] {
+    return this.browserAuth.listMobilePairings()
+  }
+
+  /** Revoke the token and signed cookies for one mobile pairing. */
+  revokeMobilePairing(id: string): Promise<void> {
+    return this.browserAuth.revokeMobilePairing(id)
   }
 
   /**

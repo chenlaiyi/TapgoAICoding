@@ -18,6 +18,7 @@ function div(className: string | undefined, text?: string): HTMLDivElement {
 export class BootPage {
   private readonly root: HTMLDivElement
   private readonly card: HTMLDivElement
+  private readonly identity: HTMLDivElement
   private readonly wordmark: HTMLDivElement
   private readonly spinner: HTMLDivElement
   private readonly hint: HTMLDivElement
@@ -34,11 +35,26 @@ export class BootPage {
     this.root = div(css.boot)
     this.root.dataset.dshBoot = ''
     this.card = div(css.card)
-    this.wordmark = div(css.wordmark, 'HARNESS')
+    this.identity = div(css.identity)
+    const icon = container.dataset.bootIcon
+    if (icon !== undefined) {
+      const mark = document.createElement('img')
+      mark.className = css.mark ?? ''
+      mark.src = icon
+      mark.alt = ''
+      mark.width = 72
+      mark.height = 72
+      this.identity.append(mark)
+    }
+    this.wordmark = div(css.wordmark, container.dataset.bootBrand ?? 'HARNESS')
+    this.identity.append(this.wordmark)
+    if (container.dataset.bootSlogan !== undefined) {
+      this.identity.append(div(css.slogan, container.dataset.bootSlogan))
+    }
     this.spinner = div(css.spinner)
     this.spinner.dataset.dshBootSpinner = ''
-    this.hint = div(css.hint, 'Loading plugins…')
-    this.card.append(this.wordmark, this.spinner, this.hint)
+    this.hint = div(css.hint, container.dataset.bootLoading ?? 'Loading plugins…')
+    this.card.append(this.identity, this.spinner, this.hint)
     this.root.append(this.card)
     container.append(this.root)
     this.updateProgress()
@@ -84,7 +100,7 @@ export class BootPage {
     const failed = [...this.states].filter(([, state]) => state === 'failed').map(([id]) => id)
     if (this.failure === undefined && failed.length === 0) {
       if (this.spinner.parentElement !== this.card) {
-        this.card.replaceChildren(this.wordmark, this.spinner, this.hint)
+        this.card.replaceChildren(this.identity, this.spinner, this.hint)
       }
       return
     }
@@ -92,7 +108,7 @@ export class BootPage {
     report.append(div(css.failedTitle, 'Failed to load plugins'))
     for (const id of failed) report.append(div(css.failedItem, id))
     if (this.failure !== undefined) report.append(div(css.failedItem, this.failure))
-    this.card.replaceChildren(this.wordmark, report)
+    this.card.replaceChildren(this.identity, report)
   }
 
   /** Grow the rotating arc monotonically as loader entries activate. */

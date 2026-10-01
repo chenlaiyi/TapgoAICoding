@@ -10,6 +10,7 @@ import type {
 } from './rpc.ts'
 
 const AUTH_RECORD_KEY = credentialKey('client-connection', 'browser-session')
+const MOBILE_RECORD_KEY = credentialKey('client-connection', 'mobile-pairings')
 const DAY_MILLISECONDS = 24 * 60 * 60 * 1000
 const SECRET_BYTES = 32
 const TOKEN_QUERY = 'token'
@@ -29,7 +30,24 @@ interface BrowserCookiePayload {
   readonly authority: string
   readonly issuedAt: number
   readonly expiresAt: number
+  readonly pairingId?: string
 }
+
+interface MobilePairingRecord {
+  readonly id: string
+  readonly name: string
+  readonly authority: string
+  readonly tokenHash: string
+  readonly createdAt: number
+}
+
+interface StoredMobilePairings {
+  readonly version: 1
+  readonly entries: readonly MobilePairingRecord[]
+}
+
+/** Public metadata for one independently revocable mobile pairing. */
+export type MobilePairing = Omit<MobilePairingRecord, 'tokenHash'>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -153,9 +171,32 @@ function decodeCookie(value: string, secret: Buffer): BrowserCookiePayload | und
   if (!isRecord(decoded)
     || decoded.version !== COOKIE_PAYLOAD_VERSION
     || typeof decoded.authority !== 'string'
+    || (decoded.pairingId !== undefined && typeof decoded.pairingId !== 'string')
     || !Number.isSafeInteger(decoded.issuedAt)
     || !Number.isSafeInteger(decoded.expiresAt)) return undefined
-  return decoded as unknown as BrowserCookiePayload
+  return {
+    version: COOKIE_PAYLOAD_VERSION,
+    authority: decoded.authority,
+    issuedAt: decoded.issuedAt,
+    expiresAt: decoded.expiresAt,
+    ...(decoded.pairingId === undefined ? {} : { pairingId: decoded.pairingId }),
+  } as BrowserCookiePayload
+}
+
+function mobilePairings(record: CredentialRecord | undefined): readonly MobilePairingRecord[] {
+  if (record === undefined) return []
+  if (record.kind !== 'grant') throw new Error('client-connection: mobile-pairings credential record has an unsupported format')
+  const value = record.payload
+  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.entries) || value.entries.length > 100
+    || value.entries.some((item: unknown) => !isRecord(item) || typeof item.id !== 'string'
+      || !/^[A-Za-z0-9_-]{22}$/u.test(item.id)
+      || typeof item.name !== 'string' || item.name.length === 0 || item.name.length > 80
+      || typeof item.authority !== 'string' || !/^[a-z0-9.-]+(?::[0-9]+)?$/u.test(item.authority)
+      || typeof item.tokenHash !== 'string' || !/^[a-f0-9]{64}$/u.test(item.tokenHash)
+      || !Number.isSafeInteger(item.createdAt))) {
+    throw new Error('client-connection: mobile-pairings credential record has an unsupported format')
+  }
+  return value.entries as MobilePairingRecord[]
 }
 
 async function initializeSecret(credentials: CredentialProvider): Promise<Buffer> {
@@ -185,14 +226,18 @@ async function initializeSecret(credentials: CredentialProvider): Promise<Buffer
 export class BrowserAuth {
   private readonly launchToken: string
   private readonly maxAgeMilliseconds: number
+  private readonly pairings = new Map<string, MobilePairingRecord>()
 
   private constructor(
     processOwner: object,
     private readonly secret: Buffer,
     maxAgeDays: number,
+    private readonly credentials: CredentialProvider,
+    entries: readonly MobilePairingRecord[],
   ) {
     this.launchToken = processLaunchToken(processOwner)
     this.maxAgeMilliseconds = maxAgeDays * DAY_MILLISECONDS
+    for (const entry of entries) this.pairings.set(entry.id, entry)
     if (!Number.isSafeInteger(this.maxAgeMilliseconds)
       || !Number.isSafeInteger(Date.now() + this.maxAgeMilliseconds)) {
       throw new Error('client-connection: cookieMaxAgeDays exceeds the safe timestamp range')
@@ -212,7 +257,60 @@ export class BrowserAuth {
     credentials: CredentialProvider,
     maxAgeDays: number,
   ): Promise<BrowserAuth> {
-    return new BrowserAuth(processOwner, await initializeSecret(credentials), maxAgeDays)
+    const secret = await initializeSecret(credentials)
+    return new BrowserAuth(processOwner, secret, maxAgeDays, credentials,
+      mobilePairings(await credentials.readRecord(MOBILE_RECORD_KEY)))
+  }
+
+  /** Create one durable, separately revocable public pairing link.
+   * @param baseUrl - HTTPS origin assigned to this Host.
+   * @param name - Name shown in the Mac connection list.
+   * @returns one-time visible link and public pairing metadata.
+   */
+  async createMobilePairing(baseUrl: string, name: string): Promise<{ url: string; pairing: MobilePairing }> {
+    const url = new URL(baseUrl)
+    if (url.protocol !== 'https:' || url.pathname !== '/' || url.search !== '' || url.hash !== '') {
+      throw new Error('client-connection: mobile pairing requires a clean HTTPS origin')
+    }
+    const label = name.trim()
+    if (label.length === 0 || label.length > 80) throw new Error('client-connection: invalid mobile pairing name')
+    if (this.pairings.size >= 100) throw new Error('client-connection: mobile pairing limit reached; revoke an unused link')
+    const token = encodeBase64Url(randomBytes(SECRET_BYTES))
+    const entry: MobilePairingRecord = {
+      id: encodeBase64Url(randomBytes(16)), name: label, authority: url.host,
+      tokenHash: createHash('sha256').update(token).digest('hex'), createdAt: Date.now(),
+    }
+    const record = await this.credentials.modifyRecord(MOBILE_RECORD_KEY, current =>
+      Promise.resolve({ kind: 'grant', payload: { version: 1,
+        entries: [...mobilePairings(current), entry] } satisfies StoredMobilePairings }))
+    const committed = mobilePairings(record)
+    if (!committed.some(stored => stored.id === entry.id)) throw new Error('client-connection: mobile pairing was not saved')
+    this.pairings.clear()
+    for (const stored of committed) this.pairings.set(stored.id, stored)
+    url.searchParams.set(TOKEN_QUERY, token)
+    return { url: url.href, pairing: { id: entry.id, name: entry.name, authority: entry.authority, createdAt: entry.createdAt } }
+  }
+
+  /** List active mobile pairings without exposing bearer tokens.
+   * @returns Public pairing metadata.
+   */
+  listMobilePairings(): readonly MobilePairing[] {
+    return [...this.pairings.values()].map(({ id, name, authority, createdAt }) => ({ id, name, authority, createdAt }))
+  }
+
+  /** Revoke one pairing's token and every cookie issued from it.
+   * @param id - Pairing identifier from {@link listMobilePairings}.
+   */
+  async revokeMobilePairing(id: string): Promise<void> {
+    if (!this.pairings.has(id)) throw new Error('client-connection: mobile pairing not found')
+    const record = await this.credentials.modifyRecord(MOBILE_RECORD_KEY, current =>
+      Promise.resolve({ kind: 'grant', payload: { version: 1,
+        entries: mobilePairings(current).filter(entry => entry.id !== id) } satisfies StoredMobilePairings }))
+    if (record === undefined) throw new Error('client-connection: mobile pairing was not revoked')
+    const committed = mobilePairings(record)
+    if (committed.some(entry => entry.id === id)) throw new Error('client-connection: mobile pairing was not revoked')
+    this.pairings.clear()
+    for (const stored of committed) this.pairings.set(stored.id, stored)
   }
 
   /**
@@ -241,8 +339,11 @@ export class BrowserAuth {
     const tokens = url.searchParams.getAll(TOKEN_QUERY)
     if (tokens.length > 0) {
       const authority = requestAuthority(req.headers)
+      const token = tokens.join('')
+      const pairing = [...this.pairings.values()].find(entry => entry.authority === authority
+        && tokenMatches(entry.tokenHash, createHash('sha256').update(token).digest('hex')))
       if (req.method === 'GET' && url.pathname === '/' && tokens.length === 1
-        && authority !== undefined && tokenMatches(tokens.join(''), this.launchToken)) {
+        && authority !== undefined && (tokenMatches(token, this.launchToken) || pairing !== undefined)) {
         const issuedAt = Date.now()
         const expiresAt = issuedAt + this.maxAgeMilliseconds
         const value = encodeCookie({
@@ -250,6 +351,7 @@ export class BrowserAuth {
           authority,
           issuedAt,
           expiresAt,
+          ...pairing === undefined ? {} : { pairingId: pairing.id },
         }, this.secret)
         res.writeHead(303, {
           'cache-control': 'no-store',
@@ -292,6 +394,7 @@ export class BrowserAuth {
     if (value === undefined) return false
     const payload = decodeCookie(value, this.secret)
     if (payload === undefined || payload.authority !== authority) return false
+    if (payload.pairingId !== undefined && this.pairings.get(payload.pairingId)?.authority !== authority) return false
     const now = Date.now()
     return payload.issuedAt <= now
       && payload.expiresAt > now

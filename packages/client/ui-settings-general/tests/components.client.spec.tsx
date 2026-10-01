@@ -9,6 +9,7 @@ import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.
 import type { TriggerContentProps } from '../src/client/chrome.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import { DeveloperToolsRow } from '../src/client/DeveloperToolsRow.tsx'
+import { ComputerNameRow } from '../src/client/ComputerNameRow.tsx'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { SettingsDocumentStore } from '../src/client/settings-document-store.ts'
@@ -81,7 +82,7 @@ it('toggles developer tools using the accepted setting and disables duplicate wr
     finish = () => { state.set(enabled); resolve() }
   }))
   render(<DeveloperToolsRow {...kit} t={t} useDeveloperTools={bindSnapshotSelector(state)} setEnabled={setEnabled} />)
-  const toggle = screen.getByRole('switch', { name: 'Coding Tools' })
+  const toggle = screen.getByRole('switch', { name: 'Show coding view' })
   expect(toggle.getAttribute('aria-checked')).toBe('false')
   fireEvent.click(toggle)
   expect(setEnabled).toHaveBeenCalledWith(true)
@@ -89,6 +90,17 @@ it('toggles developer tools using the accepted setting and disables duplicate wr
   finish()
   await waitFor(() => { expect(toggle.getAttribute('aria-checked')).toBe('true') })
   expect(toggle.hasAttribute('disabled')).toBe(false)
+})
+
+it('loads and saves the Desktop computer name in General Settings', async () => {
+  const computerName = { get: vi.fn(async () => 'System Mac'), set: vi.fn(async (name: string) => name) }
+  render(<ComputerNameRow {...kit} t={t} computerName={computerName} />)
+  const input = await screen.findByRole('textbox', { name: 'Computer name' })
+  await waitFor(() => { expect((input as HTMLInputElement).value).toBe('System Mac') })
+  fireEvent.change(input, { target: { value: 'Studio Mac' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => { expect(computerName.set).toHaveBeenCalledWith('Studio Mac') })
+  await waitFor(() => { expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true) })
 })
 
 describe('chrome content', () => {
@@ -214,7 +226,7 @@ it('reports a failed developer-tool write and allows retry', async () => {
   const state = createSnapshotStore(false)
   const setEnabled = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementation(async (enabled: boolean) => { state.set(enabled) })
   render(<DeveloperToolsRow {...kit} t={t} useDeveloperTools={bindSnapshotSelector(state)} setEnabled={setEnabled} />)
-  const toggle = screen.getByRole('switch', { name: 'Coding Tools' })
+  const toggle = screen.getByRole('switch', { name: 'Show coding view' })
   fireEvent.click(toggle)
   expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Please try again.')
   expect(toggle.hasAttribute('disabled')).toBe(false)

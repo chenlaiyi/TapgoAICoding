@@ -20,6 +20,7 @@ import { CONTACT_CONFIG_GLOBAL } from '../src/contact-config.ts'
 import { AccountPlatformHost } from '../src/client/AccountPlatformHost.tsx'
 import type { AccountPlatformHostInjected } from '../src/client/AccountPlatformHost.tsx'
 import { AccountQuotaNotice } from '../src/client/AccountQuotaNotice.tsx'
+import { AccountComposerBalance } from '../src/client/AccountComposerBalance.tsx'
 import type { AccountQuotaNoticeInjected } from '../src/client/AccountQuotaNotice.tsx'
 
 const it = createClientTest({ roster: webApp })
@@ -66,6 +67,7 @@ it('keeps account UI and account RPC inactive in a plain browser, including afte
     if (reload) await c.reload(SELF)
     await c.flush()
     expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+    expect(c.ctx.slots.entries('conversation.input.right').some(entry => entry.options.id === 'account-balance')).toBe(false)
     expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(0)
     expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(false)
     expect(quotaNoticeEntry(c)).toBeUndefined()
@@ -89,11 +91,14 @@ it('claims account balance notices from the frame-wide quota chain and declines 
 }, 60_000)
 
 it('shares account actions across seats, publishes dialog ownership, and opens contextual support', async ({ start }) => {
-  vi.stubGlobal(CONTACT_CONFIG_GLOBAL, { contactFormUrl: 'https://example.test/form/', contactSource: 'harness' })
+  vi.stubGlobal(CONTACT_CONFIG_GLOBAL, { contactFormUrl: 'https://example.test/form/?prefill_device_model=old&hide_device_model=1', contactSource: 'harness' })
   const open = vi.spyOn(window, 'open').mockReturnValue(null)
   vi.stubGlobal('dshDesktop', {})
   const c = await start()
   const actions = operations(c)
+  const balanceSeat = c.ctx.slots.entries('conversation.input.right').find(entry => entry.options.id === 'account-balance')
+  expect(balanceSeat?.component).toBe(AccountComposerBalance)
+  expect(balanceSeat?.inject!()).toEqual({ hooks: { account: actions.hooks.account } })
   expect(c.ctx.slots.entries('settings.models.sign-in')[0]!.inject!()).toBe(actions)
   // The account UI follows the live theme service through the framework hook channel.
   const theme = c.ctx.get('theme') as ThemeRuntime
@@ -119,7 +124,7 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   actions.contactUs()
   const signedOut = new URL(String(open.mock.calls.at(-1)![0]))
   expect(signedOut.searchParams.has('prefill_uid')).toBe(false)
-  expect(signedOut.searchParams.has('hide_uid')).toBe(false)
+  expect(signedOut.searchParams.get('hide_uid')).toBe('1')
   c.mock.remote.account.getProfile.mockResolvedValue(ok(profile))
   c.mock.streams.push('account/watch', stored)
   await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().details?.profile).toEqual(profile) })
@@ -129,11 +134,76 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   vi.spyOn(c.ctx.locale, 'getSnapshot').mockReturnValue({ ...c.ctx.locale.getSnapshot(), active: 'zh' })
   actions.contactUs()
   const support = new URL(String(open.mock.calls.at(-1)![0]))
-  expect(support.searchParams.has('prefill_uid')).toBe(false)
-  expect(support.searchParams.has('hide_uid')).toBe(false)
+  expect(support.searchParams.get('prefill_uid')).toBe('account-user')
+  expect(support.searchParams.get('hide_uid')).toBe('1')
+  expect(support.searchParams.get('hide_harness_version')).toBe('1')
+  expect(support.searchParams.get('prefill_harness_version')).toBe('0.0.0-test')
+  expect(support.searchParams.get('hide_device_info')).toBe('1')
+  expect(support.searchParams.get('prefill_device_info')).toBe(navigator.userAgent)
+  expect(support.searchParams.has('prefill_device_model')).toBe(false)
+  expect(support.searchParams.has('hide_device_model')).toBe(false)
   expect(support.searchParams.get('prefill_app_locale')).toBe('zh-CN')
+  expect(support.searchParams.has('prefill_app_version')).toBe(false)
+  c.mock.streams.push('account/watch', view)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().view).toEqual(view) })
+  actions.contactUs()
+  const signedOutAgain = new URL(String(open.mock.calls.at(-1)![0]))
+  expect(signedOutAgain.searchParams.has('prefill_uid')).toBe(false)
+  expect(signedOutAgain.searchParams.get('hide_uid')).toBe('1')
   await c.unload(SELF)
   expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+  expect(c.ctx.slots.entries('conversation.input.right').some(entry => entry.options.id === 'account-balance')).toBe(false)
+}, 60_000)
+
+it('prefills the native device description from the Desktop bridge on every click', async ({ start }) => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  const deviceInfo = vi.fn(async () => 'platform=darwin; os=15.0; app_arch=arm64; cpu=Apple M3; memory_gib=16.0')
+  vi.stubGlobal('dshDesktop', { deviceInfo })
+  const c = await start()
+  const actions = operations(c)
+  actions.contactUs()
+  await vi.waitFor(() => { expect(open).toHaveBeenCalledOnce() })
+  const first = new URL(String(open.mock.calls.at(-1)![0]))
+  expect(first.searchParams.get('prefill_device_info'))
+    .toBe('platform=darwin; os=15.0; app_arch=arm64; cpu=Apple M3; memory_gib=16.0')
+  expect(first.searchParams.get('hide_device_info')).toBe('1')
+  deviceInfo.mockResolvedValue('platform=win32; os=10.0; app_arch=x64; memory_gib=32.0')
+  actions.contactUs()
+  await vi.waitFor(() => { expect(open).toHaveBeenCalledTimes(2) })
+  expect(new URL(String(open.mock.calls.at(-1)![0])).searchParams.get('prefill_device_info'))
+    .toBe('platform=win32; os=10.0; app_arch=x64; memory_gib=32.0')
+  expect(deviceInfo).toHaveBeenCalledTimes(2)
+}, 60_000)
+
+it('opens the questionnaire with an empty device field when the native read fails', async ({ start }) => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  const deviceInfo = vi.fn(async (): Promise<string> => { throw new Error('platform ipc unavailable') })
+  vi.stubGlobal('dshDesktop', { deviceInfo })
+  const c = await start()
+  operations(c).contactUs()
+  await vi.waitFor(() => { expect(open).toHaveBeenCalledOnce() })
+  const url = new URL(String(open.mock.calls.at(-1)![0]))
+  expect(url.searchParams.has('prefill_device_info')).toBe(false)
+  expect(url.searchParams.get('hide_device_info')).toBe('1')
+  expect(url.searchParams.get('prefill_app_locale')).toBe('en')
+  expect(deviceInfo).toHaveBeenCalledOnce()
+}, 60_000)
+
+it('reports the account sampled by the click when a native read outlasts a sign-out', async ({ start }) => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null)
+  const device = Promise.withResolvers<string>()
+  vi.stubGlobal('dshDesktop', { deviceInfo: vi.fn(() => device.promise) })
+  const c = await start()
+  const actions = operations(c)
+  c.mock.remote.account.getProfile.mockResolvedValue(ok(profile))
+  c.mock.streams.push('account/watch', stored)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().details?.profile).toEqual(profile) })
+  actions.contactUs()
+  c.mock.streams.push('account/watch', view)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().view).toEqual(view) })
+  device.resolve('platform=darwin; os=15.0; app_arch=arm64; memory_gib=16.0')
+  await vi.waitFor(() => { expect(open).toHaveBeenCalledOnce() })
+  expect(new URL(String(open.mock.calls.at(-1)![0])).searchParams.get('prefill_uid')).toBe('account-user')
 }, 60_000)
 
 it('coalesces refreshes, publishes independent failures, and rejects stale responses after sign-out or unload', async ({ start }) => {
@@ -271,8 +341,13 @@ it('re-reads profile and balance but no bonus for the onboarding recharge return
   vi.stubGlobal('dshPlatform', { open: vi.fn(), setBounds: vi.fn(), close: vi.fn() })
   await c.reload(SELF)
   const actions = operations(c)
+  const track = vi.fn()
+  c.ctx.provide('productAnalytics', { track } as never)
+  expect(actions).not.toHaveProperty('track')
   const onboarding = injectedOf(c.ctx.slots.entries('shell.overlay')
     .find(entry => entry.options.id === 'desktop-onboarding')!) as DesktopOnboardingInjected
+  onboarding.track?.('onboarding_page_view', { page_name: 'onboarding_recharge' })
+  expect(track).toHaveBeenCalledWith('onboarding_page_view', { page_name: 'onboarding_recharge' })
   const host = injectedOf(platformHostEntry(c)!) as AccountPlatformHostInjected
   c.mock.remote.account.getProfile.mockResolvedValue(ok(profile))
   c.mock.remote.account.getBalance.mockResolvedValue(ok(null))
