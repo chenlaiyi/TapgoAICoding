@@ -4,7 +4,7 @@
 
 macOS 应用显示名为 **点点够终端**。启动加载页和欢迎页展示小点点与“点点够，一切都一点点变好！”；浏览器数据目录及 `tapgo-aicoding` 协议保持原值。
 
-Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOME` 覆盖仍然有效；上游 DSH 保留自己的 `~/.dsh` profile 与会话。macOS 正式版另将 Electron 浏览器数据放在 `~/Library/Application Support/Tapgo AICoding Desktop`，与旧 Tapgo 和上游 DSH 分开；显式 `--user-data-dir` 覆盖仍用于隔离测试。
+Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOME` 覆盖仍然有效；上游 DSH 保留自己的 `~/.dsh` profile 与会话。macOS 正式版将 Electron 浏览器数据放在系统应用数据目录下的 `Tapgo AICoding Desktop`，与旧 Tapgo 和上游 DSH 分开；显式 `--user-data-dir` 覆盖仍用于隔离测试。
 
 点点够终端 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aicoding://open` 协议、图标、更新地址与 macOS 更新缓存由 Tapgo 版本独立管理。DeepSeek 账号登录和计费仍由 DeepSeek 提供，也可使用独立 API Key。没有 Tapgo 强制更新策略服务时，发布配置设 `TAPGO_DESKTOP_NO_POLICY=1`；生产更新包必须配置稳定的 Tapgo 发布资产目录 `DOWNLOAD_PROD_FEED_URL`。
 
@@ -12,7 +12,7 @@ Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOM
 
 原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 点点够终端 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
 
-[iOS 配套应用](../../mobile/ios/README.zh.md) 经由 HTTPS 访问桌面 Host。统一接入部署在 `~/.tapgo-aicoding/.env` 设置 `TAPGO_RELAY_DOMAIN`、`TAPGO_RELAY_SERVER` 和 `TAPGO_RELAY_TOKEN_FILE`；应用内置的 frpc 主动连接[共享中继](deploy/shared-relay.frps.toml)，为这台 Mac 在一次配置的泛域名下分配稳定随机主机名，并将请求转发到本机 19388 端口。令牌文件只允许本机用户读取，由中继管理员配置。Desktop 仅信任该 HTTPS 主机，并在应用菜单提供带二维码和可复制认证链接的“连接手机”窗口。电脑名称默认取 macOS“电脑名称”，可在“设置 → 通用设置”或配对窗口中修改；iOS 配对后显示该名称。未设置中继时，现有 `TAPGO_MOBILE_HTTPS_ORIGIN` 连接继续可用。公网代理[配置](deploy/public-mobile.nginx.conf)让 Host 保持仅监听本机，为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录配对令牌的访问日志。
+[iOS 配套应用](../../mobile/ios/README.zh.md) 经由 HTTPS 访问桌面 Host。统一接入部署在 `~/.tapgo-aicoding/.env` 设置 `TAPGO_RELAY_DOMAIN`、`TAPGO_RELAY_SERVER` 和 `TAPGO_RELAY_TOKEN_FILE`；应用内置的 frpc 主动连接[共享中继](deploy/shared-relay.frps.toml)，为这台电脑 在一次配置的泛域名下分配稳定随机主机名，并将请求转发到本机 19388 端口。令牌文件只允许本机用户读取，由中继管理员配置。Windows 内置 `frpc.exe`，使用系统 TLS 证书库，并拒绝向当前用户、SYSTEM 和 Administrators 之外的账户授予访问权限的令牌文件。Desktop 仅信任该 HTTPS 主机，并在应用菜单提供带二维码和可复制认证链接的“连接手机”窗口。电脑名称默认取 macOS“电脑名称”，可在“设置 → 通用设置”或配对窗口中修改；iOS 配对后显示该名称。未设置中继时，现有 `TAPGO_MOBILE_HTTPS_ORIGIN` 连接继续可用。公网代理[配置](deploy/public-mobile.nginx.conf)让 Host 保持仅监听本机，为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录配对令牌的访问日志。
 
 “连接手机”窗口检查公网 HTTPS 路由、配对交换和已认证的对话 WebSocket，只显示故障阶段而不暴露令牌；同时显示 Mac 运行版本，以及带自定义名称和短标识、可单独撤销的手机配对链接。新建链接表单可为另一台手机生成命名二维码。每次打开窗口都会签发一条独立的持久链接；“断开”只撤销该链接及其 Cookie。旧版共享启动令牌签发的链接无法逐台撤销，应让每台手机重新配对以取得独立链接。复制同一链接会共享一个身份。
 
@@ -231,7 +231,7 @@ production 发布使用产品版本本身，不传 `--build-version`。其上传
 
 打包、上传以及手动 macOS 签名检查使用 `apps/desktop/.env.windows` 或 `.env.macos`，由目标平台选择。复制对应的 [Windows 模板](.env.windows.example) 或 [macOS 模板](.env.macos.example)，填写本机配置；Git 忽略这两个本地文件，安装产物也不包含它们。发布字段只从目标文件读取，不回退到系统或 shell 中的同名变量；`PATH`、代理和构建工具环境仍保留。发布版本是命令参数而非发布字段，上传从打包写下的完成记录中读取它。文件使用 UTF-8，支持 BOM；相对证书、SignTool、Apple API Key 和钥匙串路径以 `apps/desktop` 为基准，变量值不做 shell 展开，包含 `#` 或空格的密码需要引号。CI 同样在运行前生成目标文件。
 
-每条打包命令在构建与下载前检查应用 ID、更新地址和该模式需要的签名配置，随后探测本次运行要用的外部工具：归档读取工具，以及 Windows 目标的安装器编译器。macOS 检查身份、Team ID、一套完整公证凭据、`CSC_LINK` 指定的可读本地 p12 文件、显式配置的 `CSC_KEY_PASSWORD`，以及引用的 API Key 和钥匙串文件；Windows 检查公开代码签名证书、SignTool 文件、容器名称和 PIN 格式。仅准备 Windows 资源或显式未签名打包不要求签名凭据。配置检查不验证 PIN 是否正确、Token 是否登录、钥匙串是否解锁或 Apple 是否接受凭据；实际签名与公证负责这些检查。`--build-version auto` 会访问目标 bucket，`--check` 下同样如此。单独运行相同检查：
+每条打包命令在构建与下载前检查应用 ID、更新地址和该模式需要的签名配置，随后探测本次运行要用的外部工具：归档读取工具，以及 Windows 目标的安装器编译器。macOS 检查身份、Team ID、一套完整公证凭据、`CSC_LINK` 指定的可读本地 p12 文件、显式配置的 `CSC_KEY_PASSWORD`，以及引用的 API Key 和钥匙串文件；Windows 检查公开代码签名证书、SignTool 文件、容器名称和 PIN 格式。仅准备 Windows 资源或显式未签名打包不要求签名凭据。配置检查不验证 PIN 是否正确、Token 是否登录、钥匙串是否解锁或 Apple 是否接受凭据；实际签名与公证负责这些检查。`--build-version auto` 会访问目标 bucket，`--check` 下同样如此。单独运行相同检查： 每个目标在 `package-store` 保留 pnpm 内容缓存；重试经锁文件校验后复用包。
 
 ```sh
 pnpm --dir apps/desktop run check:package
@@ -509,3 +509,5 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 ## 开发备注
 
 上线前 CDN 与容量决策见[桌面更新提案](../../.agents/notes/proposed/feature/2026-09-08-desktop-update-policy-and-installation.zh.md#cdn-and-capacity-qualification)。
+
+登录页品牌标题在浅色和深色模式下均使用登录页主文字配色。

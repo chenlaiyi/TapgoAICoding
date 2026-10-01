@@ -482,7 +482,7 @@ export async function packageTarget(
   await execute(['run', 'prepare:dsh', ...(signPrimaryRuntime ? ['--defer-runtime-smoke'] : [])], downloadEnv)
   if (signPrimaryRuntime) await execute(['run', 'sign:primary-runtime', '--dsh'], electronBuilderEnv)
   if (invocation.prepareOnly) return
-  if (target.platform === 'darwin') await prepareRelayClient(join(buildPaths.root, 'relay-client'), target.arch, downloadEnv)
+  await prepareRelayClient(join(buildPaths.root, 'relay-client'), target.arch, downloadEnv, target.platform)
   if (target.platform === 'darwin' && !invocation.directory) {
     await execute([
       ...desktopElectronBuilderArguments(target, true),
