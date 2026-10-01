@@ -17,6 +17,11 @@ async function rendered(window) {
     function check() { if (document.querySelector('main:not([hidden])')) { observer.disconnect(); clearTimeout(deadline); resolve(); } }
     observer.observe(document, { subtree: true, attributes: true }); check();
   })`)
+  if (!window.isVisible()) await once(window, 'show', { signal: AbortSignal.timeout(10_000) })
+  await window.webContents.executeJavaScript(`(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await Promise.all(document.getAnimations().map(animation => animation.finished));
+  })()`)
 }
 
 /** Exercise cancellation and explicit installation through the production preload and renderer. */
@@ -35,6 +40,8 @@ export async function qualifyUpdateDialogs(root, fixture) {
   const dialogs = new DesktopUpdateDialog(fileURLToPath(new URL('../../lib/preload-update-dialog.cjs', import.meta.url)), locale, new DesktopUpdateOverlays())
   try {
     await parent.loadURL('data:text/html;charset=utf-8,<title>Update dialog qualification</title><h1>Local updater</h1>')
+    // Windows may honor the launcher's hidden startup state for the first show.
+    parent.show()
     const f = await fixture()
     const available = await f.coordinator.check()
     await f.coordinator.download(available.version)
