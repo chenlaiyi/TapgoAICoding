@@ -70,6 +70,7 @@ private final class RemoteChat: ObservableObject {
     private var socket: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
+    private let heartbeat = MobileSocketHeartbeat()
     private var generation = UUID()
     private var retryCount = 0
     private var origin: URL?
@@ -173,6 +174,11 @@ private final class RemoteChat: ObservableObject {
             let serialized = try JSONSerialization.data(withJSONObject: opening)
             guard let text = String(data: serialized, encoding: .utf8) else { throw ChatFailure.unavailable }
             try await socket.send(.string(text))
+            heartbeat.start(socket: socket) { [weak self, weak socket] in
+                guard let self, let socket, self.generation == current,
+                      self.socket === socket else { return }
+                self.scheduleRetry(computer: computer, generation: current)
+            }
             receiveTask = Task { [weak self] in
                 guard let self else { return }
                 await self.receive(socket: socket, streamId: streamId, computer: computer, generation: current)
@@ -273,7 +279,7 @@ private final class RemoteChat: ObservableObject {
                 }
             }
         } catch {
-            if !Task.isCancelled && current == generation {
+            if !Task.isCancelled && current == generation && self.socket === socket {
                 let failure = error as NSError
                 connectionLog.error("WebSocket receive failed: \(failure.domain, privacy: .public) \(failure.code); close code: \(socket.closeCode.rawValue)")
                 scheduleRetry(computer: computer, generation: current)
@@ -283,6 +289,7 @@ private final class RemoteChat: ObservableObject {
 
     private func scheduleRetry(computer: SavedComputer, generation current: UUID) {
         guard current == generation else { return }
+        heartbeat.stop()
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
         session?.invalidateAndCancel()
@@ -666,6 +673,7 @@ private final class RemoteChat: ObservableObject {
 
     func disconnect() {
         generation = UUID()
+        heartbeat.stop()
         retryTask?.cancel()
         retryTask = nil
         receiveTask?.cancel()
@@ -695,6 +703,7 @@ private final class RemoteChat: ObservableObject {
 struct RemoteChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     let computer: SavedComputer
     let sessionId: String
     let title: String
@@ -843,6 +852,11 @@ struct RemoteChatView: View {
         .task(id: sessionId) {
             await chat.connect(computer: computer, sessionId: sessionId)
             await chat.loadSettings(computer: computer)
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active && !chat.connected && !chat.loading {
+                Task { await chat.retry(computer: computer, sessionId: sessionId) }
+            }
         }
         .onChange(of: selectedPhoto) { item in
             Task {

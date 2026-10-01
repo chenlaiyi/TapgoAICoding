@@ -23,12 +23,15 @@ final class MobileInteractionCenter: ObservableObject {
     private var clientId: String?
     private var origin: URL?
     private var generation = UUID()
+    private let heartbeat = MobileSocketHeartbeat()
+    private var retryTask: Task<Void, Never>?
+    private var retryCount = 0
     #if DEBUG
     private var fixture = false
     #endif
 
-    func connect(computer: SavedComputer?) async {
-        disconnect()
+    func connect(computer: SavedComputer?, reconnect: Bool = false) async {
+        disconnect(resetRetry: !reconnect)
         guard let computer, let origin = URL(string: computer.id),
               let pairing = URL(string: computer.url) else { return }
         #if DEBUG
@@ -104,6 +107,11 @@ final class MobileInteractionCenter: ObservableObject {
                 "endpoint": "$events", "payload": ["args": [:]]]
             let data = try JSONSerialization.data(withJSONObject: opening)
             try await socket.send(.string(String(decoding: data, as: UTF8.self)))
+            heartbeat.start(socket: socket) { [weak self, weak socket] in
+                guard let self, let socket, self.generation == current,
+                      self.socket === socket else { return }
+                socket.cancel(with: .goingAway, reason: nil)
+            }
             while current == generation {
                 let message = try await socket.receive()
                 let bytes: Data
@@ -120,12 +128,7 @@ final class MobileInteractionCenter: ObservableObject {
             }
         } catch {
             if current == generation {
-                self.error = "确认连接中断，正在重连"
-                Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    guard let self, self.generation == current else { return }
-                    await self.connect(computer: computer)
-                }
+                scheduleRetry(computer: computer, generation: current)
             }
         }
     }
@@ -134,6 +137,7 @@ final class MobileInteractionCenter: ObservableObject {
         switch value["type"] as? String {
         case "ready":
             clientId = value["clientId"] as? String
+            retryCount = 0
             error = nil
         case "cancel":
             guard let id = value["eventId"] as? String else { return }
@@ -218,8 +222,32 @@ final class MobileInteractionCenter: ObservableObject {
         }
     }
 
-    private func disconnect() {
+    private func scheduleRetry(computer: SavedComputer, generation current: UUID) {
+        guard current == generation else { return }
+        heartbeat.stop()
+        socket?.cancel(with: .goingAway, reason: nil)
+        socket = nil
+        session?.invalidateAndCancel()
+        session = nil
+        clientId = nil
+        error = "确认连接中断，正在重连"
+        retryCount = min(retryCount + 1, 6)
+        let seconds = min(30, 1 << min(retryCount - 1, 5))
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self, self.generation == current else { return }
+            self.retryTask = nil
+            await self.connect(computer: computer, reconnect: true)
+        }
+    }
+
+    private func disconnect(resetRetry: Bool = true) {
         generation = UUID()
+        heartbeat.stop()
+        retryTask?.cancel()
+        retryTask = nil
+        if resetRetry { retryCount = 0 }
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
         session?.invalidateAndCancel()
