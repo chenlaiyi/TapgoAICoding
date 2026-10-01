@@ -415,11 +415,10 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["远程"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Studio Mac"].exists)
 
+        app.buttons["打开顶部菜单"].tap()
         app.buttons["设置"].tap()
-        XCTAssertTrue(app.staticTexts["设置"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS %@", "mac-mini.tail.example:8443"))
-            .firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["远程控制"].exists)
+        XCTAssertTrue(app.staticTexts["Studio Mac"].exists)
         app.buttons["重命名当前电脑"].tap()
         let rename = app.alerts["电脑名称"].textFields.firstMatch
         XCTAssertTrue(rename.waitForExistence(timeout: 5))
@@ -434,9 +433,8 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertFalse(app.buttons["重命名当前电脑"].exists)
         XCTAssertFalse(app.buttons["连接其他 Mac"].exists)
         app.buttons["完成"].tap()
-        app.buttons["设置"].tap()
-        app.buttons["连接其他 Mac"].tap()
-        app.buttons["连接 Mac"].tap()
+        app.buttons["打开顶部菜单"].tap()
+        app.buttons["添加连接"].tap()
         XCTAssertTrue(app.buttons["从剪贴板粘贴"].exists)
 
         let link = app.textFields["https://…?token=…"]
