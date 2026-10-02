@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write mobile/android/README.md
+/tapgo-android:
+  en: 8eba7798d23ab123
+  zh: abdfd05177e18b57
+/tapgo-android/build:
+  en: 8c9c8b5ed403e367
+  zh: 92b0b57594ab4b08
+/tapgo-android/isolated-emulator-tests:
+  en: bad65ad22753e8cd
+  zh: a917beb2d58c65b4
