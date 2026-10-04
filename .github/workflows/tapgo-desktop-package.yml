@@ -1,0 +1,40 @@
+name: Tapgo Windows installer
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Confirmed Tapgo release version
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: pnpm install --frozen-lockfile
+      - name: Configure unsigned Tapgo release
+        shell: pwsh
+        env:
+          TAPGO_CONFIRMED_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:TAPGO_CONFIRMED_VERSION -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          @"
+          DSH_DESKTOP_APP_ID=com.tapgo.aicoding
+          TAPGO_DESKTOP_RELEASE_VERSION=$env:TAPGO_CONFIRMED_VERSION
+          DSH_DESKTOP_AUTO_UPDATE_ENV=production
+          TAPGO_DESKTOP_NO_POLICY=1
+          "@ | Set-Content -Encoding utf8 apps/desktop/.env.windows
+      - name: Build and verify installer
+        run: pnpm --dir apps/desktop run package:win:x64:unsigned
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tapgo-windows-${{ inputs.version }}
+          path: .desktop-build/targets/win-x64/unsigned-artifacts/*
+          if-no-files-found: error

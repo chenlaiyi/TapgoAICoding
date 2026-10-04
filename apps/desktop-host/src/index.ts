@@ -26,7 +26,7 @@ async function main(): Promise<void> {
   const profile = loadProfileDirectory('dsh', projectDir, installAnchor)
   reportSkippedBundles('dsh', profile)
   const environment = loadLayeredEnv('dsh')
-  const relay = resolveRemoteRelay(process.env, join(resolveDshHome(), 'tapgo-mobile-relay'), join(runtimeDir, '..', '..', 'frpc'))
+  const relay = resolveRemoteRelay(process.env, join(resolveDshHome(), 'tapgo-mobile-relay'), join(runtimeDir, '..', '..', process.platform === 'win32' ? 'frpc.exe' : 'frpc'))
   const relayId = relay === undefined ? undefined : relayDeviceId(relay.stateDirectory)
   const mobile = resolveMobileOrigin(relay === undefined
     ? process.env.TAPGO_MOBILE_HTTPS_ORIGIN
