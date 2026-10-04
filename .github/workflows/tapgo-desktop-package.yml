@@ -1,5 +1,10 @@
 name: Tapgo Windows installer
 on:
+  pull_request:
+    paths:
+      - .github/workflows/tapgo-desktop-package.yml
+      - apps/desktop/**
+      - apps/desktop-host/**
   workflow_dispatch:
     inputs:
       version:
@@ -12,6 +17,8 @@ jobs:
   package:
     runs-on: windows-2025
     timeout-minutes: 90
+    env:
+      TAPGO_CONFIRMED_VERSION: ${{ inputs.version || '0.6.13' }}
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -21,8 +28,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Configure unsigned Tapgo release
         shell: pwsh
-        env:
-          TAPGO_CONFIRMED_VERSION: ${{ inputs.version }}
         run: |
           if ($env:TAPGO_CONFIRMED_VERSION -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
           @"
@@ -35,6 +40,6 @@ jobs:
         run: pnpm --dir apps/desktop run package:win:x64:unsigned
       - uses: actions/upload-artifact@v7
         with:
-          name: tapgo-windows-${{ inputs.version }}
+          name: tapgo-windows-${{ env.TAPGO_CONFIRMED_VERSION }}
           path: .desktop-build/targets/win-x64/unsigned-artifacts/*
           if-no-files-found: error
