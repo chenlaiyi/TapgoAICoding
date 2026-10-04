@@ -41,5 +41,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: tapgo-windows-${{ env.TAPGO_CONFIRMED_VERSION }}
-          path: .desktop-build/targets/win-x64/unsigned-artifacts/*
+          path: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*
           if-no-files-found: error
