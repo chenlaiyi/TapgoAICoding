@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@babel/code-frame": "^7.29.0",
-    "chokidar": "^4.0.3",
+    "chokidar": "^5.0.0",
     "node-addon-require-builtin": "^0.1.6",
     "picomatch": "^4.0.3",
     "@deepseek-ai/schemastery": "workspace:~"
@@ -45,7 +45,7 @@
   "devDependencies": {
     "@types/babel__code-frame": "^7.27.0",
     "@types/picomatch": "^3.0.2",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "@deepseek-ai/cordis-plugin-timer": "workspace:~",
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",

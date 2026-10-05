@@ -102,7 +102,7 @@ for (const [file, jobIds] of [['release.yml', ['dependencies', 'pack']], ['relea
           expect(evaluate(job['runs-on'], context)).toBe(hosted)
         })
         it('cleans stale checkout output and isolates setup before any pnpm invocation', () => {
-          expect(job.steps[0]).toMatchObject({ uses: 'actions/checkout@v6', with: { clean: true, 'persist-credentials': false } })
+          expect(job.steps[0]).toMatchObject({ uses: 'actions/checkout@v7', with: { clean: true, 'persist-credentials': false } })
           const cacheIndex = job.steps.findIndex(step => step.run?.includes('NODE_COMPILE_CACHE='))
           const pnpmIndex = job.steps.findIndex(step => step.uses?.startsWith('pnpm/') || /\bpnpm\b/.test(step.run ?? ''))
           expect(cacheIndex).toBeGreaterThan(0)
@@ -132,7 +132,7 @@ for (const [file, jobIds] of [['release.yml', ['dependencies', 'pack']], ['relea
             expect(evaluate(step.if!, { 'runner.environment': 'self-hosted' })).toBe(false)
             expect(evaluate(step.if!, { 'runner.environment': 'github-hosted' })).toBe(true)
           }
-          const nodeSetup = job.steps.find(step => step.uses === 'actions/setup-node@v6')
+          const nodeSetup = job.steps.find(step => step.uses === 'actions/setup-node@v7')
           expect(nodeSetup?.with?.cache).toBeUndefined()
           expect(nodeSetup?.with?.['package-manager-cache']).toBe(false)
         })
@@ -150,7 +150,7 @@ for (const [file, jobIds] of [['release.yml', ['dependencies', 'pack']], ['relea
             expect(commands).toContain('pnpm run release:pack --family ' + family + ' --out ' + output + ' --concurrency 8')
             expect(commands).toContain('pnpm run release:verify-packed-install --family ' + family + ' --from ' + output
               + (family === 'dsh' ? ' --from dist/npm-vendor --from dist/npm-landlock' : ''))
-            expect(job.steps.at(-1)).toMatchObject({ uses: 'actions/upload-artifact@v4', with: { path: output + '/*', 'retention-days': 7 } })
+            expect(job.steps.at(-1)).toMatchObject({ uses: 'actions/upload-artifact@v7', with: { path: output + '/*', 'retention-days': 7 } })
           }
           expect(JSON.stringify(job)).not.toMatch(/secrets\.|release:publish|npm-publish/)
         })

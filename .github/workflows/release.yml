@@ -41,7 +41,7 @@ jobs:
         && fromJSON('["self-hosted", "linux", "x64", "vm-backup"]')
         || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           clean: true
@@ -56,7 +56,7 @@ jobs:
         with:
           dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
           package-manager-cache: false
@@ -102,7 +102,7 @@ jobs:
         || 'ubuntu-24.04' }}
     steps:
       # Complete history: the release scripts read tags.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -118,7 +118,7 @@ jobs:
         with:
           dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
           package-manager-cache: false
@@ -172,7 +172,7 @@ jobs:
       - name: Verify packed install
         run: pnpm run release:verify-packed-install --family dsh --from dist/npm --from dist/npm-vendor --from dist/npm-landlock
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dsh-npm-tarballs
           path: dist/npm/*
