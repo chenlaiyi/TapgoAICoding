@@ -1,0 +1,41 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Windows manual update entry > offers localized installation guidance and opens the official page (en) 1`] = `
+[
+  [
+    {
+      "buttons": [
+        "Open download page",
+        "Cancel",
+      ],
+      "cancelId": 1,
+      "defaultId": 0,
+      "detail": "Current version: 0.6.13
+This Windows version supports manual updates. Download the Windows installer from the official website. Finish running tasks and quit the app before installing.",
+      "message": "Update from the official website",
+      "title": "Check for Updates",
+      "type": "info",
+    },
+  ],
+]
+`;
+
+exports[`Windows manual update entry > offers localized installation guidance and opens the official page (zh) 1`] = `
+[
+  [
+    {
+      "buttons": [
+        "打开下载页",
+        "取消",
+      ],
+      "cancelId": 1,
+      "defaultId": 0,
+      "detail": "当前版本：0.6.13
+此 Windows 版本使用手动升级。请从官网下载 Windows 安装包，安装前先结束正在运行的任务并退出终端",
+      "message": "请从官网下载安装更新",
+      "title": "检查更新",
+      "type": "info",
+    },
+  ],
+]
+`;

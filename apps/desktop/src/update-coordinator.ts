@@ -75,6 +75,9 @@ export class DesktopUpdateCoordinator {
     this.updater.on('error', this.onError)
   }
 
+  /** Whether the installed application has an embedded automatic update source. */
+  get hasPackagedSource(): boolean { return this.enabled() }
+
   /** Latest observable state; complete download identity remains main-process-owned. */
   get state(): DesktopUpdateState { return this.current }
 
