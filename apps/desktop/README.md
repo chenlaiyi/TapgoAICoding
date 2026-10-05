@@ -8,7 +8,7 @@ Tapgo defaults `DSH_HOME` to `~/.tapgo-aicoding`, preserving any explicit `DSH_H
 
 点点够终端 is derived from the open-source DeepSeek Harness Desktop. The application ID, URL scheme (`tapgo-aicoding://open`), icon, update origin, and macOS updater cache belong to the Tapgo release. DeepSeek account login and billing remain DeepSeek services; an independent API key is also supported. Set `TAPGO_DESKTOP_NO_POLICY=1` for releases without a Tapgo mandatory-update policy service, and set `DOWNLOAD_PROD_FEED_URL` to a stable Tapgo release-asset directory before packaging production updates.
 
-`TAPGO_DESKTOP_RELEASE_VERSION` sets the Tapgo application's public version independently of the bundled DSH source version. The current macOS build uses `0.6.10`; runtime metadata identifies the exact DSH version.
+`TAPGO_DESKTOP_RELEASE_VERSION` sets the Tapgo application's public version independently of the bundled DSH source version. [GitHub Releases](https://github.com/chenlaiyi/TapgoAICoding/releases) lists published versions; runtime metadata identifies the exact DSH version.
 
 Native Cua Driver runs inside Tapgo's Host. On macOS, grant 点点够终端 Accessibility and Screen Recording in System Settings before using desktop inspection or input. Installing the app does not grant those permissions; without them the tools can load yet return empty window elements or fail screenshot capture.
 
