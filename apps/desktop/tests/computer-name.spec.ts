@@ -25,4 +25,15 @@ describe('computer name in mobile pairing', () => {
     expect(page).toContain('token=secret&amp;name=')
     expect(page).toContain('tapgo-pairing://computer-name')
   })
+
+  it('shows distinct labels and a new-link form for revocable phone pairings', async () => {
+    const page = await mobilePairingPage('https://mac.example/?token=secret', '工作 Mac', en, '0.6.10', [
+      { id: 'abcdef1234567890123456', name: 'iPhone 14 Pro', authority: 'mac.example', createdAt: 1 },
+      { id: '9876543210abcdef123456', name: 'iPhone 15 Pro', authority: 'mac.example', createdAt: 2 },
+    ])
+    expect(page).toContain('iPhone 14 Pro · abcdef')
+    expect(page).toContain('iPhone 15 Pro · 987654')
+    expect(page).toContain('tapgo-pairing://new')
+    expect(page).toContain(en.mobileAddPairing)
+  })
 })

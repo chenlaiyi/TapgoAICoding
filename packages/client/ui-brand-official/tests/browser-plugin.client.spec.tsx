@@ -81,8 +81,8 @@ describe('official browser-brand plugin', () => {
   })
 
   it('renders the Tapgo name and mark at requested sizes', () => {
-    const name = render(<OfficialBrandName t={(() => 'Tapgo AICoding') as never} />)
-    expect(name.container.textContent).toBe('Tapgo AICoding')
+    const name = render(<OfficialBrandName t={() => '点点够终端'} />)
+    expect(name.container.textContent).toBe('点点够终端')
     name.unmount()
 
     const mark = render(<OfficialBrandMark size={34} />)

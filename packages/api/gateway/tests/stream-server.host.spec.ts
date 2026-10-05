@@ -67,6 +67,18 @@ describe('Remote stream mux server carrier lifecycle', () => {
     await closed
   })
 
+  it('terminates an active socket when its request authorization is revoked', async () => {
+    let authorized = true
+    const entry = await startMux(async (_endpoint, _payload, _uplink, _peer, control) =>
+      waitForAbort(control.signal), 20, 262_144, undefined, () => authorized)
+    const client = await connect(entry.url)
+    const serverSocket = acceptedSocket(entry.mux)
+    const terminated = vi.spyOn(serverSocket, 'terminate')
+    authorized = false
+    await once(client, 'close')
+    expect(terminated).toHaveBeenCalledOnce()
+  })
+
   it('keeps the socket when a delayed Pong arrives before the final check', async () => {
     const entry = await startMux(async (_endpoint, _payload, _uplink, _peer, control) => waitForAbort(control.signal), 20)
     const client = await connect(entry.url, false)
@@ -500,9 +512,10 @@ async function startMux(
   heartbeatIntervalMs = 2_000,
   streamInboxBytes = 262_144,
   peer?: PeerScope,
+  isAuthorized: () => boolean = () => true,
 ): Promise<RunningMux> {
   const admitted = peer ?? await fixturePeer()
-  const mux = new RemoteStreamMuxServer(open, mapFailure, heartbeatIntervalMs, streamInboxBytes)
+  const mux = new RemoteStreamMuxServer(open, mapFailure, heartbeatIntervalMs, streamInboxBytes, isAuthorized)
   const http = createServer()
   http.on('upgrade', (request, socket, head) => { mux.handleUpgrade(request, socket, head, admitted) })
   await new Promise<void>((resolve, reject) => {

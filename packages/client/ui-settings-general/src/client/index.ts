@@ -28,12 +28,13 @@ import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client
 import { createSettingsShellStore } from './shell-store.ts'
 import { SettingsRoot } from './SettingsRoot.tsx'
 import { DesktopUpdateBadge } from './DesktopUpdateIndicator.tsx'
-import type { DesktopUpdateBridge } from '../types.ts'
+import type { DesktopComputerNameBridge, DesktopUpdateBridge } from '../types.ts'
 import { DesktopUpdateSource } from './desktop-update-source.ts'
 import { CloseLabel, HeaderContent, TriggerContent } from './chrome.tsx'
 import { GeneralSection } from './GeneralSection.tsx'
 import { CurrentVersionRow } from './CurrentVersionRow.tsx'
 import { DeveloperToolsRow, type DeveloperToolsRowInjected } from './DeveloperToolsRow.tsx'
+import { ComputerNameRow } from './ComputerNameRow.tsx'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
 import { SettingsDocumentStore } from './settings-document-store.ts'
@@ -86,7 +87,18 @@ export function apply(ctx: ClientContext): void {
   }, CurrentVersionRow))
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-general: dictionaries')
   const connection = ctx.get('connection') as ConnectionHandle
-  const carrier = (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; updates?: DesktopUpdateBridge } }).dshDesktop
+  const carrier = (globalThis as typeof globalThis & { dshDesktop?: {
+    protocolVersion: number
+    updates?: DesktopUpdateBridge
+    computerName?: DesktopComputerNameBridge
+  } }).dshDesktop
+  const computerName = carrier?.protocolVersion === 1 ? carrier.computerName : undefined
+  if (computerName !== undefined) {
+    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+      name: 'settings.general.item', id: 'computer-name', order: 10, locale: NS,
+      inject: () => ({ computerName }),
+    }, ComputerNameRow))
+  }
   const desktopUpdate = new DesktopUpdateSource(carrier?.protocolVersion === 1 ? carrier.updates : undefined)
   ctx.effect(() => () => { desktopUpdate.dispose() }, 'ui-settings-general: desktop update carrier')
   ctx.slots.inject('sidebar.toggle.badge', () => ctx.slots.register({

@@ -244,6 +244,7 @@ export class TypertGatewayService extends Service implements TypertGateway {
           this.wireStream.failure,
           resolved.websocketHeartbeatIntervalMs,
           resolved.streamInboxBytes,
+          req => webCtx.connection.requestRejection(req) === undefined,
         )
         webCtx.effect(function* () {
           yield () => mux.close()

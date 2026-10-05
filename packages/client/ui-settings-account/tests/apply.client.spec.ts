@@ -20,6 +20,7 @@ import { CONTACT_CONFIG_GLOBAL } from '../src/contact-config.ts'
 import { AccountPlatformHost } from '../src/client/AccountPlatformHost.tsx'
 import type { AccountPlatformHostInjected } from '../src/client/AccountPlatformHost.tsx'
 import { AccountQuotaNotice } from '../src/client/AccountQuotaNotice.tsx'
+import { AccountComposerBalance } from '../src/client/AccountComposerBalance.tsx'
 import type { AccountQuotaNoticeInjected } from '../src/client/AccountQuotaNotice.tsx'
 
 const it = createClientTest({ roster: webApp })
@@ -66,6 +67,7 @@ it('keeps account UI and account RPC inactive in a plain browser, including afte
     if (reload) await c.reload(SELF)
     await c.flush()
     expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+    expect(c.ctx.slots.entries('conversation.input.right').some(entry => entry.options.id === 'account-balance')).toBe(false)
     expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(0)
     expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(false)
     expect(quotaNoticeEntry(c)).toBeUndefined()
@@ -94,6 +96,9 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   vi.stubGlobal('dshDesktop', {})
   const c = await start()
   const actions = operations(c)
+  const balanceSeat = c.ctx.slots.entries('conversation.input.right').find(entry => entry.options.id === 'account-balance')
+  expect(balanceSeat?.component).toBe(AccountComposerBalance)
+  expect(balanceSeat?.inject!()).toEqual({ hooks: { account: actions.hooks.account } })
   expect(c.ctx.slots.entries('settings.models.sign-in')[0]!.inject!()).toBe(actions)
   // The account UI follows the live theme service through the framework hook channel.
   const theme = c.ctx.get('theme') as ThemeRuntime
@@ -134,6 +139,7 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   expect(support.searchParams.get('prefill_app_locale')).toBe('zh-CN')
   await c.unload(SELF)
   expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
+  expect(c.ctx.slots.entries('conversation.input.right').some(entry => entry.options.id === 'account-balance')).toBe(false)
 }, 60_000)
 
 it('coalesces refreshes, publishes independent failures, and rejects stale responses after sign-out or unload', async ({ start }) => {

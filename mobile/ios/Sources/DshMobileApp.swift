@@ -1,52 +1,67 @@
 import AVFoundation
 import Security
 import SwiftUI
+import UIKit
 import WebKit
 
 @main
 struct DshMobileApp: App {
     @StateObject private var connection = MobileConnection()
-    @State private var renaming = false
-    @State private var name = ""
+    @StateObject private var interactions = MobileInteractionCenter()
+    @State private var showingLaunch = true
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if let computer = connection.activeComputer, let url = URL(string: computer.url) {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "desktopcomputer")
-                                .foregroundStyle(.secondary)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("当前电脑").font(.caption2).foregroundStyle(.secondary)
-                                Text(computer.name).font(.headline).lineLimit(1)
-                                Text(computer.id).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            Spacer(minLength: 4)
-                            Button("改名") {
-                                name = computer.name
-                                renaming = true
-                            }
-                            Button("切换") { connection.leave() }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        DshWebView(url: url, onUnauthorized: connection.expireActive)
-                            .id(computer.url)
+            ZStack {
+                Group {
+                    if let computer = connection.activeComputer {
+                        RemoteHomeView(connection: connection, computer: computer)
+                            .id(computer.id)
+                    } else {
+                        RemoteLandingView(connection: connection)
                     }
-                } else {
-                    ConnectView(connection: connection)
+                }
+                .overlay {
+                    MobileInteractionOverlay(center: interactions, computer: connection.activeComputer)
+                }
+
+                if showingLaunch {
+                    MobileLaunchView()
+                        .transition(.opacity)
+                        .zIndex(1)
                 }
             }
-            .onOpenURL { connection.connect($0) }
-            .alert("电脑名称", isPresented: $renaming) {
-                TextField("电脑名称", text: $name)
-                Button("取消", role: .cancel) {}
-                Button("保存") { connection.renameActive(name) }
-            } message: {
-                Text("只修改这台 iPhone 上显示的名称")
+            .task {
+                try? await Task.sleep(for: .milliseconds(1100))
+                withAnimation(.easeOut(duration: 0.2)) { showingLaunch = false }
             }
+            .task(id: connection.activeComputer?.url) {
+                await interactions.connect(computer: connection.activeComputer)
+            }
+            .onOpenURL { connection.connect($0) }
         }
+    }
+}
+
+private struct MobileLaunchView: View {
+    var body: some View {
+        VStack(spacing: 14) {
+            Image("SplashMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            Text("点点够终端")
+                .font(.system(size: 28, weight: .bold))
+            Text("点点够，一切都一点点变好！")
+                .font(.system(size: 18, weight: .medium))
+                .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(.primary)
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemBackground))
+        .ignoresSafeArea()
     }
 }
 
@@ -71,6 +86,7 @@ final class MobileConnection: ObservableObject {
     var activeComputer: SavedComputer? { computers.first(where: { $0.id == activeID }) }
     private let service = "com.devtools.terminalSimple.dsh-computers"
     private let account = "connections"
+    private var ephemeralFixture = false
 
     init() {
         if let data = read(service: service, account: account),
@@ -86,10 +102,16 @@ final class MobileConnection: ObservableObject {
             }
         }
         #if DEBUG
+        if computers.contains(where: { URL(string: $0.id)?.host?.hasSuffix(".example") == true }) {
+            let retained = computers.filter { URL(string: $0.id)?.host?.hasSuffix(".example") != true }
+            let restored = retained.contains(where: { $0.id == activeID }) ? activeID : retained.last?.id
+            commit(retained, active: restored)
+        }
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--dsh-mobile-test-url"),
            arguments.indices.contains(index + 1),
            let fixture = URL(string: arguments[index + 1]) {
+            ephemeralFixture = true
             connect(fixture)
         }
         #endif
@@ -111,6 +133,12 @@ final class MobileConnection: ObservableObject {
     }
 
     private func commit(_ items: [SavedComputer], active: String?) {
+        if ephemeralFixture {
+            computers = items
+            activeID = active
+            error = nil
+            return
+        }
         guard let data = try? JSONEncoder().encode(SavedComputers(items: items, activeID: active)) else {
             error = "无法保存电脑列表"
             return
@@ -232,6 +260,9 @@ struct ConnectView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
+                    Button("从剪贴板粘贴") {
+                        text = UIPasteboard.general.string ?? ""
+                    }
                     Button("连接") {
                         if let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)) {
                             connection.connect(url)
@@ -258,10 +289,23 @@ struct ConnectView: View {
 
 struct DshWebView: UIViewRepresentable {
     let url: URL
+    var sessionId: String? = nil
     let onUnauthorized: () -> Void
 
     func makeUIView(context: Context) -> WKWebView {
-        let view = WKWebView(frame: .zero)
+        let configuration = WKWebViewConfiguration()
+        if let sessionId,
+           let selection = try? JSONSerialization.data(withJSONObject: ["sessionId": sessionId]),
+           let value = String(data: selection, encoding: .utf8),
+           let quoted = try? JSONSerialization.data(withJSONObject: ["dsh.sessions.current", value]),
+           let arguments = String(data: quoted, encoding: .utf8) {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: "localStorage.setItem(...\(arguments))",
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+        }
+        let view = WKWebView(frame: .zero, configuration: configuration)
         view.navigationDelegate = context.coordinator
         view.load(URLRequest(url: url))
         return view

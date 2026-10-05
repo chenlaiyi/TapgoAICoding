@@ -234,20 +234,64 @@ describe('BrowserAuth', () => {
     const store = new RecordCredentials()
     const auth = await createAuth(store)
     const first = exchange(auth)
-    expect(store).toMatchObject({ reads: 0, modifies: 1 })
+    expect(store).toMatchObject({ reads: 1, modifies: 1 })
 
     await store.deleteRecord()
     expect(auth.isAuthenticated(request('/', '127.0.0.1:3080', { cookie: first.cookie }))).toBe(true)
     const sameActivation = exchange(auth)
     expect(auth.isAuthenticated(request('/', '127.0.0.1:3080', { cookie: sameActivation.cookie }))).toBe(true)
-    expect(store).toMatchObject({ reads: 0, modifies: 1 })
+    expect(store).toMatchObject({ reads: 1, modifies: 1 })
 
     const reactivated = await createAuth(store)
     const second = exchange(reactivated)
     expect(second.cookie).not.toBe(first.cookie)
     expect(reactivated.isAuthenticated(request('/', '127.0.0.1:3080', { cookie: first.cookie }))).toBe(false)
     expect(reactivated.isAuthenticated(request('/', '127.0.0.1:3080', { cookie: second.cookie }))).toBe(true)
-    expect(store).toMatchObject({ reads: 0, modifies: 2 })
+    expect(store).toMatchObject({ reads: 2, modifies: 2 })
+  })
+
+  it('revokes one mobile pairing without logging out another phone or the local desktop', async () => {
+    const store = new RecordCredentials()
+    const auth = await createAuth(store)
+    const first = await auth.createMobilePairing('https://mac.remote.example/', '14 Pro')
+    const second = await auth.createMobilePairing('https://mac.remote.example/', '15 Pro')
+    const pair = (url: string): string => {
+      const target = new URL(url)
+      const result = response()
+      expect(auth.authorizeIndex(request(`${target.pathname}${target.search}`, target.host), result.value)).toBe(false)
+      expect(result.state.status).toBe(303)
+      return result.state.headers!['set-cookie']!.split(';')[0]!
+    }
+    const firstCookie = pair(first.url)
+    const secondCookie = pair(second.url)
+    const localCookie = exchange(auth).cookie
+    const mobileRequest = (cookie: string) => request('/', 'mac.remote.example', { cookie })
+    expect(auth.isAuthenticated(mobileRequest(firstCookie))).toBe(true)
+    expect(auth.isAuthenticated(mobileRequest(secondCookie))).toBe(true)
+    await auth.revokeMobilePairing(first.pairing.id)
+    expect(auth.isAuthenticated(mobileRequest(firstCookie))).toBe(false)
+    expect(auth.isAuthenticated(mobileRequest(secondCookie))).toBe(true)
+    expect(auth.isAuthenticated(request('/', '127.0.0.1:3080', { cookie: localCookie }))).toBe(true)
+    const revoked = response()
+    auth.authorizeIndex(request(new URL(first.url).search, 'mac.remote.example'), revoked.value)
+    expect(revoked.state.status).toBe(401)
+    const restarted = await createAuth(store)
+    expect(restarted.listMobilePairings().map(item => item.id)).toEqual([second.pairing.id])
+    expect(restarted.isAuthenticated(mobileRequest(firstCookie))).toBe(false)
+    expect(restarted.isAuthenticated(mobileRequest(secondCookie))).toBe(true)
+  })
+
+  it('does not advertise or revoke a mobile link when credential storage declines the write', async () => {
+    const store = new RecordCredentials()
+    const auth = await createAuth(store)
+    store.discardWrites = true
+    await expect(auth.createMobilePairing('https://mac.remote.example/', 'iPhone')).rejects.toThrow('not saved')
+    expect(auth.listMobilePairings()).toEqual([])
+    store.discardWrites = false
+    const created = await auth.createMobilePairing('https://mac.remote.example/', 'iPhone')
+    store.discardWrites = true
+    await expect(auth.revokeMobilePairing(created.pairing.id)).rejects.toThrow('not revoked')
+    expect(auth.listMobilePairings()).toHaveLength(1)
   })
 
   it('fails loud on an invalid owner record instead of replacing it', async () => {

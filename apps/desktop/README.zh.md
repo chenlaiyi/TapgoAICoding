@@ -1,16 +1,22 @@
-# Tapgo AICoding 桌面端
+# 点点够终端 桌面端
 
 [English](README.md) | 中文
 
-Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOME` 覆盖仍然有效；上游 DSH 保留自己的 `~/.dsh` profile 与会话。macOS 正式版另将 Electron 浏览器数据放在 `~/Library/Application Support/Tapgo AICoding Desktop`，与旧 Tapgo 和上游 DSH 分开；显式 `--user-data-dir` 覆盖仍用于隔离测试。
+macOS 与 Windows 应用显示名为 **点点够终端**。启动加载页和欢迎页展示小点点与“点点够，一切都一点点变好！”；浏览器数据目录及 `tapgo-aicoding` 协议保持原值。
 
-Tapgo AICoding 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aicoding://open` 协议、图标、更新地址与 macOS 更新缓存由 Tapgo 版本独立管理。DeepSeek 账号登录和计费仍由 DeepSeek 提供，也可使用独立 API Key。没有 Tapgo 强制更新策略服务时，发布配置设 `TAPGO_DESKTOP_NO_POLICY=1`；生产更新包必须配置稳定的 Tapgo 发布资产目录 `DOWNLOAD_PROD_FEED_URL`。
+Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOME` 覆盖仍然有效；上游 DSH 保留自己的 `~/.dsh` profile 与会话。正式版将 Electron 浏览器数据放在系统应用数据目录下的 `Tapgo AICoding Desktop`，与旧 Tapgo 和上游 DSH 分开；显式 `--user-data-dir` 覆盖仍用于隔离测试。
 
-`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。替换版采用 `0.6.0`；独立主目录修复版为 `0.6.1`；macOS 默认浏览器数据目录修复版为 `0.6.2`；原生 Cua Driver 接入版为 `0.6.3`；iOS 连接入口版为 `0.6.4`；远程工作区浏览版为 `0.6.5`；不限定传输方式的配对提示版为 `0.6.6`。运行时元数据仍记录实际内置的 DSH 源码版本。
+点点够终端 基于开源 DeepSeek Harness Desktop。应用标识、`tapgo-aicoding://open` 协议、图标、更新地址与 macOS 更新缓存由 Tapgo 版本独立管理。DeepSeek 账号登录和计费仍由 DeepSeek 提供，也可使用独立 API Key。没有 Tapgo 强制更新策略服务时，发布配置设 `TAPGO_DESKTOP_NO_POLICY=1`；生产更新包必须配置稳定的 Tapgo 发布资产目录 `DOWNLOAD_PROD_FEED_URL`。
 
-原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 Tapgo AICoding 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
+`TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。当前 macOS 构建版本为 `0.6.10`；运行时元数据记录实际内置的 DSH 源码版本。
 
-[iOS 配套应用](../../mobile/ios/README.zh.md) 经由已配置的 HTTPS 来源访问桌面 Host。启动 Desktop 前，通过 `~/.tapgo-aicoding/.env` 或启动环境把 `TAPGO_MOBILE_HTTPS_ORIGIN` 设为该完整来源，并将其转发到 Host 的本机端口 19388。Desktop 随后信任这一主机，为手机工作区使用页面内 Host 目录浏览，并在应用菜单中提供带二维码和可复制认证链接的“连接手机”窗口。窗口中的电脑名称默认取 macOS“电脑名称”，可单独保存，扫码或粘贴链接后 iOS 自动显示该名称。每台 Mac 需要独立来源。内网方案可用 Tailscale Serve；公网方案使用三个独立 `itapgo.com` 主机名、HTTPS 反向代理及 SSH 反向隧道，配置见 [Nginx 文件](deploy/public-mobile.nginx.conf)。两种方案中 Host 均只监听本机；公网代理为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录链接令牌的访问日志。
+原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 点点够终端 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
+
+[iOS 配套应用](../../mobile/ios/README.zh.md) 经由 HTTPS 访问桌面 Host。统一接入部署在 `~/.tapgo-aicoding/.env` 设置 `TAPGO_RELAY_DOMAIN`、`TAPGO_RELAY_SERVER` 和 `TAPGO_RELAY_TOKEN_FILE`；应用内置的 frpc 主动连接[共享中继](deploy/shared-relay.frps.toml)，为这台电脑 在一次配置的泛域名下分配稳定随机主机名，并将请求转发到本机 19388 端口。令牌文件只允许本机用户读取，由中继管理员配置。Windows 内置 `frpc.exe`，使用系统 TLS 证书库，并拒绝向当前用户、SYSTEM 和 Administrators 之外的账户授予访问权限的令牌文件。Desktop 仅信任该 HTTPS 主机，并在应用菜单提供带二维码和可复制认证链接的“连接手机”窗口。电脑名称默认取 macOS“电脑名称”，可在“设置 → 通用设置”或配对窗口中修改；iOS 配对后显示该名称。未设置中继时，现有 `TAPGO_MOBILE_HTTPS_ORIGIN` 连接继续可用。公网代理[配置](deploy/public-mobile.nginx.conf)让 Host 保持仅监听本机，为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录配对令牌的访问日志。
+
+“连接手机”窗口检查公网 HTTPS 路由、配对交换和已认证的对话 WebSocket，只显示故障阶段而不暴露令牌；同时显示电脑端运行版本，以及带自定义名称和短标识、可单独撤销的手机配对链接。新建链接表单可为另一台手机生成命名二维码。每次打开窗口都会签发一条独立的持久链接；“断开”只撤销该链接及其 Cookie。旧版共享启动令牌签发的链接无法逐台撤销，应让每台手机重新配对以取得独立链接。复制同一链接会共享一个身份。
+
+手机公网连接使用 `mobile-picker.overlay.yml` 将 Remote WebSocket 心跳间隔设为 15 秒，避免默认 2 秒时限在蜂窝网络或中继短暂停顿时过早断开；Host 仍会终止持续未回复 Ping 的连接。
 
 `TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
 
@@ -42,11 +48,11 @@ Windows 在整个运行期间常驻托盘图标。悬停提示为产品名，单
 
 以下情况跳过确认：安装更新的重启已确认过任务中断、致命错误恢复对话框中的退出或重启、开发版"重启应用与 Host"命令，以及操作系统关机、重启或注销：Windows 在确定性的会话结束消息上设置该状态；macOS 在关机通知上设置，而其他应用仍可能取消这次关机，因此主窗口下一次获得焦点或显示时会清除它。安装器接管退出时会取消尚未结束的普通退出决策；晚到的查询结果和弹框答复不会再次打开确认框或重复清理。窗口隐藏期间完成的用户主动发起的更新下载，把"安装并重启"确认推迟到窗口再次显示时；强制更新流程沿用其任务栏和 Dock 提醒。Windows 安装程序和卸载程序在应用仍在运行时提示用户先在系统托盘中退出。Desktop 默认未开启定时任务，定时任务的说明只在该功能开启后出现；提醒只在已加载的会话中触发，未加载的会话既不计入，也要等到打开后才会继续。
 
-托盘渲染器以底板中心为基准将鲸鱼放大 20%，保留背景和宽高比；应用和安装器图标保持原有比例。
+托盘渲染器以底板中心为基准将小点点放大 20%；应用和安装器图标保持原有比例。
 
 ## 关键技术决策
 
-设计师原稿位于 `resources/icon.png` 和 `resources/icon.svg`；平台适配保留鲸鱼与渐变，分别位于 `resources/icon-windows.*` 和 `resources/icon-macos.*`。将各平台 SVG 导出为透明的 1024×1024 PNG。electron-builder 为 Windows 应用、安装程序和卸载程序生成多尺寸 ICO（[Windows 图标要求](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction)）。安装页面在两种主题下使用匹配的图案；卸载程序的欢迎和完成页共用 `installer/assets/uninstaller-sidebar.png`，准备阶段将其转换为 164×314 BMP。
+点点够项目的官方形象参考保存在 `resources/dot-reference.png`；工作场景原稿位于 `resources/dot-master.png`，生成器由此派生 `resources/dot-mark.svg`。运行 `node scripts/render-brand-assets.mjs` 更新 iOS、Web、桌面、欢迎页和安装器素材，再运行 `pnpm run render:tray-icon` 生成 Windows 托盘 ICO。electron-builder 为 Windows 应用、安装程序和卸载程序生成多尺寸 ICO（[Windows 图标要求](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction)）。安装页面在两种主题下使用匹配的图案；卸载程序的欢迎和完成页共用 `installer/assets/uninstaller-sidebar.png`，准备阶段将其转换为 164×314 BMP。
 
 快捷键覆盖保存在 `app.getPath('userData')/keybindings.json`，与 `DSH_HOME` 分离。主进程校验并串行保存修改后才发布已接受键位。读取失败保留上次接受的键位并阻止编辑，包括全部恢复；不可读和未来版本的文件保持不变。开发时可通过 `DSH_DESKTOP_USER_DATA_DIR` 隔离这些偏好，启动器会输出解析后的路径。格式和冲突语义见[快捷键服务](../../packages/client/shortcuts/README.zh.md)。
 
@@ -221,7 +227,7 @@ pnpm run package:desktop:win:x64
 
 macOS arm64 命令要求 Apple Silicon。macOS x64 命令可以在 Intel macOS 或带 Rosetta 的 Apple Silicon 上运行。Windows x64 命令要求 Windows x64。Linux 不是受支持的 Desktop 发布目标。
 
-每个目标都在 `apps/desktop/.desktop-build/targets/<target>/` 下持有自己的打包输入、已准备运行时、包集合、dsh 依赖树、pnpm 准备状态、未打包应用、更新元数据和最终产物。Electron 归档缓存继续由 `.desktop-build/downloads` 共享，因为每个归档文件名都包含版本、平台和架构，并且在解包前经过验证。目标构建绝不读取其他目标的可变准备状态。
+每个目标都在 `apps/desktop/.desktop-build/targets/<target>/` 下持有自己的打包输入、已准备运行时、包集合、dsh 依赖树、pnpm 准备状态、未打包应用、更新元数据和最终产物。Electron 归档缓存继续由 `.desktop-build/downloads` 共享，因为每个归档文件名都包含版本、平台和架构，并且在解包前经过验证。目标构建绝不读取其他目标的可变准备状态。 目标的 pnpm 包缓存保留到下一次准备重试；锁文件完整性检查仍会校验复用的包。
 
 ### 运行时文件筛选
 

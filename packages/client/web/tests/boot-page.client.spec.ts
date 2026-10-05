@@ -11,6 +11,22 @@ function mount() {
 }
 
 describe('BootPage', () => {
+  it('shows the page-owned brand during loading and after a boot failure', () => {
+    const el = document.createElement('div')
+    el.dataset.bootBrand = '点点够终端'
+    el.dataset.bootSlogan = '点点够，一切都一点点变好！'
+    el.dataset.bootIcon = '/tapgo-icon.png'
+    el.dataset.bootLoading = '正在启动…'
+    const page = new BootPage(el)
+    expect(el.textContent).toContain('点点够终端')
+    expect(el.textContent).toContain('点点够，一切都一点点变好！')
+    expect(el.textContent).toContain('正在启动…')
+    expect(el.querySelector('img')?.getAttribute('src')).toBe('/tapgo-icon.png')
+    page.fail('启动失败')
+    expect(el.textContent).toContain('点点够，一切都一点点变好！')
+    expect(el.textContent).toContain('启动失败')
+  })
+
   it('draws the loading skeleton before any plugin state arrives', () => {
     const { el } = mount()
     expect(el.firstElementChild?.getAttribute('data-dsh-boot')).toBe('')

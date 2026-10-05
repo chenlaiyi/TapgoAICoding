@@ -37,6 +37,8 @@ Settings visibility and section selection live in the shell owner store. The she
 
 ### The General section
 
+Desktop shows an editable computer name in General Settings. It defaults to the system computer name and shares its saved value with the mobile pairing window; newly generated pairing links display that name on iOS.
+
 The current release version appears at the bottom of General Settings in Web and Desktop, using the build’s `DSH_CLIENT_VERSION` metadata and the active language. Partial builds without version metadata omit the row.
 
 The Coding Tools switch controls the shared `ui-settings.enabled` preference described by [ui-settings](../ui-settings/README.md#use-this-package). It is available in both Web and desktop, follows accepted changes immediately, and disables duplicate input while a write settles. A failed write displays localized retry guidance.

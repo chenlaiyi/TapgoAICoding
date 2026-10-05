@@ -117,7 +117,7 @@ export const WELCOME_NOTICE_VERSION = '2026-08-13.1'
 export const WELCOME_NOTICE_COPY = {
   zh: {
     title: '内测声明',
-    body: 'Tapgo AICoding 基于开源 DeepSeek Harness 预览版。当前版本仍在演进，插件、API 和存储格式可能变化。请备份重要工作，遇到问题时向我们反馈。',
+    body: '点点够终端 基于开源 DeepSeek Harness 预览版。当前版本仍在演进，插件、API 和存储格式可能变化。请备份重要工作，遇到问题时向我们反馈。',
     continueLabel: '继续',
   },
 } as const

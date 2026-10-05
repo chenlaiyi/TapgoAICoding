@@ -1,6 +1,6 @@
 {
-  "name": "Tapgo AICoding",
-  "short_name": "Tapgo",
+  "name": "点点够终端",
+  "short_name": "点点够",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

@@ -1,5 +1,5 @@
 ---
-description: "Tapgo AICoding brand occupants for the sidebar and conversation hero in bundled builds."
+description: "点点够终端 brand occupants for the sidebar and conversation hero in bundled builds."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package gives an `official` client build the Tapgo AICoding icon and localized product name in the sidebar and the Tapgo icon in the conversation hero. Its `brand-official` dictionary owns the name in both supported locales. Other build profiles keep their local-build fallbacks. It has no runtime state and does not affect model requests.
+This package gives an `official` client build the 点点够终端 icon and localized product name in the sidebar and the Tapgo icon in the conversation hero. Its `brand-official` dictionary owns the name in both supported locales. Other build profiles keep their local-build fallbacks. It has no runtime state and does not affect model requests.
 
 ## Table of Contents
 

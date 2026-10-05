@@ -21,6 +21,8 @@ export const DESKTOP_IPC = {
   browserRelease: 'dsh-desktop:browser-release',
   browserOpenRequested: 'dsh-desktop:browser-open-requested',
   directoryPick: 'dsh-desktop:directory-pick',
+  computerNameGet: 'dsh-desktop:computer-name-get',
+  computerNameSet: 'dsh-desktop:computer-name-set',
   localeBootstrap: 'dsh-desktop:locale-bootstrap',
   localeChanged: 'dsh-desktop:locale-changed',
   updatesStatus: 'dsh-desktop:updates-status',
@@ -77,6 +79,10 @@ export interface DshDesktopProductApi {
     status(): Promise<DesktopUpdatePresentation>
     open(): Promise<void>
     subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
+  }
+  readonly computerName: {
+    get(): Promise<string>
+    set(name: string): Promise<string>
   }
 }
 

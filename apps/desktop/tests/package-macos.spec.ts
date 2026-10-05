@@ -29,7 +29,7 @@ function barrier() {
 async function fixture(arch: 'arm64' | 'x64' = 'arm64') {
   const root = await mkdtemp(join(tmpdir(), 'desktop-parallel-notarization-'))
   const artifactsRoot = join(root, 'artifacts')
-  const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', 'Tapgo AICoding.app')
+  const appPath = join(artifactsRoot, arch === 'arm64' ? 'mac-arm64' : 'mac', '点点够终端.app')
   await mkdir(join(appPath, 'Contents', 'Resources'), { recursive: true })
   await writeFile(join(appPath, 'payload'), 'signed content')
   await writeMacOSAppUpdateConfig(join(appPath, 'Contents', 'Resources'), {
@@ -73,7 +73,8 @@ describe('parallel macOS artifacts', () => {
       } }, f.build, apple)
       expect(apple.notarize).not.toHaveBeenCalled()
       expect(apple.verifyNotarization).not.toHaveBeenCalled()
-      expect(JSON.parse(await readFile(join(f.request.artifactsRoot, `${f.base}.zip`), 'utf8')).appTicket).toBe(false)
+      const packaged = JSON.parse(await readFile(join(f.request.artifactsRoot, `${f.base}.zip`), 'utf8')) as { appTicket: boolean }
+      expect(packaged.appTicket).toBe(false)
       expect(f.apple.verifySignature).toHaveBeenCalledTimes(4)
     } finally { await rm(f.root, { recursive: true, force: true }) }
   })
@@ -210,7 +211,7 @@ describe('parallel macOS artifacts', () => {
   it('passes the actual App and isolated output directory to each single-target builder', () => {
     const target = resolveDesktopPackageTarget('mac-arm64', 'darwin', 'arm64')
     for (const format of ['zip', 'dmg'] as const) {
-      const appPath = join('private build', format, 'Tapgo AICoding.app')
+      const appPath = join('private build', format, '点点够终端.app')
       const output = join(dirname(appPath), 'artifacts')
       expect(desktopElectronBuilderArguments(target, false, { format, appPath, output })).toEqual([
         'exec', 'electron-builder', '--config', 'electron-builder.config.mjs',
