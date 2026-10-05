@@ -1393,20 +1393,14 @@ struct RemoteLandingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                VStack(spacing: 2) {
-                    Text("远程").font(.headline)
-                    Text("尚未连接电脑").font(.caption2).foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .frame(height: 55)
-            .padding(.horizontal, 20)
+            MobileWelcomeBrand()
+                .padding(.horizontal, 32)
+                .padding(.top, 44)
+                .padding(.bottom, 24)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if !connection.computers.isEmpty {
-                        Text("已配对的 Mac").font(.caption.bold()).foregroundStyle(.secondary)
+                        Text("已配对的电脑").font(.caption.bold()).foregroundStyle(.secondary)
                         ForEach(connection.computers) { computer in
                             Button { connection.select(computer.id) } label: {
                                 HStack(spacing: 12) {
@@ -1423,24 +1417,21 @@ struct RemoteLandingView: View {
                             }
                         }
                     } else {
-                        VStack(spacing: 12) {
-                            Image(systemName: "desktopcomputer.and.arrow.down")
-                                .font(.largeTitle).foregroundStyle(.secondary)
-                            Text("连接你的 Mac").font(.headline)
-                            Text("在 Mac 应用中打开“连接手机”，扫码或粘贴链接后即可查看项目和对话")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 100)
+                        MobileWelcomeMessage()
+                            .padding(.top, 100)
+                        Text("在电脑应用中打开“连接手机”，扫码或粘贴链接后即可查看项目和对话")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                     Button { showingConnect = true } label: {
-                        Label("连接 Mac", systemImage: "plus")
+                        Label("连接电脑", systemImage: "plus")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 16)
+                            .foregroundStyle(Color(uiColor: .systemBackground))
+                            .background(Color.primary, in: RoundedRectangle(cornerRadius: 12))
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 24)
             }
