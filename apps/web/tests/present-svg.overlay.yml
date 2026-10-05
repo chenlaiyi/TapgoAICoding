@@ -2,3 +2,8 @@
 - id: session-controller
   config:
     nativeOpen: false
+# Parallel browser replay can delay Pong delivery during the SVG event burst.
+# Heartbeat termination has its own deterministic Gateway tests.
+- id: typert-gateway
+  config:
+    websocketHeartbeatIntervalMs: 15000

@@ -82,7 +82,7 @@ it('toggles developer tools using the accepted setting and disables duplicate wr
     finish = () => { state.set(enabled); resolve() }
   }))
   render(<DeveloperToolsRow {...kit} t={t} useDeveloperTools={bindSnapshotSelector(state)} setEnabled={setEnabled} />)
-  const toggle = screen.getByRole('switch', { name: 'Show coding view' })
+  const toggle = screen.getByRole('switch', { name: en['developerTools.title'] })
   expect(toggle.getAttribute('aria-checked')).toBe('false')
   fireEvent.click(toggle)
   expect(setEnabled).toHaveBeenCalledWith(true)
@@ -101,6 +101,43 @@ it('loads and saves the Desktop computer name in General Settings', async () => 
   fireEvent.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() => { expect(computerName.set).toHaveBeenCalledWith('Studio Mac') })
   await waitFor(() => { expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true) })
+})
+
+it('reports computer-name load and save failures and permits correction', async () => {
+  const computerName = { get: vi.fn(async () => { throw new Error('unavailable') }),
+    set: vi.fn(async () => { throw new Error('unavailable') }) }
+  render(<ComputerNameRow {...kit} t={t} computerName={computerName} />)
+  await screen.findByRole('alert')
+  const input = screen.getByRole('textbox')
+  await waitFor(() => { expect(input.hasAttribute('disabled')).toBe(false) })
+  fireEvent.change(input, { target: { value: 'Studio' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  await screen.findByRole('alert')
+  await waitFor(() => { expect(input.hasAttribute('disabled')).toBe(false) })
+  expect(computerName.set).toHaveBeenCalledWith('Studio')
+})
+
+it.each(['', 'x'.repeat(81), 'bad\u0001name'])('rejects an invalid computer name before writing (%j)', async (name) => {
+  const computerName = { get: vi.fn(async () => 'Studio'), set: vi.fn(async (value: string) => value) }
+  const view = render(<ComputerNameRow {...kit} t={t} computerName={computerName} />)
+  await waitFor(() => { expect(screen.getByRole('textbox')).toHaveProperty('value', 'Studio') })
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: name } })
+  fireEvent.submit(view.container.querySelector('form')!)
+  expect(screen.getByRole('alert').textContent).toBe(en['general.computerNameInvalid'])
+  expect(computerName.set).not.toHaveBeenCalled()
+})
+
+it.each(['resolve', 'reject'] as const)('ignores computer-name reads settled after unmount (%s)', async (outcome) => {
+  let resolve!: (name: string) => void
+  let reject!: (error: Error) => void
+  const pending = new Promise<string>((yes, no) => { resolve = yes; reject = no })
+  const computerName = { get: () => pending, set: async (name: string) => name }
+  const view = render(<ComputerNameRow {...kit} t={t} computerName={computerName} />)
+  view.unmount()
+  if (outcome === 'resolve') resolve('Studio')
+  else reject(new Error('unavailable'))
+  await pending.catch(() => undefined)
+  expect(view.container.textContent).toBe('')
 })
 
 describe('chrome content', () => {
@@ -226,7 +263,7 @@ it('reports a failed developer-tool write and allows retry', async () => {
   const state = createSnapshotStore(false)
   const setEnabled = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementation(async (enabled: boolean) => { state.set(enabled) })
   render(<DeveloperToolsRow {...kit} t={t} useDeveloperTools={bindSnapshotSelector(state)} setEnabled={setEnabled} />)
-  const toggle = screen.getByRole('switch', { name: 'Show coding view' })
+  const toggle = screen.getByRole('switch', { name: en['developerTools.title'] })
   fireEvent.click(toggle)
   expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Please try again.')
   expect(toggle.hasAttribute('disabled')).toBe(false)

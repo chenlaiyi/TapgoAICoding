@@ -11,6 +11,8 @@ kind: "package-reference"
 
 本包让 `official` profile 构建的客户端在侧栏显示 点点够终端 图标与本地化产品名，并在会话首屏显示 Tapgo 图标。`brand-official` 词典管理两种语言中的名称。其他构建 profile 保留本地构建回退内容。本包不保留运行时状态，也不影响模型请求。
 
+品牌图片 URL 相对于应用挂载路径解析，支持反向代理路径前缀。
+
 ## 目录
 
 - [使用本包](#use-this-package)
@@ -56,7 +58,7 @@ kind: "package-reference"
 
 - [ui-sidebar](../ui-sidebar/README.zh.md)——声明 `sidebar.brand.mark` 与 `sidebar.brand.name` 并渲染其回退。
 - [ui-conversation](../ui-conversation/README.zh.md)——在首屏声明 `conversation.hero.brand.mark`。
-- [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.zh.md)——浏览器插件行如何加载并注册 slot。
+- [Web 客户端架构](../../../docs/subsystems/web-client.zh.md)——浏览器插件行如何加载并注册 slot。
 
 -----
 
@@ -88,5 +90,3 @@ kind: "package-reference"
 无。
 
 </details>
-
-**运行时不变式：** 不发布伴生入口。本包不保留可变状态，三个 slot occupant 通过同一个事务性 effect 安装和释放。

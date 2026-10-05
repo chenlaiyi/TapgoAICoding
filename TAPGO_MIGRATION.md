@@ -1,6 +1,6 @@
 # 点点够终端 Desktop 升级记录
 
-本项目最初以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现，现已将源码更新至 `0.2.0-rc.2`。应用沿用 `com.tapgo.aicoding`，公开版本从 `0.5.319` 提升至 `0.6.2`；旧版源码保留在 Git 标签 `v0.5.319`。
+本项目最初以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现，现已将源码更新至上游预览版 `0.2.1-alpha.1`（[发布标签](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-alpha.1)）。应用沿用 `com.tapgo.aicoding`，公开版本从 `0.5.319` 提升至 `0.6.2`；旧版源码保留在 Git 标签 `v0.5.319`。
 
 ## 新版行为
 

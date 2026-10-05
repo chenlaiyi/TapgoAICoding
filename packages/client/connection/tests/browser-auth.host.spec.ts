@@ -294,6 +294,60 @@ describe('BrowserAuth', () => {
     expect(auth.listMobilePairings()).toHaveLength(1)
   })
 
+  it('rejects invalid mobile origins, names, and missing pairing identifiers', async () => {
+    const auth = await createAuth(new RecordCredentials())
+    for (const origin of ['http://phone.example/', 'https://phone.example/path', 'https://phone.example/?x=1', 'https://phone.example/#x']) {
+      await expect(auth.createMobilePairing(origin, 'Phone')).rejects.toThrow('clean HTTPS origin')
+    }
+    for (const name of [' ', 'x'.repeat(81)]) {
+      await expect(auth.createMobilePairing('https://phone.example/', name)).rejects.toThrow('invalid mobile pairing name')
+    }
+    await expect(auth.revokeMobilePairing('missing')).rejects.toThrow('not found')
+    expect(auth.listMobilePairings()).toEqual([])
+  })
+
+  it('requires revocation before issuing more than one hundred active phone links', async () => {
+    const auth = await createAuth(new RecordCredentials())
+    for (let index = 0; index < 100; index += 1) await auth.createMobilePairing('https://phone.example/', `Phone ${index}`)
+    await expect(auth.createMobilePairing('https://phone.example/', 'Overflow')).rejects.toThrow('limit reached')
+    const first = auth.listMobilePairings()[0]!
+    await auth.revokeMobilePairing(first.id)
+    await auth.createMobilePairing('https://phone.example/', 'Replacement')
+    expect(auth.listMobilePairings()).toHaveLength(100)
+  })
+
+  it('refuses malformed durable phone records without replacing them', async () => {
+    const entry = { id: 'a'.repeat(22), name: 'Phone', authority: 'phone.example',
+      tokenHash: 'a'.repeat(64), createdAt: 1 }
+    const payloads = [null, { version: 2, entries: [] }, { version: 1, entries: null },
+      { version: 1, entries: Array.from({ length: 101 }, () => entry) },
+      ...[null, {}, { ...entry, id: 'short' }, { ...entry, name: '' }, { ...entry, name: 'x'.repeat(81) },
+        { ...entry, authority: 'https://phone.example/' }, { ...entry, tokenHash: 'invalid' },
+        { ...entry, createdAt: 0.5 }].map(item => ({ version: 1, entries: [item] }))]
+    for (const payload of payloads) {
+      const store = new RecordCredentials()
+      store.mobileRecord = { kind: 'grant', payload }
+      const original = store.mobileRecord
+      await expect(createAuth(store)).rejects.toThrow('unsupported format')
+      expect(store.mobileRecord).toBe(original)
+    }
+    const store = new RecordCredentials()
+    store.mobileRecord = { kind: 'api-key', key: 'unsupported' }
+    await expect(createAuth(store)).rejects.toThrow('unsupported format')
+  })
+
+  it('keeps a phone link active when the committed revocation still contains it', async () => {
+    const store = new RecordCredentials()
+    const auth = await createAuth(store)
+    const created = await auth.createMobilePairing('https://phone.example/', 'Phone')
+    const write = vi.spyOn(store, 'modifyRecord').mockImplementation(async () => store.mobileRecord)
+    await expect(auth.revokeMobilePairing(created.pairing.id)).rejects.toThrow('not revoked')
+    expect(auth.listMobilePairings()).toEqual([created.pairing])
+    write.mockRestore()
+    await auth.revokeMobilePairing(created.pairing.id)
+    expect(auth.listMobilePairings()).toEqual([])
+  })
+
   it('fails loud on an invalid owner record instead of replacing it', async () => {
     const unsupported = new RecordCredentials()
     unsupported.record = { kind: 'api-key', key: 'not-a-cookie-secret' }

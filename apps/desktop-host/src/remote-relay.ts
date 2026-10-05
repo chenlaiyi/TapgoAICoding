@@ -1,7 +1,7 @@
 /** Outbound FRP connection that gives one Desktop Host a stable public origin. */
 
 import { randomBytes } from 'node:crypto'
-import { spawn, type ChildProcess } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
 import { accessSync, chmodSync, constants, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
@@ -38,7 +38,21 @@ export function resolveRemoteRelay(
     throw new Error('Tapgo mobile relay requires a valid domain, server, token file, and port')
   }
   if (!existsSync(tokenFile)) throw new Error('Tapgo mobile relay token file is missing')
-  if ((statSync(tokenFile).mode & 0o077) !== 0) throw new Error('Tapgo mobile relay token file must be owner-only')
+  if (process.platform === 'win32') {
+    const result = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      '$ErrorActionPreference = "Stop"; Import-Module ($PSHOME + "/Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1"); $acl = Get-Acl -LiteralPath $env:TAPGO_RELAY_ACL_PATH; '
+      + '$owner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; '
+      + '$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; '
+      + '$allowed = @($current, "S-1-5-18", "S-1-5-32-544"); '
+      + 'if ($owner -notin $allowed) { throw "Unexpected relay token owner" }; '
+      + '$unsafe = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) '
+      + '| Where-Object { $_.AccessControlType -eq "Allow" -and $_.IdentityReference.Value -notin $allowed }); '
+      + 'if ($unsafe.Count -gt 0) { "unsafe" } else { "private" }'],
+    { encoding: 'utf8', env: { ...process.env, TAPGO_RELAY_ACL_PATH: resolve(tokenFile) }, windowsHide: true }).trim()
+    if (result !== 'private') throw new Error('Tapgo mobile relay token file must have a private Windows ACL')
+  } else if ((statSync(tokenFile).mode & 0o077) !== 0) {
+    throw new Error('Tapgo mobile relay token file must be owner-only')
+  }
   if (!existsSync(executable)) throw new Error('Tapgo mobile relay client executable is missing')
   accessSync(executable, constants.X_OK)
   return { domain, server, port, tokenFile: resolve(tokenFile), executable, stateDirectory }
@@ -70,9 +84,10 @@ export function relayDeviceId(directory: string): string {
 /** Render a private FRP configuration for one local Host.
  * @param config - Validated relay settings.
  * @param id - Stable device ID.
+ * @param localPort - Listening Host port.
  * @returns TOML consumed only by frpc.
  */
-export function remoteRelayToml(config: RemoteRelayConfig, id: string): string {
+export function remoteRelayToml(config: RemoteRelayConfig, id: string, localPort: number): string {
   if (!DEVICE_ID.test(id)) throw new Error('Tapgo mobile relay device ID is invalid')
   return [
     `serverAddr = ${JSON.stringify(config.server)}`,
@@ -84,13 +99,13 @@ export function remoteRelayToml(config: RemoteRelayConfig, id: string): string {
     'transport.protocol = "wss"',
     'transport.tls.enable = true',
     `transport.tls.serverName = ${JSON.stringify(config.server)}`,
-    'transport.tls.trustedCaFile = "/etc/ssl/cert.pem"',
+    ...(process.platform === 'darwin' ? ['transport.tls.trustedCaFile = "/etc/ssl/cert.pem"'] : []),
     `clientID = ${JSON.stringify(id)}`,
     '[[proxies]]',
     `name = ${JSON.stringify(`tapgo-${id}`)}`,
     'type = "http"',
     'localIP = "127.0.0.1"',
-    'localPort = 19388',
+    `localPort = ${String(localPort)}`,
     `subdomain = ${JSON.stringify(id)}`,
     '',
   ].join('\n')
@@ -114,13 +129,14 @@ export function relayCloser(child: ChildProcess): () => Promise<void> {
 /** Start the outbound relay after the Host begins listening.
  * @param config - Validated relay settings.
  * @param id - Stable device ID.
+ * @param localPort - Listening Host port.
  * @returns A close operation for Desktop shutdown.
  */
-export function startRemoteRelay(config: RemoteRelayConfig, id: string): () => Promise<void> {
+export function startRemoteRelay(config: RemoteRelayConfig, id: string, localPort: number): () => Promise<void> {
   const path = join(config.stateDirectory, 'frpc.toml')
-  writeFileSync(path, remoteRelayToml(config, id), { mode: 0o600 })
+  writeFileSync(path, remoteRelayToml(config, id, localPort), { mode: 0o600 })
   chmodSync(path, 0o600)
-  const child = spawn(config.executable, ['-c', path], { stdio: ['ignore', 'ignore', 'pipe'] })
+  const child = spawn(config.executable, ['-c', path], { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true })
   child.stderr.on('data', (chunk: Buffer) => {
     const message = chunk.toString('utf8').trim()
     if (message !== '') console.error(`Tapgo mobile relay: ${message}`)

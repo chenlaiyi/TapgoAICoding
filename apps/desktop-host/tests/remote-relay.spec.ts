@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process'
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { relayDeviceId, remoteRelayOrigin, remoteRelayToml, resolveRemoteRelay } from '../src/remote-relay.ts'
@@ -14,6 +15,9 @@ function fixture() {
   const executable = join(directory, 'frpc')
   writeFileSync(tokenFile, 'fixture-token', { mode: 0o600 })
   writeFileSync(executable, '', { mode: 0o700 })
+  if (process.platform === 'win32') {
+    execFileSync('icacls.exe', [tokenFile, '/inheritance:r', '/grant:r', `${userInfo().username}:F`])
+  }
   return { directory, tokenFile, executable }
 }
 
@@ -28,10 +32,12 @@ describe('managed mobile relay', () => {
     expect(relayDeviceId(config.stateDirectory)).toBe(first)
     expect(readFileSync(join(config.stateDirectory, 'device-id'), 'utf8')).toBe(`${first}\n`)
     expect(remoteRelayOrigin(config, first)).toBe(`https://${first}.remote.itapgo.com`)
-    expect(remoteRelayToml(config, first)).toContain(`subdomain = "${first}"`)
-    expect(remoteRelayToml(config, first)).toContain('transport.protocol = "wss"')
-    expect(remoteRelayToml(config, first)).toContain('loginFailExit = false')
-    expect(remoteRelayToml(config, first)).not.toContain('fixture-token')
+    expect(remoteRelayToml(config, first, 49152)).toContain(`subdomain = "${first}"`)
+    expect(remoteRelayToml(config, first, 49152)).toContain('transport.protocol = "wss"')
+    expect(remoteRelayToml(config, first, 49152)).toContain('loginFailExit = false')
+    expect(remoteRelayToml(config, first, 49152)).toContain('localPort = 49152')
+    expect(remoteRelayToml(config, first, 49152)).not.toContain('localPort = 19388')
+    expect(remoteRelayToml(config, first, 49152)).not.toContain('fixture-token')
   })
 
   it('rejects invalid public authorities and missing enrollment credentials before pairing', () => {
@@ -41,9 +47,15 @@ describe('managed mobile relay', () => {
     expect(() => resolveRemoteRelay({ ...base, TAPGO_RELAY_DOMAIN: 'example.com/path' }, directory, executable)).toThrow()
     expect(() => resolveRemoteRelay({ ...base, TAPGO_RELAY_SERVER: '127.0.0.1' }, directory, executable)).toThrow()
     expect(() => resolveRemoteRelay({ ...base, TAPGO_RELAY_TOKEN_FILE: join(directory, 'missing') }, directory, executable)).toThrow()
-    chmodSync(tokenFile, 0o644)
-    expect(() => resolveRemoteRelay(base, directory, executable)).toThrow('owner-only')
-    chmodSync(tokenFile, 0o600)
+    if (process.platform === 'win32') {
+      execFileSync('icacls.exe', [tokenFile, '/grant', '*S-1-1-0:R'])
+      expect(() => resolveRemoteRelay(base, directory, executable)).toThrow('private Windows ACL')
+      execFileSync('icacls.exe', [tokenFile, '/remove:g', '*S-1-1-0'])
+    } else {
+      chmodSync(tokenFile, 0o644)
+      expect(() => resolveRemoteRelay(base, directory, executable)).toThrow('owner-only')
+      chmodSync(tokenFile, 0o600)
+    }
     expect(() => remoteRelayOrigin(resolveRemoteRelay(base, directory, executable)!, '../other')).toThrow()
   })
 })
