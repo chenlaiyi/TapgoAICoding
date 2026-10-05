@@ -540,6 +540,12 @@ describe.skipIf(!isWin32 || !pwshAvailable())('windows-acl runner', () => {
     mkdirSync(child)
     writeFileSync(join(granted, 'file.txt'), 'x')
     writeFileSync(join(child, 'deep.txt'), 'x')
+    // An explicit creator-owner allow precedes inherited denies on hosted Windows profiles.
+    // This probe owns an inherited-rights directory so the container deny decides its access.
+    const identity = spawnSync('pwsh', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value'], { encoding: 'utf8', timeout: 60_000 })
+    expect(identity.status, identity.stderr).toBe(0)
+    const inheritedRights = spawnSync('icacls', [child, '/remove:g', `*${identity.stdout.trim()}`], { encoding: 'utf8', timeout: 60_000 })
+    expect(inheritedRights.status, inheritedRights.stderr).toBe(0)
     const grant = AclWriteGrant.create(workspaceWriteSid(granted))
     grant.add(granted, true)
     try {
