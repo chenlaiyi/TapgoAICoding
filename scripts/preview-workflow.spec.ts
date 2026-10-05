@@ -21,7 +21,7 @@ describe('PR preview workflow', () => {
     expect(preview['runs-on']).toBe('ubuntu-24.04')
     expect(workflow.on).toEqual({ pull_request: { types: ['opened', 'synchronize', 'reopened'] } })
     expect(workflow.permissions).toEqual({ contents: 'read', 'pull-requests': 'write' })
-    expect(preview.steps.find(step => step.uses === 'actions/checkout@v6')?.with).toEqual({ 'persist-credentials': false })
+    expect(preview.steps.find(step => step.uses === 'actions/checkout@v7')?.with).toEqual({ 'persist-credentials': false })
   })
 
   it('keeps the immutable full build and restore-only dependency cache', () => {
