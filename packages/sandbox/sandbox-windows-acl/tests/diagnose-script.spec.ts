@@ -354,8 +354,8 @@ describe.skipIf(!isWin32 || !pwshAvailable())('diagnose-windows-sandbox-acl scri
       const root = makeDir(scratch, 'workspace')
       const deep = makeDir(root, 'deep')
       const leaf = makeDir(deep, 'leaf')
-      icacls(deep, '/inheritance:r', '/grant:r', `*${PACKAGE_SID}:(OI)(CI)(RX)`)
-      icacls(leaf, '/inheritance:r', '/grant:r', `*${OTHER_PACKAGE_SID}:(OI)(CI)(RX)`)
+      icacls(deep, '/inheritance:r', '/grant:r', `*${meSid}:(F)`, `*${PACKAGE_SID}:(OI)(CI)(RX)`)
+      icacls(leaf, '/inheritance:r', '/grant:r', `*${meSid}:(F)`, `*${OTHER_PACKAGE_SID}:(OI)(CI)(RX)`)
       withholdWriteOwner(root, 'S-1-5-11')
 
       const run = runScript(['-Path', root, '-AllowRoot', root, '-Out', join(scratch, 'out')])
