@@ -17,31 +17,39 @@
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="SplashMark" translatesAutoresizingMaskIntoConstraints="NO" id="mark-launch">
                                 <rect key="frame" x="146.5" y="276" width="100" height="100"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="100" id="mark-width"/>
-                                    <constraint firstAttribute="height" constant="100" id="mark-height"/>
+                                    <constraint firstAttribute="width" constant="48" id="mark-width"/>
+                                    <constraint firstAttribute="height" constant="48" id="mark-height"/>
                                 </constraints>
                             </imageView>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="点点够终端" textAlignment="center" lineBreakMode="tailTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="name-launch">
                                 <rect key="frame" x="119" y="396" width="155" height="36"/>
-                                <fontDescription key="fontDescription" type="system" weight="medium" pointSize="28"/>
+                                <fontDescription key="fontDescription" type="system" weight="bold" pointSize="28"/>
                                 <color key="textColor" systemColor="labelColor"/>
                             </label>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="点点够，一切都一点点变好！" textAlignment="center" lineBreakMode="wordWrap" numberOfLines="2" translatesAutoresizingMaskIntoConstraints="NO" id="slogan-launch">
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="点点够，一切都一点点变好！" textAlignment="left" lineBreakMode="wordWrap" numberOfLines="2" translatesAutoresizingMaskIntoConstraints="NO" id="slogan-launch">
                                 <rect key="frame" x="28" y="451" width="337" height="28"/>
                                 <fontDescription key="fontDescription" type="system" weight="medium" pointSize="18"/>
                                 <color key="textColor" systemColor="labelColor"/>
                             </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="组装无限可能，共探智能上限" textAlignment="left" lineBreakMode="wordWrap" numberOfLines="0" translatesAutoresizingMaskIntoConstraints="NO" id="description-launch">
+                                <rect key="frame" x="32" y="440" width="329" height="28"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="20"/>
+                                <color key="textColor" systemColor="secondaryLabelColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="mark-launch" firstAttribute="centerX" secondItem="view-launch" secondAttribute="centerX" id="mark-center-x"/>
-                            <constraint firstItem="mark-launch" firstAttribute="centerY" secondItem="view-launch" secondAttribute="centerY" constant="-100" id="mark-center-y"/>
-                            <constraint firstItem="name-launch" firstAttribute="top" secondItem="mark-launch" secondAttribute="bottom" constant="20" id="name-top"/>
-                            <constraint firstItem="name-launch" firstAttribute="centerX" secondItem="view-launch" secondAttribute="centerX" id="name-center-x"/>
-                            <constraint firstItem="slogan-launch" firstAttribute="top" secondItem="name-launch" secondAttribute="bottom" constant="19" id="slogan-top"/>
-                            <constraint firstItem="slogan-launch" firstAttribute="centerX" secondItem="view-launch" secondAttribute="centerX" id="slogan-center-x"/>
-                            <constraint firstItem="slogan-launch" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="safe-launch" secondAttribute="leading" constant="24" id="slogan-leading"/>
-                            <constraint firstItem="safe-launch" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="slogan-launch" secondAttribute="trailing" constant="24" id="slogan-trailing"/>
+                            <constraint firstItem="mark-launch" firstAttribute="leading" secondItem="safe-launch" secondAttribute="leading" constant="32" id="mark-leading"/>
+                            <constraint firstItem="mark-launch" firstAttribute="top" secondItem="safe-launch" secondAttribute="top" constant="44" id="mark-top"/>
+                            <constraint firstItem="name-launch" firstAttribute="leading" secondItem="mark-launch" secondAttribute="trailing" constant="12" id="name-leading"/>
+                            <constraint firstItem="name-launch" firstAttribute="centerY" secondItem="mark-launch" secondAttribute="centerY" id="name-center-y"/>
+                            <constraint firstItem="safe-launch" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="name-launch" secondAttribute="trailing" constant="32" id="name-trailing"/>
+                            <constraint firstItem="slogan-launch" firstAttribute="centerY" secondItem="view-launch" secondAttribute="centerY" constant="-28" id="slogan-center-y"/>
+                            <constraint firstItem="slogan-launch" firstAttribute="leading" secondItem="safe-launch" secondAttribute="leading" constant="32" id="slogan-leading"/>
+                            <constraint firstItem="safe-launch" firstAttribute="trailing" secondItem="slogan-launch" secondAttribute="trailing" constant="32" id="slogan-trailing"/>
+                            <constraint firstItem="description-launch" firstAttribute="top" secondItem="slogan-launch" secondAttribute="bottom" constant="14" id="description-top"/>
+                            <constraint firstItem="description-launch" firstAttribute="leading" secondItem="slogan-launch" secondAttribute="leading" id="description-leading"/>
+                            <constraint firstItem="description-launch" firstAttribute="trailing" secondItem="slogan-launch" secondAttribute="trailing" id="description-trailing"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -51,6 +59,7 @@
     </scenes>
     <resources>
         <image name="SplashMark" width="1024" height="1024"/>
+        <systemColor name="secondaryLabelColor"><color white="0.4" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/></systemColor>
         <systemColor name="labelColor"><color white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/></systemColor>
         <systemColor name="systemBackgroundColor"><color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/></systemColor>
     </resources>
