@@ -1,0 +1,92 @@
+{
+  "frames": [
+    {
+      "type": "snapshot",
+      "records": [
+        {
+          "event": {
+            "seq": 1,
+            "type": "user/message",
+            "data": {
+              "source": {
+                "kind": "user"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "检查项目"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "assistant-stream",
+      "frame": {
+        "type": "start"
+      }
+    },
+    {
+      "type": "assistant-stream",
+      "frame": {
+        "type": "chunk",
+        "chunk": {
+          "type": "reasoning-delta",
+          "text": "先读取项目"
+        }
+      }
+    },
+    {
+      "event": {
+        "seq": 2,
+        "type": "tool/call",
+        "data": {
+          "name": "read_file",
+          "arguments": {
+            "path": "private"
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "seq": 3,
+        "type": "assistant/message",
+        "data": {
+          "message": {
+            "content": [
+              {
+                "type": "text",
+                "text": "**检查完成**"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "seq": 4,
+        "type": "turn/end",
+        "data": {}
+      }
+    }
+  ],
+  "expected": {
+    "lines": [
+      {
+        "role": "user",
+        "text": "检查项目"
+      },
+      {
+        "role": "assistant",
+        "text": "**检查完成**"
+      }
+    ],
+    "reasoning": "先读取项目",
+    "activity": "read_file\n",
+    "running": false
+  }
+}
