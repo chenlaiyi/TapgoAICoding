@@ -1,1 +1,1 @@
-Could not sign inSomething went wrong. Please check your network connection and try again.Add API KeySign in again
+Could not sign in操作未完成，可能是网络异常，请检查你的网络状况后重试Add API KeySign in again

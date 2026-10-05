@@ -963,6 +963,7 @@ function InstallDialog({
               <IconWarningOutlineRegular size={14} aria-hidden="true" />
               <span className={css.installSafetyText}>
                 <span>{t('installGuideSafety')}</span>
+                <span>{t('installUpgradeNotice')}</span>
               </span>
             </p>
             <Button variant="primary" className={css.wide} disabled={checking || empty} aria-busy={checking} onClick={onRun}>

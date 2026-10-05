@@ -12,7 +12,7 @@ Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOM
 
 原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 点点够终端 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
 
-[iOS 配套应用](../../mobile/ios/README.zh.md) 经由 HTTPS 访问桌面 Host。统一接入部署在 `~/.tapgo-aicoding/.env` 设置 `TAPGO_RELAY_DOMAIN`、`TAPGO_RELAY_SERVER` 和 `TAPGO_RELAY_TOKEN_FILE`；应用内置的 frpc 主动连接[共享中继](deploy/shared-relay.frps.toml)，为这台电脑 在一次配置的泛域名下分配稳定随机主机名，并将请求转发到本机 Host 实际监听端口。令牌文件只允许本机用户读取，由中继管理员配置。Windows 内置 `frpc.exe`，使用系统 TLS 证书库，并拒绝向当前用户、SYSTEM 和 Administrators 之外的账户授予访问权限的令牌文件。Desktop 仅信任该 HTTPS 主机，并在应用菜单提供带二维码和可复制认证链接的“连接手机”窗口。电脑名称默认取 macOS“电脑名称”，可在“设置 → 通用设置”或配对窗口中修改；iOS 配对后显示该名称。未设置中继时，现有 `TAPGO_MOBILE_HTTPS_ORIGIN` 连接继续可用。公网代理[配置](deploy/public-mobile.nginx.conf)让 Host 保持仅监听本机，为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录配对令牌的访问日志。
+[iOS 配套应用](../../mobile/ios/README.zh.md) 经由 HTTPS 访问桌面 Host。统一接入部署在 `~/.tapgo-aicoding/.env` 设置 `TAPGO_RELAY_DOMAIN`、`TAPGO_RELAY_SERVER` 和 `TAPGO_RELAY_TOKEN_FILE`；应用内置的 frpc 主动连接[共享中继](deploy/shared-relay.frps.toml)，为这台电脑 在一次配置的泛域名下分配稳定随机主机名，并将请求转发到本机 Host 实际监听端口。令牌文件只允许本机用户读取，由中继管理员配置。Windows 内置 `frpc.exe`，使用系统 TLS 证书库，并拒绝向当前用户、SYSTEM 和 Administrators 之外的账户授予访问权限的令牌文件。ACL 检查显式加载 Windows PowerShell 内置安全模块，从 PowerShell 7 启动时也使用该模块。Desktop 仅信任该 HTTPS 主机，并在应用菜单提供带二维码和可复制认证链接的“连接手机”窗口。电脑名称默认取 macOS“电脑名称”，可在“设置 → 通用设置”或配对窗口中修改；iOS 配对后显示该名称。未设置中继时，现有 `TAPGO_MOBILE_HTTPS_ORIGIN` 连接继续可用。公网代理[配置](deploy/public-mobile.nginx.conf)让 Host 保持仅监听本机，为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录配对令牌的访问日志。
 
 “连接手机”窗口检查公网 HTTPS 路由、配对交换和已认证的对话 WebSocket，只显示故障阶段而不暴露令牌；同时显示 Mac 运行版本，以及带自定义名称和短标识、可单独撤销的手机配对链接。新建链接表单可为另一台手机生成命名二维码。每次打开窗口都会签发一条独立的持久链接；“断开”只撤销该链接及其 Cookie。旧版共享启动令牌签发的链接无法逐台撤销，应让每台手机重新配对以取得独立链接。复制同一链接会共享一个身份。
 

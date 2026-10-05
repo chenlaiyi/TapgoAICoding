@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 This package gives an `official` client build the 点点够终端 icon and localized product name in the sidebar and the Tapgo icon in the conversation hero. Its `brand-official` dictionary owns the name in both supported locales. Other build profiles keep their local-build fallbacks. It has no runtime state and does not affect model requests.
 
+Brand image URLs resolve relative to the application mount, including reverse-proxy path prefixes.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

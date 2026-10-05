@@ -38,6 +38,13 @@ jobs:
           "@ | Set-Content -Encoding utf8 apps/desktop/.env.windows
       - name: Build and verify installer
         run: pnpm --dir apps/desktop run package:win:x64:unsigned
+      - name: Verify Windows ACL and mobile relay
+        run: >-
+          pnpm exec vitest run
+          packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts
+          packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts
+          apps/desktop-host/tests/remote-relay.spec.ts
+          --testTimeout 90000 --hookTimeout 120000
       - uses: actions/upload-artifact@v7
         with:
           name: tapgo-windows-${{ env.TAPGO_CONFIRMED_VERSION }}

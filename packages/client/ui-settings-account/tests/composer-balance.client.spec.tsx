@@ -44,3 +44,10 @@ it('keeps currencies separate and hides failed reads', () => {
     details: { balance: { status: 'failed' } } })} t={key => zh[key as AccountKey]} />)
   expect(screen.queryByLabelText(/余额/u)).toBeNull()
 })
+
+it('hides a ready account whose wallet list is empty', () => {
+  mount({ view: { status: 'credential-stored', attempt: null, links: {
+    usageUrl: 'https://example.com/usage', topUpUrl: 'https://example.com/top_up',
+  } }, failed: false, details: { balance: { status: 'ready', value: [], bonusWallets: [] } } }, en)
+  expect(screen.queryByText(en.availableBalance)).toBeNull()
+})

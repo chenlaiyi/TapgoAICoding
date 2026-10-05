@@ -12,6 +12,10 @@ import { inject } from '../src/client/index.ts'
 import type { SettingsRootInjected } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
 import type { DesktopUpdatePresentation } from '../src/types.ts'
+import { createElement } from 'react'
+import { render } from '@testing-library/react'
+import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { createSettingsShellStore } from '../src/client/shell-store.ts'
 
 const SELF = '@deepseek-ai/dsh-client-ui-settings-general'
 const SIDEBAR = '@deepseek-ai/dsh-client-ui-sidebar'
@@ -49,6 +53,38 @@ const PRODUCT_ONBOARDING: readonly { id: string; order: number }[] = [
 ]
 
 describe('ui-settings-general shell', () => {
+  it('opens Settings through its command and closes the active Settings modal', async ({ start }) => {
+    const c = await start()
+    const register = vi.spyOn(c.ctx.shortcuts, 'register')
+    await c.reload(SELF)
+    const command = register.mock.calls.map(([definition]) => definition).find(definition => definition.id === 'settings.open')!
+    expect(command.label()).toBeTruthy()
+    const entry = c.ctx.slots.entries('sidebar.settings')[0]!
+    const shell = (entry.store as ReturnType<typeof createSettingsShellStore>).create()
+    expect(command.resolve({ region: 'page', modal: 'approval', target: null })).toEqual({ status: 'blocked', reason: 'modal' })
+    const open = command.resolve({ region: 'page', modal: null, target: null })
+    expect(open.status).toBe('handled')
+    if (open.status !== 'handled') throw new Error('Settings command did not handle its context')
+    open.run()
+    expect(shell.getSnapshot().open).toBe(true)
+    const view = render(createElement(Modal, { open: true, onClose: () => { shell.actions.close() }, title: 'Settings', closeLabel: 'Close' }))
+    onTestFinished(() => { view.unmount() })
+    const close = command.resolve({ region: 'page', modal: 'settings', target: null })
+    if (close.status !== 'handled') throw new Error('Settings command did not handle its modal')
+    close.run()
+    expect(shell.getSnapshot().open).toBe(false)
+  }, COLD_BOOT_TIMEOUT_MS)
+  it('registers the Desktop computer-name bridge and withdraws its settings row on unload', async ({ start }) => {
+    const computerName = { get: vi.fn(async () => 'Studio'), set: vi.fn(async (name: string) => name) }
+    vi.stubGlobal('dshDesktop', { protocolVersion: 1, computerName })
+    onTestFinished(() => { vi.unstubAllGlobals() })
+    const c = await start()
+    const entry = c.ctx.slots.entries('settings.general.item').find(item => item.options.id === 'computer-name')!
+    expect((entry.inject as () => { computerName: typeof computerName })().computerName).toBe(computerName)
+    await c.unload(SELF)
+    await c.flush()
+    expect(c.ctx.slots.entries('settings.general.item').some(item => item.options.id === 'computer-name')).toBe(false)
+  }, COLD_BOOT_TIMEOUT_MS)
   it('shares one carrier subscription between both update locations and releases it on unload', async ({ start }) => {
     const initial = Promise.withResolvers<DesktopUpdatePresentation>()
     let publish: ((state: DesktopUpdatePresentation) => void) | undefined

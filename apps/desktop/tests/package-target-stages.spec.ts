@@ -10,6 +10,7 @@ vi.mock('../scripts/macos-notarization-proxy.ts', () => ({
   withMacOSNotarizationProxy: vi.fn(async (_proxy: string | undefined, action: () => Promise<void>) => action()),
 }))
 vi.mock('../scripts/notarize-macos.mjs', () => ({ notarizeMacOS: vi.fn(async () => {}) }))
+vi.mock('../scripts/prepare-relay-client.mjs', () => ({ prepareRelayClient: vi.fn(async () => {}) }))
 vi.mock('../scripts/package-macos.ts', () => ({ packageMacOSArtifacts: vi.fn(async () => {}) }))
 
 vi.mock('../scripts/windows-signing-stage.mjs', () => ({

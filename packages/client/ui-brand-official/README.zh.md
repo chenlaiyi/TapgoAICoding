@@ -11,6 +11,8 @@ kind: "package-reference"
 
 本包让 `official` profile 构建的客户端在侧栏显示 点点够终端 图标与本地化产品名，并在会话首屏显示 Tapgo 图标。`brand-official` 词典管理两种语言中的名称。其他构建 profile 保留本地构建回退内容。本包不保留运行时状态，也不影响模型请求。
 
+品牌图片 URL 相对于应用挂载路径解析，支持反向代理路径前缀。
+
 ## 目录
 
 - [使用本包](#use-this-package)

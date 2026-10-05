@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 import { AclWriteGrant, tempWriteSid, workspaceWriteSid } from '../src/index.ts'
+import { DACL_ONLY_TOKEN } from './dacl-only-token.ts'
 
 const isWin32 = process.platform === 'win32'
 const runnerEntry = fileURLToPath(new URL('../src/runner.ts', import.meta.url))
@@ -550,6 +551,7 @@ public static extern IntPtr CreateFileW(string n, uint a, uint s, IntPtr sa, uin
 [DllImport("kernel32.dll", SetLastError=true)]
 public static extern bool CloseHandle(IntPtr h);
 '@ | Out-Null
+${DACL_ONLY_TOKEN}
 function TryOpen([string]$label, [string]$path) {
   $h = [P.F]::CreateFileW($path, 0x10000000, 7, [IntPtr]::Zero, 3, 0x02000000, [IntPtr]::Zero)
   if ($h -eq [IntPtr]::new(-1)) { "$($label): DENIED" } else { [void][P.F]::CloseHandle($h); "$($label): OK" }

@@ -40,7 +40,7 @@ export function resolveRemoteRelay(
   if (!existsSync(tokenFile)) throw new Error('Tapgo mobile relay token file is missing')
   if (process.platform === 'win32') {
     const result = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-      '$ErrorActionPreference = "Stop"; $acl = Get-Acl -LiteralPath $env:TAPGO_RELAY_ACL_PATH; '
+      '$ErrorActionPreference = "Stop"; Import-Module ($PSHOME + "/Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1"); $acl = Get-Acl -LiteralPath $env:TAPGO_RELAY_ACL_PATH; '
       + '$owner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; '
       + '$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; '
       + '$allowed = @($current, "S-1-5-18", "S-1-5-32-544"); '
