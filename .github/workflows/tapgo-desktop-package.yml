@@ -30,13 +30,16 @@ jobs:
           packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts
           packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts
           apps/desktop-host/tests/remote-relay.spec.ts
+          apps/desktop/tests/manual-update.spec.ts
+          apps/desktop/tests/update-coordinator.spec.ts
+          apps/desktop/tests/main-startup.spec.ts
           --testTimeout 90000 --hookTimeout 120000
   package:
     needs: qualification
     runs-on: windows-2025
     timeout-minutes: 90
     env:
-      TAPGO_CONFIRMED_VERSION: ${{ inputs.version || '0.6.14' }}
+      TAPGO_CONFIRMED_VERSION: ${{ inputs.version || '0.6.15' }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4

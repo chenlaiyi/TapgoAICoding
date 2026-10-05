@@ -36,6 +36,7 @@ import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import { claimDesktopSingleInstance } from './single-instance.ts'
 import { DesktopUpdateCoordinator } from './update-coordinator.ts'
+import { offerManualDesktopUpdate } from './manual-update.ts'
 import { DesktopCommandManager } from './command-management.ts'
 import { serveWebDocument, authenticateWebHost, forwardWebRequest } from './web-document.ts'
 import { DesktopFatalRecovery } from './fatal-recovery.ts'
@@ -847,6 +848,9 @@ async function main(): Promise<void> {
         if (manual) await Promise.all([checkPolicyManually(), updateSchedule.check(true)])
         return
       }
+      if (await offerManualDesktopUpdate({ platform: process.platform, packaged: app.isPackaged,
+        hasSource: updates.hasPackagedSource, locale, version: app.getVersion(),
+        show: ordinaryMessageBox, open: url => shell.openExternal(url) })) return
       let controller: AbortController | undefined
       let progress: Promise<unknown> | undefined
       try {
