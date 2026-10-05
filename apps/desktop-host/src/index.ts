@@ -36,7 +36,7 @@ async function main(): Promise<void> {
     profile: 'desktop',
     resolvedProfile: { profile, installAnchor },
     patchFiles: mobile === undefined ? [] : [fileURLToPath(new URL('../mobile-picker.overlay.yml', import.meta.url))],
-    args: ['--no-open', '--port', '19388', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
+    args: ['--no-open', '--port', mobile !== undefined && relay === undefined ? '19388' : '0', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
     ...(process.argv[5] === undefined ? {} : {
       packageManager: {
         command: process.execPath,
@@ -126,7 +126,7 @@ async function main(): Promise<void> {
   })
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
-  if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId)
+  if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId, ctx.webServer.port)
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   control.quitInspection = installDesktopQuitInspection(ctx)
   await ctx.plugin(desktopOffice, {

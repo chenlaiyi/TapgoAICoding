@@ -22,6 +22,8 @@ kind: "package-reference"
 
 -----
 
+桌面电脑名称控件使用共享小圆角令牌和中性细边框。
+
 设置面板采用各页面共享的 800 × 800 布局，并受视口大小约束。较长的页面在内容栏内部滚动；账号入口使用账号图标。面板挂载在 `#root` 之外而不是其内部，这样在文档序上更靠后的 chrome 行所声明的 macOS 窗口拖拽区不会吞掉它的控件。
 
 <a id="use-this-package"></a>
@@ -130,5 +132,3 @@ Web 与桌面端的通用设置底部显示当前发布版本，使用构建注�
 无。
 
 </details>
-
-**运行时不变式：** 不发布伴生入口。settings seam 校验并发布持久 onboarding section，slot core 会拒绝冲突；本地 document action 由 store 与组件测试覆盖。

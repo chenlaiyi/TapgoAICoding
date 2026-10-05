@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /desktop:
-  en: 5b3670e0982b1c30
-  zh: bd7fd0cebd60855a
+  en: 4106f23b92d6f2d5
+  zh: 96b6f6fdf12cda23
 /desktop/terminal-command:
   en: bef92953c237363f
   zh: d21d6effd21b8c00
@@ -15,11 +15,11 @@
   en: f0a8763b86990b0c
   zh: f0c57dc1451b3a74
 /desktop/key-technical-decisions/bundled-workspace-dependencies:
-  en: ff3eb15465463f39
-  zh: 9a1aac61bb2404e7
+  en: e3c0b39c7b0cc372
+  zh: f17bc9cfcce5e5b7
 /desktop/bundled-command-runtime:
-  en: beecf076aa2f0796
-  zh: c9001ce0f22d2379
+  en: 09f0b75af9f0ed14
+  zh: 60bbc2e67d5e87a8
 /desktop/installation-ownership:
   en: 22153a298a6662e1
   zh: 3600803c8c9d0274
@@ -30,8 +30,8 @@
   en: 84a9cc7ca9455aa8
   zh: 4091b8aa8231b74a
 /desktop/develop:
-  en: 6cb443244816113a
-  zh: bed79454d396c582
+  en: 809f6b9fa0ab0360
+  zh: 028ed0606828d40f
 /desktop/develop/startup-onboarding:
   en: f61da77488d06957
   zh: b0f908bd973a77d3
@@ -42,8 +42,8 @@
   en: 4cd8a8da6977928d
   zh: 9f624855a2edac37
 /desktop/package/release-versions:
-  en: 35ef74c336779f8a
-  zh: 3cec3ae3428c9598
+  en: 1b3db64a4a04cf03
+  zh: 0762603d71b09c9c
 /desktop/package/runtime-file-selection:
   en: f0e345fd89868803
   zh: fd2c775ad23fa2f0
@@ -54,8 +54,8 @@
   en: cfd5780dd26a8e46
   zh: f7a16b1ede793b7b
 /desktop/package/windows-installer-interface:
-  en: f176a8b1c7de3064
-  zh: 6ea2dbe6bb808c34
+  en: 94ddb11f514d8dea
+  zh: 15021ae8e3bc8a9c
 /desktop/package/windows-ev-signing:
   en: 204d393cbb3d9121
   zh: bd122634fb953fbe
@@ -63,8 +63,8 @@
   en: d0df867b69cbffa4
   zh: eeb47b79b86fe5ee
 /desktop/updates/mandatory-update-policy:
-  en: 2f789a4949fafb12
-  zh: d8b28c01cfee11b7
+  en: c00a0e7d32056ba9
+  zh: a76dae44cb513d6f
 /desktop/updates/local-updater-qualification:
   en: bc50fd8a4d96c227
   zh: fb0a6ce80c31cda6

@@ -32,10 +32,12 @@ describe('managed mobile relay', () => {
     expect(relayDeviceId(config.stateDirectory)).toBe(first)
     expect(readFileSync(join(config.stateDirectory, 'device-id'), 'utf8')).toBe(`${first}\n`)
     expect(remoteRelayOrigin(config, first)).toBe(`https://${first}.remote.itapgo.com`)
-    expect(remoteRelayToml(config, first)).toContain(`subdomain = "${first}"`)
-    expect(remoteRelayToml(config, first)).toContain('transport.protocol = "wss"')
-    expect(remoteRelayToml(config, first)).toContain('loginFailExit = false')
-    expect(remoteRelayToml(config, first)).not.toContain('fixture-token')
+    expect(remoteRelayToml(config, first, 49152)).toContain(`subdomain = "${first}"`)
+    expect(remoteRelayToml(config, first, 49152)).toContain('transport.protocol = "wss"')
+    expect(remoteRelayToml(config, first, 49152)).toContain('loginFailExit = false')
+    expect(remoteRelayToml(config, first, 49152)).toContain('localPort = 49152')
+    expect(remoteRelayToml(config, first, 49152)).not.toContain('localPort = 19388')
+    expect(remoteRelayToml(config, first, 49152)).not.toContain('fixture-token')
   })
 
   it('rejects invalid public authorities and missing enrollment credentials before pairing', () => {

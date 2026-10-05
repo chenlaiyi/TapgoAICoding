@@ -29,7 +29,7 @@ describe('Windows mobile relay', () => {
     execute.mockReturnValue('private\r\n')
     const config = resolveRemoteRelay(environment, directory, executable)!
     expect(config.executable).toBe(executable)
-    expect(remoteRelayToml(config, 'a'.repeat(32))).not.toContain('/etc/ssl/cert.pem')
+    expect(remoteRelayToml(config, 'a'.repeat(32), 49152)).not.toContain('/etc/ssl/cert.pem')
     expect(execute.mock.calls[0]?.[0]).toBe('powershell.exe')
     expect(execute.mock.calls[0]?.[2]).toMatchObject({ windowsHide: true,
       env: { TAPGO_RELAY_ACL_PATH: tokenFile } })

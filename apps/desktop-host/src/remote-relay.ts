@@ -40,7 +40,7 @@ export function resolveRemoteRelay(
   if (!existsSync(tokenFile)) throw new Error('Tapgo mobile relay token file is missing')
   if (process.platform === 'win32') {
     const result = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-      '$ErrorActionPreference = "Stop"; $acl = Get-Acl -LiteralPath $env:TAPGO_RELAY_ACL_PATH; '
+      '$ErrorActionPreference = "Stop"; Import-Module ($PSHOME + "/Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1"); $acl = Get-Acl -LiteralPath $env:TAPGO_RELAY_ACL_PATH; '
       + '$owner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; '
       + '$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; '
       + '$allowed = @($current, "S-1-5-18", "S-1-5-32-544"); '
@@ -84,9 +84,10 @@ export function relayDeviceId(directory: string): string {
 /** Render a private FRP configuration for one local Host.
  * @param config - Validated relay settings.
  * @param id - Stable device ID.
+ * @param localPort - Listening Host port.
  * @returns TOML consumed only by frpc.
  */
-export function remoteRelayToml(config: RemoteRelayConfig, id: string): string {
+export function remoteRelayToml(config: RemoteRelayConfig, id: string, localPort: number): string {
   if (!DEVICE_ID.test(id)) throw new Error('Tapgo mobile relay device ID is invalid')
   return [
     `serverAddr = ${JSON.stringify(config.server)}`,
@@ -104,7 +105,7 @@ export function remoteRelayToml(config: RemoteRelayConfig, id: string): string {
     `name = ${JSON.stringify(`tapgo-${id}`)}`,
     'type = "http"',
     'localIP = "127.0.0.1"',
-    'localPort = 19388',
+    `localPort = ${String(localPort)}`,
     `subdomain = ${JSON.stringify(id)}`,
     '',
   ].join('\n')
@@ -128,11 +129,12 @@ export function relayCloser(child: ChildProcess): () => Promise<void> {
 /** Start the outbound relay after the Host begins listening.
  * @param config - Validated relay settings.
  * @param id - Stable device ID.
+ * @param localPort - Listening Host port.
  * @returns A close operation for Desktop shutdown.
  */
-export function startRemoteRelay(config: RemoteRelayConfig, id: string): () => Promise<void> {
+export function startRemoteRelay(config: RemoteRelayConfig, id: string, localPort: number): () => Promise<void> {
   const path = join(config.stateDirectory, 'frpc.toml')
-  writeFileSync(path, remoteRelayToml(config, id), { mode: 0o600 })
+  writeFileSync(path, remoteRelayToml(config, id, localPort), { mode: 0o600 })
   chmodSync(path, 0o600)
   const child = spawn(config.executable, ['-c', path], { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true })
   child.stderr.on('data', (chunk: Buffer) => {

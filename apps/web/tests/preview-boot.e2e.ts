@@ -304,7 +304,7 @@ async function bootPreview(origin: string, browser: Browser): Promise<void> {
       SNAPSHOT_MODE,
     )
     await page.getByRole('button', { name: 'Start Preview' }).click()
-    await page.getByText('Loading plugins…', { exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByText('正在启动…', { exact: true }).waitFor({ timeout: 10_000 })
     const bootLine = await within(treeActive, BOOT_TIMEOUT_MS, `preview boot: the worker never reported "${TREE_ACTIVE}"`)
     // The activated tree ran bodies lowered against the contract this
     // checkout's packer emits; a dist built before a contract change would
@@ -437,10 +437,12 @@ async function bootPreview(origin: string, browser: Browser): Promise<void> {
     const sessions = page.getByRole('tree', { name: 'Sessions' })
     const showcase = sessions.getByRole('treeitem').filter({ hasText: SHOWCASE_TITLE })
     await expect.poll(() => showcase.count(), { timeout: 15_000 }).toBe(1)
-    expect(await showcase.locator('[data-session-schedule-mark]').count()).toBe(0)
+    // The packed deployment ships the Schedule rows, and the preview storage
+    // seeds the showcase Session with active tasks.
+    expect(await showcase.locator('[data-session-schedule-mark]').count()).toBe(1)
     await showcase.click()
     await page.getByText(SHOWCASE_TAIL, { exact: true }).waitFor({ timeout: 30_000 })
-    expect(await page.locator('[data-schedule-reminder-entry]').count()).toBe(0)
+    expect(await page.locator('[data-schedule-reminder-entry]').count()).toBe(1)
 
     expect(await page.getByText(SHOWCASE_OLDEST, { exact: true }).count()).toBe(0)
     // Complete Turns can fold while earlier history is still unloaded.

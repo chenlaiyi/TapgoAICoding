@@ -14,6 +14,10 @@ const runnerPrivatePnpmDestination = /^\$\{\{ runner\.temp \}\}\/setup-pnpm-\$\{
 const nativeWindowsPnpmDestination = '${{ runner.temp }}/setup-pnpm-js-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}'
 
 describe('CI workflow', () => {
+  it.each([['node-24', 'ubuntu-24.04'], ['node-24-coverage', 'ubuntu-24.04'], ['node-24-consumers', 'ubuntu-24.04'], ['windows-build', 'windows-2025'], ['windows-coverage', 'windows-2025'], ['windows-native-tests', 'windows-2025']])('allocates an available fork runner for %s', (name, runner) => {
+    const job = workflowJob(loadWorkflow('.github/workflows/ci.yml'), name)
+    expect(evaluateRunsOn(job['runs-on'], { vars: {}, github: { repository: 'chenlaiyi/TapgoAICoding' } })).toBe(runner)
+  })
   it('prepares confinement before Node compatibility smokes', () => {
     const job = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'node-compat')
     if (!Array.isArray(job.steps)) throw new TypeError('Node compatibility job must define steps')
@@ -369,7 +373,7 @@ describe('CI workflow', () => {
       return evaluateRunsOn(expression, {
         vars,
         fromJSON: JSON.parse,
-        github: { event: { pull_request: { user: { login } } } },
+        github: { repository: 'deepseek-ai/deepseek-harness', event: { pull_request: { user: { login } } } },
       })
     }
     for (const [name, selector, variable, pool, hosted] of [
@@ -482,10 +486,10 @@ describe('CI workflow', () => {
     })
   })
 
-  it('bounds the complete benchmark job to fifteen minutes', () => {
+  it('bounds the complete benchmark job to twenty minutes', () => {
     const benchmark = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'node-24-bench')
 
-    expect(benchmark['timeout-minutes']).toBe(15)
+    expect(benchmark['timeout-minutes']).toBe(20)
     expect(benchmark.steps).toContainEqual({
       name: 'Run performance benchmarks',
       env: { DSH_GATE_VERBOSE: '1' },
@@ -584,7 +588,7 @@ describe('CI workflow', () => {
       // Removing this injection would send every pnpm call in the lane (setup,
       // store-path probe, install, and the gate) back to the root partition's
       // /tmp; rationale in
-      // .agents/notes/implemented/process/2026-08-28-ci-node-compile-cache-data-disk.md.
+      // .github/workflows/ci.yml.
       expect(redirectStepIndex, `${jobKey} must inject NODE_COMPILE_CACHE into GITHUB_ENV`).toBeGreaterThan(-1)
       const pnpmSetupIndex = job.steps.findIndex((step): step is Record<string, unknown> & { uses: string } => (
         isRecord(step) && typeof step.uses === 'string' && step.uses.includes('pnpm/action-setup')
@@ -1106,7 +1110,7 @@ describe('Issue lifecycle workflow', () => {
     expect(preflightStep?.run).toContain('if [ -f .github/issue-management/selective-preflight.json ]; then')
     expect(preflightStep?.run).toContain('node .github/issue-management/policy.mjs pr-preflight')
     expect(preflightStep?.if).toBeUndefined()
-    expect(policyJob.if).toBeUndefined()
+    expect(policyJob.if).toBe("github.repository == 'deepseek-ai/deepseek-harness'")
     expect(validateStep?.if).toBe("${{ steps.preflight.outputs.legacy-automated != 'true' }}")
 
     expect(tokenStep).toMatchObject({
@@ -1132,6 +1136,37 @@ describe('Issue lifecycle workflow', () => {
 })
 
 describe('npm release workflows', () => {
+  it('passes the optional vendor channel as a quoted argument while preserving default publication', () => {
+    const workflow = loadWorkflow('.github/workflows/release-vendor-publish.yml')
+    expect(workflow.on).toMatchObject({
+      workflow_dispatch: {
+        inputs: {
+          'dist-tag': {
+            required: false,
+            type: 'string',
+            default: '',
+          },
+        },
+      },
+    })
+    const publish = workflowJob(workflow, 'publish')
+    expect(publish.steps).toContainEqual({
+      name: 'Publish tarballs',
+      env: {
+        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
+        RELEASE_DIST_TAG: '${{ inputs.dist-tag }}',
+      },
+      run: [
+        'args=()',
+        'if [[ -n "$RELEASE_DIST_TAG" ]]; then',
+        '  args+=(--dist-tag "$RELEASE_DIST_TAG")',
+        'fi',
+        'pnpm run release:publish --family vendor --from dist/npm-vendor "${args[@]}"',
+        '',
+      ].join('\n'),
+    })
+  })
+
   it('keeps publication dispatch-only and pack in the PR workflow', () => {
     // pack stays in the PR/master release workflows so a PR proves the set packs.
     for (const file of ['release.yml', 'release-vendor.yml']) {

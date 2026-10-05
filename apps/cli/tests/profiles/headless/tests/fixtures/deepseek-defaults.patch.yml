@@ -10,7 +10,8 @@
     baseURL: !!js process.env.DSH_SNAPSHOT_BASE_URL
     thinking: enabled
     reasoningEffort: low
-    streamIdleTimeoutMs: 150
+    # Match the compatibility fixture while the local server schedules title heartbeats.
+    streamIdleTimeoutMs: 1000
 
 - id: agent-loop
   config:
