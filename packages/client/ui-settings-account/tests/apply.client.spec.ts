@@ -131,6 +131,40 @@ it('reads funds again after a pending query and drops queued refreshes after sig
   await c.flush()
   expect(actions.hooks.account.getSnapshot().details).toBeUndefined()
   expect(c.mock.remote.account.getBalance).toHaveBeenCalledTimes(3)
+  window.dispatchEvent(new Event('focus'))
+  await c.flush()
+  expect(c.mock.remote.account.getBalance).toHaveBeenCalledTimes(3)
+}, 60_000)
+
+it('discards pending activity reads when credentials change or the plugin unloads', async ({ start }) => {
+  vi.stubGlobal('dshDesktop', {})
+  const c = await start()
+  const actions = operations(c)
+  c.mock.streams.push('account/watch', stored)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().view).toEqual(stored) })
+  await actions.refreshAccount()
+  const pending = Promise.withResolvers<ReturnType<typeof ok<AccountDetails['balance'] | null>>>()
+  c.mock.remote.account.getBalance.mockReturnValueOnce(pending.promise)
+  const read = actions.refreshAccount()
+  window.dispatchEvent(new Event('focus'))
+  const replacement: AccountView = { ...stored, attempt: {
+    id: 'replacement' as SignInAttemptId, phase: 'waiting-browser',
+  } }
+  c.mock.streams.push('account/watch', replacement)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().view).toEqual(replacement) })
+  pending.resolve(ok(null))
+  await read
+  await c.flush()
+  const afterUnload = Promise.withResolvers<ReturnType<typeof ok<AccountDetails['balance'] | null>>>()
+  c.mock.remote.account.getBalance.mockReturnValueOnce(afterUnload.promise)
+  const last = actions.refreshAccount()
+  window.dispatchEvent(new Event('focus'))
+  await c.unload(SELF)
+  c.mock.remote.account.getBalance.mockClear()
+  afterUnload.resolve(ok(null))
+  await last
+  await c.flush()
+  expect(c.mock.remote.account.getBalance).not.toHaveBeenCalled()
 }, 60_000)
 
 it('keeps account UI and account RPC inactive in a plain browser, including after reload', async ({ start, mock }) => {
