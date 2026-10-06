@@ -563,8 +563,9 @@ async function main(): Promise<void> {
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send(DESKTOP_IPC.updatesPresentation, presentDesktopUpdate(state))
     }
-    if (state.phase === 'error' && state.failedOperation !== 'check') {
-      const restoreHost = state.failedOperation === 'install' && updateStoppedHost && !quitting
+    // Download callers own dialogs; installation can fail after its handoff returns.
+    if (state.phase === 'error' && state.failedOperation === 'install') {
+      const restoreHost = updateStoppedHost && !quitting
       shellInstallerOwnsQuit = false
       updateStoppedHost = false
       if (restoreHost) {
