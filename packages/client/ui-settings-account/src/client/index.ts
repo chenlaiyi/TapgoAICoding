@@ -135,6 +135,37 @@ export function apply(ctx: Context): void {
       void refresh()
     }
   })().catch(() => { if (!disposed) publish({ ...snapshot, failed: true }) })
+  let automaticRefresh: Promise<void> | undefined
+  let refreshQueued = false
+  const accountActive = (): boolean => !disposed && snapshot.view?.status === 'credential-stored'
+  /** Refresh after current reads settle, coalescing account activity within one request. */
+  const synchronizeAccount = (): void => {
+    if (!accountActive()) return
+    refreshQueued = true
+    if (automaticRefresh !== undefined) return
+    automaticRefresh = (async () => {
+      while (refreshQueued && accountActive()) {
+        refreshQueued = false
+        const generation = revision
+        await refreshAfterReturn(refreshing, async () => {
+          if (accountActive() && generation === revision) await refresh()
+        })
+      }
+    })().finally(() => { automaticRefresh = undefined })
+  }
+  ctx.effect(() => {
+    const offStatus = ctx.remote.$on('api-session/status', (_sessionId, running) => {
+      if (!running) synchronizeAccount()
+    })
+    const onVisible = (): void => { if (document.visibilityState === 'visible') synchronizeAccount() }
+    window.addEventListener('focus', onVisible)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      offStatus()
+      window.removeEventListener('focus', onVisible)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, 'account: activity refresh')
   const nativePlatform = (globalThis as typeof globalThis & { dshPlatform?: PlatformBridge }).dshPlatform
   // One request channel for the single native Platform view. It always exists
   // so every entry can observe whether a page is showing; only a native bridge
