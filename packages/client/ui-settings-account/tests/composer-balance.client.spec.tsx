@@ -7,6 +7,25 @@ import { en, zh, type AccountKey } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
+it('updates the displayed funds from the refreshed account snapshot', () => {
+  const view: AccountSnapshot['view'] = { status: 'credential-stored', attempt: null, links: {
+    usageUrl: 'https://example.com/usage', topUpUrl: 'https://example.com/top_up',
+  } }
+  const snapshot = (balance: string): AccountSnapshot => ({ view, failed: false, details: {
+    balance: { status: 'ready', value: [{ currency: 'CNY', balance }], bonusWallets: [] },
+  } })
+  const { container, rerender } = mount(snapshot('10.00'), zh)
+  const displayed = [container.textContent]
+  rerender(<AccountComposerBalance useAccount={select => select(snapshot('9.50'))} t={key => zh[key as AccountKey]} />)
+  displayed.push(container.textContent)
+  expect(displayed).toMatchInlineSnapshot(`
+    [
+      "余额 ¥10.00",
+      "余额 ¥9.50",
+    ]
+  `)
+})
+
 function mount(snapshot: AccountSnapshot, copy: typeof en | typeof zh) {
   return render(<AccountComposerBalance
     useAccount={select => select(snapshot)}
