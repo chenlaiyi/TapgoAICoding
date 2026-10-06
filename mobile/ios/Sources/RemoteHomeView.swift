@@ -668,8 +668,16 @@ struct RemoteHomeView: View {
                         ZStack(alignment: .top) {
                             Color.black.opacity(0.13).ignoresSafeArea()
                                 .onTapGesture { showingTopMenu = false }
-                            topMenu
+                            ViewThatFits(in: .vertical) {
+                                topMenu
+                                    .fixedSize(horizontal: false, vertical: true)
+                                ScrollView {
+                                    topMenu
+                                }
+                                .accessibilityIdentifier("topMenuViewport")
+                            }
                                 .frame(width: min(280, geometry.size.width - 60))
+                                .frame(maxHeight: max(0, geometry.size.height - 70), alignment: .top)
                                 .padding(.top, 54)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -80,6 +80,25 @@ final class MobileConnectionUITests: XCTestCase {
         add(settingsScreenshot)
     }
 
+    func testTopMenuBalanceRemainsReachableInLandscape() {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]",
+                               "--dsh-mobile-test-balance", "23.51"]
+        app.launch()
+        app.buttons["打开顶部菜单"].tap()
+        let balance = app.staticTexts["¥23.51"]
+        XCTAssertTrue(balance.waitForExistence(timeout: 3))
+        let viewport = app.scrollViews["topMenuViewport"]
+        if viewport.exists { viewport.swipeUp() }
+        XCTAssertTrue(balance.isHittable)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
     func testNewConversationComposerLayout() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
