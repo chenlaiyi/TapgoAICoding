@@ -44,6 +44,10 @@ private struct RemotePermission: Identifiable {
     let description: String
 }
 
+private enum MobilePromptDelivery: String {
+    case queue, steer
+}
+
 @MainActor
 private final class RemoteChat: ObservableObject {
     private let connectionLog = Logger(subsystem: "com.devtools.terminalSimple", category: "remote-chat")
@@ -275,6 +279,7 @@ private final class RemoteChat: ObservableObject {
                         liveText = ""
                         liveReasoning = ""
                         cancelling = false
+                        Task { await self.refreshBalance(computer: computer) }
                     }
                 }
             }
@@ -474,7 +479,8 @@ private final class RemoteChat: ObservableObject {
         return "调用工具"
     }
 
-    func send(_ text: String, image: Data?, computer: SavedComputer, sessionId: String) async -> Bool {
+    func send(_ text: String, image: Data?, computer: SavedComputer, sessionId: String,
+              delivery: MobilePromptDelivery) async -> Bool {
         guard let session, let origin = URL(string: computer.id) else { return false }
         sending = true
         defer { sending = false }
@@ -490,7 +496,7 @@ private final class RemoteChat: ObservableObject {
                 "type": "client-request", "rpcId": UUID().uuidString,
                 "method": "session/prompt", "payload": ["args": ["request": [
                     "requestId": UUID().uuidString, "sessionId": sessionId,
-                    "mode": "queue", "content": content,
+                    "mode": delivery.rawValue, "content": content,
                     "clientTimeZone": TimeZone.current.identifier
                 ]]]
             ])
@@ -596,22 +602,35 @@ private final class RemoteChat: ObservableObject {
                                             description: display?.1 ?? (item["description"] as? String ?? ""))
                 }
             }
-            let metadata: [String: Any] = ["version": "1.0.45", "locale": Locale.current.identifier,
-                                           "timezoneOffsetSeconds": TimeZone.current.secondsFromGMT()]
-            if let response = try? await call("account/getBalance", arguments: ["client": metadata], computer: computer),
-               let result = response as? [String: Any], result["status"] as? String == "ready" {
-                let wallets = result["value"] as? [[String: Any]] ?? []
-                let bonusWallets = result["bonusWallets"] as? [[String: Any]] ?? []
-                balance = Self.availableBalance(wallets + bonusWallets)
-                balanceDetails = Self.balanceRows(wallets, label: "充值余额")
-                    + Self.balanceRows(bonusWallets, label: "赠金余额")
-            } else {
-                balance = nil
-                balanceDetails = []
-            }
+            await refreshBalance(computer: computer)
             error = nil
         } catch {
             self.error = "无法读取模型或权限设置，请重试"
+        }
+    }
+
+    /// Refreshes account totals without changing the selected model or permission.
+    func refreshBalance(computer: SavedComputer) async {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-balance") { return }
+        #endif
+        let current = generation
+        let metadata: [String: Any] = [
+            "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+            "locale": Locale.current.identifier,
+            "timezoneOffsetSeconds": TimeZone.current.secondsFromGMT()
+        ]
+        let response = try? await call("account/getBalance", arguments: ["client": metadata], computer: computer)
+        guard !Task.isCancelled, current == generation else { return }
+        if let result = response as? [String: Any], result["status"] as? String == "ready" {
+            let wallets = result["value"] as? [[String: Any]] ?? []
+            let bonusWallets = result["bonusWallets"] as? [[String: Any]] ?? []
+            balance = Self.availableBalance(wallets + bonusWallets)
+            balanceDetails = Self.balanceRows(wallets, label: "充值余额")
+                + Self.balanceRows(bonusWallets, label: "赠金余额")
+        } else {
+            balance = nil
+            balanceDetails = []
         }
     }
 
@@ -694,7 +713,7 @@ private final class RemoteChat: ObservableObject {
         var errorDescription: String? {
             switch self {
             case .unavailable: "连接已失效或服务器不可用"
-            case .pairingExpired: "配对已过期，请从这台 Mac 重新扫码连接"
+            case .pairingExpired: "配对已过期，请从这台电脑重新扫码连接"
             }
         }
     }
@@ -704,6 +723,8 @@ struct RemoteChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("mobile.showContextUsage") private var showContextUsage = false
+    @AppStorage("mobile.followUpQueue") private var followUpQueue = true
     let computer: SavedComputer
     let sessionId: String
     let title: String
@@ -799,6 +820,9 @@ struct RemoteChatView: View {
                 .padding(.horizontal, 16)
             }
             VStack(alignment: .leading, spacing: 8) {
+                if showContextUsage, let budget = chat.contextBudget {
+                    Text(budget).font(.caption).foregroundStyle(.secondary)
+                }
                 if attachedImage != nil {
                     HStack {
                         Label("已添加图片", systemImage: "photo")
@@ -849,9 +873,17 @@ struct RemoteChatView: View {
         }
         .background(Color(uiColor: .systemBackground))
         .toolbar(.hidden, for: .navigationBar)
-        .task(id: sessionId) {
+        .task(id: [computer.url, sessionId]) {
             await chat.connect(computer: computer, sessionId: sessionId)
             await chat.loadSettings(computer: computer)
+        }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                if chat.connected { await chat.refreshBalance(computer: computer) }
+                do { try await Task.sleep(for: .seconds(15)) }
+                catch { return }
+            }
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active && !chat.connected && !chat.loading {
@@ -1087,30 +1119,39 @@ struct RemoteChatView: View {
         .accessibilityLabel("添加与会话设置")
     }
 
+    private var canSubmitDraft: Bool {
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachedImage != nil
+    }
+
     private var sendButton: some View {
-        Button {
-            if chat.running {
+        let stopping = chat.running && !canSubmitDraft
+        return Button {
+            if stopping {
                 Task { await chat.cancel(computer: computer, sessionId: sessionId) }
                 return
             }
-            let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+            let submittedDraft = draft
+            let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            let submittedImage = attachedImage
+            let delivery: MobilePromptDelivery = followUpQueue ? .queue : .steer
             Task {
-                if await chat.send(text, image: attachedImage, computer: computer, sessionId: sessionId) {
-                    draft = ""
-                    attachedImage = nil
+                if await chat.send(text, image: submittedImage, computer: computer, sessionId: sessionId,
+                                   delivery: delivery) {
+                    if draft == submittedDraft { draft = "" }
+                    if attachedImage == submittedImage { attachedImage = nil }
                 }
             }
         } label: {
-            Image(systemName: chat.running ? "stop.fill" : "arrow.up")
+            Image(systemName: stopping ? "stop.fill" : "arrow.up")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 34, height: 34)
                 .background(.blue, in: Circle())
         }
-        .disabled(chat.running ? (chat.cancelling || !chat.connected) :
-                  ((draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachedImage == nil)
-                   || chat.sending || chat.loading || !chat.connected))
-        .accessibilityLabel(chat.running ? "停止运行" : "发送")
+        .disabled(stopping ? (chat.cancelling || !chat.connected) :
+                  (!canSubmitDraft || chat.sending || chat.loading || !chat.connected))
+        .accessibilityLabel(stopping ? "停止运行" :
+                            (chat.running ? (followUpQueue ? "排队发送" : "立即发送") : "发送"))
     }
 
     private func chatRow(_ line: ChatLine) -> some View {

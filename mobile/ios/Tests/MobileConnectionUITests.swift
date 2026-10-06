@@ -1,6 +1,18 @@
 import XCTest
 
 final class MobileConnectionUITests: XCTestCase {
+    func testDeniedCameraCanReturnToPairing() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-welcome", "--dsh-mobile-test-camera-denied"]
+        app.launch()
+        app.buttons["连接电脑"].tap()
+        app.buttons["扫描二维码"].tap()
+        XCTAssertTrue(app.buttons["返回粘贴连接链接"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["取消"].exists)
+        app.buttons["返回粘贴连接链接"].tap()
+        XCTAssertTrue(app.buttons["从剪贴板粘贴"].waitForExistence(timeout: 3))
+    }
+
     func testWelcomeBrandAndComputerConnection() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-welcome"]
@@ -68,6 +80,25 @@ final class MobileConnectionUITests: XCTestCase {
         add(settingsScreenshot)
     }
 
+    func testTopMenuBalanceRemainsReachableInLandscape() {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]",
+                               "--dsh-mobile-test-balance", "23.51"]
+        app.launch()
+        app.buttons["打开顶部菜单"].tap()
+        let balance = app.staticTexts["¥23.51"]
+        XCTAssertTrue(balance.waitForExistence(timeout: 3))
+        let viewport = app.scrollViews["topMenuViewport"]
+        if viewport.exists { viewport.swipeUp() }
+        XCTAssertTrue(balance.isHittable)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
     func testNewConversationComposerLayout() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
@@ -79,7 +110,7 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.buttons["返回远程首页"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Studio Mac"].exists)
         XCTAssertTrue(app.staticTexts["默认工作区"].exists)
-        XCTAssertTrue(app.staticTexts["在这台 Mac 工作"].exists)
+        XCTAssertTrue(app.staticTexts["在这台电脑工作"].exists)
         XCTAssertTrue(app.staticTexts["当前分支"].exists)
         XCTAssertTrue(app.textFields["newConversationInput"].exists)
         XCTAssertTrue(app.staticTexts["V41 Flash"].exists)
@@ -284,6 +315,11 @@ final class MobileConnectionUITests: XCTestCase {
         app.staticTexts["过程 · 1 项操作"].tap()
         XCTAssertTrue(app.staticTexts["README.md"].exists)
         XCTAssertFalse(app.buttons["发送"].exists)
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        composer.typeText("补充检查")
+        XCTAssertTrue(app.buttons["排队发送"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["停止运行"].exists)
     }
 
     func testRemoteProjectsAndSearch() {

@@ -127,7 +127,8 @@ final class MobileConnection: ObservableObject {
         if let data = read(service: service, account: account),
            let saved = try? JSONDecoder().decode(SavedComputers.self, from: data) {
             computers = saved.items
-            activeID = saved.activeID
+            activeID = UserDefaults.standard.object(forKey: "mobile.openRemoteOnLaunch") as? Bool == false
+                ? nil : saved.activeID
         } else if let data = read(service: "com.devtools.terminalSimple.dsh-url", account: "connection-url"),
                   let text = String(data: data, encoding: .utf8), let saved = URL(string: text) {
             connect(saved)
@@ -253,7 +254,7 @@ final class MobileConnection: ObservableObject {
     func leave() { commit(computers, active: nil) }
     func expireActive() {
         leave()
-        error = "连接已失效，请从这台 Mac 重新复制连接链接"
+        error = "连接已失效，请从这台电脑重新复制连接链接"
     }
     func remove(_ id: String) {
         commit(computers.filter { $0.id != id }, active: activeID == id ? nil : activeID)
@@ -273,7 +274,7 @@ struct ConnectView: View {
         NavigationStack {
             Form {
                 if !connection.computers.isEmpty {
-                    Section("已配对的 Mac") {
+                    Section("已配对的电脑") {
                         ForEach(connection.computers) { computer in
                             Button { connection.select(computer.id) } label: {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -288,7 +289,7 @@ struct ConnectView: View {
                         }
                     }
                 }
-                Section("连接 Mac") {
+                Section("连接电脑") {
                     Text("从电脑扫码或粘贴连接链接，电脑名称会自动识别。连接后可在手机上改名。")
                     Button("扫描二维码") { scanning = true }
                     TextField("https://…?token=…", text: $text)
@@ -374,58 +375,141 @@ struct DshWebView: UIViewRepresentable {
     }
 }
 
-struct QRScanner: UIViewControllerRepresentable {
+/// Camera permission failures retain a dismissible scanner and a paste-link fallback.
+struct QRScanner: View {
     let onCode: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var failure: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                CameraScanner(onCode: onCode, onFailure: { failure = $0 })
+                if let failure {
+                    VStack(spacing: 16) {
+                        Text(failure).multilineTextAlignment(.center)
+                        Button("返回粘贴连接链接") { dismiss() }
+                        Button("打开系统设置") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(uiColor: .systemBackground))
+                }
+            }
+            .navigationTitle("扫描二维码")
+            .toolbar { ToolbarItem(placement: .cancellationAction) {
+                Button("取消") { dismiss() }
+            } }
+        }
+    }
+}
+
+private struct CameraScanner: UIViewControllerRepresentable {
+    let onCode: (String) -> Void
+    let onFailure: (String) -> Void
     func makeUIViewController(context: Context) -> ScannerController {
-        ScannerController(onCode: onCode)
+        ScannerController(onCode: onCode, onFailure: onFailure)
     }
     func updateUIViewController(_ controller: ScannerController, context: Context) {}
 }
 
+/// Serializes capture setup, start and stop; dismissed permission callbacks never start capture.
 final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     private let session = AVCaptureSession()
+    private let captureQueue = DispatchQueue(label: "com.devtools.terminalSimple.camera")
     private let onCode: (String) -> Void
+    private let onFailure: (String) -> Void
+    private var preview: AVCaptureVideoPreviewLayer?
     private var delivered = false
+    private var visible = false
 
-    init(onCode: @escaping (String) -> Void) {
+    init(onCode: @escaping (String) -> Void, onFailure: @escaping (String) -> Void) {
         self.onCode = onCode
+        self.onFailure = onFailure
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        visible = true
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-camera-denied") {
+            onFailure("相机权限未开启，可在设置中开启，或返回粘贴连接链接")
+            return
+        }
+        #endif
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-            guard granted else { return }
-            DispatchQueue.main.async { self?.start() }
+            DispatchQueue.main.async {
+                guard let self, self.visible else { return }
+                if granted { self.start() }
+                else { self.onFailure("相机权限未开启，可在设置中开启，或返回粘贴连接链接") }
+            }
         }
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        preview?.frame = view.bounds
+    }
+
     private func start() {
-        guard let camera = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: camera), session.canAddInput(input) else { return }
-        session.addInput(input)
-        let output = AVCaptureMetadataOutput()
-        guard session.canAddOutput(output) else { return }
-        session.addOutput(output)
-        output.setMetadataObjectsDelegate(self, queue: .main)
-        output.metadataObjectTypes = [.qr]
-        let preview = AVCaptureVideoPreviewLayer(session: session)
-        preview.frame = view.bounds
-        preview.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(preview)
-        DispatchQueue.global(qos: .userInitiated).async { self.session.startRunning() }
+        if preview == nil {
+            let preview = AVCaptureVideoPreviewLayer(session: session)
+            preview.frame = view.bounds
+            preview.videoGravity = .resizeAspectFill
+            view.layer.addSublayer(preview)
+            self.preview = preview
+        }
+        captureQueue.async { [self] in
+            if session.inputs.isEmpty {
+                guard let camera = AVCaptureDevice.default(for: .video),
+                      let input = try? AVCaptureDeviceInput(device: camera), session.canAddInput(input) else {
+                    reportUnavailable()
+                    return
+                }
+                session.beginConfiguration()
+                session.addInput(input)
+                let output = AVCaptureMetadataOutput()
+                guard session.canAddOutput(output) else {
+                    session.removeInput(input)
+                    session.commitConfiguration()
+                    reportUnavailable()
+                    return
+                }
+                session.addOutput(output)
+                output.setMetadataObjectsDelegate(self, queue: .main)
+                output.metadataObjectTypes = [.qr]
+                session.commitConfiguration()
+            }
+            if !session.isRunning { session.startRunning() }
+        }
+    }
+
+    private func reportUnavailable() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.visible else { return }
+            self.onFailure("相机暂不可用，请返回粘贴连接链接")
+        }
     }
 
     func metadataOutput(_ output: AVCaptureMetadataOutput,
                         didOutput objects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        guard !delivered, let code = (objects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
+        guard visible, !delivered,
+              let code = (objects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
         delivered = true
         onCode(code)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if session.isRunning { session.stopRunning() }
+        visible = false
+        captureQueue.async { [self] in
+            if session.isRunning { session.stopRunning() }
+        }
     }
 }
