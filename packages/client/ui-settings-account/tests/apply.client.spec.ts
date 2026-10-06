@@ -78,7 +78,7 @@ it('refreshes funds after task completion and window focus, and removes listener
   c.mock.streams.push('$events', { type: 'emit', event: 'api-session/status', args: ['balance-session', true] })
   await c.mock.streams.drained('$events')
   expect(c.mock.remote.account.getBalance).not.toHaveBeenCalled()
-  const spent = { ...funds, value: [{ currency: 'CNY', balance: '9.50' }] }
+  const spent: AccountDetails['balance'] = { ...funds, value: [{ currency: 'CNY', balance: '9.50' }] }
   c.mock.remote.account.getBalance.mockResolvedValue(ok(spent))
   c.mock.streams.push('$events', { type: 'emit', event: 'api-session/status', args: ['balance-session', false] })
   await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().details?.balance).toEqual(spent) })
