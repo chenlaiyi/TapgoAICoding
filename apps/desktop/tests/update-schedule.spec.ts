@@ -25,7 +25,7 @@ function fixture(jitter = 0, random = () => 0.5) {
     return ['verified']
   })
   const quitAndInstall = vi.fn()
-  const updater = Object.assign(events, { checkForUpdates, downloadUpdate, quitAndInstall }) as unknown as AppUpdater
+  const updater = Object.assign(events, { checkForUpdates, downloadUpdate, quitAndInstall }) as AppUpdater
   const states: DesktopUpdateState[] = []
   const coordinator = new DesktopUpdateCoordinator((state) => { states.push(state); return state }, async () => true,
     updater, () => true, () => '1.0.0')
