@@ -1525,6 +1525,16 @@ describe('desktop main startup', () => {
     })
   })
 
+  it('prepares a discovered update in the background without opening installation dialogs', async () => {
+    harness.updateCheck.mockResolvedValue({ phase: 'available', version: '1.0.1-nightly.1' })
+    harness.updateDownload.mockResolvedValue({ phase: 'ready', version: '1.0.1-nightly.1' })
+    await readyForUpdate()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(harness.updateDownload).toHaveBeenCalledExactlyOnceWith('1.0.1-nightly.1')
+    expect(harness.updateInstall).not.toHaveBeenCalled()
+    expect(harness.dialog.showMessageBox).not.toHaveBeenCalled()
+  })
+
   it('keeps one checking dialog open until the manual check settles, then reports the current version', async () => {
     await readyForUpdate()
     const checked = Promise.withResolvers<DesktopUpdateState>()
@@ -1652,7 +1662,8 @@ describe('desktop main startup', () => {
       await harness.policyBlocked.promise
       expect(signal.aborted).toBe(true)
       await operation
-      expect(harness.updateDownload).not.toHaveBeenCalled()
+      expect(harness.updateDownload).toHaveBeenCalledWith('1.0.1-nightly.1')
+      expect(harness.updateInstall).not.toHaveBeenCalled()
     } finally {
       policy.resolve(Response.json({ code: 500 }, { status: 503 }))
       await operation
