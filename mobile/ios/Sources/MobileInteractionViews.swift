@@ -82,7 +82,7 @@ final class MobileInteractionCenter: ObservableObject {
         do {
             let (_, response) = try await session.data(from: pairing)
             if (response as? HTTPURLResponse)?.statusCode == 401 {
-                error = "配对已过期，请从这台 Mac 重新扫码连接"
+                error = "配对已过期，请从这台电脑重新扫码连接"
                 session.invalidateAndCancel()
                 self.session = nil
                 return
@@ -271,7 +271,7 @@ struct MobileInteractionOverlay: View {
     var body: some View {
         if let approval = center.approvals.first {
             prompt {
-                Text("来自 \(computer?.name ?? "Mac") 的开发确认")
+                Text("来自 \(computer?.name ?? "电脑") 的开发确认")
                     .font(.caption).foregroundStyle(.secondary)
                 ApprovalPromptCard(approval: approval.prompt,
                     onAllow: { Task { await center.answer(approval, allowed: true) } },
@@ -280,7 +280,7 @@ struct MobileInteractionOverlay: View {
             }
         } else if let question = center.questions.first {
             prompt {
-                Text("来自 \(computer?.name ?? "Mac") 的问题")
+                Text("来自 \(computer?.name ?? "电脑") 的问题")
                     .font(.caption).foregroundStyle(.secondary)
                 QuestionPromptCard(question: question.prompt,
                     onSubmit: { answers in Task { await center.answer(question, answers: answers) } },

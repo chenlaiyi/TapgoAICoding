@@ -198,34 +198,44 @@ private final class RemoteSessions: ObservableObject {
             guard decoded.result.ok, let value = decoded.result.value else {
                 throw RemoteError.server(decoded.result.error?.message ?? "请求失败")
             }
+            guard !Task.isCancelled else { return }
             items = value.items.filter { $0.cwd != nil }
             error = nil
             consecutiveFailures = 0
             lastConnectedAt = .now
-            if let baseline = try? await readWorkspaces(session: session, origin: origin) {
+            let baseline = try? await readWorkspaces(session: session, origin: origin)
+            guard !Task.isCancelled else { return }
+            if let baseline {
                 workspaces = baseline.items
                 pinnedSessionIds = baseline.pinnedSessionIds
             }
-            if !quietly { await loadComposerSettings(session: session, origin: origin) }
+            await loadComposerSettings(session: session, origin: origin)
         } catch {
+            guard !Task.isCancelled else { return }
             consecutiveFailures += 1
             if !quietly || consecutiveFailures >= 2 {
                 lastConnectedAt = nil
-                self.error = "无法读取这台 Mac 的对话：\(error.localizedDescription)"
+                self.error = "无法读取这台电脑的对话：\(error.localizedDescription)"
             }
         }
     }
 
     private func loadComposerSettings(session: URLSession, origin: URL) async {
-        if let catalog = try? await rpc(session: session, origin: origin,
-                                        method: "session/modelCatalog", args: [:]) {
+        let catalog = try? await rpc(session: session, origin: origin,
+                                     method: "session/modelCatalog", args: [:])
+        guard !Task.isCancelled else { return }
+        if let catalog {
             applyModelCatalog(catalog)
+        } else {
+            models = []
+            defaultModel = nil
         }
-        let metadata: [String: Any] = ["version": "1.0.41", "locale": Locale.current.identifier,
+        let metadata: [String: Any] = ["version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "", "locale": Locale.current.identifier,
                                        "timezoneOffsetSeconds": TimeZone.current.secondsFromGMT()]
         if let account = try? await rpc(session: session, origin: origin,
                                         method: "account/getBalance", args: ["client": metadata]),
            account["status"] as? String == "ready" {
+            guard !Task.isCancelled else { return }
             let wallets = (account["value"] as? [[String: Any]] ?? [])
                 + (account["bonusWallets"] as? [[String: Any]] ?? [])
             let total = wallets.reduce(Decimal.zero) { partial, wallet in
@@ -239,6 +249,7 @@ private final class RemoteSessions: ObservableObject {
             balance = wallets.contains(where: { $0["currency"] as? String == "CNY" })
                 ? Self.formatBalance(total) : nil
         } else {
+            guard !Task.isCancelled else { return }
             balance = nil
         }
     }
@@ -283,7 +294,8 @@ private final class RemoteSessions: ObservableObject {
         socket.resume()
         defer { socket.cancel(with: .normalClosure, reason: nil) }
         let timeout = Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            do { try await Task.sleep(nanoseconds: 5_000_000_000) }
+            catch { return }
             socket.cancel(with: .goingAway, reason: nil)
         }
         defer { timeout.cancel() }
@@ -467,7 +479,7 @@ private final class RemoteSessions: ObservableObject {
         var errorDescription: String? {
             switch self {
             case .unavailable: return "连接已失效或服务器不可用"
-            case .pairingExpired: return "配对已过期，请从这台 Mac 重新扫码连接"
+            case .pairingExpired: return "配对已过期，请从这台电脑重新扫码连接"
             case .server(let message): return message
             }
         }
@@ -475,6 +487,7 @@ private final class RemoteSessions: ObservableObject {
 }
 
 struct RemoteHomeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     private enum SortMode {
         case priority
         case project
@@ -498,7 +511,7 @@ struct RemoteHomeView: View {
     @State private var showingConnect = false
     @State private var sortMode: SortMode = .project
     @State private var recentFirst = false
-    @AppStorage("mobile.openRemoteOnLaunch") private var openRemoteOnLaunch = false
+    @AppStorage("mobile.openRemoteOnLaunch") private var openRemoteOnLaunch = true
     @AppStorage("mobile.showContextUsage") private var showContextUsage = false
     @AppStorage("mobile.followUpQueue") private var followUpQueue = true
     @State private var editingConnections = false
@@ -664,7 +677,8 @@ struct RemoteHomeView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .task(id: computer.url) {
+            .task(id: scenePhase == .active ? computer.url : nil) {
+                guard scenePhase == .active else { return }
                 await sessions.load(computer: computer)
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(15))
@@ -820,7 +834,7 @@ struct RemoteHomeView: View {
     private var computerSheet: some View {
         NavigationStack {
             List {
-                Section("已配对的 Mac") {
+                Section("已配对的电脑") {
                     ForEach(connection.computers) { item in
                         Button {
                             connection.select(item.id)
@@ -942,7 +956,7 @@ struct RemoteHomeView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("连接检查").font(.system(size: 14, weight: .medium))
                                 Text(sessions.lastConnectedAt.map { "上次成功：\($0.formatted(date: .omitted, time: .shortened))" }
-                                     ?? "尚未连通这台 Mac")
+                                     ?? "尚未连通这台电脑")
                                     .font(.system(size: 12)).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -1068,7 +1082,7 @@ private struct RemoteNewConversationView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("选择项目目录")
-                selectionRow("laptopcomputer", "在这台 Mac 工作", selectable: false)
+                selectionRow("laptopcomputer", "在这台电脑工作", selectable: false)
                 selectionRow("point.3.connected.trianglepath.dotted", "当前分支", selectable: false)
             }
             .padding(.horizontal, 26)
@@ -1311,7 +1325,7 @@ private struct RemoteDirectoryBrowser: View {
                         }
                     }
                 } else if loading {
-                    ProgressView("正在读取 Mac 文件夹…")
+                    ProgressView("正在读取电脑文件夹…")
                 }
                 if let error {
                     Section {
@@ -1345,7 +1359,7 @@ private struct RemoteDirectoryBrowser: View {
                     if let parent = listing?.path { Task { await create(parent: parent) } }
                 }
             } message: {
-                Text("在当前 Mac 目录下新建文件夹，并加入项目列表")
+                Text("在当前电脑目录下新建文件夹，并加入项目列表")
             }
         }
         .task { await load(path: nil) }
@@ -1358,7 +1372,7 @@ private struct RemoteDirectoryBrowser: View {
             listing = try await sessions.listDirectories(computer: computer, path: path)
             error = nil
         } catch {
-            self.error = "无法浏览这台 Mac 的文件夹，请重试"
+            self.error = "无法浏览这台电脑的文件夹，请重试"
         }
     }
 

@@ -17,3 +17,11 @@ The Remote home refreshes session status every 15 seconds while visible, retaini
 The initial customer trial targets iPhone in portrait orientation; the Xcode target excludes iPad until its native layouts are verified.
 
 The iPhone app icon uses the shared dot mascot generated from `apps/desktop/resources/dot-master.png`; regenerate it with `node apps/desktop/scripts/render-brand-assets.mjs` from the repository root.
+
+The scanner offers Cancel and a paste-link fallback when camera permission is denied or capture is unavailable. Camera startup and shutdown run on one serial queue; dismissing the scanner prevents delayed permission callbacks from starting capture. Account requests report the installed app version.
+
+Available balance refreshes every 15 seconds while the home or conversation is visible, and after a conversation turn ends; returning to the foreground resumes refresh. Cancelled requests do not overwrite connection status.
+
+The bundled privacy manifest declares app-local model and interface preferences stored in UserDefaults with reason CA92.1.
+
+Remote settings control startup connection restoration, context usage visibility in the composer, and Queue or Steer delivery for follow-up messages. During a running turn, a nonempty draft offers Send; an empty draft offers Stop.

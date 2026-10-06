@@ -14,7 +14,7 @@
     <string>UIInterfaceOrientationPortrait</string>
   </array>
   <key>UILaunchStoryboardName</key><string>LaunchScreen</string>
-  <key>NSCameraUsageDescription</key><string>扫描 DSH 连接链接的二维码。</string>
+  <key>NSCameraUsageDescription</key><string>扫描电脑端“连接手机”提供的二维码，以连接您的电脑。</string>
   <key>CFBundleURLTypes</key><array><dict>
     <key>CFBundleTypeRole</key><string>Viewer</string>
     <key>CFBundleURLSchemes</key><array><string>dsh-mobile</string></array>
