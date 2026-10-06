@@ -20,16 +20,18 @@ function fixture(jitter = 0, random = () => 0.5) {
   const checkForUpdates = vi.fn(async () => ({ isUpdateAvailable: false, updateInfo: { version: '1.0.0' } }))
   const events = new EventEmitter()
   const downloadUpdate = vi.fn(async () => {
+    events.emit('download-progress', { percent: 100 })
     events.emit('update-downloaded', { version: '1.1.0-nightly.1' })
     return ['verified']
   })
   const updater = Object.assign(events, { checkForUpdates, downloadUpdate, quitAndInstall: vi.fn() }) as unknown as AppUpdater
+  const quitAndInstall = vi.spyOn(updater, 'quitAndInstall')
   const states: DesktopUpdateState[] = []
   const coordinator = new DesktopUpdateCoordinator((state) => { states.push(state); return state }, async () => true,
     updater, () => true, () => '1.0.0')
   const schedule = new DesktopUpdateSchedule(coordinator, { intervalMs: 10_000, maxBackoffMs: 40_000, jitter }, random)
   cleanup.push(() => { schedule.dispose(); coordinator.dispose() })
-  return { schedule, coordinator, states, checkForUpdates, downloadUpdate }
+  return { schedule, coordinator, states, checkForUpdates, downloadUpdate, quitAndInstall }
 }
 
 describe('ordinary update polling', () => {
@@ -108,16 +110,17 @@ describe('ordinary update polling', () => {
     expect(f.checkForUpdates).toHaveBeenCalledTimes(3)
   })
 
-  it('never downloads automatically or retargets a downloaded version during polling', async () => {
+  it('downloads discovered updates in the background and retains readiness until installation is requested', async () => {
     const f = fixture()
     f.checkForUpdates.mockResolvedValue({ isUpdateAvailable: true, updateInfo: { version: '1.1.0-nightly.1' } })
     await f.schedule.check()
     await vi.advanceTimersByTimeAsync(10_000)
-    expect(f.downloadUpdate).not.toHaveBeenCalled()
-    await f.coordinator.download('1.1.0-nightly.1')
+    expect(f.downloadUpdate).toHaveBeenCalledOnce()
+    expect(f.quitAndInstall).not.toHaveBeenCalled()
+    expect(f.states.map(state => state.phase)).toEqual(['available', 'downloading', 'verifying', 'ready'])
     await vi.advanceTimersByTimeAsync(50_000)
     await f.schedule.check(true)
-    expect(f.checkForUpdates).toHaveBeenCalledTimes(2)
+    expect(f.checkForUpdates).toHaveBeenCalledOnce()
     expect(f.downloadUpdate).toHaveBeenCalledOnce()
     expect(f.coordinator.state).toEqual({ phase: 'ready', version: '1.1.0-nightly.1' })
   })
@@ -125,13 +128,58 @@ describe('ordinary update polling', () => {
   it('retains a failed download for user retry without automatic transfers', async () => {
     const f = fixture()
     f.checkForUpdates.mockResolvedValue({ isUpdateAvailable: true, updateInfo: { version: '1.1.0-nightly.1' } })
-    await f.schedule.check()
     f.downloadUpdate.mockRejectedValue(new Error('disk full'))
-    await f.coordinator.download('1.1.0-nightly.1')
+    await f.schedule.check()
     await vi.advanceTimersByTimeAsync(50_000)
     expect(f.checkForUpdates).toHaveBeenCalledOnce()
     expect(f.downloadUpdate).toHaveBeenCalledOnce()
     expect(f.coordinator.state).toMatchObject({ phase: 'error', failedOperation: 'download' })
+  })
+
+  it('joins checks during background downloading without installing or starting another transfer', async () => {
+    const f = fixture()
+    f.checkForUpdates.mockResolvedValue({ isUpdateAvailable: true, updateInfo: { version: '1.1.0-nightly.1' } })
+    const transfer = Promise.withResolvers<string[]>()
+    f.downloadUpdate.mockImplementationOnce(() => transfer.promise)
+    const automatic = f.schedule.check()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(f.coordinator.state.phase).toBe('downloading')
+    const joined = f.schedule.check()
+    const manual = f.schedule.check(true)
+    await vi.advanceTimersByTimeAsync(100_000)
+    expect(f.checkForUpdates).toHaveBeenCalledOnce()
+    expect(f.downloadUpdate).toHaveBeenCalledOnce()
+    expect(f.quitAndInstall).not.toHaveBeenCalled()
+    transfer.reject(new Error('offline'))
+    await Promise.all([automatic, joined, manual])
+    expect(f.coordinator.state).toMatchObject({ phase: 'error', failedOperation: 'download' })
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
+  it('does not start a background transfer when a check finishes after disposal', async () => {
+    const f = fixture()
+    const checked = Promise.withResolvers<Awaited<ReturnType<typeof f.checkForUpdates>>>()
+    f.checkForUpdates.mockImplementationOnce(() => checked.promise)
+    const checking = f.schedule.check()
+    await vi.advanceTimersByTimeAsync(0)
+    f.schedule.dispose()
+    checked.resolve({ isUpdateAvailable: true, updateInfo: { version: '1.1.0-nightly.1' } })
+    await checking
+    expect(f.downloadUpdate).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('reports a rejected periodic operation and recovers at the backoff deadline', async () => {
+    const f = fixture()
+    const failure = new Error('check interrupted')
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await f.schedule.check()
+    vi.spyOn(f.coordinator, 'check').mockRejectedValueOnce(failure)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(report).toHaveBeenCalledExactlyOnceWith(failure)
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(f.checkForUpdates).toHaveBeenCalledTimes(2)
+    expect(f.coordinator.state).toEqual({ phase: 'idle' })
   })
 
   it('clears its timer and does not rearm after a pending check settles during disposal', async () => {

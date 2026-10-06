@@ -1,4 +1,4 @@
-/** Ordinary feed polling; policy queries and user-authorized transfers keep their own lifetimes. */
+/** Ordinary feed polling and background downloads; installation requires explicit user confirmation. */
 
 import { resolveDurationMs } from './duration-env.ts'
 import type { DesktopUpdateCoordinator } from './update-coordinator.ts'
@@ -42,7 +42,7 @@ export class DesktopUpdateSchedule {
    * @param now - Monotonic milliseconds, independent of wall-clock corrections.
    */
   constructor(
-    private readonly updates: Pick<DesktopUpdateCoordinator, 'check' | 'state'>,
+    private readonly updates: Pick<DesktopUpdateCoordinator, 'check' | 'download' | 'state'>,
     private readonly config: DesktopUpdateScheduleConfig,
     private readonly random: () => number = Math.random,
     private readonly now: () => number = () => performance.now(),
@@ -54,7 +54,7 @@ export class DesktopUpdateSchedule {
    * Start immediately when due; explicit requests bypass the deadline and share in-flight work.
    * @param manual - Whether a check failure must be visible, including when joining an automatic request.
    * @param force - Whether policy arrival or explicit intent bypasses the automatic deadline.
-   * @returns Current state when not due, otherwise the coordinator result. Disposal rejects new work.
+   * @returns Current state when not due, otherwise check and background download readiness without installing. Disposal rejects new work.
    */
   async check(manual = false, force = manual): Promise<DesktopUpdateState> {
     if (this.disposed) throw new Error('desktop update: polling is disposed')
@@ -66,6 +66,11 @@ export class DesktopUpdateSchedule {
     this.pending = Promise.resolve().then(() => {
       if (this.disposed) throw new Error('desktop update: polling is disposed')
       return this.updates.check(manual)
+    }).then(async (state) => {
+      if (!manual && !this.disposed && state.phase === 'available' && state.version !== undefined) {
+        return this.updates.download(state.version)
+      }
+      return state
     }).then(
       (state) => {
         this.complete(state.phase === 'error' && state.failedOperation === 'check')

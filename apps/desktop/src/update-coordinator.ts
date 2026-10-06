@@ -98,7 +98,7 @@ export class DesktopUpdateCoordinator {
   }
 
   /**
-   * @param version - Version shown in the user's download confirmation.
+   * @param version - Checked candidate version for a background or user-requested download.
    * @returns Download readiness or failure, without authorizing installation.
    */
   async download(version: string): Promise<DesktopUpdateState> {

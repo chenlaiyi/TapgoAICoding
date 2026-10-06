@@ -177,3 +177,19 @@ it.each([
     expect((await screen.findByRole('tooltip')).textContent).toBe(label)
   } finally { f.view.unmount(); f.status.resolve({ phase: 'idle' }) }
 })
+
+it('shows a prepared background update and waits for a click on Install and Restart', async () => {
+  const f = fixture()
+  try {
+    await act(async () => { f.status.resolve({ phase: 'idle' }) })
+    await f.emit({ phase: 'downloading', version: '1.0.1', percent: 58 })
+    await f.emit({ phase: 'verifying', version: '1.0.1' })
+    await f.emit({ phase: 'ready', version: '1.0.1' })
+    const button = screen.getByRole('button', { name: '安装并重启' })
+    expect(button.textContent).toMatchInlineSnapshot('"安装并重启"')
+    expect(f.open).not.toHaveBeenCalled()
+    fireEvent.click(button)
+    await act(async () => {})
+    expect(f.open).toHaveBeenCalledOnce()
+  } finally { f.view.unmount() }
+})
