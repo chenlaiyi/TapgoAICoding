@@ -208,7 +208,7 @@ const harness = await vi.hoisted(async () => {
     failWindow(error: Error) { windowFailure = error },
     windows, hosts, handlers, app, FakeWindow, FakeHost, powerMonitor, nativeTheme, trays, FakeTray, backgroundNotice, shellDialog,
     menu, popup, clipboard: { writeText: vi.fn() }, socketHeaders: vi.fn(), loginShell, readLoginShell, analytics,
-    updateCheck, updateDownload, updateInstall,
+    updateCheck, updateDownload, updateInstall, hasPackagedUpdateSource: true,
     platformDispose,
     platformCloseAndWait,
 
@@ -359,6 +359,7 @@ vi.mock('../src/update-coordinator.ts', () => ({ DesktopUpdateCoordinator: class
     harness.prepareUpdate = beforeRestart
     harness.publishUpdate = publish
   }
+  get hasPackagedSource() { return harness.hasPackagedUpdateSource }
   get state() { return harness.updateState }
   readonly check = harness.updateCheck
   readonly download = harness.updateDownload
@@ -414,6 +415,7 @@ beforeEach(() => {
   testAuth.login.mockResolvedValue('cancelled')
   vi.useFakeTimers()
   harness.reset()
+  harness.hasPackagedUpdateSource = true
   const userData = mkdtempSync(join(tmpdir(), 'dsh-main-user-data-'))
   onTestFinished(() => { rmSync(userData, { recursive: true, force: true }) })
   harness.app.getPath.mockImplementation(name => name === 'userData' ? userData : `desktop-test-${name}`)
@@ -1553,6 +1555,23 @@ describe('desktop main startup', () => {
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
       message: 'You’re up to date!', detail: 'Current version: 1.0.0',
     }))
+  })
+
+  it.each([false, true])('offers the official download page from an unsigned Windows update entry (menu=%s)', async (menu) => {
+    await readyForUpdate()
+    harness.hasPackagedUpdateSource = false
+    harness.updateCheck.mockClear()
+    harness.dialog.showMessageBox.mockResolvedValue({ response: 0 })
+    if (menu) {
+      const action = applicationMenuItems().find(item => item.label === en.checkUpdatesMenu)
+      Reflect.apply(action!.click!, undefined, [])
+    }
+    await invoke(DESKTOP_IPC.updatesOpen, 'app')
+    expect(harness.dialog.showMessageBox).toHaveBeenCalledWith(expect.objectContaining({ message: en.updateManualTitle }))
+    expect(harness.openExternal).toHaveBeenCalledExactlyOnceWith('https://itapgo.com/terminal/')
+    expect(harness.updateCheck).not.toHaveBeenCalled()
+    expect(harness.updateDownload).not.toHaveBeenCalled()
+    expect(harness.updateInstall).not.toHaveBeenCalled()
   })
 
   it('reports a manual check failure without offering a download', async () => {
