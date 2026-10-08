@@ -87,9 +87,9 @@ final class MobileConnectionUITests: XCTestCase {
         let permission = app.buttons["访问权限"]
         let model = app.staticTexts["V41 Flash"]
         let balance = app.staticTexts["余额 ¥28.51"]
-        XCTAssertLessThan(abs(permission.frame.midY - model.frame.midY), 12)
+        XCTAssertGreaterThanOrEqual(permission.frame.height, 44)
+        XCTAssertLessThanOrEqual(balance.frame.maxX, app.frame.maxX)
         XCTAssertLessThan(abs(model.frame.midY - balance.frame.midY), 12)
-        XCTAssertLessThan(permission.frame.maxX, model.frame.minX)
         XCTAssertLessThan(model.frame.maxX, balance.frame.minX)
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         let screenshot = XCTAttachment(screenshot: app.screenshot())
@@ -443,7 +443,7 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Studio Mac 工作"].exists)
 
         app.buttons["远程, Studio Mac 工作"].tap()
-        XCTAssertTrue(app.staticTexts["已配对的电脑"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["已配对的 Mac"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Studio Mac 工作"].exists)
         XCTAssertFalse(app.buttons["重命名当前电脑"].exists)
         XCTAssertFalse(app.buttons["连接其他 Mac"].exists)
@@ -469,4 +469,163 @@ final class MobileConnectionUITests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Studio Mac 工作")).firstMatch.tap()
         XCTAssertTrue(app.staticTexts["远程"].waitForExistence(timeout: 5))
     }
+
+    func testReadingHistorySurvivesLiveReplyAndCanReturnToLatest() throws {
+        let messages: [[String: Any]] = (1...24).map {
+            ["id": $0, "role": "assistant", "text": "历史消息 \($0)\n\n这是用于验证阅读位置的完整回复。"]
+        }
+        let reply = (1...18).map { "流式段落 \($0)" }.joined(separator: "\n\n") + "\n\n实时回复末尾"
+        let app = try launchInteractionChat(messages: messages, append: reply)
+        let transcript = app.scrollViews["chatTranscript"]
+        XCTAssertTrue(app.staticTexts["历史消息 24"].waitForExistence(timeout: 5))
+        for _ in 0..<3 { transcript.swipeDown() }
+        let visibleHistory = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "历史消息 "))
+            .allElementsBoundByIndex.first { $0.isHittable }
+        XCTAssertNotNil(visibleHistory)
+        let label = try XCTUnwrap(visibleHistory?.label)
+        let originalY = try XCTUnwrap(visibleHistory?.frame.midY)
+        app.buttons["追加测试回复"].tap()
+        XCTAssertTrue(app.buttons["chatJumpToLatest"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[label].isHittable)
+        XCTAssertEqual(app.staticTexts[label].frame.midY, originalY, accuracy: 12)
+        app.buttons["chatJumpToLatest"].tap()
+        let tail = app.staticTexts["实时回复末尾"]
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: tail)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed)
+        keepScreenshot(app, name: "latest-stream-reply")
+    }
+
+    func testLiveReplyFollowsItsActualEnd() throws {
+        let app = try launchInteractionChat(messages: [["id": 1, "role": "assistant", "text": "初始回复"]],
+                                            append: (1...18).map { "实时内容 \($0)" }.joined(separator: "\n\n")
+                                                + "\n\n长回复最后一段")
+        app.buttons["追加测试回复"].tap()
+        let tail = app.staticTexts["长回复最后一段"]
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: tail)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed)
+        XCTAssertFalse(app.buttons["chatJumpToLatest"].exists)
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(tail.isHittable)
+        XCTAssertLessThan(tail.frame.maxY, composer.frame.minY)
+        keepScreenshot(app, name: "live-reply-above-keyboard")
+    }
+
+    func testSendingKeepsEditsMadeWhileAwaitingResponse() throws {
+        let app = try launchInteractionChat(append: "服务端已开始回复", send: "controlled-success")
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        composer.typeText("first message")
+        app.buttons["发送"].tap()
+        XCTAssertTrue(app.buttons["正在发送"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["正在发送"].isEnabled)
+        app.buttons["追加测试回复"].tap()
+        XCTAssertFalse(app.buttons["正在发送"].isEnabled)
+        composer.typeText(" next draft")
+        app.buttons["完成测试发送"].tap()
+        XCTAssertTrue(app.buttons["停止运行"].waitForExistence(timeout: 5))
+        XCTAssertEqual(composer.value as? String, "first message next draft")
+        XCTAssertTrue(app.buttons["停止运行"].isEnabled)
+        keepScreenshot(app, name: "preserved-draft-after-send")
+    }
+
+    func testSendResponseDoesNotInterruptLaterHistoryReading() throws {
+        let messages: [[String: Any]] = (1...24).map {
+            ["id": $0, "role": "assistant", "text": "历史消息 \($0)\n\n这是用于验证阅读位置的完整回复。"]
+        }
+        let app = try launchInteractionChat(messages: messages, send: "controlled-success")
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        composer.typeText("send while reading")
+        app.buttons["发送"].tap()
+        XCTAssertTrue(app.buttons["完成测试发送"].waitForExistence(timeout: 5))
+        app.buttons["收起键盘"].tap()
+        let transcript = app.scrollViews["chatTranscript"]
+        transcript.swipeDown()
+        let history = try XCTUnwrap(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "历史消息 "))
+            .allElementsBoundByIndex.first { $0.isHittable })
+        let label = history.label
+        let originalY = history.frame.midY
+        app.buttons["完成测试发送"].tap()
+        XCTAssertTrue(app.buttons["发送"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[label].isHittable)
+        XCTAssertEqual(app.staticTexts[label].frame.midY, originalY, accuracy: 12)
+        XCTAssertTrue(app.buttons["chatJumpToLatest"].exists)
+    }
+
+    func testFailedSendKeepsDraftAndAllowsAnotherAttempt() throws {
+        let app = try launchInteractionChat(send: "controlled-failure")
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        composer.typeText("retry this message")
+        app.buttons["发送"].tap()
+        XCTAssertTrue(app.buttons["完成测试发送"].waitForExistence(timeout: 5))
+        app.buttons["完成测试发送"].tap()
+        XCTAssertTrue(app.staticTexts["发送失败，草稿已保留，请再次发送"].waitForExistence(timeout: 5))
+        XCTAssertEqual(composer.value as? String, "retry this message")
+        XCTAssertTrue(app.buttons["发送"].isEnabled)
+        XCTAssertFalse(app.buttons["重试"].exists)
+        app.buttons["发送"].tap()
+        XCTAssertTrue(app.buttons["正在发送"].waitForExistence(timeout: 5))
+        app.buttons["完成测试发送"].tap()
+    }
+
+    func testNewConversationFailureAndAdaptiveDarkComposer() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://creation.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]", "--dsh-mobile-test-balance", "23.51",
+                               "--dsh-mobile-test-start", "delayed-failure",
+                               "-AppleInterfaceStyle", "Dark",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryXXXL"]
+        app.launch()
+        app.buttons["新对话输入框"].tap()
+        let input = app.descendants(matching: .any)["newConversationInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("create a conversation")
+        let send = app.buttons["newConversationSend"]
+        XCTAssertGreaterThanOrEqual(send.frame.height, 44)
+        XCTAssertLessThanOrEqual(send.frame.maxX, app.frame.maxX)
+        XCTAssertTrue(send.isHittable)
+        send.tap()
+        XCTAssertTrue(app.staticTexts["newConversationProgress"].waitForExistence(timeout: 5))
+        XCTAssertFalse(send.isEnabled)
+        XCTAssertTrue(app.staticTexts["newConversationError"].waitForExistence(timeout: 5))
+        XCTAssertEqual(input.value as? String, "create a conversation")
+        XCTAssertTrue(app.buttons["newConversationRetry"].isHittable)
+        keepScreenshot(app, name: "new-conversation-error-dark-large-text")
+        app.buttons["newConversationRetry"].tap()
+        XCTAssertTrue(app.staticTexts["newConversationProgress"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["newConversationError"].waitForExistence(timeout: 5))
+    }
+
+    private func launchInteractionChat(messages: [[String: Any]] = [], append: String? = nil,
+                                       send: String? = nil) throws -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--dsh-mobile-test-url", "https://interaction.example/?token=fixture&name=Studio%20Mac",
+            "--dsh-mobile-test-sessions",
+            "[{\"sessionId\":\"interaction\",\"cwd\":\"/work/TapgoAICoding\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"交互测试\"}}}]",
+            "--dsh-mobile-test-messages", String(decoding: try JSONSerialization.data(withJSONObject: messages), as: UTF8.self),
+            "--dsh-mobile-test-balance", "23.51"
+        ]
+        if let append {
+            app.launchArguments += ["--dsh-mobile-test-append",
+                                    String(decoding: try JSONSerialization.data(withJSONObject: [append]), as: UTF8.self)]
+        }
+        if let send { app.launchArguments += ["--dsh-mobile-test-send", send] }
+        app.launch()
+        app.buttons["交互测试"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["chatComposerInput"].waitForExistence(timeout: 5))
+        return app
+    }
+
+    private func keepScreenshot(_ app: XCUIApplication, name: String) {
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
 }

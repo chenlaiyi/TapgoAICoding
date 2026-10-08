@@ -118,6 +118,7 @@ private final class RemoteSessions: ObservableObject {
     @Published var workspaces: [RemoteWorkspace] = []
     @Published var pinnedSessionIds: [String] = []
     @Published var starting = false
+    @Published var startError: String?
     @Published var models: [ComposerModel] = []
     @Published var defaultModel: String?
     @Published var balance: String?
@@ -313,9 +314,21 @@ private final class RemoteSessions: ObservableObject {
 
     func start(text: String?, computer: SavedComputer, cwd: String? = nil,
                permission: String? = nil, model: ComposerModel? = nil) async -> RemoteSession? {
-        guard let origin = URL(string: computer.id), let pairing = URL(string: computer.url) else { return nil }
+        guard !starting, let origin = URL(string: computer.id),
+              let pairing = URL(string: computer.url) else { return nil }
         starting = true
+        startError = nil
         defer { starting = false }
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--dsh-mobile-test-sessions"),
+           let index = arguments.firstIndex(of: "--dsh-mobile-test-start"),
+           arguments.indices.contains(index + 1), arguments[index + 1] == "delayed-failure" {
+            try? await Task.sleep(for: .seconds(2))
+            startError = "无法开始对话，请重试"
+            return nil
+        }
+        #endif
         do {
             let configuration = URLSessionConfiguration.default
             configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -370,6 +383,11 @@ private final class RemoteSessions: ObservableObject {
                                  projections: nil, draftTitle: text.map { String($0.prefix(40)) } ?? "新对话")
         } catch {
             self.error = "无法开始对话：\(error.localizedDescription)"
+            if case RemoteError.pairingExpired = error {
+                startError = "配对已过期，请从电脑重新扫码连接"
+            } else {
+                startError = "无法开始对话，请重试"
+            }
             return nil
         }
     }
@@ -1016,6 +1034,7 @@ private struct RemoteNewConversationView: View {
     @State private var showingDirectoryBrowser = false
     @State private var createdSession: RemoteSession?
     @State private var showingCreatedSession = false
+    @State private var submitting = false
 
     private var availableWorkspaces: [RemoteWorkspace] {
         if !sessions.workspaces.isEmpty { return sessions.workspaces }
@@ -1040,39 +1059,12 @@ private struct RemoteNewConversationView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button { dismiss() } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 19, weight: .semibold))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+        GeometryReader { geometry in
+            ScrollView {
+                conversationChoices
+                    .frame(minHeight: geometry.size.height)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("返回远程首页")
-            .padding(.leading, 17)
-            .padding(.top, 8)
-            Spacer(minLength: 45)
-            VStack(alignment: .leading, spacing: 0) {
-                Menu {
-                    ForEach(connection.computers) { item in
-                        Button(item.name) { connection.select(item.id) }
-                    }
-                } label: {
-                    selectionRow("desktopcomputer", computer.name, selectable: true)
-                }
-                Button {
-                    showingProjectMenu = true
-                    inputFocused = true
-                } label: {
-                    selectionRow("folder", workspaceTitle, selectable: true)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("选择项目目录")
-                selectionRow("laptopcomputer", "在这台 Mac 工作", selectable: false)
-                selectionRow("point.3.connected.trianglepath.dotted", "当前分支", selectable: false)
-            }
-            .padding(.horizontal, 26)
-            Spacer(minLength: 35)
+            .scrollDismissesKeyboard(.interactively)
         }
         .foregroundStyle(.primary)
         .background(Color(uiColor: .systemBackground))
@@ -1111,6 +1103,7 @@ private struct RemoteNewConversationView: View {
             }
         }
         .task {
+            sessions.startError = nil
             selectedWorkspace = availableWorkspaces.first?.path
             inputFocused = true
         }
@@ -1119,12 +1112,51 @@ private struct RemoteNewConversationView: View {
         }
     }
 
+    private var conversationChoices: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 19, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("返回远程首页")
+            .padding(.leading, 17)
+            .padding(.top, 8)
+            Spacer(minLength: 45)
+            VStack(alignment: .leading, spacing: 0) {
+                Menu {
+                    ForEach(connection.computers) { item in
+                        Button(item.name) { connection.select(item.id) }
+                    }
+                } label: {
+                    selectionRow("desktopcomputer", computer.name, selectable: true)
+                }
+                .disabled(submitting)
+                Button {
+                    showingProjectMenu = true
+                    inputFocused = true
+                } label: {
+                    selectionRow("folder", workspaceTitle, selectable: true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("选择项目目录")
+                .disabled(submitting)
+                selectionRow("laptopcomputer", "在这台 Mac 工作", selectable: false)
+                selectionRow("point.3.connected.trianglepath.dotted", "当前分支", selectable: false)
+            }
+            .padding(.horizontal, 26)
+            Spacer(minLength: 35)
+        }
+    }
+
     private func selectionRow(_ symbol: String, _ title: String, selectable: Bool) -> some View {
         HStack(spacing: 15) {
             Image(systemName: symbol)
                 .font(.system(size: 17))
                 .frame(width: 25)
-            Text(title).font(.system(size: 15, weight: .medium)).lineLimit(1)
+            Text(title).font(.subheadline.weight(.medium))
             if selectable {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10))
@@ -1132,7 +1164,7 @@ private struct RemoteNewConversationView: View {
             Spacer(minLength: 0)
         }
         .foregroundStyle(.secondary)
-        .frame(height: 49)
+        .frame(minHeight: 49)
         .contentShape(Rectangle())
     }
 
@@ -1193,72 +1225,126 @@ private struct RemoteNewConversationView: View {
 
     private var composer: some View {
         VStack(alignment: .leading, spacing: 14) {
+            if submitting {
+                Text("正在创建对话…")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("newConversationProgress")
+            } else if let error = sessions.startError {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(error).font(.footnote).foregroundStyle(.red)
+                        .accessibilityIdentifier("newConversationError")
+                    Spacer(minLength: 0)
+                    Button { startDraft() } label: {
+                        Text("重试")
+                            .font(.footnote)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityIdentifier("newConversationRetry")
+                }
+            }
             TextField("向点点够提问", text: $draft, axis: .vertical)
                 .lineLimit(1...4)
-                .font(.system(size: 16))
+                .font(.body)
                 .focused($inputFocused)
                 .submitLabel(.send)
                 .onSubmit { startDraft() }
+                .disabled(submitting)
                 .accessibilityIdentifier("newConversationInput")
-            HStack(spacing: 10) {
-                Button { showingFullWorkspace = true } label: {
-                    Image(systemName: "plus").font(.system(size: 22))
+            ViewThatFits(in: .horizontal) {
+                composerToolbar(includingMetadata: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    composerMetadata
+                    composerToolbar(includingMetadata: false)
                 }
-                .accessibilityLabel("打开完整工作区")
-                Menu {
-                    Button("仅可查看") { selectedPermission = "read-only" }
-                    Button("工作区内修改") { selectedPermission = "workspace-write" }
-                    Button("完全权限") { selectedPermission = "danger-full-access" }
-                } label: {
-                    Image(systemName: selectedPermission == nil ? "shield.lefthalf.filled" : "shield.checkered")
-                        .font(.system(size: 17))
-                        .foregroundStyle(.orange)
-                }
-                .accessibilityLabel("访问权限")
-                Text(currentModel?.shortName ?? (sessions.loading ? "正在读取模型…" : "模型不可用"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .accessibilityIdentifier("newConversationModel")
-                if let balance = sessions.balance {
-                    Text("余额 \(balance)")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .accessibilityIdentifier("newConversationBalance")
-                }
-                Spacer()
-                if inputFocused {
-                    Button { inputFocused = false } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .font(.system(size: 17))
-                    }
-                    .accessibilityLabel("收起键盘")
-                }
-                Button { startDraft() } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(.blue, in: Circle())
-                }
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sessions.starting)
-                .accessibilityLabel("发送新对话")
             }
         }
         .padding(.horizontal, 17).padding(.vertical, 14)
         .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.black.opacity(0.04)))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.primary.opacity(0.08)))
         .shadow(color: .black.opacity(0.08), radius: 16, y: 6)
         .padding(.horizontal, 14).padding(.bottom, 9)
     }
 
+    private var composerMetadata: some View {
+        HStack(spacing: 8) {
+            Text(currentModel?.shortName ?? (sessions.loading ? "正在读取模型…" : "模型不可用"))
+                .accessibilityIdentifier("newConversationModel")
+            if let balance = sessions.balance {
+                Text("余额 \(balance)")
+                    .accessibilityIdentifier("newConversationBalance")
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+
+    private func composerToolbar(includingMetadata: Bool) -> some View {
+        HStack(spacing: 4) {
+            Button { showingFullWorkspace = true } label: {
+                Image(systemName: "plus").font(.system(size: 22))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(submitting)
+            .accessibilityLabel("打开完整工作区")
+            Menu {
+                Button("仅可查看") { selectedPermission = "read-only" }
+                Button("工作区内修改") { selectedPermission = "workspace-write" }
+                Button("完全权限") { selectedPermission = "danger-full-access" }
+            } label: {
+                Image(systemName: selectedPermission == nil ? "shield.lefthalf.filled" : "shield.checkered")
+                    .font(.system(size: 17))
+                    .foregroundStyle(.orange)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(submitting)
+            .accessibilityLabel("访问权限")
+            if includingMetadata {
+                composerMetadata.fixedSize(horizontal: true, vertical: false)
+            }
+            Spacer(minLength: 0)
+            if inputFocused {
+                Button { inputFocused = false } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.system(size: 17))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("收起键盘")
+            }
+            Button { startDraft() } label: {
+                ZStack {
+                    Circle().fill(.blue).frame(width: 34, height: 34)
+                    if submitting {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+            }
+            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                      || submitting || sessions.starting)
+            .accessibilityLabel(submitting ? "正在创建对话" : "发送新对话")
+            .accessibilityIdentifier("newConversationSend")
+        }
+    }
+
     private func startDraft() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !sessions.starting else { return }
+        guard !text.isEmpty, !submitting, !sessions.starting else { return }
+        submitting = true
+        showingProjectMenu = false
         Task {
+            defer { submitting = false }
             if let session = await sessions.start(text: text, computer: computer,
                                                   cwd: selectedWorkspace, permission: selectedPermission,
                                                   model: currentModel) {

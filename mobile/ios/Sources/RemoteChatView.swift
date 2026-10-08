@@ -3,7 +3,7 @@ import PhotosUI
 import WebKit
 import os
 
-private struct ChatLine: Identifiable {
+private struct ChatLine: Identifiable, Equatable {
     let id: Int
     let role: String
     var text: String
@@ -22,7 +22,7 @@ private struct ChatLine: Identifiable {
     }
 }
 
-private struct ChatActivity: Identifiable {
+private struct ChatActivity: Identifiable, Equatable {
     let id: String
     let name: String
     let detail: String
@@ -50,6 +50,28 @@ private final class RemoteChat: ObservableObject {
     @Published var lines: [ChatLine] = []
     @Published var loading = true
     @Published var sending = false
+    #if DEBUG
+    @Published var testSendPending = false
+    private var testSendCompletion: CheckedContinuation<Bool, Never>?
+
+    func completeTestSend() {
+        let succeeds = ProcessInfo.processInfo.arguments.contains("controlled-success")
+        testSendCompletion?.resume(returning: succeeds)
+        testSendCompletion = nil
+        testSendPending = false
+    }
+
+    func appendTestReply() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "--dsh-mobile-test-append"),
+              arguments.indices.contains(index + 1),
+              let data = arguments[index + 1].data(using: .utf8),
+              let replies = try? JSONDecoder().decode([String].self, from: data),
+              let reply = replies.first else { return }
+        liveActive = true
+        liveText += reply
+    }
+    #endif
     @Published var error: String?
     @Published var models: [RemoteModel] = []
     @Published var selectedModel: String?
@@ -475,9 +497,20 @@ private final class RemoteChat: ObservableObject {
     }
 
     func send(_ text: String, image: Data?, computer: SavedComputer, sessionId: String) async -> Bool {
-        guard let session, let origin = URL(string: computer.id) else { return false }
+        guard !sending, connected, !text.isEmpty || image != nil else { return false }
         sending = true
         defer { sending = false }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-send") {
+            let delivered = await withCheckedContinuation { continuation in
+                testSendCompletion = continuation
+                testSendPending = true
+            }
+            error = delivered ? nil : "发送失败，草稿已保留，请再次发送"
+            return delivered
+        }
+        #endif
+        guard let session, let origin = URL(string: computer.id) else { return false }
         do {
             var request = URLRequest(url: origin.appendingPathComponent("api/session/prompt"))
             request.httpMethod = "POST"
@@ -503,7 +536,7 @@ private final class RemoteChat: ObservableObject {
             error = nil
             return true
         } catch {
-            self.error = "发送失败，请重试"
+            self.error = "发送失败，草稿已保留，请再次发送"
             return false
         }
     }
@@ -672,6 +705,11 @@ private final class RemoteChat: ObservableObject {
     }
 
     func disconnect() {
+        #if DEBUG
+        testSendCompletion?.resume(returning: false)
+        testSendCompletion = nil
+        testSendPending = false
+        #endif
         generation = UUID()
         heartbeat.stop()
         retryTask?.cancel()
@@ -719,6 +757,12 @@ struct RemoteChatView: View {
     @State private var attachedImage: Data?
     @State private var pendingPermission: RemotePermission?
     @FocusState private var composerFocused: Bool
+    @State private var followingLatest = true
+    @State private var bottomVisible = true
+    @State private var bottomPosition = CGFloat.infinity
+    @State private var draggingTranscript = false
+    @State private var scrollRequestCount = 0
+    private let bottomAnchor = "chat-bottom"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -737,6 +781,7 @@ struct RemoteChatView: View {
                 Spacer(minLength: 0)
                 Button { dismiss() } label: {
                     Image(systemName: "square.and.pencil").font(.system(size: 19))
+                        .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("新建对话")
                 Menu {
@@ -744,6 +789,7 @@ struct RemoteChatView: View {
                     Button("完整工作区") { showingWorkspace = true }
                 } label: {
                     Image(systemName: "ellipsis").font(.system(size: 20, weight: .medium))
+                        .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("更多")
             }
@@ -752,48 +798,98 @@ struct RemoteChatView: View {
             .padding(.top, 8)
             .padding(.bottom, 12)
             ScrollViewReader { reader in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
-                        if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
-                        ForEach(chat.lines) { line in
-                            chatRow(line)
-                            .id(line.id)
-                        }
-                        if chat.liveActive {
-                            if chat.liveText.isEmpty, !chat.lines.contains(where: { $0.role == "turn" }) {
-                                Label("正在思考", systemImage: "sparkle")
-                                    .font(.system(size: 14)).foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            } else if !chat.liveText.isEmpty {
-                                AssistantMessageView(text: chat.liveText, reasoning: nil, showCopy: false)
+                GeometryReader { viewport in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            LazyVStack(alignment: .leading, spacing: 14) {
+                                if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
+                                ForEach(chat.lines) { line in
+                                    chatRow(line)
+                                        .id(line.id)
+                                }
                             }
+                            if chat.liveActive {
+                                if chat.liveText.isEmpty, !chat.lines.contains(where: { $0.role == "turn" }) {
+                                    Label("正在思考", systemImage: "sparkle")
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else if !chat.liveText.isEmpty {
+                                    AssistantMessageView(text: chat.liveText, reasoning: nil, showCopy: false)
+                                }
+                            }
+                            Color.clear.frame(height: 1)
+                                .id(bottomAnchor)
+                                .background {
+                                    GeometryReader { anchor in
+                                        Color.clear.preference(key: ChatBottomPreference.self,
+                                                               value: anchor.frame(in: .named("chatTranscript")))
+                                    }
+                                }
                         }
+                        .padding(.horizontal, 16).padding(.vertical, 16)
                     }
-                    .padding(.horizontal, 16).padding(.vertical, 16)
-                }
-                .scrollDismissesKeyboard(.interactively)
-                .onChange(of: chat.lines.count) { _ in
-                    if let last = chat.lines.last { withAnimation { reader.scrollTo(last.id, anchor: .bottom) } }
-                }
-                .onChange(of: chat.liveText) { _ in
-                    if chat.liveActive, let last = chat.lines.last {
-                        reader.scrollTo(last.id, anchor: .bottom)
+                    .coordinateSpace(name: "chatTranscript")
+                    .accessibilityIdentifier("chatTranscript")
+                    .scrollDismissesKeyboard(.interactively)
+                    .onPreferenceChange(ChatBottomPreference.self) { frame in
+                        guard !frame.isNull, !frame.isEmpty else { return }
+                        let movedTowardBottom = frame.minY < bottomPosition
+                        bottomPosition = frame.minY
+                        bottomVisible = frame.minY <= viewport.size.height && frame.maxY >= 0
+                        if bottomVisible && movedTowardBottom && !draggingTranscript { followingLatest = true }
+                        if followingLatest && !bottomVisible { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
-                }
-                .onChange(of: composerFocused) { focused in
-                    if focused, let last = chat.lines.last {
-                        withAnimation { reader.scrollTo(last.id, anchor: .bottom) }
+                    .simultaneousGesture(DragGesture().onChanged { _ in
+                        draggingTranscript = true
+                        followingLatest = false
+                    }.onEnded { gesture in
+                        draggingTranscript = false
+                        if gesture.translation.height < 0 && bottomVisible { followingLatest = true }
+                    })
+                    .onChange(of: chat.lines) { _ in
+                        if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                    }
+                    .onChange(of: chat.liveText) { _ in
+                        if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                    }
+                    .onChange(of: chat.loading) { loading in
+                        if !loading && followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                    }
+                    .onChange(of: viewport.size.height) { _ in
+                        if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                    }
+                    .onChange(of: scrollRequestCount) { _ in
+                        followingLatest = true
+                        withAnimation { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if !bottomVisible && !followingLatest && !chat.loading {
+                            Button {
+                                followingLatest = true
+                                withAnimation { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                            } label: {
+                                Label("回到最新", systemImage: "arrow.down")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 14)
+                                    .frame(minHeight: 44)
+                                    .background(.regularMaterial, in: Capsule())
+                                    .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+                            }
+                            .accessibilityIdentifier("chatJumpToLatest")
+                            .padding(12)
+                        }
                     }
                 }
             }
             if let error = chat.error {
                 HStack(spacing: 8) {
                     Text(error).font(.caption).foregroundStyle(.orange)
-                    if !chat.reconnecting {
+                    if !chat.reconnecting && !chat.connected {
                         Button("重试") {
                             Task { await chat.retry(computer: computer, sessionId: sessionId) }
                         }
                         .font(.caption)
+                        .frame(minHeight: 44)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -807,16 +903,14 @@ struct RemoteChatView: View {
                         Button("移除") { attachedImage = nil }.font(.caption)
                     }
                 }
-                if !composerFocused {
-                    HStack(spacing: 8) {
-                        modelBadge
-                        balanceBadge
-                        Spacer(minLength: 0)
-                    }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 11)
+                HStack(spacing: 8) {
+                    modelBadge
+                    balanceBadge
+                    Spacer(minLength: 0)
                 }
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 11)
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 12) {
                         if !composerFocused { addMenu }
@@ -828,12 +922,11 @@ struct RemoteChatView: View {
                         HStack(spacing: 8) {
                             addMenu
                             permissionButton
-                            modelBadge
-                            balanceBadge
                             Spacer(minLength: 0)
                             Button { composerFocused = false } label: {
                                 Image(systemName: "keyboard.chevron.compact.down")
                                     .font(.system(size: 17))
+                                    .frame(width: 44, height: 44)
                             }
                             .accessibilityLabel("收起键盘")
                             sendButton
@@ -842,7 +935,7 @@ struct RemoteChatView: View {
                 }
                 .padding(.horizontal, 13).padding(.vertical, 9)
                 .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: composerFocused ? 23 : 30))
-                .overlay(RoundedRectangle(cornerRadius: composerFocused ? 23 : 30).stroke(Color.black.opacity(0.05)))
+                .overlay(RoundedRectangle(cornerRadius: composerFocused ? 23 : 30).stroke(Color(uiColor: .separator).opacity(0.3)))
                 .shadow(color: .black.opacity(0.07), radius: 14, y: 5)
             }
             .padding(.horizontal, 15).padding(.bottom, 10)
@@ -867,6 +960,19 @@ struct RemoteChatView: View {
             }
         }
         .onDisappear { chat.disconnect() }
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            HStack {
+                if chat.testSendPending {
+                    Button("完成测试发送") { chat.completeTestSend() }
+                }
+                if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-append") {
+                    Button("追加测试回复") { chat.appendTestReply() }
+                }
+            }
+            .font(.caption).padding(.top, 66)
+        }
+        #endif
         .sheet(isPresented: $showingWorkspace) {
             if let url = URL(string: computer.url) {
                 DshWebView(url: url, sessionId: sessionId, onUnauthorized: onUnauthorized)
@@ -992,7 +1098,7 @@ struct RemoteChatView: View {
 
     private var composerInput: some View {
         TextField("在 \(computer.name) 上工作", text: $draft, axis: .vertical)
-            .font(.system(size: 16))
+            .font(.body)
             .lineLimit(1...5)
             .focused($composerFocused)
             .accessibilityIdentifier("chatComposerInput")
@@ -1006,11 +1112,14 @@ struct RemoteChatView: View {
             HStack(spacing: 4) {
                 Text(selectedModelName)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Image(systemName: "chevron.down").font(.system(size: 9))
             }
         }
         .font(.system(size: 11, weight: .medium))
         .foregroundStyle(.secondary)
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
         .accessibilityLabel("选择模型")
     }
 
@@ -1064,7 +1173,8 @@ struct RemoteChatView: View {
             }
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(.secondary)
-            .fixedSize(horizontal: true, vertical: false)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .tint(Color(uiColor: .secondaryLabel))
         .accessibilityLabel("访问权限")
@@ -1082,35 +1192,48 @@ struct RemoteChatView: View {
         Button { showingAddActions = true } label: {
             Image(systemName: "plus").font(.system(size: 22, weight: .light))
                 .foregroundStyle(.primary)
-                .frame(width: 29, height: 32)
+                .frame(width: 44, height: 44)
         }
         .accessibilityLabel("添加与会话设置")
     }
 
     private var sendButton: some View {
-        Button {
+        let busy = chat.sending || chat.cancelling
+        let enabled = chat.running ? (!busy && chat.connected) :
+            ((!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachedImage != nil)
+             && !chat.sending && !chat.loading && chat.connected)
+        return Button {
             if chat.running {
                 Task { await chat.cancel(computer: computer, sessionId: sessionId) }
                 return
             }
-            let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+            let submittedDraft = draft
+            let submittedImage = attachedImage
+            let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            scrollRequestCount += 1
             Task {
-                if await chat.send(text, image: attachedImage, computer: computer, sessionId: sessionId) {
-                    draft = ""
-                    attachedImage = nil
+                if await chat.send(text, image: submittedImage, computer: computer, sessionId: sessionId) {
+                    if draft == submittedDraft { draft = "" }
+                    if attachedImage == submittedImage { attachedImage = nil }
                 }
             }
         } label: {
-            Image(systemName: chat.running ? "stop.fill" : "arrow.up")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(.blue, in: Circle())
+            Group {
+                if busy {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: chat.running ? "stop.fill" : "arrow.up")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 34, height: 34)
+            .background(enabled || busy ? Color.blue : Color(uiColor: .tertiaryLabel), in: Circle())
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
-        .disabled(chat.running ? (chat.cancelling || !chat.connected) :
-                  ((draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachedImage == nil)
-                   || chat.sending || chat.loading || !chat.connected))
-        .accessibilityLabel(chat.running ? "停止运行" : "发送")
+        .disabled(!enabled)
+        .accessibilityLabel(chat.sending ? "正在发送" : chat.cancelling ? "正在停止" : chat.running ? "停止运行" : "发送")
     }
 
     private func chatRow(_ line: ChatLine) -> some View {
@@ -1268,5 +1391,13 @@ private struct TurnProcessView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+private struct ChatBottomPreference: PreferenceKey {
+    static var defaultValue: CGRect = .null
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
     }
 }
