@@ -29,6 +29,56 @@ public class AndroidParityTest {
         while(System.currentTimeMillis()<end){try{onView(withText(text)).check(matches(enabled?isEnabled():org.hamcrest.Matchers.not(isEnabled())));return;}catch(AssertionError pending){Thread.sleep(200);}}
         onView(withText(text)).check(matches(enabled?isEnabled():org.hamcrest.Matchers.not(isEnabled())));
     }
+    @Test public void editAndDeletePairedComputers() throws Exception {
+        android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
+        context.getSharedPreferences("connections",0).edit().clear().commit();
+        ComputerStore initial=new ComputerStore(context);
+        initial.pair(PairingLink.parse("https://second.example/?token=fixture&name=Second"));
+        initial.pair(PairingLink.parse("https://studio.example/?token=fixture&name=Studio"));
+        try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)) {
+            onView(withText("设置")).perform(click());
+            onView(withText("管理已配对电脑")).perform(click());
+            onView(withContentDescription("编辑Second")).perform(click());
+            onView(withHint("电脑名称")).perform(replaceText("Office"),closeSoftKeyboard());
+            onView(withText("保存")).perform(click());
+            ComputerStore renamed=new ComputerStore(context);
+            assertEquals("https://studio.example",renamed.active);
+            assertEquals("Office",renamed.computers.get(0).name());
+            onView(withContentDescription("删除Office")).perform(click());
+            onView(withText("取消")).perform(click());
+            assertEquals(2,new ComputerStore(context).computers.size());
+            onView(withContentDescription("删除Office")).perform(click());
+            onView(withText("删除")).perform(click());
+            assertEquals("https://studio.example",new ComputerStore(context).active);
+            assertEquals(1,new ComputerStore(context).computers.size());
+            onView(withContentDescription("删除Studio")).perform(click());
+            onView(withText("删除")).perform(click());
+            onView(withText("连接电脑")).check(matches(isDisplayed()));
+            assertNull(new ComputerStore(context).active);
+            assertTrue(new ComputerStore(context).computers.isEmpty());
+        }
+        try(ActivityScenario<MainActivity> reopened=ActivityScenario.launch(MainActivity.class)) {
+            onView(withText("连接电脑")).check(matches(isDisplayed()));
+        }
+    }
+    @Test public void manageComputersWhileDisconnected() throws Exception {
+        android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
+        context.getSharedPreferences("connections",0).edit().clear().commit();
+        ComputerStore initial=new ComputerStore(context);
+        initial.pair(PairingLink.parse("https://second.example/?token=fixture&name=Second"));
+        initial.active=null; initial.save();
+        try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)) {
+            onView(withText("管理已配对电脑")).perform(click());
+            onView(withContentDescription("编辑Second")).perform(click());
+            onView(withHint("电脑名称")).perform(replaceText("Offline"),closeSoftKeyboard());
+            onView(withText("保存")).perform(click());
+            assertNull(new ComputerStore(context).active);
+            onView(withContentDescription("删除Offline")).perform(click());
+            onView(withText("删除")).perform(click());
+            onView(withText("连接电脑")).check(matches(isDisplayed()));
+            assertTrue(new ComputerStore(context).computers.isEmpty());
+        }
+    }
     @Test public void welcomeUsesSharedBrand(){
         android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.getSharedPreferences("connections",0).edit().clear().commit();

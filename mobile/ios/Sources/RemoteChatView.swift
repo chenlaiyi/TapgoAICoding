@@ -603,7 +603,7 @@ private final class RemoteChat: ObservableObject {
             selectedModel = "deepseek-account/deepseek-v41-flash"
             if let index = arguments.firstIndex(of: "--dsh-mobile-test-api-balance"), arguments.indices.contains(index + 1) {
                 funds.providers["deepseek-official"] = "¥" + arguments[index + 1]
-                models.append(RemoteModel(id: "deepseek-official/deepseek-chat", provider: "deepseek-official", model: "deepseek-chat", name: "API Chat"))
+                models.append(RemoteModel(id: "deepseek-official/deepseek-chat", provider: "deepseek-official", model: "deepseek-chat", name: "DeepSeek V41 Flash"))
             }
             permissions = [
                 RemotePermission(id: "read-only", name: "仅可查看", description: "只能读取，不允许修改文件"),
@@ -1041,7 +1041,7 @@ struct RemoteChatView: View {
                             Task { await chat.selectModel(model, computer: computer, sessionId: sessionId) }
                         } label: {
                             HStack {
-                                Text(shortModelName(model.name)).foregroundStyle(.primary)
+                                Text(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider)).foregroundStyle(.primary)
                                 Spacer()
                                 if chat.selectedModel == model.id { Image(systemName: "checkmark") }
                             }
@@ -1065,7 +1065,7 @@ struct RemoteChatView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(model.name).foregroundStyle(.primary)
-                                        Text(model.provider).font(.caption).foregroundStyle(.secondary)
+                                        Text(model.provider == "deepseek-account" ? "账号模型" : "API 模型").font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     if chat.selectedModel == model.id { Image(systemName: "checkmark") }
@@ -1155,12 +1155,8 @@ struct RemoteChatView: View {
         guard let selectedModel = chat.selectedModel else { return "选择模型" }
         let model = chat.models.first { $0.id == selectedModel }
         let modelID = model?.model ?? selectedModel.split(separator: "/").last.map(String.init) ?? selectedModel
-        return mobileModelDisplayName(model?.name ?? modelID, modelID: modelID)
-    }
-
-    private func shortModelName(_ name: String) -> String {
-        let modelID = chat.models.first(where: { $0.name == name })?.model ?? name
-        return mobileModelDisplayName(name, modelID: modelID)
+        let provider = model?.provider ?? selectedModel.split(separator: "/").first.map(String.init) ?? ""
+        return mobileModelDisplayName(model?.name ?? modelID, modelID: modelID, provider: provider)
     }
 
     @ViewBuilder private var balanceBadge: some View {
