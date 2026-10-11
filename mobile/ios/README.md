@@ -19,3 +19,5 @@ The Remote home refreshes session status every 15 seconds while visible, retaini
 The initial customer trial targets iPhone in portrait orientation; the Xcode target excludes iPad until its native layouts are verified.
 
 The iPhone app icon uses the shared dot mascot generated from `apps/desktop/resources/dot-master.png`; regenerate it with `node apps/desktop/scripts/render-brand-assets.mjs` from the repository root.
+
+Native settings show account funds and DeepSeek official API funds independently, including when account login is unavailable. API queries use the paired Host’s configured credential; the phone does not receive the API key. The composer follows the selected provider: the account route uses account funds and other routes query their own balance without falling back to the account wallet. Missing credentials, unsupported providers, and failed queries show an unavailable amount. Balances refresh on foreground return, settings reads, and conversation turn completion; changing computers clears previous funds.

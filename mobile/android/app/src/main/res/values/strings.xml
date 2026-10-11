@@ -23,4 +23,6 @@
     <string name="recharge_balance">充值余额 %1$s</string>
     <string name="bonus_balance">赠送余额 %1$s</string>
     <string name="remove_photo">移除照片</string>
+    <string name="account_balance">账号余额 %1$s</string>
+    <string name="api_balance">API 余额 %1$s</string>
 </resources>

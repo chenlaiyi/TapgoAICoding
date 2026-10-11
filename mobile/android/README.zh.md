@@ -10,8 +10,10 @@ Android 应用支持 Android 8.0 及以上版本。原生欢迎页使用桌面�
 
 ## 构建
 
-使用 JDK 17、Android SDK 平台 36／构建工具 36.0.0 与固定版本的 Gradle wrapper。配置 `ANDROID_HOME`，或在忽略的 `local.properties` 中填写 `sdk.dir`。运行 `./gradlew testDebugUnitTest assembleDebug lintDebug`。调试 APK 位于 `app/build/outputs/apk/debug/app-debug.apk`，属于测试构建，并非正式发布。企业提供 Android 签名配置前，`assembleRelease` 生成未签名 APK。禁止提交签名密钥或密码。应用标识为 `com.tapgo.terminal`。
+使用 JDK 17、Android SDK 平台 36／构建工具 36.0.0 与固定版本的 Gradle wrapper。配置 `ANDROID_HOME`，或在忽略的 `local.properties` 中填写 `sdk.dir`。运行 `./gradlew testDebugUnitTest assembleDebug lintDebug`。调试 APK 位于 `app/build/outputs/apk/debug/app-debug.apk`，属于测试构建，并非正式发布。`assembleRelease` 从 `TAPGO_ANDROID_SIGNING_PROPERTIES` 指向的外部 Java properties 文件读取 `storeFile`、`storePassword`、`keyAlias` 和 `keyPassword`；未设置该变量时生成未签名 APK，不能作为可安装的正式版本分发。该文件及 keystore 应放在 Git 之外，且仅允许所有者读取。禁止提交签名密钥或密码。应用标识为 `com.tapgo.terminal`。
 
 ## 隔离模拟器测试
 
 使用未保存真实配对数据的专用模拟器。仅调试版的网络配置在 `localhost` 信任公开夹具证书；正式构建不包含该证书及信任配置。生成 DNS SAN 包含 `localhost`，IP SAN 包含 `10.0.2.2`、`127.0.0.1` 的自签名夹具证书及私钥，将证书放在 `app/src/debug/res/raw/fixture_ca.pem`，私钥留在 Git 之外。设置 `TAPGO_ANDROID_FIXTURE_KEY` 为私钥路径，并在本目录运行 `node tests/fixture-server.mjs`。服务自动分配主机回环端口，输出就绪状态和已分配端口，使用虚拟令牌与会话。使用 `adb -s <serial> reverse tcp:9443 tcp:<printed-port>` 转发专用模拟器端口，然后运行 `./gradlew connectedDebugAndroidTest`；独立单元测试覆盖链接校验及来源比较。测试后停止夹具和模拟器。夹具验证 Android 传输与交互回复，不等于真实账号模型执行或实体相机扫码验收。
+
+原生设置分别显示账号余额和 DeepSeek 官方 API 余额，账号未登录时仍可查询 API 余额。API 查询使用已配对 Host 的配置凭据，手机不会接收 API Key。输入框余额随所选提供方切换：账号路由显示账号钱包，其他路由查询各自余额，不回退到账号钱包。凭据缺失、不支持查询或读取失败时显示余额不可用。返回前台、读取设置及对话轮次完成时刷新余额；更换电脑时清除上一台的金额。

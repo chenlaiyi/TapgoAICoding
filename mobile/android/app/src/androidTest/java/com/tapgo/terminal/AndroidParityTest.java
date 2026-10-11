@@ -55,7 +55,11 @@ public class AndroidParityTest {
             onView(withHint("发送消息…")).perform(typeText("test"),replaceText("模拟器消息"),closeSoftKeyboard());
             onView(withText("发送")).perform(click());waitText("流式验收回复");
             onView(withHint("发送消息…")).perform(replaceText("停止验收"),closeSoftKeyboard());onView(withText("发送")).perform(click());waitEnabled("停止",true);onView(withText("停止")).perform(click());waitEnabled("停止",false);
-            onView(withText("模型")).perform(click());waitText("验收模型");onView(withText("验收模型")).perform(click());
+            onView(withText("Fixture Model")).perform(click());waitText("验收模型");onView(withText("验收模型")).perform(click());
+            onView(withText("Fixture Model")).perform(click());onView(withText("API 验收模型")).perform(click());waitText("余额 ¥86.77");
+            onView(withText("设置")).perform(click());onView(withText(containsString("账号余额 ¥12.50"))).check(matches(isDisplayed()));onView(withText(containsString("API 余额 ¥86.77"))).check(matches(isDisplayed()));onView(withText("关闭")).perform(click());
+            onView(withText("Chat")).perform(click());onView(withText("无余额模型")).perform(click());waitText("余额暂不可用");
+            onView(withText("Other")).perform(click());onView(withText("验收模型")).perform(click());waitText("余额 ¥12.50");
             onView(withText("访问权限")).perform(click());waitText("安全模式");onView(withText("安全模式")).perform(click());waitText("验收权限确认");onView(withText("提交")).perform(click());waitText("安全模式");
             onView(withText("完整工作区")).perform(click());
             waitText("返回");

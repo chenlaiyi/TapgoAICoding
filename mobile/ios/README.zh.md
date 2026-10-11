@@ -19,3 +19,5 @@
 首批客户试用只支持 iPhone 竖屏；iPad 原生布局完成验证前不纳入 Xcode 目标设备。
 
 iPhone 应用图标使用由 `apps/desktop/resources/dot-master.png` 派生的统一小点点形象；在仓库根目录运行 `node apps/desktop/scripts/render-brand-assets.mjs` 可重新生成。
+
+原生设置分别显示账号余额和 DeepSeek 官方 API 余额，账号未登录时仍可查询 API 余额。API 查询使用已配对 Host 的配置凭据，手机不会接收 API Key。输入框余额随所选提供方切换：账号路由显示账号钱包，其他路由查询各自余额，不回退到账号钱包。凭据缺失、不支持查询或读取失败时显示余额不可用。返回前台、读取设置及对话轮次完成时刷新余额；更换电脑时清除上一台的金额。

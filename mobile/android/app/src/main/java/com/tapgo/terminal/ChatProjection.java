@@ -25,6 +25,7 @@ final class ChatProjection {
     }
     private void consume(JSONObject event) throws JSONException {
         if(event==null||!event.has("seq")||!seen.add(event.getLong("seq")))return;String type=event.optString("type");JSONObject data=event.optJSONObject("data");if(data==null)return;
+        if(type.equals("model/selection")){projections.put("modelSelection",new JSONObject().put("next",data));return;}
         if(type.equals("turn/start")){running=true;currentTurn=new Line("turn","");lines.add(currentTurn);return;}if(type.equals("turn/end")){running=false;live="";if(currentTurn!=null)currentTurn.reasoning+=liveReasoning;liveReasoning="";return;}
         if(type.equals("tool/call")){String name=data.optString("name");activity+=name+"\n";if(currentTurn!=null)currentTurn.tools.put(data.optString("callId",Long.toString(event.getLong("seq"))),"… "+name);return;}
         if(type.equals("tool/result")){JSONObject message=data.optJSONObject("message");if(message!=null){JSONObject source=message.optJSONObject("source");String id=source==null?message.optString("toolCallId"):source.optString("callId",message.optString("toolCallId"));for(int i=lines.size()-1;i>=0;i--){Line turn=lines.get(i);String previous=turn.tools.get(id);if(previous!=null){boolean failed=message.optBoolean("isError");JSONArray blocks=message.optJSONArray("content");if(blocks!=null)for(int j=0;j<blocks.length();j++){JSONObject block=blocks.optJSONObject(j);if(block!=null)failed|=block.optBoolean("isError");}turn.tools.put(id,(failed?"! ":"✓ ")+previous.substring(2));break;}}}return;}

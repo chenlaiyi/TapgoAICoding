@@ -1,4 +1,13 @@
 plugins { id 'com.android.application' }
+def signingPath = System.getenv('TAPGO_ANDROID_SIGNING_PROPERTIES')
+def releaseSigning = new Properties()
+if (signingPath) {
+    file(signingPath).withInputStream { releaseSigning.load(it) }
+    ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'].each { name ->
+        if (!releaseSigning.getProperty(name)) throw new GradleException("Missing Android signing property: $name")
+    }
+    if (!file(releaseSigning.getProperty('storeFile')).isFile()) throw new GradleException('Android signing keystore is missing')
+}
 android {
     namespace 'com.tapgo.terminal'
     compileSdk 36
@@ -6,13 +15,26 @@ android {
         applicationId 'com.tapgo.terminal'
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName '0.1.0'
+        versionCode 2
+        versionName '0.1.1'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    buildTypes { release { minifyEnabled false } }
+    signingConfigs {
+        if (signingPath) {
+            release {
+                storeFile file(releaseSigning.getProperty('storeFile'))
+                storePassword releaseSigning.getProperty('storePassword')
+                keyAlias releaseSigning.getProperty('keyAlias')
+                keyPassword releaseSigning.getProperty('keyPassword')
+            }
+        }
+    }
+    buildTypes { release {
+        minifyEnabled false
+        if (signingPath) signingConfig signingConfigs.release
+    } }
 }
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.1'

@@ -121,14 +121,24 @@ private final class RemoteSessions: ObservableObject {
     @Published var startError: String?
     @Published var models: [ComposerModel] = []
     @Published var defaultModel: String?
-    @Published var balance: String?
-    private var loadInFlight = false
+    @Published var funds = MobileBalanceSnapshot()
+    var balance: String? { funds.account }
+    private var fundsOrigin: String?
+    private var balanceRevision = UUID()
+    private var loadToken: UUID?
     private var consecutiveFailures = 0
 
     func load(computer: SavedComputer, quietly: Bool = false) async {
-        if loadInFlight { return }
-        loadInFlight = true
-        defer { loadInFlight = false }
+        if fundsOrigin != computer.id {
+            funds = MobileBalanceSnapshot()
+            fundsOrigin = computer.id
+            balanceRevision = UUID()
+            loadToken = nil
+        }
+        if loadToken != nil { return }
+        let token = UUID()
+        loadToken = token
+        defer { if loadToken == token { loadToken = nil } }
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--dsh-mobile-test-sessions"),
@@ -136,15 +146,19 @@ private final class RemoteSessions: ObservableObject {
            let data = arguments[index + 1].data(using: .utf8),
            let fixture = try? JSONDecoder().decode([RemoteSession].self, from: data) {
             items = fixture
-            applyModelCatalog(["groups": [["id": "deepseek", "models": [
+            applyModelCatalog(["groups": [["id": "deepseek-account", "models": [
                 ["id": "deepseek-v41-flash", "name": "DeepSeek Official V41 Flash"]
-            ]]], "default": ["provider": "deepseek", "model": "deepseek-v41-flash"]])
+            ]]], "default": ["provider": "deepseek-account", "model": "deepseek-v41-flash"]])
             if let index = arguments.firstIndex(of: "--dsh-mobile-test-balance"),
                arguments.indices.contains(index + 1) {
                 let recharge = Decimal(string: arguments[index + 1]) ?? 0
                 let bonus = arguments.firstIndex(of: "--dsh-mobile-test-bonus")
                     .flatMap { arguments.indices.contains($0 + 1) ? Decimal(string: arguments[$0 + 1]) : nil } ?? 0
-                balance = Self.formatBalance(recharge + bonus)
+                funds.account = Self.formatBalance(recharge + bonus)
+                if let index = arguments.firstIndex(of: "--dsh-mobile-test-api-balance"), arguments.indices.contains(index + 1) {
+                    funds.providers["deepseek-official"] = "¥" + arguments[index + 1]
+                    models.append(ComposerModel(provider: "deepseek-official", model: "deepseek-chat", name: "API Chat"))
+                }
             }
             if let pinsIndex = arguments.firstIndex(of: "--dsh-mobile-test-pins"),
                arguments.indices.contains(pinsIndex + 1) {
@@ -199,6 +213,7 @@ private final class RemoteSessions: ObservableObject {
             guard decoded.result.ok, let value = decoded.result.value else {
                 throw RemoteError.server(decoded.result.error?.message ?? "请求失败")
             }
+            guard loadToken == token, fundsOrigin == computer.id else { return }
             items = value.items.filter { $0.cwd != nil }
             error = nil
             consecutiveFailures = 0
@@ -207,8 +222,9 @@ private final class RemoteSessions: ObservableObject {
                 workspaces = baseline.items
                 pinnedSessionIds = baseline.pinnedSessionIds
             }
-            if !quietly { await loadComposerSettings(session: session, origin: origin) }
+            await loadComposerSettings(session: session, origin: origin, computerID: computer.id)
         } catch {
+            guard loadToken == token, fundsOrigin == computer.id else { return }
             consecutiveFailures += 1
             if !quietly || consecutiveFailures >= 2 {
                 lastConnectedAt = nil
@@ -217,31 +233,20 @@ private final class RemoteSessions: ObservableObject {
         }
     }
 
-    private func loadComposerSettings(session: URLSession, origin: URL) async {
+    private func loadComposerSettings(session: URLSession, origin: URL, computerID: String) async {
         if let catalog = try? await rpc(session: session, origin: origin,
                                         method: "session/modelCatalog", args: [:]) {
             applyModelCatalog(catalog)
         }
-        let metadata: [String: Any] = ["version": "1.0.41", "locale": Locale.current.identifier,
-                                       "timezoneOffsetSeconds": TimeZone.current.secondsFromGMT()]
-        if let account = try? await rpc(session: session, origin: origin,
-                                        method: "account/getBalance", args: ["client": metadata]),
-           account["status"] as? String == "ready" {
-            let wallets = (account["value"] as? [[String: Any]] ?? [])
-                + (account["bonusWallets"] as? [[String: Any]] ?? [])
-            let total = wallets.reduce(Decimal.zero) { partial, wallet in
-                guard wallet["currency"] as? String == "CNY",
-                      let amount = wallet["balance"] as? String,
-                      let value = Decimal(string: amount, locale: Locale(identifier: "en_US_POSIX")) else {
-                    return partial
-                }
-                return partial + value
-            }
-            balance = wallets.contains(where: { $0["currency"] as? String == "CNY" })
-                ? Self.formatBalance(total) : nil
-        } else {
-            balance = nil
+        let revision = UUID()
+        balanceRevision = revision
+        let model = MobileModelPreference.read(computerID: computerID) ?? defaultModel
+        let provider = model?.split(separator: "/").first.map(String.init)
+        let value = await MobileBalanceSnapshot.load(provider: provider) { method, args in
+            try await self.rpcValue(session: session, origin: origin, method: method, args: args)
         }
+        guard revision == balanceRevision, fundsOrigin == computerID else { return }
+        funds = value
     }
 
     private func applyModelCatalog(_ catalog: [String: Any]) {
@@ -898,6 +903,15 @@ struct RemoteHomeView: View {
                         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
                     }
 
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("账号余额 \(sessions.funds.account ?? "暂不可用")")
+                        ForEach(sessions.funds.accountDetails, id: \.self) { Text($0).font(.caption) }
+                        Text("API 余额 \(sessions.funds.providers["deepseek-official"] ?? "暂不可用")")
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
+
                     VStack(alignment: .leading, spacing: 13) {
                         HStack {
                             Text("连接").foregroundStyle(.secondary)
@@ -1029,6 +1043,7 @@ private struct RemoteNewConversationView: View {
     @State private var draft = ""
     @State private var selectedWorkspace: String?
     @State private var selectedPermission: String?
+    @State private var selectedModelID: String?
     @State private var showingFullWorkspace = false
     @State private var showingProjectMenu = false
     @State private var showingDirectoryBrowser = false
@@ -1052,7 +1067,7 @@ private struct RemoteNewConversationView: View {
     }
 
     private var currentModel: ComposerModel? {
-        let lastUsed = MobileModelPreference.read(computerID: computer.id)
+        let lastUsed = selectedModelID ?? MobileModelPreference.read(computerID: computer.id)
         return sessions.models.first(where: { $0.id == lastUsed })
             ?? sessions.models.first(where: { $0.id == sessions.defaultModel })
             ?? sessions.models.first
@@ -1269,10 +1284,20 @@ private struct RemoteNewConversationView: View {
 
     private var composerMetadata: some View {
         HStack(spacing: 8) {
-            Text(currentModel?.shortName ?? (sessions.loading ? "正在读取模型…" : "模型不可用"))
-                .accessibilityIdentifier("newConversationModel")
-            if let balance = sessions.balance {
-                Text("余额 \(balance)")
+            Menu {
+                ForEach(sessions.models) { model in
+                    Button(model.shortName) {
+                        selectedModelID = model.id
+                        MobileModelPreference.save(model.id, computerID: computer.id)
+                        Task { await sessions.load(computer: computer) }
+                    }
+                }
+            } label: {
+                Text(currentModel?.shortName ?? (sessions.loading ? "正在读取模型…" : "模型不可用"))
+            }
+            .accessibilityIdentifier("newConversationModel")
+            if currentModel != nil {
+                Text("余额 \(sessions.funds.available(provider: currentModel?.provider) ?? "暂不可用")")
                     .accessibilityIdentifier("newConversationBalance")
             }
         }

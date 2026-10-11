@@ -34,6 +34,7 @@ public final class MainActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private LinearLayout root, list;
     private TextView status,homeBalance;
+    private MobileBalances funds=new MobileBalances();
     private EditText search;
     private JSONArray sessions = new JSONArray();
     private JSONArray workspaces=new JSONArray();
@@ -91,6 +92,7 @@ public final class MainActivity extends AppCompatActivity {
         TextView name = text(getString(R.string.app_name), 28); name.setTypeface(null, Typeface.BOLD); name.setPadding(dp(12), 0, 0, 0); header.addView(name); root.addView(header);
     }
     private void showHome() {
+        funds=new MobileBalances();
         generation++; loading = false; sessions = new JSONArray(); if (interactions != null) interactions.stop(); interactions = null;
         if (client != null) client.close(); client = store.current() == null ? null : new RemoteClient(store.current()); base();
         if (store.current() == null) { showWelcome(); return; }
@@ -139,7 +141,7 @@ public final class MainActivity extends AppCompatActivity {
     }
     private void settings() {
         ComputerStore.Computer c=store.current(); if(c==null) return;
-        new AlertDialog.Builder(this).setTitle(c.name()).setMessage(c.origin).setPositiveButton(R.string.rename,(d,w)-> {
+        new AlertDialog.Builder(this).setTitle(c.name()).setMessage(c.origin+"\n"+funds.summary(this)).setPositiveButton(R.string.rename,(d,w)-> {
             EditText input=new EditText(this); input.setText(c.name()); AlertDialog rename=new AlertDialog.Builder(this).setTitle(R.string.rename).setView(input).setNegativeButton(R.string.cancel,null).setPositiveButton(R.string.save,null).create();
             rename.setOnShowListener(x->rename.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{String value=input.getText().toString().trim(); if(value.isEmpty()||value.length()>80){input.setError(getString(R.string.name_error));return;}c.customName=value;if(persist()){rename.dismiss();showHome();}}));rename.show();
         }).setNeutralButton(R.string.connect_computer,(d,w)->connectionDialog()).setNegativeButton(R.string.remove,(d,w)->new AlertDialog.Builder(this).setMessage(R.string.remove_confirm).setNegativeButton(R.string.cancel,null).setPositiveButton(R.string.remove,(x,y)-> {
@@ -147,9 +149,14 @@ public final class MainActivity extends AppCompatActivity {
         }).show()).show();
     }
     private void refresh() {
-        if(client==null||loading||web!=null||chat!=null) return; loading=true; long current=generation; RemoteClient remote=client;
+        if(client==null||loading||web!=null||chat!=null) return; loading=true; long current=generation; RemoteClient remote=client; String connectionOrigin=store.current().origin;
         worker.execute(()-> { try { JSONArray rows=remote.rpc("session/list",new JSONObject().put("_request",new JSONObject())).getJSONArray("items");JSONArray projects=remote.baseline().getJSONArray("items");handler.post(()-> {if(current!=generation)return;loading=false;workspaces=projects;sessions=rows;status.setText(R.string.connected);renderSessions();});
-            try{AccountBalance balance=AccountBalance.read(remote.account());handler.post(()->{if(current==generation&&chat==null&&web==null)homeBalance.setText(balance==null?"":getString(R.string.balance,balance.total()));});}catch(Exception unavailable){handler.post(()->{if(current==generation&&chat==null&&web==null)homeBalance.setText("");});}
+            JSONObject fallback=remote.rpc("session/modelCatalog",new JSONObject()).optJSONObject("default");
+            String provider=fallback==null?null:fallback.optString("provider");
+            String remembered=getSharedPreferences("models",0).getString(connectionOrigin,null);
+            if(remembered!=null)provider=new JSONObject(remembered).optString("provider");
+            MobileBalances value=MobileBalances.load(remote,provider);String selected=provider;
+            handler.post(()->{if(current==generation&&chat==null&&web==null){funds=value;String amount=value.available(selected);homeBalance.setText(amount==null?getString(R.string.balance_unavailable):getString(R.string.balance,amount));}});
         }
             catch(Exception exception){handler.post(()->{if(current!=generation)return;loading=false;status.setText(exception instanceof RemoteClient.Expired?R.string.expired:R.string.unavailable);});} });
     }
