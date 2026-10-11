@@ -19,7 +19,7 @@ import { Config as OnboardingConfig } from '../src/index.ts'
 import { ChatSettingsSchema as ChatConfig } from '../../ui-chat/src/chat-settings.ts'
 import { DeveloperToolsSettingsSchema as SettingsConfig } from '../../ui-settings/src/developer-tools-settings.ts'
 import type { DesktopOnboardingInjected } from '../src/client/DesktopOnboardingEntry.tsx'
-import type { AccountSectionInjected } from '../src/client/AccountSection.tsx'
+import type { AccountSectionInjected, AccountApiBalanceInjected } from '../src/client/AccountSection.tsx'
 import { CONTACT_CONFIG_GLOBAL } from '../src/contact-config.ts'
 import { AccountPlatformHost } from '../src/client/AccountPlatformHost.tsx'
 import type { AccountPlatformHostInjected } from '../src/client/AccountPlatformHost.tsx'
@@ -101,6 +101,49 @@ function balanceText(c: TestClient, balance: AccountComposerBalanceInjected['hoo
     useBalance: select => select(balance.getSnapshot()), t: c.ctx.locale.bind('settings.account'),
   })).replace(/<[^>]*>/gu, '')
 }
+
+it('keeps both settings balances available independently of Session selection and account sign-out', async ({ start, mock }) => {
+  vi.stubGlobal('dshDesktop', {})
+  mock.remote.llm.getBalance.mockResolvedValue(ok([{ currency: 'CNY', amount: '86.77' }]))
+  const c = await start()
+  const entry = c.ctx.slots.entries('settings.section').find(row => row.options.id === 'account')!
+  const injected: object = entry.inject!()
+  const actions = injected as AccountSectionInjected & AccountApiBalanceInjected
+  expect(mock.remote.llm.getBalance).not.toHaveBeenCalled()
+  actions.refreshApiBalance()
+  await vi.waitFor(() => { expect(actions.hooks.apiBalance.getSnapshot()).toEqual({
+    status: 'ready', value: [{ currency: 'CNY', amount: '86.77' }],
+  }) })
+  expect(mock.remote.llm.getBalance.mock.calls[0]![0]).toBe('deepseek-official')
+  mock.remote.account.getBalance.mockResolvedValue(ok({ status: 'ready',
+    value: [{ currency: 'CNY', balance: '-0.05' }], bonusWallets: [] }))
+  mock.streams.push('account/watch', stored)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().details?.balance?.status).toBe('ready') })
+  mock.streams.push('account/watch', view)
+  await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().view?.status).toBe('signed-out') })
+  expect(c.ctx.slots.entries('settings.section')).toContain(entry)
+  expect(actions.hooks.apiBalance.getSnapshot().value).toEqual([{ currency: 'CNY', amount: '86.77' }])
+  const next = Promise.withResolvers<ReturnType<typeof ok<LlmBalance[] | null>>>()
+  mock.remote.llm.getBalance.mockReturnValueOnce(next.promise)
+  try {
+    mock.streams.push('$events', { type: 'emit', event: 'credentials/reference-updated', args: ['TAPGO_DEEPSEEK_API_KEY'] })
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(2) })
+    expect(actions.hooks.apiBalance.getSnapshot()).toEqual({ status: 'loading', value: null })
+    next.resolve(ok([{ currency: 'CNY', amount: '12.00' }]))
+    await vi.waitFor(() => { expect(actions.hooks.apiBalance.getSnapshot().value).toEqual([{ currency: 'CNY', amount: '12.00' }]) })
+    mock.streams.push('$events', { type: 'emit', event: 'api-session/status', args: ['independent-session', false] })
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(3) })
+    mock.remote.llm.getBalance.mockResolvedValueOnce({ ok: false, error: new RemoteError('gateway/internal', 'offline', {}) })
+    window.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => { expect(actions.hooks.apiBalance.getSnapshot().status).toBe('unavailable') })
+    expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(4)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(5) })
+    await c.unload(SELF)
+    window.dispatchEvent(new Event('focus'))
+    expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(5)
+  } finally { next.resolve(ok(null)) }
+}, 60_000)
 
 it('follows the selected provider in the shipped composer and refreshes API-key funds after activity', async ({ start, mock }) => {
   vi.stubGlobal('dshDesktop', {})
