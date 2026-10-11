@@ -36,7 +36,7 @@ async function main(): Promise<void> {
     profile: 'desktop',
     resolvedProfile: { profile, installAnchor },
     patchFiles: mobile === undefined ? [] : [fileURLToPath(new URL('../mobile-picker.overlay.yml', import.meta.url))],
-    args: ['--no-open', '--port', mobile !== undefined && relay === undefined ? '19388' : '0', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
+    args: ['--no-open', '--host', '127.0.0.1', '--port', mobile !== undefined && relay === undefined ? '19388' : '0', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
     ...(process.argv[5] === undefined ? {} : {
       packageManager: {
         command: process.execPath,
@@ -137,7 +137,7 @@ async function main(): Promise<void> {
   installPlatformSessionPublisher(ctx, (session) => {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })
-  const url = ctx.connection.authenticatedUrl(`http://127.0.0.1:${String(ctx.webServer.port)}`)
+  const url = ctx.connection.authenticatedUrl(`${ctx.webServer.protocol}//127.0.0.1:${String(ctx.webServer.port)}`)
   const mobileUrl = mobile === undefined ? undefined : ctx.connection.authenticatedUrl(mobile.origin)
   if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, mobileOrigin: mobile?.origin,
     injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })
