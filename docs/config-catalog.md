@@ -1599,6 +1599,8 @@ export type Config = ProtocolConfig
 export interface Config extends ProtocolConfig {
   /** Credential reference resolved per request; defaults to DEEPSEEK_API_KEY. */
   apiKeyEnv: Volatile<string>
+  /** Maximum duration of one API-key balance query, including its response body. */
+  balanceTimeoutMs: Volatile<number>
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-deepseek-api-key -->

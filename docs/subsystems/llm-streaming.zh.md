@@ -465,6 +465,16 @@ interface AdapterRegistrationHandle {
 ```
 
 ```ts type-equiv
+/** Available funds for one provider credential, with server decimal precision retained. */
+interface LlmBalance {
+  /** Provider-reported currency code; consumers must not assume an unknown code is USD. */
+  readonly currency: string
+  /** Total available amount, including any unexpired granted credit. */
+  readonly amount: string
+}
+```
+
+```ts type-equiv
 /** Display metadata for one registered provider route. */
 interface LlmProviderInfo {
   /** Provider route key used by {@link GenerateOptions.provider}. */
@@ -856,6 +866,13 @@ declare abstract class LlmAdapter {
    */
   listModels(_provider: string): Promise<readonly LlmModelInfo[]>;
   /**
+   * Query available funds for the credential used by one provider route.
+   * @param _provider - one provider route owned by this adapter.
+   * @param _signal - query cancellation; implementations must settle promptly after abort.
+   * @returns decimal amounts by currency, or null when this adapter does not support balances.
+   */
+  getBalance(_provider: string, _signal?: AbortSignal): Promise<LlmBalance[] | null>;
+  /**
    * Resolve all metadata available for one exact model. This query is
    * independent of the advisory catalog and does not validate request routing.
    * @param provider - one provider route owned by this adapter.
@@ -947,6 +964,15 @@ registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHa
  * @returns detached provider metadata in registration order.
  */
 @Remote listProviders(): LlmProviderInfo[]
+
+/**
+ * Query the selected provider's funds without exposing its credential.
+ * @param provider - registered provider route whose credential pays for requests.
+ * @param signal - query cancellation supplied by the caller or Remote carrier.
+ * @returns amounts by currency, or null for an unsupported, missing, or replaced adapter.
+ * @throws RemoteError with llm/balance-unavailable when the query fails; no other account is queried.
+ */
+@Remote async getBalance(provider: string, signal?: AbortSignal): Promise<LlmBalance[] | null>
 
 /**
  * Declare provider routes an adapter plugin can activate through

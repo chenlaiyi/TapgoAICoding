@@ -58,6 +58,8 @@ for await (const chunk of ctx.llm.stream({
 
 挂载成功后，`ctx.llm.listProviders()` 会按注册顺序报告已注册路由。
 
+`ctx.llm.getBalance(provider, signal)` 使用该路由的凭据查询余额，按币种返回保留十进制精度的可用金额。不支持查询、缺失或已被替换的适配器返回 `null`；读取失败以 `llm/balance-unavailable` 拒绝。消费方加载另一条路由前会清除上一提供方的金额。查询不回退到其他账号，也不改变模型输入。
+
 `GenerateOptions.messages` 接受持久 `Message` 值和仅供请求使用的 `RequestUserInput` 值。仅供请求使用的输入包含 user-role 内容，不含 `id` 或 `source`；Session 写入和 Agent 投递仍然要求持久消息。调用方必须在流结束前保持辅助输入不变。会记录完整请求的调用方（例如会话标题生成）必须使用持久消息。
 
 ### 你可以做什么

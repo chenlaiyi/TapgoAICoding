@@ -58,6 +58,8 @@ for await (const chunk of ctx.llm.stream({
 
 After a successful mount, `ctx.llm.listProviders()` reports the registered routes in registration order.
 
+`ctx.llm.getBalance(provider, signal)` queries that route’s credential and returns available decimal amounts by currency. Unsupported, absent, or replaced adapters return `null`; failed reads reject with `llm/balance-unavailable`. Consumers clear the previous provider’s amounts before loading another route. Queries do not fall back to another account or change model input.
+
 `GenerateOptions.messages` accepts durable `Message` values and request-only `RequestUserInput` values. Request-only inputs carry user-role content with no `id` or `source`; Session writes and Agent delivery still require durable messages. Callers keep auxiliary inputs unchanged until the stream settles. A caller that records its exact request, such as session-title generation, must use durable messages.
 
 ### What you can do

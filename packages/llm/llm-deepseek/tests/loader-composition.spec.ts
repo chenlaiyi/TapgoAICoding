@@ -125,6 +125,38 @@ async function loadComposition(
 
 
 describe('llm-deepseek real dynamic composition', () => {
+  it('reads API-key balances through Loader and follows endpoint and credential changes', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', '')
+    const response = (amount: string) => ({ is_available: true, balance_infos: [{ currency: 'CNY', total_balance: amount }] })
+    const first = await mockServer([{ kind: 'json', value: response('18.25') }])
+    const second = await mockServer([{ kind: 'json', value: response('7.125') }])
+    const { ctx } = await loadComposition({ withDynamic: true, baseURL: `${first.url}/anthropic` })
+    const shown = [await ctx.llm.getBalance('deepseek-official')]
+    await ctx.settings.update(NS, { baseURL: `${second.url}/anthropic` })
+    await ctx.get('credentials')!.set(KEY_REF, 'rotated-balance-key')
+    shown.push(await ctx.llm.getBalance('deepseek-official'))
+    expect(shown).toMatchInlineSnapshot(`
+      [
+        [
+          {
+            "amount": "18.25",
+            "currency": "CNY",
+          },
+        ],
+        [
+          {
+            "amount": "7.125",
+            "currency": "CNY",
+          },
+        ],
+      ]
+    `)
+    expect(first.requests).toEqual([{ method: 'GET', path: '/user/balance' }])
+    expect(first.headers[0]?.authorization).toBe('Bearer boot-key')
+    expect(second.requests).toEqual([{ method: 'GET', path: '/user/balance' }])
+    expect(second.headers[0]?.authorization).toBe('Bearer rotated-balance-key')
+  })
+
   it('keeps package inventory on when the Loader composition disables session upload', async () => {
     vi.stubEnv('DEEPSEEK_API_KEY', 'entry-key')
     const server = await mockServer([{ kind: 'sse', events: textEvents }])

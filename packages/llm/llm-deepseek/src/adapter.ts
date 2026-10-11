@@ -34,6 +34,9 @@ export class DeepSeekAdapter<C extends Connection = Connection> extends LlmAdapt
   override async listModels(provider: string) {
     return this.dependencies.discoverModels?.(provider) ?? []
   }
+  override async getBalance(_provider: string, signal?: AbortSignal) {
+    return this.dependencies.queryBalance?.(this.dependencies.options(), signal) ?? null
+  }
   override resolveModel(provider: string, model: string, _signal?: AbortSignal) {
     return Promise.resolve(modelInfo(this.dependencies.options(), provider, model))
   }

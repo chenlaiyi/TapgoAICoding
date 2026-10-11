@@ -29,6 +29,8 @@ Provide the shared DeepSeek Messages transport, request configuration, and model
 
 This package exports the transport library; the provider plugins register routes with the harness LLM service. It captures connection options from Config references once per operation.
 
+`getBalance()` delegates to an optional provider-owned `queryBalance(connection, signal)` callback with one captured connection. Without that callback it returns `null`; authentication mode and balance protocol remain owned by the provider plugin.
+
 The adapter accepts the LLM service's [request-only user inputs](../llm/README.md#use-this-package) alongside durable history; omitting request-only identity and attribution does not alter provider content.
 
 ### When to choose it

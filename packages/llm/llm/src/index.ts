@@ -21,6 +21,7 @@ import type {
   LlmModelInfo,
   LlmResolvedModelInfo,
   LlmProviderInfo,
+  LlmBalance,
   ModelModality,
   StreamChunk,
   SystemPromptUpdate,
@@ -250,6 +251,16 @@ export abstract class LlmAdapter {
   }
 
   /**
+   * Query available funds for the credential used by one provider route.
+   * @param _provider - one provider route owned by this adapter.
+   * @param _signal - query cancellation; implementations must settle promptly after abort.
+   * @returns decimal amounts by currency, or null when this adapter does not support balances.
+   */
+  getBalance(_provider: string, _signal?: AbortSignal): Promise<LlmBalance[] | null> {
+    return Promise.resolve(null)
+  }
+
+  /**
    * Resolve all metadata available for one exact model. This query is
    * independent of the advisory catalog and does not validate request routing.
    * @param provider - one provider route owned by this adapter.
@@ -470,6 +481,27 @@ export class LlmRuntime extends TypertRemoteService {
   @Remote
   listProviders(): LlmProviderInfo[] {
     return [...this.adapters.values()].map(({ provider }) => ({ ...provider }))
+  }
+
+  /**
+   * Query the selected provider's funds without exposing its credential.
+   * @param provider - registered provider route whose credential pays for requests.
+   * @param signal - query cancellation supplied by the caller or Remote carrier.
+   * @returns amounts by currency, or null for an unsupported, missing, or replaced adapter.
+   * @throws RemoteError with llm/balance-unavailable when the query fails; no other account is queried.
+   */
+  @Remote
+  async getBalance(provider: string, signal?: AbortSignal): Promise<LlmBalance[] | null> {
+    const registered = this.adapters.get(provider)
+    if (registered === undefined) return null
+    try {
+      signal?.throwIfAborted()
+      const balances = await registered.adapter.getBalance(provider, signal)
+      signal?.throwIfAborted()
+      return this.adapters.get(provider) === registered ? balances : null
+    } catch (_error) {
+      throw new RemoteError('llm/balance-unavailable', 'The provider balance could not be read.', { provider })
+    }
   }
 
   /**
