@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 /** Desktop account operations and ordinary-browser isolation in the shipped client composition. */
 import { afterEach, beforeEach, expect, vi } from 'vitest'
-import { ok } from '@deepseek-ai/dsh-remote-mock'
-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { ok, type RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import { isTypertOwnedValue, RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { LlmBalance } from '@deepseek-ai/dsh-llm/types'
 import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
 import type {
   AccountBonusBatch, AccountBonusOrderId, AccountDetails, AccountUserId, AccountView, SignInAttemptId,
@@ -20,7 +24,7 @@ import { CONTACT_CONFIG_GLOBAL } from '../src/contact-config.ts'
 import { AccountPlatformHost } from '../src/client/AccountPlatformHost.tsx'
 import type { AccountPlatformHostInjected } from '../src/client/AccountPlatformHost.tsx'
 import { AccountQuotaNotice } from '../src/client/AccountQuotaNotice.tsx'
-import { AccountComposerBalance } from '../src/client/AccountComposerBalance.tsx'
+import { AccountComposerBalance, type AccountComposerBalanceInjected } from '../src/client/AccountComposerBalance.tsx'
 import type { AccountQuotaNoticeInjected } from '../src/client/AccountQuotaNotice.tsx'
 
 const it = createClientTest({ roster: webApp })
@@ -64,6 +68,137 @@ beforeEach(() => {
   vi.stubGlobal('devicePixelRatio', 2)
 })
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
+
+function modelFixtures(mock: RemoteMock): void {
+  mock.remote.session.modelCatalog.mockResolvedValue(ok({
+    default: { provider: 'deepseek-account', model: 'model' },
+    routableProviders: ['deepseek-account', 'deepseek-official'], failures: [],
+    groups: ['deepseek-account', 'deepseek-official'].map(id => ({ id, name: id, models: [{ id: 'model', name: 'Model' }] })),
+  }))
+}
+
+function retainBalanceSession(c: TestClient, sessionId: SessionId) {
+  const reference = c.ctx.typert.contexts.getClient('agent')!.resolve(sessionId)
+  if (!isTypertOwnedValue(reference)) throw new Error('Expected a retained Session scope')
+  return reference
+}
+
+async function selectBalanceModel(c: TestClient, sessionId: SessionId, provider: string, seq: number): Promise<void> {
+  c.mock.streams.push('session/control', { type: 'projection', sessionId, key: 'modelSelection', seq,
+    value: { next: { provider, model: 'model' }, lastUsed: null } })
+  await c.mock.streams.drained('session/control')
+}
+
+function composerBalance(c: TestClient, sessionId: SessionId) {
+  const entry = c.ctx.slots.entries('conversation.input.right').find(entry => entry.options.id === 'account-balance')!
+  const inject = entry.inject as (id: SessionId) => object
+  const injected = inject(sessionId) as AccountComposerBalanceInjected
+  return injected.hooks.balance
+}
+
+function balanceText(c: TestClient, balance: AccountComposerBalanceInjected['hooks']['balance']): string {
+  return renderToStaticMarkup(createElement(AccountComposerBalance, {
+    useBalance: select => select(balance.getSnapshot()), t: c.ctx.locale.bind('settings.account'),
+  })).replace(/<[^>]*>/gu, '')
+}
+
+it('follows the selected provider in the shipped composer and refreshes API-key funds after activity', async ({ start, mock }) => {
+  vi.stubGlobal('dshDesktop', {})
+  modelFixtures(mock)
+  const c = await start()
+  expect(() => composerBalance(c, 'unretained-balance-session' as SessionId)).toThrow('resolved no scope')
+  const sessionId = 'balance-provider' as SessionId
+  using _reference = retainBalanceSession(c, sessionId)
+  await selectBalanceModel(c, sessionId, 'deepseek-account', 1)
+  const balance = composerBalance(c, sessionId)
+  expect(composerBalance(c, sessionId)).toBe(balance)
+  mock.remote.account.getBalance.mockResolvedValue(ok({ status: 'ready',
+    value: [{ currency: 'CNY', balance: '10.00' }], bonusWallets: [{ currency: 'CNY', balance: '1.00' }] }))
+  mock.streams.push('account/watch', stored)
+  await vi.waitFor(() => { expect(balanceText(c, balance)).toBe('Balance ¥11.00') })
+  const displayed = [balanceText(c, balance)]
+  const pending = Promise.withResolvers<ReturnType<typeof ok<LlmBalance[] | null>>>()
+  mock.remote.llm.getBalance.mockReturnValueOnce(pending.promise)
+  try {
+    await selectBalanceModel(c, sessionId, 'deepseek-official', 2)
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledOnce() })
+    displayed.push(balanceText(c, balance))
+    pending.resolve(ok([{ currency: 'USD', amount: '3.25' }]))
+    await vi.waitFor(() => { expect(balanceText(c, balance)).toBe('Balance $3.25') })
+    displayed.push(balanceText(c, balance))
+    mock.streams.push('account/watch', view)
+    await vi.waitFor(() => { expect(operations(c).hooks.account.getSnapshot().view?.status).toBe('signed-out') })
+    expect(balanceText(c, balance)).toBe('Balance $3.25')
+    mock.remote.llm.getBalance.mockResolvedValue(ok([{ currency: 'USD', amount: '2.00' }]))
+    mock.streams.push('$events', { type: 'emit', event: 'api-session/status', args: [sessionId, false] })
+    await vi.waitFor(() => { expect(balanceText(c, balance)).toBe('Balance $2.00') })
+    mock.remote.llm.getBalance.mockClear()
+    window.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledOnce() })
+    await c.flush()
+    mock.remote.llm.getBalance.mockClear()
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await c.flush()
+    expect(mock.remote.llm.getBalance).not.toHaveBeenCalled()
+    visibility.mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledOnce() })
+    expect(displayed).toMatchInlineSnapshot(`
+      [
+        "Balance ¥11.00",
+        "",
+        "Balance $3.25",
+      ]
+    `)
+    await c.unload(SELF)
+    mock.remote.llm.getBalance.mockClear()
+    window.dispatchEvent(new Event('focus'))
+    expect(balance.getSnapshot()).toBeNull()
+    expect(mock.remote.llm.getBalance).not.toHaveBeenCalled()
+  } finally {
+    pending.resolve(ok(null))
+  }
+}, 60_000)
+
+it('clears replaced credentials and prevents old reads from restoring a different provider or disposed Session', async ({ start, mock }) => {
+  vi.stubGlobal('dshDesktop', {})
+  modelFixtures(mock)
+  mock.remote.llm.getBalance.mockResolvedValue(ok([{ currency: 'USD', amount: '4.00' }]))
+  const c = await start()
+  const sessionId = 'balance-race' as SessionId
+  using reference = retainBalanceSession(c, sessionId)
+  await selectBalanceModel(c, sessionId, 'deepseek-official', 1)
+  const balance = composerBalance(c, sessionId)
+  await vi.waitFor(() => { expect(balanceText(c, balance)).toBe('Balance $4.00') })
+  const stale = Promise.withResolvers<ReturnType<typeof ok<LlmBalance[] | null>>>()
+  mock.remote.llm.getBalance.mockReturnValueOnce(stale.promise)
+  try {
+    mock.streams.push('$events', { type: 'emit', event: 'credentials/reference-updated', args: ['deepseek'] })
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(2) })
+    expect(balanceText(c, balance)).toBe('')
+    await selectBalanceModel(c, sessionId, 'deepseek-account', 2)
+    stale.resolve(ok([{ currency: 'USD', amount: '99.00' }]))
+    await c.flush()
+    expect(balance.getSnapshot()).toBeNull()
+    mock.remote.llm.getBalance.mockResolvedValue(ok(null))
+    await selectBalanceModel(c, sessionId, 'deepseek-official', 3)
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(3) })
+    expect(balanceText(c, balance)).toBe('')
+    mock.remote.llm.getBalance.mockResolvedValue({ ok: false, error: new RemoteError('gateway/internal', 'offline', {}) })
+    window.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => { expect(mock.remote.llm.getBalance).toHaveBeenCalledTimes(4) })
+    await c.flush()
+    expect(balanceText(c, balance)).toBe('')
+    reference[Symbol.dispose]()
+    await vi.waitFor(() => { expect(c.ctx.sessions.scope(sessionId)).toBeUndefined() })
+    mock.remote.llm.getBalance.mockClear()
+    window.dispatchEvent(new Event('focus'))
+    expect(mock.remote.llm.getBalance).not.toHaveBeenCalled()
+  } finally {
+    stale.resolve(ok(null))
+  }
+}, 60_000)
 
 it('refreshes funds after task completion and window focus, and removes listeners on unload', async ({ start }) => {
   vi.stubGlobal('dshDesktop', {})
@@ -188,6 +323,7 @@ it('claims account balance notices from the frame-wide quota chain and declines 
   const c = await start()
   const entry = quotaNoticeEntry(c)
   expect(entry).toBeDefined()
+  expect(injectedOf(entry!)).not.toHaveProperty('openPlatformPage')
   const select = entry!.select! as (owner: QuotaNoticeOwnerProps) => QuotaNoticeOwnerProps | null
   const notice: QuotaNoticeOwnerProps = {
     code: 'ACCOUNT_QUOTA', message: 'Request quota exhausted.', dismiss: vi.fn(), keepOpen: vi.fn(() => () => {}),
@@ -204,7 +340,7 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   const actions = operations(c)
   const balanceSeat = c.ctx.slots.entries('conversation.input.right').find(entry => entry.options.id === 'account-balance')
   expect(balanceSeat?.component).toBe(AccountComposerBalance)
-  expect(balanceSeat?.inject!()).toEqual({ hooks: { account: actions.hooks.account } })
+  expect(balanceSeat?.inject).toBeTypeOf('function')
   expect(c.ctx.slots.entries('settings.models.sign-in')[0]!.inject!()).toBe(actions)
   // The account UI follows the live theme service through the framework hook channel.
   const theme = c.ctx.get('theme') as ThemeRuntime

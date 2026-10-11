@@ -4,6 +4,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 /** One scripted behavior for the next request the mock server receives. */
 export type Behavior =
   | { kind: 'sse'; events: string[]; delayMs?: number }
+  | { kind: 'json'; value: unknown }
   | { kind: 'http-error'; status: number; body: string; contentType?: string; headers?: Record<string, string> }
   | { kind: 'close-early'; events: string[] }
 
@@ -113,11 +114,15 @@ export async function mockServer(script: Behavior[]): Promise<MockServer> {
           return
         }
 
-        requests.push(JSON.parse(body.toString('utf8')))
+        requests.push(body.length === 0 ? { method: request.method, path: url.pathname } : JSON.parse(body.toString('utf8')))
         headers.push(request.headers)
         const behavior = script.shift()
         if (!behavior) {
           response.writeHead(500).end('mock script exhausted')
+          return
+        }
+        if (behavior.kind === 'json') {
+          response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(behavior.value))
           return
         }
         if (behavior.kind === 'http-error') {

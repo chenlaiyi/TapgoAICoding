@@ -28,6 +28,7 @@ it.each(['accepted', 'refused', 'disconnected', 'pending'] as const)('initialize
   let operations: AccountSectionInjected | undefined
   const ctx = {
     effect: (install: () => (() => void) | undefined) => { const dispose = install(); if (dispose) disposers.push(dispose) },
+    on: () => () => {},
     locale: { register: () => () => {}, bind: () => (key: string) => key },
     configForms: {
       get: () => ({ subscribe: () => () => {}, getSnapshot: () => ({ status: 'loading', value: undefined }) }),
@@ -38,8 +39,8 @@ it.each(['accepted', 'refused', 'disconnected', 'pending'] as const)('initialize
         const dispose = install()
         if (dispose) disposers.push(dispose)
       },
-      register: (entry: { inject?: () => AccountSectionInjected }) => {
-        if (entry.inject) operations = entry.inject()
+      register: (entry: { name: string; inject?: () => AccountSectionInjected }) => {
+        if (entry.name === 'settings.launcher' && entry.inject) operations = entry.inject()
         return () => {}
       },
     },

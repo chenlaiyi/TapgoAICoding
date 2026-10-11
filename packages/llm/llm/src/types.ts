@@ -227,6 +227,14 @@ export interface LlmProviderInfo {
   name: string
 }
 
+/** Available funds for one provider credential, with server decimal precision retained. */
+export interface LlmBalance {
+  /** Provider-reported currency code; consumers must not assume an unknown code is USD. */
+  readonly currency: string
+  /** Total available amount, including any unexpired granted credit. */
+  readonly amount: string
+}
+
 /** Merge-extensible provider model modality vocabulary. */
 export interface ModelModalityMap {
   text: 'text'
@@ -300,6 +308,8 @@ export interface LlmModelDiscoveryOperation extends LlmModelDiscoveryRequest {
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
+    /** The selected provider's balance could not be read. */
+    'llm/balance-unavailable': { provider: string }
     /** A draft provider interrogation refused or failed. */
     'llm/model-discovery-rejected': {
       readonly settingsNs: string

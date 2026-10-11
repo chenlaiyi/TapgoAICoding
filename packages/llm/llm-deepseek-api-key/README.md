@@ -37,6 +37,8 @@ Authentication resolution returns the validated API key in `x-api-key` for both 
 
 The endpoint and credential reference come from one configuration resolution. In-flight requests retain that snapshot; subsequent updates affect subsequent calls. Account login state cannot change this route’s credential.
 
+Balance queries use the same captured endpoint and API key with `Authorization: Bearer` to read [`GET /user/balance`](https://api-docs.deepseek.com/api/get-user-balance/). The endpoint removes a final `/anthropic`, `/anthropic/v1`, or `/v1` before appending `/user/balance`; custom gateway prefixes stay on their configured origin. Redirects are refused. Only validated CNY/USD `total_balance` strings are returned, including granted credit; failure never supplies zero or the signed-in account’s balance. `balanceTimeoutMs` defaults to 30,000 and accepts integers from 1 through 120,000; cancellation and the deadline cover the response body.
+
 `models` is an independently configurable catalog for this provider; defaults and protocol capabilities come from the shared transport. Discovery does not probe inference endpoints. The settings namespace is the Cordis entry id, or the plugin name without an entry. Product profiles retain the official entry id `llm-deepseek` and use `llm-deepseek-account` for the account route.
 
 <a id="understand-the-implementation"></a>

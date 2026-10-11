@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { AccountView, AccountDetails } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { OnboardingChange } from './onboarding-contract.ts'
@@ -30,6 +31,7 @@ import { DesktopOnboardingController } from './onboarding-state.ts'
 import { DesktopOnboardingEntry, type DesktopOnboardingInjected } from './DesktopOnboardingEntry.tsx'
 import { readOnboardingApiKeyPresence } from './onboarding-credentials.ts'
 import { refreshAfterReturn } from './account-refresh.ts'
+import { ComposerBalanceController } from './composer-balance.ts'
 export type { AccountSectionInjected, AccountSectionProps } from './AccountSection.tsx'
 export type { AccountMenuProps } from './AccountMenu.tsx'
 export type { AccountSnapshot } from './AccountSection.tsx'
@@ -40,7 +42,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /** Services required by account settings. */
-export const inject = ['slots', 'locale', 'remote', 'remote.account', 'remote.session', 'theme', 'configForms']
+export const inject = ['slots', 'locale', 'remote', 'remote.account', 'remote.session', 'remote.llm', 'theme', 'configForms', 'sessions', 'modelDirectories']
 /** Register account UI only in the Desktop renderer. @param ctx - client plugin context. */
 export function apply(ctx: Context): void {
   if (!('dshDesktop' in globalThis)) return
@@ -135,6 +137,11 @@ export function apply(ctx: Context): void {
       void refresh()
     }
   })().catch(() => { if (!disposed) publish({ ...snapshot, failed: true }) })
+  const composerBalances = new Map<object, ComposerBalanceController>()
+  ctx.effect(() => () => {
+    for (const balance of composerBalances.values()) balance.dispose()
+    composerBalances.clear()
+  }, 'account: composer balance lifetime')
   let automaticRefresh: Promise<void> | undefined
   let refreshQueued = false
   const accountActive = (): boolean => !disposed && snapshot.view?.status === 'credential-stored'
@@ -155,13 +162,31 @@ export function apply(ctx: Context): void {
   }
   ctx.effect(() => {
     const offStatus = ctx.remote.$on('api-session/status', (_sessionId, running) => {
-      if (!running) synchronizeAccount()
+      if (!running) {
+        synchronizeAccount()
+        for (const balance of composerBalances.values()) balance.refresh()
+      }
     })
-    const onVisible = (): void => { if (document.visibilityState === 'visible') synchronizeAccount() }
+    const onVisible = (): void => {
+      if (document.visibilityState !== 'visible') return
+      synchronizeAccount()
+      for (const balance of composerBalances.values()) balance.refresh()
+    }
+    const invalidate = (): void => {
+      for (const balance of composerBalances.values()) balance.refresh(true)
+    }
+    const invalidations = [
+      ctx.remote.$on('credentials/record-updated', invalidate),
+      ctx.remote.$on('credentials/reference-updated', invalidate),
+      ctx.remote.$on('llm/adapters-updated', invalidate),
+      ctx.remote.$on('settings/document-updated', invalidate),
+      ctx.on('connection/reset', invalidate),
+    ]
     window.addEventListener('focus', onVisible)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       offStatus()
+      for (const dispose of invalidations) dispose()
       window.removeEventListener('focus', onVisible)
       document.removeEventListener('visibilitychange', onVisible)
     }
@@ -320,7 +345,26 @@ export function apply(ctx: Context): void {
   }, AccountMenu))
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
     name: 'conversation.input.right', id: 'account-balance', locale: 'settings.account',
-    inject: (): AccountComposerBalanceInjected => ({ hooks: { account: operations.hooks.account } }),
+    inject: (sessionId): AccountComposerBalanceInjected => {
+      const sessionScope = ctx.sessions.scope(sessionId)
+      if (sessionScope === undefined) throw new Error(`account: session "${sessionId}" resolved no scope`)
+      const directory = ctx.modelDirectories.directoryFor(sessionId)
+      let balance = composerBalances.get(directory)
+      if (balance === undefined) {
+        balance = new ComposerBalanceController(directory.store, operations.hooks.account, async (provider, signal) => {
+          const result = await ctx.remote.llm.getBalance(provider, signal)
+          if (!result.ok) throw result.error
+          return result.value
+        })
+        composerBalances.set(directory, balance)
+        const owned = balance
+        sessionScope.effect(() => () => {
+          owned.dispose()
+          composerBalances.delete(directory)
+        }, 'account: session composer balance')
+      }
+      return { hooks: { balance: balance.store } }
+    },
   }, AccountComposerBalance))
   ctx.slots.inject('settings.section', () => {
     let unregister: (() => void) | undefined

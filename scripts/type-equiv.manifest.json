@@ -58,6 +58,11 @@
     },
     {
       "doc": "docs/subsystems/llm-streaming.md",
+      "symbol": "LlmBalance",
+      "source": "packages/llm/llm/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/llm-streaming.md",
       "symbol": "LlmProviderInfo",
       "source": "packages/llm/llm/src/types.ts"
     },

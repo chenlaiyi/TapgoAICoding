@@ -37,6 +37,8 @@ kind: "package-reference"
 
 端点和凭据引用来自同一次配置解析；进行中的请求保留该快照，后续配置更新仅影响后续请求。账号登录态不影响该路由使用的凭据。
 
+余额查询使用同一快照中的端点与 API key，以 `Authorization: Bearer` 读取 [`GET /user/balance`](https://api-docs.deepseek.com/api/get-user-balance/)。端点去掉末尾的 `/anthropic`、`/anthropic/v1` 或 `/v1` 后追加 `/user/balance`；自定义网关的路径前缀与源保持不变。请求拒绝重定向，仅返回校验通过的 CNY/USD `total_balance` 字符串，金额包含赠金；失败不会变成零余额或登录账号的余额。`balanceTimeoutMs` 默认为 30,000，接受 1 到 120,000 的整数；取消与截止时间覆盖响应体读取。
+
 `models` 是该 provider 独立的可配置目录；默认值和协议能力来自共享传输包。目录判断不探测推理端点。设置命名空间采用 Cordis entry id，没有 entry 时采用插件名。产品保留 official 的 `llm-deepseek` entry id，账号使用 `llm-deepseek-account`。
 
 <a id="understand-the-implementation"></a>

@@ -64,6 +64,13 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 
 describe('direct Messages HTTP', () => {
+  it('returns no balance without a provider query and leaves credentials unread', async () => {
+    const resolveAuth = vi.fn(async () => ({ headers: {} }))
+    const llm = adapter({}, { resolveAuth })
+    expect(await llm.getBalance('deepseek-account')).toBeNull()
+    expect(resolveAuth).not.toHaveBeenCalled()
+  })
+
   it('continues through Messages with assistant blocks in saved user history', async () => {
     const http = await endpoint()
     const notice = createUserMessage({ source: { kind: 'saved-notice' }, content: [
