@@ -26,8 +26,23 @@ public class AndroidParityTest {
     }
     private void waitEnabled(String text,boolean enabled) throws Exception {
         long end=System.currentTimeMillis()+15000;
-        while(System.currentTimeMillis()<end){try{onView(withText(text)).check(matches(enabled?isEnabled():org.hamcrest.Matchers.not(isEnabled())));return;}catch(AssertionError pending){Thread.sleep(200);}}
-        onView(withText(text)).check(matches(enabled?isEnabled():org.hamcrest.Matchers.not(isEnabled())));
+        while(System.currentTimeMillis()<end){try{onView(org.hamcrest.Matchers.anyOf(withText(text),withContentDescription(text))).check(matches(enabled?isEnabled():org.hamcrest.Matchers.not(isEnabled())));return;}catch(AssertionError pending){Thread.sleep(200);}}
+        onView(org.hamcrest.Matchers.anyOf(withText(text),withContentDescription(text))).check(matches(enabled?isEnabled():org.hamcrest.Matchers.not(isEnabled())));
+    }
+    private void checkLowerToolbar() {
+        onView(withHint("发送消息…")).check((input,error)->{
+            if(error!=null)throw error;
+            assertTrue(input.getParent() instanceof MobileComposer);
+            MobileComposer view=(MobileComposer)input.getParent();
+            int[] field=new int[2],model=new int[2],balance=new int[2];
+            input.getLocationOnScreen(field);view.model.getLocationOnScreen(model);view.balance.getLocationOnScreen(balance);
+            assertTrue(model[1]>=field[1]+input.getHeight());
+            assertTrue(balance[1]>=field[1]+input.getHeight());
+            assertTrue(view.model.getWidth()>0);
+            assertTrue(Math.abs(model[1]+view.model.getHeight()/2-balance[1]-view.balance.getHeight()/2)<10);
+            int[] card=new int[2];view.getLocationOnScreen(card);
+            assertTrue(balance[0]+view.balance.getWidth()<=card[0]+view.getWidth());
+        });
     }
     @Test public void editAndDeletePairedComputers() throws Exception {
         android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -96,31 +111,34 @@ public class AndroidParityTest {
             assertFalse(context.getSharedPreferences("connections",0).getString("encrypted","").contains("token=fixture"));
             ComputerStore store=new ComputerStore(context);assertEquals("Android Test PC",store.current().name());
             onView(withText("Android 验收对话\n/work/Android")).perform(click());
-            waitText("安卓原生对话已连接");waitText("余额 ¥12.50");
+            waitText("安卓原生对话已连接");waitText("余额 ¥12.50");checkLowerToolbar();onView(withHint("发送消息…")).perform(click());checkLowerToolbar();onView(withHint("发送消息…")).perform(closeSoftKeyboard());
             onView(withText("设置")).perform(click());onView(withText(containsString("充值余额 ¥10.00"))).check(matches(isDisplayed()));onView(withText(containsString("赠送余额 ¥2.50"))).check(matches(isDisplayed()));onView(withText(containsString("本会话已使用 100 令牌"))).check(matches(isDisplayed()));onView(withText(containsString("750 / 1000"))).check(matches(isDisplayed()));onView(withText("关闭")).perform(click());
             android.content.ContentValues photoValues=new android.content.ContentValues();photoValues.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME,"TapgoFixture.jpg");photoValues.put(android.provider.MediaStore.Images.Media.MIME_TYPE,"image/jpeg");
             Uri photo=context.getContentResolver().insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,photoValues);assertNotNull(photo);
             try(java.io.OutputStream output=context.getContentResolver().openOutputStream(photo)){android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(32,32,android.graphics.Bitmap.Config.ARGB_8888);bitmap.eraseColor(android.graphics.Color.BLUE);bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,80,output);bitmap.recycle();}
             try{scenario.onActivity(activity->activity.onActivityResult(502,android.app.Activity.RESULT_OK,new Intent().setData(photo)));waitText("移除照片");}finally{context.getContentResolver().delete(photo,null,null);}
             onView(withHint("发送消息…")).perform(typeText("test"),replaceText("模拟器消息"),closeSoftKeyboard());
-            onView(withText("发送")).perform(click());waitText("流式验收回复");
-            onView(withHint("发送消息…")).perform(replaceText("停止验收"),closeSoftKeyboard());onView(withText("发送")).perform(click());waitEnabled("停止",true);onView(withText("停止")).perform(click());waitEnabled("停止",false);
+            onView(withContentDescription("发送")).perform(click());waitText("流式验收回复");
+            onView(withHint("发送消息…")).perform(replaceText("停止验收"),closeSoftKeyboard());onView(withContentDescription("发送")).perform(click());waitEnabled("停止",true);onView(withContentDescription("停止")).perform(click());onView(withContentDescription("发送")).check(matches(isDisplayed()));
             onView(withText("Fixture Model")).perform(click());waitText("验收模型");onView(withText("验收模型")).perform(click());
             onView(withText("Fixture Model")).perform(click());onView(withText("API 验收模型")).perform(click());waitText("余额 ¥86.77");
             onView(withText("设置")).perform(click());onView(withText(containsString("账号余额 ¥12.50"))).check(matches(isDisplayed()));onView(withText(containsString("API 余额 ¥86.77"))).check(matches(isDisplayed()));onView(withText("关闭")).perform(click());
             onView(withText("Chat")).perform(click());onView(withText("无余额模型")).perform(click());waitText("余额暂不可用");
             onView(withText("Other")).perform(click());onView(withText("验收模型")).perform(click());waitText("余额 ¥12.50");
-            onView(withText("访问权限")).perform(click());waitText("安全模式");onView(withText("安全模式")).perform(click());waitText("验收权限确认");onView(withText("提交")).perform(click());waitText("安全模式");
+            onView(withContentDescription("访问权限")).perform(click());waitText("安全模式");onView(withText("安全模式")).perform(click());waitText("验收权限确认");onView(withText("提交")).perform(click());onView(withContentDescription("安全模式")).check(matches(isDisplayed()));
             onView(withText("完整工作区")).perform(click());
             waitText("返回");
             long end=System.currentTimeMillis()+15000; boolean selected=false;
             while(System.currentTimeMillis()<end){try{onWebView().withElement(findElement(Locator.ID,"selection")).check(webMatches(getText(),containsString("session-one")));selected=true;break;}catch(RuntimeException|AssertionError pending){Thread.sleep(200);}}
             assertTrue("Workspace must open the selected session",selected);
             onView(withText("返回")).perform(click());waitText("新对话");onView(withText("新对话")).perform(click());
+            waitText("余额 ¥12.50");checkLowerToolbar();
+            onView(withText("Fixture Model")).perform(click());onView(withText("API 验收模型")).perform(click());waitText("余额 ¥86.77");checkLowerToolbar();
+            onView(withText("Chat")).perform(click());onView(withText("验收模型")).perform(click());waitText("余额 ¥12.50");
             onView(withText("添加项目文件夹")).perform(click());waitText("选择此文件夹");onView(withText("新建文件夹")).perform(click());
             onView(withHint("文件夹名称")).perform(replaceText("AndroidFixture"));onView(withId(android.R.id.button1)).perform(click());
             waitText("选择此文件夹");onView(withText("选择此文件夹")).perform(click());waitText("安卓新项目");
-            onView(withText("发送")).perform(click());waitText("安卓原生对话已连接");
+            onView(withContentDescription("发送")).perform(click());waitText("安卓原生对话已连接");
         }
         try(ActivityScenario<MainActivity> reopened=ActivityScenario.launch(MainActivity.class)){waitText("Android Test PC");}
         context.getSharedPreferences("connections",0).edit().clear().commit();

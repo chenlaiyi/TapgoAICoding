@@ -192,6 +192,41 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertFalse(app.keyboards.firstMatch.exists)
     }
 
+    func testModelAndBalanceStayInLowerToolbar() {
+        for appearance in ["Light", "Dark"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--dsh-mobile-test-url", "https://toolbar.example/?token=fixture&name=Studio%20Mac",
+                                   "--dsh-mobile-test-sessions", "[{\"sessionId\":\"toolbar\",\"cwd\":\"/work\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"Toolbar chat\"}}}]",
+                                   "--dsh-mobile-test-messages", "[]", "--dsh-mobile-test-balance", "23.51",
+                                   "-AppleInterfaceStyle", appearance]
+            app.launch()
+            app.buttons["新对话输入框"].tap()
+            checkLowerToolbar(app, inputID: "newConversationInput", modelID: "newConversationModel", balanceID: "newConversationBalance")
+            keepScreenshot(app, name: "new-toolbar-" + appearance)
+            app.buttons["返回远程首页"].tap()
+            app.buttons["Toolbar chat"].tap()
+            checkLowerToolbar(app, inputID: "chatComposerInput", modelID: "选择模型", balanceID: "availableBalance")
+            keepScreenshot(app, name: "chat-toolbar-" + appearance)
+        }
+    }
+
+    private func checkLowerToolbar(_ app: XCUIApplication, inputID: String, modelID: String, balanceID: String) {
+        let input = app.descendants(matching: .any)[inputID]
+        let model = app.buttons[modelID]
+        let balance = app.staticTexts[balanceID]
+        XCTAssertTrue(balance.waitForExistence(timeout: 5))
+        for focused in [false, true, false] {
+            if focused { input.tap() } else { app.buttons["收起键盘"].tap() }
+            XCTAssertGreaterThanOrEqual(model.frame.minY, input.frame.maxY)
+            XCTAssertGreaterThan(balance.frame.minY, input.frame.maxY)
+            XCTAssertLessThan(abs(model.frame.midY - balance.frame.midY), 10)
+            XCTAssertGreaterThanOrEqual(model.frame.minX, app.frame.minX)
+            XCTAssertLessThanOrEqual(balance.frame.maxX, app.frame.maxX)
+            XCTAssertTrue(model.isHittable)
+            XCTAssertTrue(app.buttons["访问权限"].isHittable)
+        }
+    }
+
     func testChatKeyboardCanDismiss() {
         let app = XCUIApplication()
         app.launchArguments = [

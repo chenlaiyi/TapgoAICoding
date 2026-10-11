@@ -31,6 +31,9 @@ struct DshMobileApp: App {
                         .zIndex(1)
                 }
             }
+            #if DEBUG
+            .preferredColorScheme(fixtureColorScheme)
+            #endif
             .task {
                 try? await Task.sleep(for: .milliseconds(1100))
                 withAnimation(.easeOut(duration: 0.2)) { showingLaunch = false }
@@ -41,6 +44,16 @@ struct DshMobileApp: App {
             .onOpenURL { connection.connect($0) }
         }
     }
+    #if DEBUG
+    private var fixtureColorScheme: ColorScheme? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("--dsh-mobile-test-url"),
+              let index = arguments.firstIndex(of: "-AppleInterfaceStyle"),
+              arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1] == "Dark" ? .dark : .light
+    }
+    #endif
+
 }
 
 /// Brand header shared by startup and the unpaired welcome page.
