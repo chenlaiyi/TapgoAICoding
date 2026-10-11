@@ -100,10 +100,10 @@ importers:
         version: 5.10.0(eslint@10.5.0(jiti@2.7.0)(supports-color@9.4.0))
       '@testing-library/dom':
         specifier: ^10.4.1
-        version: 10.4.2
+        version: 10.4.1
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -225,8 +225,8 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.11)(happy-dom@20.11.6)(jsdom@29.1.1(@noble/hashes@2.4.0))(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   apps/cli:
     dependencies:
@@ -488,7 +488,7 @@ importers:
     devDependencies:
       '@agentclientprotocol/sdk':
         specifier: 1.4.0
-        version: 1.4.0(zod@4.4.3)
+        version: 1.4.0(zod@4.6.2)
       '@deepseek-ai/dsh-acp':
         specifier: workspace:*
         version: link:../../packages/acp/acp
@@ -1083,8 +1083,8 @@ importers:
         specifier: ^1.49.0
         version: 1.61.1
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   native/system:
     devDependencies:
@@ -1128,7 +1128,7 @@ importers:
     dependencies:
       '@agentclientprotocol/sdk':
         specifier: 1.4.0
-        version: 1.4.0(zod@4.4.3)
+        version: 1.4.0(zod@4.6.2)
       '@deepseek-ai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
@@ -1185,8 +1185,8 @@ importers:
   packages/api/account-controller:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1247,8 +1247,8 @@ importers:
         specifier: ^8.18.1
         version: 8.18.1
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/api/job-controller:
     dependencies:
@@ -1259,8 +1259,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1408,8 +1408,8 @@ importers:
         specifier: workspace:*
         version: link:../../interaction/user-questions
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/api/session-controller:
     dependencies:
@@ -1426,8 +1426,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1568,8 +1568,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1614,8 +1614,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1675,8 +1675,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1724,8 +1724,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -1969,8 +1969,8 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -2906,7 +2906,7 @@ importers:
         version: 15.0.0
       open:
         specifier: ^11.0.2
-        version: 11.0.4
+        version: 11.0.3
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -2957,8 +2957,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -2994,8 +2994,8 @@ importers:
         specifier: workspace:*
         version: link:../../typert/protocol
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -3114,8 +3114,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -3399,7 +3399,7 @@ importers:
         version: link:../ui-slots
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -3745,8 +3745,8 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/client/ui-deliverables:
     dependencies:
@@ -3876,7 +3876,7 @@ importers:
         version: link:../ui-workspace
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -3906,7 +3906,7 @@ importers:
         version: link:../ui-workspace
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -3930,7 +3930,7 @@ importers:
         version: link:../ui-primitives
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -3996,7 +3996,7 @@ importers:
         version: link:../../typert/protocol
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -4200,7 +4200,7 @@ importers:
         version: link:../../typert/protocol
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -4499,8 +4499,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -4549,7 +4549,7 @@ importers:
         version: link:../../util/crypto
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -4792,7 +4792,7 @@ importers:
         version: link:../../util/values
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -4950,7 +4950,7 @@ importers:
         version: link:../../settings/settings
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/big.js':
         specifier: ^6.2.2
         version: 6.2.2
@@ -5171,7 +5171,7 @@ importers:
         version: link:../../util/package-manifest
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -5510,7 +5510,7 @@ importers:
         version: link:../ui-slots
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -5598,7 +5598,7 @@ importers:
         version: 1.0.4(patch_hash=2932e52e79afcd4ced08cfa123b5eded786c85043da32f622f3e80af6fc96c37)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/papaparse':
         specifier: ^5.3.16
         version: 5.5.2
@@ -5694,7 +5694,7 @@ importers:
         version: link:../../util/workspace-path
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -5766,7 +5766,7 @@ importers:
         version: link:../../util/crypto
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/picomatch':
         specifier: ^4.0.3
         version: 4.0.3
@@ -5789,8 +5789,8 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/client/ui-sidebar-terminal:
     devDependencies:
@@ -5847,7 +5847,7 @@ importers:
         version: link:../../core/session
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -5919,7 +5919,7 @@ importers:
         version: link:../../util/workspace-path
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -6151,7 +6151,7 @@ importers:
         version: link:../../util/workspace-path
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -6806,8 +6806,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -6885,8 +6885,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -6940,8 +6940,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7035,8 +7035,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7273,8 +7273,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7411,8 +7411,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7442,8 +7442,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7513,8 +7513,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7816,8 +7816,8 @@ importers:
         specifier: 3.2.2
         version: 3.2.2(yauzl@3.4.0)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -7877,8 +7877,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -8002,7 +8002,7 @@ importers:
         version: link:../../core/session
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -8059,7 +8059,7 @@ importers:
         version: link:../../typert/protocol
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -8076,8 +8076,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -8141,7 +8141,7 @@ importers:
         version: link:../../typert/registry
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -8207,7 +8207,7 @@ importers:
         version: link:../../typert/protocol
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -8276,8 +8276,8 @@ importers:
         specifier: 0.28.0
         version: 0.28.0
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -8476,7 +8476,7 @@ importers:
         version: link:../../../vendor/schemastery
       open:
         specifier: ^11.0.2
-        version: 11.0.4
+        version: 11.0.3
       serve-static:
         specifier: ^2.2.1
         version: 2.2.1(supports-color@9.4.0)
@@ -8528,7 +8528,7 @@ importers:
         version: link:../../host/webserver
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -8666,7 +8666,7 @@ importers:
         version: 3.14.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -8780,8 +8780,8 @@ importers:
         specifier: 1.13.8
         version: 1.13.8
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -9487,8 +9487,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -9602,8 +9602,8 @@ importers:
   packages/feedback/command-feedback:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -9642,8 +9642,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -9965,8 +9965,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10258,8 +10258,8 @@ importers:
   packages/host/plugin-inventory:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10360,8 +10360,8 @@ importers:
         specifier: workspace:*
         version: link:../../util/crypto
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10394,8 +10394,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10487,8 +10487,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10634,8 +10634,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10809,7 +10809,7 @@ importers:
         version: link:../../../vendor/schemastery
       '@earendil-works/pi-ai':
         specifier: ^1.0.2
-        version: 1.0.2(patch_hash=1cc211bc358d30cb58bd975f39c03e296f8a277c3de845514d12f9ae77ebab5f)(@aws-sdk/credential-provider-node@3.972.84)(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3))(@smithy/signature-v4@5.7.4)(supports-color@9.4.0)(undici@8.10.2)(ws@8.21.3)(zod@4.4.3)
+        version: 1.0.2(patch_hash=1cc211bc358d30cb58bd975f39c03e296f8a277c3de845514d12f9ae77ebab5f)(@aws-sdk/credential-provider-node@3.972.84)(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2))(@smithy/signature-v4@5.7.4)(supports-color@9.4.0)(undici@8.10.2)(ws@8.21.3)(zod@4.6.2)
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10857,8 +10857,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -10961,8 +10961,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -11149,10 +11149,10 @@ importers:
         version: 2026.8.31(supports-color@9.4.0)
       '@modelcontextprotocol/server-filesystem':
         specifier: ^2026.8.31
-        version: 2026.8.31(supports-color@9.4.0)(zod@4.4.3)
+        version: 2026.8.31(supports-color@9.4.0)(zod@4.6.2)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/mcp/mcp-resources:
     dependencies:
@@ -11188,8 +11188,8 @@ importers:
         specifier: workspace:*
         version: link:../../util/brand
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -11274,8 +11274,8 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -11462,8 +11462,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -11533,8 +11533,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -12109,8 +12109,8 @@ importers:
   packages/session/session-projection:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -12128,8 +12128,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -12153,8 +12153,8 @@ importers:
   packages/session/session-stats:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -12257,8 +12257,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -12359,8 +12359,8 @@ importers:
   packages/session/session-turn-outline:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -12420,8 +12420,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13180,8 +13180,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13205,8 +13205,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13224,8 +13224,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13397,8 +13397,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13425,8 +13425,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13476,8 +13476,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13565,7 +13565,7 @@ importers:
     dependencies:
       '@agentclientprotocol/sdk':
         specifier: 1.4.0
-        version: 1.4.0(zod@4.4.3)
+        version: 1.4.0(zod@4.6.2)
       '@deepseek-ai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
@@ -13623,10 +13623,10 @@ importers:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
         specifier: 0.3.263
-        version: 0.3.263(@anthropic-ai/sdk@0.93.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3))(zod@4.4.3)
+        version: 0.3.263(@anthropic-ai/sdk@0.93.0(zod@4.6.2))(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2))(zod@4.6.2)
       '@anthropic-ai/sdk':
         specifier: 0.93.0
-        version: 0.93.0(zod@4.4.3)
+        version: 0.93.0(zod@4.6.2)
       '@deepseek-ai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
@@ -13638,10 +13638,10 @@ importers:
         version: link:../../../vendor/schemastery
       '@modelcontextprotocol/sdk':
         specifier: ^1.31.0
-        version: 1.31.0(supports-color@9.4.0)(zod@4.4.3)
+        version: 1.31.0(supports-color@9.4.0)(zod@4.6.2)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -13930,8 +13930,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -14216,10 +14216,10 @@ importers:
     dependencies:
       '@testing-library/dom':
         specifier: ^10.4.1
-        version: 10.4.2
+        version: 10.4.1
       '@testing-library/react':
         specifier: ^16.3.3
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       js-yaml:
         specifier: ^4.3.2
         version: 4.3.2
@@ -14412,7 +14412,7 @@ importers:
     dependencies:
       '@agentclientprotocol/sdk':
         specifier: 1.4.0
-        version: 1.4.0(zod@4.4.3)
+        version: 1.4.0(zod@4.6.2)
       '@deepseek-ai/cordis-plugin-include':
         specifier: workspace:~
         version: link:../../../vendor/include
@@ -14481,8 +14481,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -14540,8 +14540,8 @@ importers:
         specifier: workspace:*
         version: link:../registry
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/typert/loader:
     dependencies:
@@ -14562,8 +14562,8 @@ importers:
         specifier: workspace:*
         version: link:../registry
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
 
   packages/typert/protocol:
     dependencies:
@@ -14578,8 +14578,8 @@ importers:
   packages/typert/registry:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -14603,8 +14603,8 @@ importers:
   packages/util/chunked-list:
     dependencies:
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -15030,8 +15030,8 @@ importers:
         specifier: workspace:*
         version: link:../../util/brand
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.6.2
+        version: 4.6.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -17356,10 +17356,12 @@ packages:
 
   '@modelcontextprotocol/server-everything@2026.8.31':
     resolution: {integrity: sha512-5U3OZh8Xq0Li4nA26l6uNvV9/1suMDuWSn+NjLZIhzinhMY6N3A4DCrxVecBGPf2PsNFKTEv5krxGPRwzxc7jQ==}
+    deprecated: 'Date-based versions are no longer published. This package has resumed semantic versioning at 1.0.0: install the latest version.'
     hasBin: true
 
   '@modelcontextprotocol/server-filesystem@2026.8.31':
     resolution: {integrity: sha512-kKaFkyAh6oipvc9+EAbJ552JafnMnOq5nzmzWkp1jJdBhTAAGpmIpWihUG1+rfNhmEFM98gUZDdCHCDD4v6a7Q==}
+    deprecated: 'Date-based versions are no longer published. This package has resumed semantic versioning at 1.0.0: install the latest version.'
     hasBin: true
 
   '@modelcontextprotocol/server@2.2.0':
@@ -18324,6 +18326,10 @@ packages:
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
 
+  '@smithy/core@3.34.0':
+    resolution: {integrity: sha512-YvlfAEyHmuWpwjEKgq4FBaXhLEoSEwS/nNbyCF/ef05ZvSuwMDB4NIMgXqkJojzYyQWjhVDapPHXfhkz/tZYlg==}
+    engines: {node: '>=18.0.0'}
+
   '@smithy/core@3.35.0':
     resolution: {integrity: sha512-zRMhfkByhT2snNdr1si24vJitU6Cr9ix2MikUfWmkAgp4jrNP0GcKSP5YvwQ+TlI8AZXER5QOGJn3JsVtSD9/A==}
     engines: {node: '>=18.0.0'}
@@ -18340,8 +18346,16 @@ packages:
     resolution: {integrity: sha512-ThMkboGeONWXAelq9FvGsuJC4rOi+qyC4/zhUF58xYpxUg5sQKx2VXZYJmtNjr4dSuBJ1HeJXETQILCz3wOHvw==}
     engines: {node: '>=18.0.0'}
 
+  '@smithy/signature-v4@5.7.3':
+    resolution: {integrity: sha512-7ImGm+FkHRLcBaRttIAMZ6bzJZWb2cJGoYjq46F2UjycujWzrL9GEN9h4w7eQyXJYnltrUhxbbieBAIRrdqpow==}
+    engines: {node: '>=18.0.0'}
+
   '@smithy/signature-v4@5.7.4':
     resolution: {integrity: sha512-tHy0K0VtqNd5Y7Y41h0a0Lhh0L1GzC08dTWg0F7vRJWFtTENg7IZikf3wQkanYIRdb7ngoIPMTmqgUi401fEeQ==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/types@4.18.0':
+    resolution: {integrity: sha512-CgB6HHWer/vrKps24ulRIbpcpb7K4xAU7SkZ7YHzBPlwHsvsrCJFEXK421s+cJzX+ZrqtA/TuU5w1HzI7k9N8A==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/types@4.19.0':
@@ -18376,8 +18390,8 @@ packages:
   '@tanstack/virtual-core@3.17.8':
     resolution: {integrity: sha512-BfEvehNpOT75r5Ksc5xW6NZuXujTfb7nlSEyVu4XHG3gdxNg1KqXruWbDewXOUaUYIo4oRbSfkjIajz4MAT8tA==}
 
-  '@testing-library/dom@10.4.2':
-    resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
+  '@testing-library/dom@10.4.1':
+    resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
 
   '@testing-library/react@16.3.3':
@@ -20676,8 +20690,8 @@ packages:
     resolution: {integrity: sha512-DRsRnQrbzdFjaQ1oe4C6/EIUymIOEix1qROEJTF9dbMq+M4Zrm6VaLp6SD/B9IsiEjPZuBSnWWFN+udajugdWA==}
     engines: {node: '>=20'}
 
-  ip-address@10.7.1:
-    resolution: {integrity: sha512-4OUAqU9Z1i3vCnS05hzGiFnEMDpQ+62pAD/MVQOp83fYyNC8GleCqaS0QikQBmcWCrKFiUs/B8ztRRiYOAXuCA==}
+  ip-address@10.7.0:
+    resolution: {integrity: sha512-BGFsyJd5mpXp3rK6jIdADLNgpJUK1jnjzvYF8lK+VyDab9JAmqN0YOKDdP17HlgKb2+ehPgDc8EtnRLbGCAMhA==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -21671,8 +21685,8 @@ packages:
   oniguruma-to-es@4.3.6:
     resolution: {integrity: sha512-csuQ9x3Yr0cEIs/Zgx/OEt9iBw9vqIunAPQkx19R/fiMq2oGVTgcMqO/V3Ybqefr1TBvosI6jU539ksaBULJyA==}
 
-  open@11.0.4:
-    resolution: {integrity: sha512-++Zlftm0kVLPmzC06t6epuWmcRMDbI4z5P3NNX979WA/k23+NtSOynEGzsVfZwguKw2mi5umVgnBlJQMwRz4Pg==}
+  open@11.0.3:
+    resolution: {integrity: sha512-b3souUgU0VaAvMmzA4+9cRgrOgMdE0vc9H9VhQ0FYnjjcyZ8R/f9DiwMU9V8rl+vjf05On9UJhbgb06fsTs87Q==}
     engines: {node: '>=20'}
 
   openai@7.19.0:
@@ -21982,8 +21996,8 @@ packages:
     resolution: {integrity: sha512-/FPD0nUc9jH6rfFjji9IBqOz4pcSE3CsT1m7Ep6Mdb0LxSUMj8hgl6GomOvZzpNpAqqGaXA0P3VSrZLFzIhQrw==}
     engines: {node: '>=12.0.0'}
 
-  proxy-addr@2.0.8:
-    resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
+  proxy-addr@2.0.7:
+    resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
     engines: {node: '>= 0.10'}
 
   proxy-agent-negotiate@1.1.0:
@@ -22414,6 +22428,10 @@ packages:
   smol-toml@1.9.0:
     resolution: {integrity: sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ==}
     engines: {node: '>= 18'}
+
+  source-map-js@1.2.1:
+    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+    engines: {node: '>=0.10.0'}
 
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
@@ -23313,6 +23331,9 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
+  zod@4.6.2:
+    resolution: {integrity: sha512-lh5RCAGFa1Cm2hjtNwLQhSs/AsqdWnTQaBER9fEwN/88pSh7KOtJavtBx/0VlkN/uFd61SwYmljLMDAsHlvzBQ==}
+
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
     engines: {node: '>=12.7.0'}
@@ -23333,9 +23354,9 @@ packages:
 
 snapshots:
 
-  '@agentclientprotocol/sdk@1.4.0(zod@4.4.3)':
+  '@agentclientprotocol/sdk@1.4.0(zod@4.6.2)':
     dependencies:
-      zod: 4.4.3
+      zod: 4.6.2
 
   '@algolia/abtesting@1.21.2':
     dependencies:
@@ -23478,11 +23499,11 @@ snapshots:
   '@anthropic-ai/claude-agent-sdk-win32-x64@0.3.263':
     optional: true
 
-  '@anthropic-ai/claude-agent-sdk@0.3.263(@anthropic-ai/sdk@0.93.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3))(zod@4.4.3)':
+  '@anthropic-ai/claude-agent-sdk@0.3.263(@anthropic-ai/sdk@0.93.0(zod@4.6.2))(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2))(zod@4.6.2)':
     dependencies:
-      '@anthropic-ai/sdk': 0.93.0(zod@4.4.3)
-      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.4.3)
-      zod: 4.4.3
+      '@anthropic-ai/sdk': 0.93.0(zod@4.6.2)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.6.2)
+      zod: 4.6.2
     optionalDependencies:
       '@anthropic-ai/claude-agent-sdk-darwin-arm64': 0.3.263
       '@anthropic-ai/claude-agent-sdk-darwin-x64': 0.3.263
@@ -23493,18 +23514,18 @@ snapshots:
       '@anthropic-ai/claude-agent-sdk-win32-arm64': 0.3.263
       '@anthropic-ai/claude-agent-sdk-win32-x64': 0.3.263
 
-  '@anthropic-ai/sdk@0.129.0(zod@4.4.3)':
+  '@anthropic-ai/sdk@0.129.0(zod@4.6.2)':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.1.1
     optionalDependencies:
-      zod: 4.4.3
+      zod: 4.6.2
 
-  '@anthropic-ai/sdk@0.93.0(zod@4.4.3)':
+  '@anthropic-ai/sdk@0.93.0(zod@4.6.2)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.4.3
+      zod: 4.6.2
 
   '@asamuzakjp/css-color@5.1.11':
     dependencies:
@@ -23547,7 +23568,7 @@ snapshots:
       '@aws-sdk/xml-builder': 3.972.41
       '@aws/lambda-invoke-store': 0.3.0
       '@smithy/core': 3.35.0
-      '@smithy/signature-v4': 5.7.4
+      '@smithy/signature-v4': 5.7.3
       '@smithy/types': 4.19.0
       bowser: 2.14.1
       tslib: 2.8.1
@@ -23674,7 +23695,7 @@ snapshots:
   '@aws-sdk/signature-v4-multi-region@3.996.47':
     dependencies:
       '@aws-sdk/types': 3.974.6
-      '@smithy/signature-v4': 5.7.4
+      '@smithy/signature-v4': 5.7.3
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
@@ -23967,16 +23988,16 @@ snapshots:
     transitivePeerDependencies:
       - '@algolia/client-search'
 
-  '@earendil-works/pi-ai@1.0.2(patch_hash=1cc211bc358d30cb58bd975f39c03e296f8a277c3de845514d12f9ae77ebab5f)(@aws-sdk/credential-provider-node@3.972.84)(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3))(@smithy/signature-v4@5.7.4)(supports-color@9.4.0)(undici@8.10.2)(ws@8.21.3)(zod@4.4.3)':
+  '@earendil-works/pi-ai@1.0.2(patch_hash=1cc211bc358d30cb58bd975f39c03e296f8a277c3de845514d12f9ae77ebab5f)(@aws-sdk/credential-provider-node@3.972.84)(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2))(@smithy/signature-v4@5.7.4)(supports-color@9.4.0)(undici@8.10.2)(ws@8.21.3)(zod@4.6.2)':
     dependencies:
-      '@anthropic-ai/sdk': 0.129.0(zod@4.4.3)
+      '@anthropic-ai/sdk': 0.129.0(zod@4.6.2)
       '@aws-sdk/client-bedrock-runtime': 3.1127.0
       '@earendil-works/pi-telemetry': 1.0.2
-      '@google/genai': 2.21.0(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3))(supports-color@9.4.0)
+      '@google/genai': 2.21.0(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2))(supports-color@9.4.0)
       '@smithy/node-http-handler': 4.12.1
       http-proxy-agent: 9.1.0(supports-color@9.4.0)
       https-proxy-agent: 9.1.0(supports-color@9.4.0)
-      openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.21.3)(zod@4.4.3)
+      openai: 7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.21.3)(zod@4.6.2)
       partial-json: 0.1.7
       typebox: 1.3.27
     transitivePeerDependencies:
@@ -24510,14 +24531,14 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       regenerator-runtime: 0.14.1
 
-  '@google/genai@2.21.0(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3))(supports-color@9.4.0)':
+  '@google/genai@2.21.0(@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2))(supports-color@9.4.0)':
     dependencies:
       google-auth-library: 10.7.0(supports-color@9.4.0)
       p-retry: 4.6.2
       protobufjs: 7.6.5
       ws: 8.21.3
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.4.3)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.6.2)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -24880,11 +24901,11 @@ snapshots:
       eventsource-parser: 3.1.0
       jose: 6.2.3
       pkce-challenge: 5.0.1
-      zod: 4.4.3
+      zod: 4.6.2
 
   '@modelcontextprotocol/core@2.2.0':
     dependencies:
-      zod: 4.4.3
+      zod: 4.6.2
 
   '@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.2.0)(hono@4.13.7)':
     dependencies:
@@ -24893,7 +24914,7 @@ snapshots:
     optionalDependencies:
       hono: 4.13.7
 
-  '@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.4.3)':
+  '@modelcontextprotocol/sdk@1.31.0(supports-color@9.4.0)(zod@4.6.2)':
     dependencies:
       '@hono/node-server': 1.19.17(hono@4.13.7)
       ajv: 8.20.0
@@ -24910,25 +24931,25 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.4.3
-      zod-to-json-schema: 3.25.2(zod@4.4.3)
+      zod: 4.6.2
+      zod-to-json-schema: 3.25.2(zod@4.6.2)
     transitivePeerDependencies:
       - supports-color
 
   '@modelcontextprotocol/server-everything@2026.8.31(supports-color@9.4.0)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.4.3)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.6.2)
       cors: 2.8.6
       express: 5.2.1(supports-color@9.4.0)
       jszip: 3.10.1
-      zod: 4.4.3
+      zod: 4.6.2
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@modelcontextprotocol/server-filesystem@2026.8.31(supports-color@9.4.0)(zod@4.4.3)':
+  '@modelcontextprotocol/server-filesystem@2026.8.31(supports-color@9.4.0)(zod@4.6.2)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.4.3)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@9.4.0)(zod@4.6.2)
       diff: 8.0.4
       glob: 13.0.6
       minimatch: 10.2.5
@@ -24940,7 +24961,7 @@ snapshots:
   '@modelcontextprotocol/server@2.2.0':
     dependencies:
       '@modelcontextprotocol/core': 2.2.0
-      zod: 4.4.3
+      zod: 4.6.2
 
   '@napi-rs/canvas-android-arm64@1.0.8':
     optional: true
@@ -25587,6 +25608,11 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
+  '@smithy/core@3.34.0':
+    dependencies:
+      '@smithy/types': 4.18.0
+      tslib: 2.8.1
+
   '@smithy/core@3.35.0':
     dependencies:
       '@smithy/types': 4.19.0
@@ -25594,14 +25620,14 @@ snapshots:
 
   '@smithy/credential-provider-imds@4.5.2':
     dependencies:
-      '@smithy/core': 3.35.0
-      '@smithy/types': 4.19.0
+      '@smithy/core': 3.34.0
+      '@smithy/types': 4.18.0
       tslib: 2.8.1
 
   '@smithy/fetch-http-handler@5.8.0':
     dependencies:
-      '@smithy/core': 3.35.0
-      '@smithy/types': 4.19.0
+      '@smithy/core': 3.34.0
+      '@smithy/types': 4.18.0
       tslib: 2.8.1
 
   '@smithy/node-http-handler@4.12.1':
@@ -25610,10 +25636,20 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
+  '@smithy/signature-v4@5.7.3':
+    dependencies:
+      '@smithy/core': 3.34.0
+      '@smithy/types': 4.18.0
+      tslib: 2.8.1
+
   '@smithy/signature-v4@5.7.4':
     dependencies:
       '@smithy/core': 3.35.0
       '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/types@4.18.0':
+    dependencies:
       tslib: 2.8.1
 
   '@smithy/types@4.19.0':
@@ -25650,7 +25686,7 @@ snapshots:
 
   '@tanstack/virtual-core@3.17.8': {}
 
-  '@testing-library/dom@10.4.2':
+  '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
       '@babel/runtime': 7.29.7
@@ -25661,10 +25697,10 @@ snapshots:
       picocolors: 1.1.1
       pretty-format: 27.5.1
 
-  '@testing-library/react@16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@testing-library/react@16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@babel/runtime': 7.29.7
-      '@testing-library/dom': 10.4.2
+      '@testing-library/dom': 10.4.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
@@ -27787,7 +27823,7 @@ snapshots:
   express-rate-limit@8.5.2(express@5.2.1(supports-color@9.4.0)):
     dependencies:
       express: 5.2.1(supports-color@9.4.0)
-      ip-address: 10.7.1
+      ip-address: 10.7.0
 
   express@5.2.1(supports-color@9.4.0):
     dependencies:
@@ -27810,7 +27846,7 @@ snapshots:
       on-finished: 2.4.1
       once: 1.4.0
       parseurl: 1.3.3
-      proxy-addr: 2.0.8
+      proxy-addr: 2.0.7
       qs: 6.16.0
       range-parser: 1.3.0
       router: 2.2.0(supports-color@9.4.0)
@@ -28392,7 +28428,7 @@ snapshots:
 
   into-stream@9.1.0: {}
 
-  ip-address@10.7.1: {}
+  ip-address@10.7.0: {}
 
   ipaddr.js@1.9.1: {}
 
@@ -29464,7 +29500,7 @@ snapshots:
       regex: 6.1.0
       regex-recursion: 6.0.2
 
-  open@11.0.4:
+  open@11.0.3:
     dependencies:
       default-browser: 5.5.1
       define-lazy-prop: 3.0.0
@@ -29473,13 +29509,13 @@ snapshots:
       powershell-utils: 0.2.1
       wsl-utils: 1.0.0
 
-  openai@7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.21.3)(zod@4.4.3):
+  openai@7.19.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.4)(undici@8.10.2)(ws@8.21.3)(zod@4.6.2):
     optionalDependencies:
       '@aws-sdk/credential-provider-node': 3.972.84
       '@smithy/signature-v4': 5.7.4
       undici: 8.10.2
       ws: 8.21.3
-      zod: 4.4.3
+      zod: 4.6.2
 
   opener@1.5.2: {}
 
@@ -29692,7 +29728,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
-      source-map-js: 1.2.2
+      source-map-js: 1.2.1
 
   postject@1.0.0-alpha.6:
     dependencies:
@@ -29766,7 +29802,7 @@ snapshots:
       '@types/node': 22.20.1
       long: 5.3.2
 
-  proxy-addr@2.0.8:
+  proxy-addr@2.0.7:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
@@ -30298,6 +30334,8 @@ snapshots:
       semver: 7.8.5
 
   smol-toml@1.9.0: {}
+
+  source-map-js@1.2.1: {}
 
   source-map-js@1.2.2: {}
 
@@ -31167,11 +31205,13 @@ snapshots:
       compress-commons: 4.1.2
       readable-stream: 3.6.2
 
-  zod-to-json-schema@3.25.2(zod@4.4.3):
+  zod-to-json-schema@3.25.2(zod@4.6.2):
     dependencies:
-      zod: 4.4.3
+      zod: 4.6.2
 
   zod@4.4.3: {}
+
+  zod@4.6.2: {}
 
   zustand@4.5.7(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1):
     dependencies:
