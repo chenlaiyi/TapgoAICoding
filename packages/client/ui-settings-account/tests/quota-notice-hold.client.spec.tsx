@@ -23,6 +23,7 @@ import { AccountSection, type AccountSectionInjected, type AccountSnapshot } fro
 import { DesktopOnboardingEntry, type DesktopOnboardingInjected } from '../src/client/DesktopOnboardingEntry.tsx'
 import type { DesktopOnboardingState } from '../src/client/onboarding-contract.ts'
 import { createPlatformPages, type PlatformPages } from '../src/client/platform-pages.ts'
+import type { ApiBalanceSnapshot } from '../src/client/api-balance.ts'
 import type { PlatformBridge } from '../src/client/PlatformOverlay.tsx'
 import { en, zh } from '../src/client/locales.ts'
 
@@ -152,9 +153,15 @@ async function bench() {
     unregisterNotice = dispose
     return dispose
   })
+  const apiBalance = createSnapshotStore<ApiBalanceSnapshot>({ status: 'loading', value: null })
   runtime.ctx.slots.inject('settings.section', () => runtime.ctx.slots.register({
     name: 'settings.section', id: 'account', locale: 'settings.account',
-    inject: () => sectionOperations(accountSnapshot.getSnapshot(), pages),
+    inject: () => {
+      const operations = sectionOperations(accountSnapshot.getSnapshot(), pages)
+      return { ...operations, refreshApiBalance: () => {}, hooks: { ...operations.hooks,
+        apiBalance,
+      } }
+    },
   }, AccountSection))
   runtime.ctx.slots.inject('shell.overlay', () => runtime.ctx.slots.register({
     name: 'shell.overlay', id: 'desktop-onboarding', locale: 'settings.account',
