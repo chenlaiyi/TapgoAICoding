@@ -9,6 +9,7 @@ import type { PlatformBridge } from '../src/client/PlatformOverlay.tsx'
 import { createPlatformPages, type PlatformPages } from '../src/client/platform-pages.ts'
 import { AccountPlatformHost } from '../src/client/AccountPlatformHost.tsx'
 import { AccountSection, type AccountSectionInjected, type AccountSnapshot } from '../src/client/AccountSection.tsx'
+import type { ApiBalanceSnapshot } from '../src/client/api-balance.ts'
 import type { BonusNotice } from '../src/client/bonus-notices.ts'
 import type { AccountMenuProps } from '../src/client/AccountMenu.tsx'
 import type {} from '../src/client/index.ts'
@@ -41,13 +42,15 @@ function operationsOf(state: Omit<AccountView, 'links'>, details?: Partial<Accou
   }
 }
 
-function mount(state: Omit<AccountView, 'links'>, copy: typeof en | typeof zh = en, details?: Partial<AccountDetails>, platform?: PlatformBridge) {
+function mount(state: Omit<AccountView, 'links'>, copy: typeof en | typeof zh = en, details?: Partial<AccountDetails>, platform?: PlatformBridge, apiBalance: ApiBalanceSnapshot = { status: 'loading', value: null }) {
   const pages = platform === undefined ? undefined : createPlatformPages()
   const operations = operationsOf(state, details, pages)
+  const refreshApiBalance = vi.fn()
   // AccountSection consumes no global hooks; the slot supplies them in the application.
   const globals = {} as GlobalStandardProps
   render(<>
     <AccountSection {...globals} {...operations}
+      useApiBalance={selector => selector(apiBalance)} refreshApiBalance={refreshApiBalance}
       useAccount={selector => selector(operations.hooks.account.getSnapshot())}
       useTheme={selector => selector(operations.hooks.theme.getSnapshot())}
       close={() => {}} t={key => key in copy ? copy[key as AccountKey] : key} />
@@ -56,7 +59,7 @@ function mount(state: Omit<AccountView, 'links'>, copy: typeof en | typeof zh = 
       && <SharedPlatformHost Globals={globals} pages={pages} platform={platform} copy={copy}
         refreshAccount={operations.refreshAccount} />}
   </>)
-  return operations
+  return { ...operations, refreshApiBalance }
 }
 
 /** Test scaffold for the shell's host: real page subscription plus the opener's return read. */
@@ -100,12 +103,35 @@ async function accountMenu(operations: AccountSectionInjected, snapshot: () => A
 it.each([en, zh])('renders account cards without inventing profile or balance data', async (copy) => {
   mount({ status: 'credential-stored', attempt: null }, copy)
   expect(screen.getByText(copy.signedIn)).toBeTruthy()
-  expect(screen.getAllByText(copy.loading)).toHaveLength(3)
+  expect(screen.getAllByText(copy.loading)).toHaveLength(4)
   expect(screen.getByRole('link', { name: copy.usage }).getAttribute('href')).toBe('http://localhost:8081/usage')
   expect(screen.getByRole('link', { name: copy.topUp }).getAttribute('href')).toBe('http://localhost:8081/top_up')
   expect(screen.queryByRole('button', { name: copy.signOut })).toBeNull()
   expect(document.body.textContent).not.toContain('209.00')
   await expect(`${screen.getByRole('region').textContent}\n`).toMatchFileSnapshot(`./expected/account-${copy === en ? 'en' : 'zh'}.txt`)
+})
+
+it.each([en, zh])('shows account and API funds separately and preserves API access while signed out', (copy) => {
+  const apiBalance: ApiBalanceSnapshot = { status: 'ready', value: [{ currency: 'CNY', amount: '86.77' }] }
+  mount({ status: 'credential-stored', attempt: null }, copy,
+    { balance: { status: 'ready', value: [{ currency: 'CNY', balance: '-0.05' }], bonusWallets: [] } }, undefined, apiBalance)
+  expect(screen.getByText(copy.accountBalance)).toBeTruthy()
+  expect(screen.getByText(copy.apiBalance)).toBeTruthy()
+  expect(screen.getByText('-¥0.05')).toBeTruthy()
+  expect(screen.getByText('¥86.77')).toBeTruthy()
+  cleanup()
+  mount({ status: 'signed-out', attempt: null }, copy, undefined, undefined, apiBalance)
+  expect(screen.getByText('¥86.77')).toBeTruthy()
+  expect(screen.getByRole('button', { name: copy.signIn })).toBeTruthy()
+})
+
+it.each([null, [{ currency: 'EUR', amount: '12.00' }], [{ currency: 'USD', amount: '12.00' }]])('offers retry when API balance is unavailable and retains current-key funds: %j', (value) => {
+  const operations = mount({ status: 'credential-stored', attempt: null }, en, undefined, undefined, { status: 'unavailable', value })
+  expect(screen.getByText(en.apiBalanceUnavailable)).toBeTruthy()
+  expect(screen.getByRole('button', { name: en.platformRetry })).toBeTruthy()
+  if (value !== null) expect(screen.getByText(value[0]!.currency === 'USD' ? '$12.00' : 'EUR 12.00')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: en.platformRetry }))
+  expect(operations.refreshApiBalance).toHaveBeenCalledTimes(2)
 })
 
 it('starts sign-in and disables cancellation during persistence', async () => {
@@ -357,7 +383,7 @@ it('shows the profile while the balance is still loading', async () => {
   })
   expect(screen.getByText('Ready User')).toBeTruthy()
   // Both the recharge and the bonus row report their own pending read.
-  expect(screen.getAllByText(en.loading)).toHaveLength(2)
+  expect(screen.getAllByText(en.loading)).toHaveLength(3)
   expect(screen.queryByText(en.balanceUnavailable)).toBeNull()
   await expect(`${screen.getByRole('region').textContent}\n`).toMatchFileSnapshot('./expected/profile-before-balance.txt')
 })
@@ -509,6 +535,7 @@ it('opens the authorization link with the active Desktop palette and follows lat
   const authorizeUrl = 'https://platform.deepseek.com/dsh/authorize?state=example'
   const operations = operationsOf({ status: 'signed-out', attempt: { id: 'attempt' as SignInAttemptId, phase: 'waiting-browser', authorizeUrl } })
   const element = (theme: ThemeSnapshot) => <AccountSection {...({} as GlobalStandardProps)} {...operations}
+    useApiBalance={selector => selector({ status: 'loading', value: null })} refreshApiBalance={vi.fn()}
     useAccount={selector => selector(operations.hooks.account.getSnapshot())}
     useTheme={selector => selector(theme)} close={() => {}} t={key => key in en ? en[key as AccountKey] : key} />
   const view = render(element(themeOf('dark')))
@@ -558,6 +585,8 @@ it('reports a rejected settings login and disables login while initial state is 
   cleanup()
   let snapshot: AccountSnapshot = { view: undefined, details: undefined, failed: true }
   const props = { ...({} as GlobalStandardProps), ...operations,
+    useApiBalance: <T,>(select: (value: ApiBalanceSnapshot) => T) => select({ status: 'loading', value: null }),
+    refreshApiBalance: vi.fn(),
     start: vi.fn(async () => { throw new Error('unavailable') }),
     useAccount: <T,>(select: (value: AccountSnapshot) => T) => select(snapshot),
     useTheme: <T,>(select: (value: ThemeSnapshot) => T) => select(operations.hooks.theme.getSnapshot()), close: () => {},

@@ -100,11 +100,11 @@ describe.skipIf(MODE === 'record').each([false, true])('web e2e: native credenti
       expect(await welcome.count()).toBe(0)
       expect(await readFile(credentialPath, 'utf8')).toBe(credentials)
       const aria = await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd)
-      await compareOrRefreshGolden(join(SNAPSHOT_DIR, 'models.expected.md'), aria, MODE)
+      await compareOrRefreshGolden(join(SNAPSHOT_DIR, desktop ? 'models-desktop.expected.md' : 'models.expected.md'), aria, MODE)
       await page.keyboard.press('Escape')
     }
     expect(tripwire.warnings).toEqual([])
     expect(tripwire.pageErrors).toEqual([])
-    await assertFixtureInventory(SNAPSHOT_DIR, ['models.expected.md', 'signed-out-menu.expected.md'])
+    await assertFixtureInventory(SNAPSHOT_DIR, ['models.expected.md', 'models-desktop.expected.md', 'signed-out-menu.expected.md'])
   })
 })

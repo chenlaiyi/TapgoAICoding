@@ -10,6 +10,7 @@ import { formatBalance } from './formatBalance.ts'
 import { AccountAvatar } from './AccountAvatar.tsx'
 import { authorizeUrlWithTheme } from './authorize-url.ts'
 import type { BonusNotice } from './bonus-notices.ts'
+import type { ApiBalanceSnapshot } from './api-balance.ts'
 import css from './AccountSection.module.css'
 
 /** Safe account snapshot shared by the settings page and launcher. */
@@ -77,12 +78,22 @@ export interface AccountSectionInjected {
   /** @returns after local account credentials are removed. */
   signOut: () => Promise<void>
 }
+/** API balance query shared by the settings card across account-state changes. */
+export interface AccountApiBalanceInjected {
+  /** Official API funds, queried independently of account login. */
+  hooks: { apiBalance: HostObservable<ApiBalanceSnapshot> }
+  /** Re-read the currently configured official API Key balance. */
+  refreshApiBalance: () => void
+}
 /** Composed account section props. */
 export type AccountSectionProps =
-  PropsRuntime<'settings.section'> & PropsLocale<'settings.account'> & InjectFace<AccountSectionInjected>
+  PropsRuntime<'settings.section'> & PropsLocale<'settings.account'> & InjectFace<AccountSectionInjected & AccountApiBalanceInjected>
 /** @param props - localized actions, account subscription, and the shared Platform page channel. @returns account settings UI. */
-export function AccountSection({ t, useAccount, useTheme, start, cancel, openPlatformPage }: AccountSectionProps) {
+export function AccountSection({
+  t, useAccount, useTheme, useApiBalance, refreshApiBalance, start, cancel, openPlatformPage,
+}: AccountSectionProps) {
   const { view: state, details, failed: streamFailed } = useAccount(value => value)
+  const apiBalance = useApiBalance(value => value)
   const colorScheme = useTheme(snapshot => snapshot.active.colorScheme)
   // The shared host owns the native view; this page holds only its own request,
   // and only while it is the latest owner.
@@ -98,6 +109,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
   const active = attempt !== null && attempt !== undefined
     && ['initializing', 'waiting-browser', 'exchanging', 'committing'].includes(attempt.phase)
   const signedIn = state?.status === 'credential-stored'
+  useEffect(() => { refreshApiBalance() }, [refreshApiBalance])
   useEffect(() => () => { releasePage.current?.(); releasePage.current = undefined }, [])
   useEffect(() => {
     if (signedIn) return
@@ -137,6 +149,22 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
     : attempt?.phase === 'expired' ? t('expired')
       : active ? t(attempt.phase === 'initializing' ? 'initializing' : attempt.phase === 'waiting-browser' ? 'waiting' : 'completing')
         : signedIn ? profile?.contact ?? t(details?.profile === undefined ? 'loading' : 'profileUnavailable') : t('signInDescription')
+  const apiBalanceCard = (
+    <div className={css.balanceCard}>
+      <div className={css.row}>
+        <span>{t('apiBalance')}</span>
+        {apiBalance.value !== null
+          ? <span className={css.amount}>{apiBalance.value.map(wallet => <span key={wallet.currency}>
+            {formatBalance(wallet.amount, wallet.currency === 'CNY' ? '¥' : wallet.currency === 'USD' ? '$' : `${wallet.currency} `)}
+          </span>)}</span>
+          : <span className={css.unavailable}>{t(apiBalance.status === 'loading' ? 'loading' : 'apiBalanceUnavailable')}</span>}
+      </div>
+      {apiBalance.status === 'unavailable' && <div className={css.actions}>
+        {apiBalance.value !== null && <span className={css.unavailable}>{t('apiBalanceUnavailable')}</span>}
+        <Button variant="outline" onClick={refreshApiBalance}>{t('platformRetry')}</Button>
+      </div>}
+    </div>
+  )
   if (!signedIn && !active) return (
     <section className={css.signedOut} aria-label={t('nav')}>
       <div className={css.signedOutContent}>
@@ -149,6 +177,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
         <Button variant="primary" className={css.signInButton} disabled={busy || state === undefined}
           onClick={() => { void run(start) }}>{t('signIn')}</Button>
       </div>
+      {apiBalanceCard}
     </section>
   )
   return (
@@ -174,6 +203,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
           onClick={() => { void run(() => cancel(attempt.id)) }}>{t('cancel')}</Button>
       </div>}
       <div className={css.balanceCard}>
+        <span>{t('accountBalance')}</span>
         <div className={css.row}>
           <span>{t('balance')}</span>
           {signedIn && wallets !== undefined && wallets.length > 0
@@ -210,6 +240,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
           </div>
         </div>
       </div>
+      {apiBalanceCard}
     </section>
   )
 }

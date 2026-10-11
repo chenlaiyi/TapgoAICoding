@@ -37,6 +37,7 @@ it('shares settings card materials and control sizes in both palettes', async ()
   }
   // The Platform provider supplies synthetic identity and wallets; renderer, RPC, and settings remain real.
   const mocks = [
+    vi.spyOn(scaffold.ctx.llm, 'getBalance').mockResolvedValue([{ currency: 'CNY', amount: '86.77' }]),
     vi.spyOn(account, 'getState').mockResolvedValue(state),
     vi.spyOn(account, 'getProfile').mockResolvedValue({
       status: 'ready', value: { id: null, name: 'Radius example', contact: 'r***@example.com', avatarUrl: null },
@@ -71,14 +72,16 @@ it('shares settings card materials and control sizes in both palettes', async ()
     await dialog.getByRole('button', { name: '账号与余额', exact: true }).click()
     const section = dialog.getByRole('region', { name: '账号与余额', exact: true })
     await expect.poll(() => section.innerText()).toContain('¥128.50')
+    await expect.poll(() => section.innerText()).toContain('¥86.77')
     const cards = section.locator(':scope > div')
-    expect(await cards.count()).toBe(2)
+    expect(await cards.count()).toBe(3)
     const profile = await appearance(cards.nth(0))
     const balance = await appearance(cards.nth(1))
     const material = { radius: profile.radius, border: profile.border, stroke: profile.stroke, fill: profile.fill }
     expect(material.radius).toBe('20px')
     expect(material.fill).not.toBe('rgba(0, 0, 0, 0)')
     expect(balance).toMatchObject(material)
+    expect(await appearance(cards.nth(2))).toMatchObject(material)
     const usage = await appearance(section.getByRole('link', { name: '查询用量', exact: true }))
     const topUp = await appearance(section.getByRole('link', { name: '充值', exact: true }))
     expect(usage).toMatchObject({ radius: '12px', height: 36 })

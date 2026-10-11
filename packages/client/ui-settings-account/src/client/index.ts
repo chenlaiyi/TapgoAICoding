@@ -20,7 +20,7 @@ import { AccountOnboarding } from './AccountOnboarding.tsx'
 import { AccountPlatformHost, type AccountPlatformHostInjected } from './AccountPlatformHost.tsx'
 import { AccountMenu } from './AccountMenu.tsx'
 import { createPlatformPages, type PlatformPages } from './platform-pages.ts'
-import { AccountSection, type AccountSnapshot, type AccountSectionInjected } from './AccountSection.tsx'
+import { AccountSection, type AccountSnapshot, type AccountSectionInjected, type AccountApiBalanceInjected } from './AccountSection.tsx'
 import { AccountComposerBalance, type AccountComposerBalanceInjected } from './AccountComposerBalance.tsx'
 import { createBonusNoticeController } from './bonus-notices.ts'
 import { accountClientMetadata } from './client-metadata.ts'
@@ -32,6 +32,7 @@ import { DesktopOnboardingEntry, type DesktopOnboardingInjected } from './Deskto
 import { readOnboardingApiKeyPresence } from './onboarding-credentials.ts'
 import { refreshAfterReturn } from './account-refresh.ts'
 import { ComposerBalanceController } from './composer-balance.ts'
+import { ApiBalanceController } from './api-balance.ts'
 export type { AccountSectionInjected, AccountSectionProps } from './AccountSection.tsx'
 export type { AccountMenuProps } from './AccountMenu.tsx'
 export type { AccountSnapshot } from './AccountSection.tsx'
@@ -53,6 +54,14 @@ export function apply(ctx: Context): void {
   let snapshot: AccountSnapshot = { view: undefined, details: undefined, failed: false, loginVisible: false }
   const listeners = new Set<() => void>()
   const publish = (value: AccountSnapshot) => { snapshot = value; for (const listener of listeners) listener() }
+  const apiBalance = new ApiBalanceController(async (signal) => {
+    const result = await ctx.remote.llm.getBalance('deepseek-official', signal)
+    if (!result.ok) throw result.error
+    return result.value
+  })
+  let apiBalanceStarted = false
+  const refreshApiBalance = () => { apiBalanceStarted = true; apiBalance.refresh() }
+  ctx.effect(() => () => { apiBalance.dispose() }, 'account: settings API balance')
   /** @returns the client identity for one account call, read at call time so it carries the language and zone in effect then. */
   const client = () => accountClientMetadata(ctx.locale.getSnapshot().active, process.env.DSH_CLIENT_VERSION)
   // The browser half of the notice lifecycle: reads when the account becomes
@@ -164,15 +173,18 @@ export function apply(ctx: Context): void {
     const offStatus = ctx.remote.$on('api-session/status', (_sessionId, running) => {
       if (!running) {
         synchronizeAccount()
+        if (apiBalanceStarted) apiBalance.refresh()
         for (const balance of composerBalances.values()) balance.refresh()
       }
     })
     const onVisible = (): void => {
       if (document.visibilityState !== 'visible') return
       synchronizeAccount()
+      if (apiBalanceStarted) apiBalance.refresh()
       for (const balance of composerBalances.values()) balance.refresh()
     }
     const invalidate = (): void => {
+      if (apiBalanceStarted) apiBalance.refresh(true)
       for (const balance of composerBalances.values()) balance.refresh(true)
     }
     const invalidations = [
@@ -213,11 +225,12 @@ export function apply(ctx: Context): void {
       onClose(reason)
       if (reason === 'returned' && page === 'top-up') void refreshAfterReturn(refreshing, reRead)
     })
-  const operations: AccountSectionInjected = {
+  const operations: AccountSectionInjected & AccountApiBalanceInjected = {
     subscribeSessionExpired: listener => ctx.remote.$on('deepseek-account/session-expired', listener),
     subscribeModelSignInRequired: listener => ctx.remote.$on('deepseek-account/model-sign-in-required', listener),
     ...nativePlatform === undefined ? {} : { openPlatformPage: platformPageOpener(refreshAccount) },
     refreshAccount,
+    refreshApiBalance,
     contactUs() {
       // Sample the account, build and environment before awaiting native information, so
       // a profile the read outlasts cannot replace the UID this click reported.
@@ -260,6 +273,7 @@ export function apply(ctx: Context): void {
         getSnapshot: () => ctx.theme.getTheme(),
         subscribe: listener => ctx.on('theme/change', listener),
       },
+      apiBalance: apiBalance.store,
     },
     async start() {
       publish({ ...snapshot, loginVisible: true, loginFailed: false })
@@ -366,21 +380,8 @@ export function apply(ctx: Context): void {
       return { hooks: { balance: balance.store } }
     },
   }, AccountComposerBalance))
-  ctx.slots.inject('settings.section', () => {
-    let unregister: (() => void) | undefined
-    const update = () => {
-      if (snapshot.view?.status === 'credential-stored') {
-        unregister ??= ctx.slots.register({
-          name: 'settings.section', id: 'account', order: -10, label: () => t('nav'),
-          locale: 'settings.account', inject: () => operations,
-        }, AccountSection)
-      } else {
-        unregister?.()
-        unregister = undefined
-      }
-    }
-    listeners.add(update)
-    update()
-    return () => { listeners.delete(update); unregister?.() }
-  })
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section', id: 'account', order: -10, label: () => t('nav'),
+    locale: 'settings.account', inject: () => operations,
+  }, AccountSection))
 }

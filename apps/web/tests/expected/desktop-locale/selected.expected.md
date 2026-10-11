@@ -1,6 +1,7 @@
 - dialog "Settings":
   - navigation:
     - text: Settings
+    - button "Account"
     - button "General"
     - button "Models"
     - button "Built-in plugins"
