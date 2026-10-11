@@ -65,10 +65,14 @@ private struct ComposerModel: Identifiable {
     let model: String
     let name: String
     var id: String { "\(provider)/\(model)" }
-    var shortName: String { mobileModelDisplayName(name, modelID: model) }
+    var shortName: String { mobileModelDisplayName(name, modelID: model, provider: provider) }
 }
 
-func mobileModelDisplayName(_ name: String, modelID: String) -> String {
+func mobileModelDisplayName(_ name: String, modelID: String, provider: String) -> String {
+    "\(mobileModelShortName(name, modelID: modelID)) · \(provider == "deepseek-account" ? "账号" : "API")"
+}
+
+private func mobileModelShortName(_ name: String, modelID: String) -> String {
     let words = name.split(whereSeparator: { $0.isWhitespace })
     if let version = words.firstIndex(where: { word in
         let text = word.lowercased()
@@ -157,7 +161,7 @@ private final class RemoteSessions: ObservableObject {
                 funds.account = Self.formatBalance(recharge + bonus)
                 if let index = arguments.firstIndex(of: "--dsh-mobile-test-api-balance"), arguments.indices.contains(index + 1) {
                     funds.providers["deepseek-official"] = "¥" + arguments[index + 1]
-                    models.append(ComposerModel(provider: "deepseek-official", model: "deepseek-chat", name: "API Chat"))
+                    models.append(ComposerModel(provider: "deepseek-official", model: "deepseek-chat", name: "DeepSeek V41 Flash"))
                 }
             }
             if let pinsIndex = arguments.firstIndex(of: "--dsh-mobile-test-pins"),

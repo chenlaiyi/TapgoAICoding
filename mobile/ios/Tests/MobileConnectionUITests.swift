@@ -15,20 +15,28 @@ final class MobileConnectionUITests: XCTestCase {
         app.buttons["关闭远程控制设置"].tap()
         app.buttons["新对话输入框"].tap()
         app.buttons["newConversationModel"].tap()
-        app.buttons["Chat"].tap()
+        XCTAssertTrue(app.buttons["V41 Flash · 账号"].exists)
+        XCTAssertTrue(app.buttons["V41 Flash · API"].exists)
+        app.buttons["V41 Flash · API"].tap()
         XCTAssertTrue(app.staticTexts["余额 ¥86.77"].waitForExistence(timeout: 3))
         app.buttons["newConversationModel"].tap()
-        app.buttons["V41 Flash"].tap()
+        app.buttons["V41 Flash · 账号"].tap()
         XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
         app.buttons["返回远程首页"].tap()
         app.buttons["Balance chat"].tap()
         XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
         app.buttons["选择模型"].tap()
-        app.buttons["Chat"].tap()
+        XCTAssertTrue(app.buttons["V41 Flash · 账号"].exists)
+        XCTAssertTrue(app.buttons["V41 Flash · API"].exists)
+        app.buttons["V41 Flash · API"].tap()
         XCTAssertTrue(app.staticTexts["余额 ¥86.77"].waitForExistence(timeout: 3))
         app.buttons["选择模型"].tap()
-        app.buttons["V41 Flash"].tap()
+        app.buttons["V41 Flash · 账号"].tap()
         XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
+        app.buttons["更多"].tap()
+        app.buttons["模型、权限与额度"].tap()
+        XCTAssertTrue(app.staticTexts["账号模型"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["API 模型"].exists)
     }
 
     func testWelcomeBrandAndComputerConnection() {
@@ -112,10 +120,10 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["在这台 Mac 工作"].exists)
         XCTAssertTrue(app.staticTexts["当前分支"].exists)
         XCTAssertTrue(app.textFields["newConversationInput"].exists)
-        XCTAssertTrue(app.staticTexts["V41 Flash"].exists)
+        XCTAssertTrue(app.staticTexts["V41 Flash · 账号"].exists)
         XCTAssertTrue(app.staticTexts["余额 ¥28.51"].exists)
         let permission = app.buttons["访问权限"]
-        let model = app.staticTexts["V41 Flash"]
+        let model = app.staticTexts["V41 Flash · 账号"]
         let balance = app.staticTexts["余额 ¥28.51"]
         XCTAssertGreaterThanOrEqual(permission.frame.height, 44)
         XCTAssertLessThanOrEqual(balance.frame.maxX, app.frame.maxX)
@@ -361,10 +369,10 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["充值余额 ¥23.51"].exists)
         XCTAssertTrue(app.staticTexts["赠金余额 ¥5.00"].exists)
         app.buttons["完成"].tap()
-        XCTAssertTrue(app.staticTexts["V41 Flash"].exists)
+        XCTAssertTrue(app.staticTexts["V41 Flash · 账号"].exists)
         app.buttons["选择模型"].tap()
         XCTAssertTrue(app.staticTexts["选择模型"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["V41 Flash"].exists)
+        XCTAssertTrue(app.buttons["V41 Flash · 账号"].exists)
         app.buttons["完成"].tap()
         let chatScreenshot = XCTAttachment(screenshot: app.screenshot())
         chatScreenshot.lifetime = .keepAlways
