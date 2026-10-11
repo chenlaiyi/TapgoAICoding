@@ -22,7 +22,9 @@ const server=https.createServer({key:readFileSync(key),cert:readFileSync(new URL
    if(rpc.method==='workspace/create')value={workspace:{workspaceId:'project-two',path:rpc.payload.args.request.path,title:'安卓新项目'}};
    if(rpc.method==='session/create'){if(rpc.payload.args.request.workspaceId!=='project-two'){res.writeHead(400).end();return}value={sessionId:'session-two'}};
    if(rpc.method==='account/getBalance')value={status:'ready',value:[{currency:'CNY',balance:'10.00'}],bonusWallets:[{currency:'CNY',balance:'2.50'}]};
-   if(rpc.method==='session/modelCatalog')value={groups:[{id:'fixture',models:[{id:'fixture-model',name:'验收模型'}]}]};
+   if(rpc.method==='session/modelCatalog')value={default:{provider:'deepseek-account',model:'fixture-model'},groups:[{id:'deepseek-account',models:[{id:'fixture-model',name:'验收模型'}]},{id:'deepseek-official',models:[{id:'deepseek-chat',name:'API 验收模型'}]},{id:'unsupported',models:[{id:'other',name:'无余额模型'}]}]};
+   if(rpc.method==='llm/getBalance'){if(typeof rpc.payload.args.provider!=='string'){res.writeHead(400).end();return}value=rpc.payload.args.provider==='deepseek-official'?[{currency:'CNY',amount:'86.77'}]:null;}
+   if(rpc.method==='session/selectModel'){const choice=rpc.payload.args.request;for(const [socket,streamId] of follows)socket.send(JSON.stringify({type:'item',streamId,value:{type:'event',event:{seq:nextSeq++,type:'model/selection',data:{provider:choice.provider,model:choice.model}}}}));}
    if(rpc.method==='permissionPresets/catalog')value={options:[{value:'safe',name:'安全模式',description:'验收权限确认'}]};
    if(rpc.method==='commands/execute')value={result:{kind:'success'}};
    if(rpc.method==='session/prompt'){
@@ -58,7 +60,7 @@ sockets.on('connection',(socket,request)=>{
  socket.on('message',raw=>{const open=JSON.parse(raw);
   const send=value=>socket.send(JSON.stringify({type:'item',streamId:open.streamId,value}))
   if(open.endpoint==='workspace/follow'){send({type:'baseline',value:{items:[]}});return}
-  if(open.endpoint==='session/follow'){follows.set(socket,open.streamId);socket.on('close',()=>follows.delete(socket));send({type:'snapshot',projections:{values:{tokenUsage:{uncachedInputTokens:75,outputTokens:25},contextPressure:{contextWindow:1000,projectedTokens:250}}},records:[{event:{seq:1,type:'assistant/message',data:{message:{content:[{type:'text',text:'安卓原生对话已连接'}]}}}}]});return}
+  if(open.endpoint==='session/follow'){follows.set(socket,open.streamId);socket.on('close',()=>follows.delete(socket));send({type:'snapshot',projections:{values:{modelSelection:{next:{provider:"deepseek-account",model:"fixture-model"}},tokenUsage:{uncachedInputTokens:75,outputTokens:25},contextPressure:{contextWindow:1000,projectedTokens:250}}},records:[{event:{seq:1,type:'assistant/message',data:{message:{content:[{type:'text',text:'安卓原生对话已连接'}]}}}}]});return}
   if(open.endpoint!=='$events')return;
   send({type:'ready',clientId:'android-fixture'})
   if(!approvalAnswered)send({type:'waterfall',eventId:'approval-one',agentId:'session-one',event:'approval/request',request:{toolName:'fixture-check',reason:'模拟器隔离审批测试'}})

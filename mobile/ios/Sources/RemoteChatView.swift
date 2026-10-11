@@ -77,8 +77,10 @@ private final class RemoteChat: ObservableObject {
     @Published var selectedModel: String?
     @Published var permissions: [RemotePermission] = []
     @Published var selectedPermission: String?
-    @Published var balance: String?
-    @Published var balanceDetails: [String] = []
+    @Published var funds = MobileBalanceSnapshot()
+    private var balanceRevision = UUID()
+    var balance: String? { funds.available(provider: selectedModel?.split(separator: "/").first.map(String.init)) }
+    var balanceDetails: [String] { funds.accountDetails }
     @Published var tokenUsage: String?
     @Published var contextBudget: String?
     @Published var settingsLoading = false
@@ -264,7 +266,12 @@ private final class RemoteChat: ObservableObject {
                            let next = selection["next"] as? [String: Any],
                            let provider = next["provider"] as? String,
                            let model = next["model"] as? String {
-                            selectedModel = "\(provider)/\(model)"
+                            let selection = "\(provider)/\(model)"
+                            if selectedModel != selection {
+                                selectedModel = selection
+                                funds.providers.removeAll()
+                                Task { await self.refreshBalances(computer: computer) }
+                            }
                         }
                         if let selection = values["permissions"] as? [String: Any] {
                             selectedPermission = selection["currentValue"] as? String
@@ -287,6 +294,13 @@ private final class RemoteChat: ObservableObject {
                     var projected = lines
                     Self.consume(event, into: &projected)
                     lines = projected
+                    if event["type"] as? String == "model/selection",
+                       let data = event["data"] as? [String: Any],
+                       let provider = data["provider"] as? String, let model = data["model"] as? String {
+                        selectedModel = "\(provider)/\(model)"
+                        funds.providers.removeAll()
+                        Task { await self.refreshBalances(computer: computer) }
+                    }
                     if event["type"] as? String == "assistant/message" {
                         liveText = ""
                         liveReasoning = ""
@@ -297,6 +311,7 @@ private final class RemoteChat: ObservableObject {
                         liveText = ""
                         liveReasoning = ""
                         cancelling = false
+                        Task { await self.refreshBalances(computer: computer) }
                     }
                 }
             }
@@ -580,12 +595,16 @@ private final class RemoteChat: ObservableObject {
                 .flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
             let wallets: [[String: Any]] = [["balance": recharge, "currency": "CNY"]]
             let bonusWallets: [[String: Any]] = bonus.map { [["balance": $0, "currency": "CNY"]] } ?? []
-            balance = Self.availableBalance(wallets + bonusWallets)
-            balanceDetails = Self.balanceRows(wallets, label: "充值余额")
+            funds.account = Self.availableBalance(wallets + bonusWallets)
+            funds.accountDetails = Self.balanceRows(wallets, label: "充值余额")
                 + Self.balanceRows(bonusWallets, label: "赠金余额")
-            models = [RemoteModel(id: "deepseek/deepseek-v41-flash", provider: "deepseek",
+            models = [RemoteModel(id: "deepseek-account/deepseek-v41-flash", provider: "deepseek-account",
                                   model: "deepseek-v41-flash", name: "DeepSeek V41 Flash")]
-            selectedModel = "deepseek/deepseek-v41-flash"
+            selectedModel = "deepseek-account/deepseek-v41-flash"
+            if let index = arguments.firstIndex(of: "--dsh-mobile-test-api-balance"), arguments.indices.contains(index + 1) {
+                funds.providers["deepseek-official"] = "¥" + arguments[index + 1]
+                models.append(RemoteModel(id: "deepseek-official/deepseek-chat", provider: "deepseek-official", model: "deepseek-chat", name: "API Chat"))
+            }
             permissions = [
                 RemotePermission(id: "read-only", name: "仅可查看", description: "只能读取，不允许修改文件"),
                 RemotePermission(id: "workspace-write", name: "工作区内修改", description: "可修改工作区文件"),
@@ -629,23 +648,22 @@ private final class RemoteChat: ObservableObject {
                                             description: display?.1 ?? (item["description"] as? String ?? ""))
                 }
             }
-            let metadata: [String: Any] = ["version": "1.0.45", "locale": Locale.current.identifier,
-                                           "timezoneOffsetSeconds": TimeZone.current.secondsFromGMT()]
-            if let response = try? await call("account/getBalance", arguments: ["client": metadata], computer: computer),
-               let result = response as? [String: Any], result["status"] as? String == "ready" {
-                let wallets = result["value"] as? [[String: Any]] ?? []
-                let bonusWallets = result["bonusWallets"] as? [[String: Any]] ?? []
-                balance = Self.availableBalance(wallets + bonusWallets)
-                balanceDetails = Self.balanceRows(wallets, label: "充值余额")
-                    + Self.balanceRows(bonusWallets, label: "赠金余额")
-            } else {
-                balance = nil
-                balanceDetails = []
-            }
+            await refreshBalances(computer: computer)
             error = nil
         } catch {
             self.error = "无法读取模型或权限设置，请重试"
         }
+    }
+
+    func refreshBalances(computer: SavedComputer) async {
+        let revision = UUID()
+        balanceRevision = revision
+        let provider = selectedModel?.split(separator: "/").first.map(String.init)
+        let value = await MobileBalanceSnapshot.load(provider: provider) { method, args in
+            try await self.call(method, arguments: args, computer: computer)
+        }
+        guard revision == balanceRevision else { return }
+        funds = value
     }
 
     private static func availableBalance(_ wallets: [[String: Any]]) -> String? {
@@ -684,9 +702,17 @@ private final class RemoteChat: ObservableObject {
 
     func selectModel(_ model: RemoteModel, computer: SavedComputer, sessionId: String) async {
         do {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-api-balance") {
+                selectedModel = model.id
+                return
+            }
+            #endif
             _ = try await call("session/selectModel", arguments: ["request": ["sessionId": sessionId,
                 "provider": model.provider, "model": model.model]], computer: computer)
             selectedModel = model.id
+            funds.providers.removeAll()
+            await refreshBalances(computer: computer)
             MobileModelPreference.save(model.id, computerID: computer.id)
             error = nil
         } catch { self.error = "模型切换失败，请重试" }
@@ -947,6 +973,7 @@ struct RemoteChatView: View {
             await chat.loadSettings(computer: computer)
         }
         .onChange(of: scenePhase) { phase in
+            if phase == .active { Task { await chat.loadSettings(computer: computer) } }
             if phase == .active && !chat.connected && !chat.loading {
                 Task { await chat.retry(computer: computer, sessionId: sessionId) }
             }
@@ -1066,7 +1093,8 @@ struct RemoteChatView: View {
                         }
                     }
                     Section("模型额度") {
-                        Text(chat.balance ?? "当前账号未提供可用余额")
+                        Text("账号余额 \(chat.funds.account ?? "暂不可用")")
+                        Text("API 余额 \(chat.funds.providers["deepseek-official"] ?? "暂不可用")")
                         ForEach(Array(chat.balanceDetails.enumerated()), id: \.offset) { _, detail in
                             Text(detail).font(.caption).foregroundStyle(.secondary)
                         }
@@ -1136,8 +1164,8 @@ struct RemoteChatView: View {
     }
 
     @ViewBuilder private var balanceBadge: some View {
-        if let balance = chat.balance, !balance.isEmpty {
-            Text("余额 \(balance)")
+        if chat.selectedModel != nil {
+            Text("余额 \(chat.balance ?? "暂不可用")")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

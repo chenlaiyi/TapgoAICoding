@@ -1,6 +1,36 @@
 import XCTest
 
 final class MobileConnectionUITests: XCTestCase {
+    func testBothBalancesAndModelSwitch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://balance.example/?token=fixture&name=Balance",
+                               "--dsh-mobile-test-sessions", "[{\"sessionId\":\"one\",\"cwd\":\"/work/Balance\",\"running\":false,\"updatedAt\":2,\"projections\":{\"values\":{\"title\":\"Balance chat\"}}}]",
+                               "--dsh-mobile-test-balance", "23.51", "--dsh-mobile-test-api-balance", "86.77",
+                               "--dsh-mobile-test-messages", "[]"]
+        app.launch()
+        app.buttons["打开顶部菜单"].tap()
+        app.buttons["设置"].tap()
+        XCTAssertTrue(app.staticTexts["账号余额 ¥23.51"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["API 余额 ¥86.77"].exists)
+        app.buttons["关闭远程控制设置"].tap()
+        app.buttons["新对话输入框"].tap()
+        app.buttons["newConversationModel"].tap()
+        app.buttons["Chat"].tap()
+        XCTAssertTrue(app.staticTexts["余额 ¥86.77"].waitForExistence(timeout: 3))
+        app.buttons["newConversationModel"].tap()
+        app.buttons["V41 Flash"].tap()
+        XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
+        app.buttons["返回远程首页"].tap()
+        app.buttons["Balance chat"].tap()
+        XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
+        app.buttons["选择模型"].tap()
+        app.buttons["Chat"].tap()
+        XCTAssertTrue(app.staticTexts["余额 ¥86.77"].waitForExistence(timeout: 3))
+        app.buttons["选择模型"].tap()
+        app.buttons["V41 Flash"].tap()
+        XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
+    }
+
     func testWelcomeBrandAndComputerConnection() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-welcome"]
