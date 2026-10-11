@@ -119,6 +119,7 @@ public final class MainActivity extends AppCompatActivity {
         Button connect = button(R.string.connect_computer, this::connectionDialog); connect.setTextColor(color(R.color.inverse));
         GradientDrawable background = new GradientDrawable(); background.setColor(color(R.color.primary)); background.setCornerRadius(dp(12)); connect.setBackground(background); root.addView(connect);
         for (ComputerStore.Computer c : store.computers) { Button saved = new Button(this); saved.setText(c.name()); saved.setAllCaps(false); saved.setOnClickListener(v -> { store.active=c.origin; if (persist()) showHome(); }); root.addView(saved); }
+        if (!store.computers.isEmpty()) root.addView(button(R.string.manage_computers, this::manageComputers));
         root.addView(new View(this), new LinearLayout.LayoutParams(1,0,1));
     }
     private void pair(String value) {
@@ -136,17 +137,54 @@ public final class MainActivity extends AppCompatActivity {
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> { try { PairingLink.parse(input.getText().toString()); dialog.dismiss(); pair(input.getText().toString()); } catch(IllegalArgumentException exception) { input.setError(getString(R.string.invalid_link)); } })); dialog.show();
     }
     private void selectComputer() {
-        String[] names=new String[store.computers.size()+1]; for(int i=0;i<store.computers.size();i++) names[i]=store.computers.get(i).name(); names[names.length-1]=getString(R.string.connect_computer);
-        new AlertDialog.Builder(this).setTitle(R.string.switch_computer).setItems(names,(d,index)-> { if(index==store.computers.size()) connectionDialog(); else {store.active=store.computers.get(index).origin; if(persist()) showHome();} }).show();
+        int count=store.computers.size();
+        String[] names=new String[count+2]; for(int i=0;i<count;i++) names[i]=store.computers.get(i).name();
+        names[count]=getString(R.string.connect_computer); names[count+1]=getString(R.string.manage_computers);
+        new AlertDialog.Builder(this).setTitle(R.string.switch_computer).setItems(names,(d,index)-> {
+            if(index==count) connectionDialog();
+            else if(index==count+1) manageComputers();
+            else {store.active=store.computers.get(index).origin; if(persist()) showHome();}
+        }).show();
+    }
+    private void manageComputers() {
+        LinearLayout rows=column(); rows.setPadding(dp(24),0,dp(24),0);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(R.string.paired_computers)
+            .setNegativeButton(R.string.cancel,null).setNeutralButton(R.string.connect_computer,(d,w)->connectionDialog()).create();
+        for(ComputerStore.Computer c:store.computers) {
+            rows.addView(text(c.name(),18)); rows.addView(text(c.origin,14));
+            LinearLayout actions=new LinearLayout(this);
+            Button edit=button(R.string.edit_computer,()->{dialog.dismiss();editComputer(c);});
+            edit.setContentDescription(getString(R.string.edit_computer_named,c.name())); actions.addView(edit);
+            Button remove=button(R.string.remove,()->{dialog.dismiss();removeComputer(c);});
+            remove.setContentDescription(getString(R.string.remove_computer_named,c.name())); actions.addView(remove);
+            rows.addView(actions);
+        }
+        ScrollView scroll=new ScrollView(this); scroll.addView(rows); dialog.setView(scroll); dialog.show();
+    }
+    private void editComputer(ComputerStore.Computer c) {
+        LinearLayout form=column(); form.setPadding(dp(24),0,dp(24),0);
+        EditText input=new EditText(this); input.setHint(R.string.computer_name); input.setText(c.name()); form.addView(input);
+        form.addView(text(c.origin,14)); form.addView(text(getString(R.string.repair_connection_help),14));
+        AlertDialog rename=new AlertDialog.Builder(this).setTitle(R.string.edit_computer).setView(form)
+            .setNegativeButton(R.string.cancel,(d,w)->manageComputers()).setPositiveButton(R.string.save,null).create();
+        rename.setOnShowListener(x->rename.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            String value=input.getText().toString().trim();
+            if(value.isEmpty()||value.length()>80){input.setError(getString(R.string.name_error));return;}
+            c.customName=value; if(persist()){rename.dismiss();showHome();manageComputers();}
+        })); rename.show();
+    }
+    private void removeComputer(ComputerStore.Computer c) {
+        new AlertDialog.Builder(this).setTitle(getString(R.string.remove_computer_named,c.name())).setMessage(R.string.remove_confirm)
+            .setNegativeButton(R.string.cancel,(d,w)->manageComputers()).setPositiveButton(R.string.remove,(d,w)->{
+                store.computers.remove(c); if(c.origin.equals(store.active)) store.active=null;
+                if(persist()){showHome();if(!store.computers.isEmpty())manageComputers();}
+            }).show();
     }
     private void settings() {
         ComputerStore.Computer c=store.current(); if(c==null) return;
-        new AlertDialog.Builder(this).setTitle(c.name()).setMessage(c.origin+"\n"+funds.summary(this)).setPositiveButton(R.string.rename,(d,w)-> {
-            EditText input=new EditText(this); input.setText(c.name()); AlertDialog rename=new AlertDialog.Builder(this).setTitle(R.string.rename).setView(input).setNegativeButton(R.string.cancel,null).setPositiveButton(R.string.save,null).create();
-            rename.setOnShowListener(x->rename.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{String value=input.getText().toString().trim(); if(value.isEmpty()||value.length()>80){input.setError(getString(R.string.name_error));return;}c.customName=value;if(persist()){rename.dismiss();showHome();}}));rename.show();
-        }).setNeutralButton(R.string.connect_computer,(d,w)->connectionDialog()).setNegativeButton(R.string.remove,(d,w)->new AlertDialog.Builder(this).setMessage(R.string.remove_confirm).setNegativeButton(R.string.cancel,null).setPositiveButton(R.string.remove,(x,y)-> {
-            store.computers.remove(c); store.active=null; if(persist()) { showHome(); }
-        }).show()).show();
+        new AlertDialog.Builder(this).setTitle(c.name()).setMessage(c.origin+"\n"+funds.summary(this))
+            .setPositiveButton(R.string.manage_computers,(d,w)->manageComputers())
+            .setNeutralButton(R.string.connect_computer,(d,w)->connectionDialog()).setNegativeButton(R.string.cancel,null).show();
     }
     private void refresh() {
         if(client==null||loading||web!=null||chat!=null) return; loading=true; long current=generation; RemoteClient remote=client; String connectionOrigin=store.current().origin;

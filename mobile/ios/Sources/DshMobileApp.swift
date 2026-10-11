@@ -148,6 +148,11 @@ final class MobileConnection: ObservableObject {
            let fixture = URL(string: arguments[index + 1]) {
             ephemeralFixture = true
             connect(fixture)
+            if arguments.contains("--dsh-mobile-test-second-computer") {
+                connect(URL(string: "https://second.example/?token=fixture&name=Second%20Mac")!)
+                let originalID = "https://\(fixture.host ?? "")\(fixture.port.map { ":\($0)" } ?? "")"
+                select(originalID)
+            }
         }
         #endif
     }
@@ -235,15 +240,14 @@ final class MobileConnection: ObservableObject {
         commit(computers.filter { $0.id != id } + [computer], active: id)
     }
 
-    func renameActive(_ value: String) {
-        guard let activeID else { return }
+    func rename(_ id: String, to value: String) {
         let label = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !label.isEmpty, label.count <= 80 else {
             error = "电脑名称需为 1–80 个字符"
             return
         }
         var updated = computers
-        guard let index = updated.firstIndex(where: { $0.id == activeID }) else { return }
+        guard let index = updated.firstIndex(where: { $0.id == id }) else { return }
         updated[index].name = label
         updated[index].customName = label
         commit(updated, active: activeID)
@@ -264,6 +268,76 @@ private extension Optional where Wrapped == String {
     var isNilOrEmpty: Bool { self?.isEmpty ?? true }
 }
 
+struct SavedComputerActions: View {
+    @ObservedObject var connection: MobileConnection
+    let computer: SavedComputer
+    @State private var editing = false
+    @State private var deleting = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button { editing = true } label: {
+                Text("编辑").frame(minWidth: 44, minHeight: 44)
+            }
+                .accessibilityLabel("编辑\(computer.name)")
+            Button(role: .destructive) { deleting = true } label: {
+                Text("删除").frame(minWidth: 44, minHeight: 44)
+            }
+                .accessibilityLabel("删除\(computer.name)")
+        }
+        .buttonStyle(.borderless)
+        .frame(minHeight: 44)
+        .sheet(isPresented: $editing) {
+            SavedComputerEditor(connection: connection, computer: computer)
+        }
+        .alert("删除\(computer.name)？", isPresented: $deleting) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) { connection.remove(computer.id) }
+        } message: {
+            Text("只删除这台手机保存的连接，不会删除电脑上的数据。")
+        }
+    }
+}
+
+struct SavedComputerEditor: View {
+    @ObservedObject var connection: MobileConnection
+    let computer: SavedComputer
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+
+    init(connection: MobileConnection, computer: SavedComputer) {
+        self.connection = connection
+        self.computer = computer
+        _name = State(initialValue: computer.name)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("电脑名称") {
+                    TextField("电脑名称", text: $name)
+                    Text("只修改这台手机上显示的名称。")
+                }
+                Section("连接地址") {
+                    Text(computer.id)
+                    Text("连接信息变化时，请使用电脑提供的新链接重新配对。")
+                }
+                if let error = connection.error { Text(error).foregroundStyle(.red) }
+            }
+            .navigationTitle("编辑电脑")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        connection.rename(computer.id, to: name)
+                        if connection.error == nil { dismiss() }
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct ConnectView: View {
     @ObservedObject var connection: MobileConnection
     @State private var text = ""
@@ -275,16 +349,16 @@ struct ConnectView: View {
                 if !connection.computers.isEmpty {
                     Section("已配对的 Mac") {
                         ForEach(connection.computers) { computer in
-                            Button { connection.select(computer.id) } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(computer.name).font(.headline)
-                                    Text(computer.id).font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                Button { connection.select(computer.id) } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(computer.name).font(.headline)
+                                        Text(computer.id).font(.caption).foregroundStyle(.secondary)
+                                    }
                                 }
+                                Spacer()
+                                SavedComputerActions(connection: connection, computer: computer)
                             }
-                        }
-                        .onDelete { offsets in
-                            let ids = offsets.map { connection.computers[$0].id }
-                            for id in ids { connection.remove(id) }
                         }
                     }
                 }

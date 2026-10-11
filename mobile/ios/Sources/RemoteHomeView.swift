@@ -515,8 +515,6 @@ struct RemoteHomeView: View {
     @State private var showingSettings = false
     @State private var showingSearch = false
     @State private var search = ""
-    @State private var showingRename = false
-    @State private var renamed = ""
     @State private var selectedSession: RemoteSession?
     @State private var showingWorkspace = false
     @State private var showingNewConversation = false
@@ -528,7 +526,6 @@ struct RemoteHomeView: View {
     @AppStorage("mobile.openRemoteOnLaunch") private var openRemoteOnLaunch = false
     @AppStorage("mobile.showContextUsage") private var showContextUsage = false
     @AppStorage("mobile.followUpQueue") private var followUpQueue = true
-    @State private var editingConnections = false
 
     private var visibleSessions: [RemoteSession] {
         let filtered = sessions.items.filter {
@@ -707,11 +704,6 @@ struct RemoteHomeView: View {
                     DshWebView(url: url, onUnauthorized: connection.expireActive)
                 }
             }
-            .alert("电脑名称", isPresented: $showingRename) {
-                TextField("电脑名称", text: $renamed)
-                Button("取消", role: .cancel) {}
-                Button("保存") { connection.renameActive(renamed) }
-            } message: { Text("只修改这台 iPhone 上显示的名称") }
             .navigationDestination(isPresented: $showingWorkspace) {
                 if let selected = selectedSession {
                     RemoteChatView(computer: computer, sessionId: selected.sessionId,
@@ -877,9 +869,7 @@ struct RemoteHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     HStack {
-                        Button(editingConnections ? "完成" : "编辑") { editingConnections.toggle() }
-                            .padding(.horizontal, 18).frame(height: 43)
-                            .background(.white.opacity(0.08), in: Capsule())
+                        Color.clear.frame(width: 43, height: 43)
                         Spacer()
                         Text("远程控制").font(.system(size: 18, weight: .semibold))
                         Spacer()
@@ -943,19 +933,14 @@ struct RemoteHomeView: View {
                                         }.font(.system(size: 12)).foregroundStyle(.secondary)
                                     }
                                     Spacer(minLength: 4)
-                                    if editingConnections {
-                                        Button(role: .destructive) { connection.remove(item.id) } label: {
-                                            Image(systemName: "minus.circle.fill").foregroundStyle(.red)
-                                        }.accessibilityLabel("移除\(item.name)")
-                                    } else {
-                                        Toggle(item.name, isOn: Binding(
-                                            get: { connection.activeID == item.id },
-                                            set: { enabled in
-                                                if enabled { connection.select(item.id) }
-                                                else if connection.activeID == item.id { connection.leave() }
-                                            }
-                                        )).labelsHidden().tint(.green)
-                                    }
+                                    SavedComputerActions(connection: connection, computer: item)
+                                    Toggle(item.name, isOn: Binding(
+                                        get: { connection.activeID == item.id },
+                                        set: { enabled in
+                                            if enabled { connection.select(item.id) }
+                                            else if connection.activeID == item.id { connection.leave() }
+                                        }
+                                    )).labelsHidden().tint(.green)
                                 }
                                 .padding(.horizontal, 16).frame(height: 78)
                                 if item.id != connection.computers.last?.id {
@@ -1015,11 +1000,7 @@ struct RemoteHomeView: View {
                             }.padding(16)
                         }.background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
                     }
-                    Button("重命名当前电脑") {
-                        showingSettings = false
-                        renamed = computer.name
-                        showingRename = true
-                    }.padding(.horizontal, 15)
+
                 }
                 .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 32)
             }

@@ -1,6 +1,57 @@
 import XCTest
 
 final class MobileConnectionUITests: XCTestCase {
+    func testEditAndDeletePairedComputers() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-second-computer", "--dsh-mobile-test-sessions", "[]"]
+        app.launch()
+        app.buttons["打开顶部菜单"].tap()
+        app.buttons["设置"].tap()
+        app.buttons["编辑Second Mac"].tap()
+        let name = app.textFields["电脑名称"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText(" 工作")
+        app.buttons["保存"].tap()
+        XCTAssertTrue(app.staticTexts["Second Mac 工作"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.switches["Studio Mac"].value as? String, "1")
+        app.buttons["删除Second Mac 工作"].tap()
+        app.alerts.buttons["取消"].tap()
+        XCTAssertTrue(app.staticTexts["Second Mac 工作"].exists)
+        app.buttons["删除Second Mac 工作"].tap()
+        app.alerts.buttons["删除"].tap()
+        XCTAssertFalse(app.staticTexts["Second Mac 工作"].exists)
+        XCTAssertEqual(app.switches["Studio Mac"].value as? String, "1")
+        app.buttons["删除Studio Mac"].tap()
+        app.alerts.buttons["删除"].tap()
+        XCTAssertTrue(app.buttons["连接电脑"].waitForExistence(timeout: 5))
+    }
+
+    func testManageComputersWhileDisconnected() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-second-computer", "--dsh-mobile-test-sessions", "[]"]
+        app.launch()
+        app.buttons["打开顶部菜单"].tap()
+        app.buttons["设置"].tap()
+        app.buttons["删除Studio Mac"].tap()
+        app.alerts.buttons["删除"].tap()
+        XCTAssertTrue(app.buttons["连接电脑"].waitForExistence(timeout: 5))
+        app.buttons["连接电脑"].tap()
+        app.buttons["编辑Second Mac"].tap()
+        let name = app.textFields["电脑名称"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText(" 离线")
+        app.buttons["保存"].tap()
+        XCTAssertTrue(app.buttons["删除Second Mac 离线"].waitForExistence(timeout: 5))
+        app.buttons["删除Second Mac 离线"].tap()
+        app.alerts.buttons["删除"].tap()
+        XCTAssertFalse(app.staticTexts["Second Mac 离线"].exists)
+        XCTAssertTrue(app.buttons["连接"].exists)
+    }
+
     func testBothBalancesAndModelSwitch() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-url", "https://balance.example/?token=fixture&name=Balance",
@@ -472,14 +523,15 @@ final class MobileConnectionUITests: XCTestCase {
         app.buttons["设置"].tap()
         XCTAssertTrue(app.staticTexts["远程控制"].exists)
         XCTAssertTrue(app.staticTexts["Studio Mac"].exists)
-        app.buttons["重命名当前电脑"].tap()
-        let rename = app.alerts["电脑名称"].textFields.firstMatch
+        app.buttons["编辑Studio Mac"].tap()
+        let rename = app.textFields["电脑名称"]
         XCTAssertTrue(rename.waitForExistence(timeout: 5))
         rename.tap()
         rename.typeText(" 工作")
-        app.alerts.buttons["保存"].tap()
+        app.buttons["保存"].tap()
         XCTAssertTrue(app.staticTexts["Studio Mac 工作"].exists)
 
+        app.buttons["关闭远程控制设置"].tap()
         app.buttons["远程, Studio Mac 工作"].tap()
         XCTAssertTrue(app.staticTexts["已配对的 Mac"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Studio Mac 工作"].exists)
