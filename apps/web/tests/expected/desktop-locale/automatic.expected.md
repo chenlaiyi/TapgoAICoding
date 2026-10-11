@@ -25,8 +25,8 @@
   - button "标准"
   - text: 工作步骤收起时机 选择何时自动收起工作步骤
   - button "回答结束后"
-  - text: 显示代码工作视图 开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换
-  - switch "显示代码工作视图" [checked]
+  - text: 代码工作工具 开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换
+  - switch "代码工作工具" [checked]
   - text: 快捷键
   - paragraph: 查看和编辑当前可用的快捷键和输入操作
   - button "编辑快捷键"
