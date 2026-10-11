@@ -210,15 +210,19 @@ public final class MainActivity extends AppCompatActivity {
     private String title(JSONObject row){JSONObject p=row.optJSONObject("projections");JSONObject values=p==null?null:p.optJSONObject("values");return values==null?getString(R.string.untitled):values.optString("title",getString(R.string.untitled));}
     private Spinner projectPicker;
     private void newChat(){
-        LinearLayout form=column();EditText input=new EditText(this);input.setHint(R.string.message_hint);form.addView(input);
+        LinearLayout form=column();
         Spinner projects=new Spinner(this);projectPicker=projects;List<String> names=new ArrayList<>();names.add(getString(R.string.other_project));for(int i=0;i<workspaces.length();i++)names.add(workspaces.optJSONObject(i).optString("title"));projects.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,names));form.addView(projects);
         Button browse=button(R.string.add_project,()->browseDirectory(null));form.addView(browse);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle(R.string.new_chat).setView(form).setNegativeButton(R.string.cancel,null).setPositiveButton(R.string.send,null).create();
-        dialog.setOnShowListener(d->dialog.getButton(-1).setOnClickListener(v->{dialog.getButton(-1).setEnabled(false);RemoteClient remote=client;long current=generation;String connectionOrigin=store.current().origin;String message=input.getText().toString();JSONObject project=projects.getSelectedItemPosition()==0?null:workspaces.optJSONObject(projects.getSelectedItemPosition()-1);
-            worker.execute(()->{try{JSONObject request=new JSONObject();if(project!=null)request.put("workspaceId",project.getString("workspaceId"));String id=remote.rpc("session/create",new JSONObject().put("request",request)).getString("sessionId");String remembered=getSharedPreferences("models",0).getString(connectionOrigin,null);if(remembered!=null){JSONObject choice=new JSONObject(remembered);remote.rpc("session/selectModel",new JSONObject().put("request",choice.put("sessionId",id)));}
+        long previewGeneration=generation;String origin=store.current().origin;
+        NewConversationComposer preview=new NewConversationComposer(this,client,worker,handler,origin,()->previewGeneration==generation&&dialog.isShowing(),()->browseDirectory(null),()->dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick());
+        form.addView(preview.view);EditText input=preview.view.input;
+        dialog.setOnShowListener(d->dialog.getButton(-1).setOnClickListener(v->{dialog.getButton(-1).setEnabled(false);preview.submitting(true);RemoteClient remote=client;long current=generation;String connectionOrigin=store.current().origin;String message=input.getText().toString();String remembered=getSharedPreferences("models",0).getString(connectionOrigin,null);String permissionValue=preview.permission();JSONObject project=projects.getSelectedItemPosition()==0?null:workspaces.optJSONObject(projects.getSelectedItemPosition()-1);
+            worker.execute(()->{try{JSONObject request=new JSONObject();if(project!=null)request.put("workspaceId",project.getString("workspaceId"));String id=remote.rpc("session/create",new JSONObject().put("request",request)).getString("sessionId");if(remembered!=null){JSONObject choice=new JSONObject(remembered);remote.rpc("session/selectModel",new JSONObject().put("request",choice.put("sessionId",id)));}
+                if(permissionValue!=null){JSONObject applied=remote.rpc("commands/execute",new JSONObject().put("agentId",id).put("line","/permission "+permissionValue).put("submittedAttachments",new JSONArray()));if(applied.optJSONObject("result")==null||!applied.optJSONObject("result").optString("kind").equals("success"))throw new java.io.IOException("Permission selection rejected");}
                 handler.post(()->{if(current!=generation)return;dialog.dismiss();openChat(id,getString(R.string.new_chat));chat.prefill(message);});
-            }catch(Exception exception){handler.post(()->{if(current!=generation)return;dialog.getButton(-1).setEnabled(true);notice(R.string.unavailable);});}});
-        }));dialog.setOnDismissListener(d->{if(projectPicker==projects)projectPicker=null;});dialog.show();
+            }catch(Exception exception){handler.post(()->{if(current!=generation)return;dialog.getButton(-1).setEnabled(true);preview.submitting(false);notice(R.string.unavailable);});}});
+        }));dialog.setOnDismissListener(d->{if(projectPicker==projects)projectPicker=null;});dialog.show();dialog.getButton(AlertDialog.BUTTON_POSITIVE).setVisibility(View.GONE);preview.load();
     }
     private void browseDirectory(String path){
         RemoteClient remote=client;long current=generation;

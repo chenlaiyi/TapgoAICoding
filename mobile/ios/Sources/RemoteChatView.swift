@@ -929,39 +929,28 @@ struct RemoteChatView: View {
                         Button("移除") { attachedImage = nil }.font(.caption)
                     }
                 }
-                HStack(spacing: 8) {
-                    modelBadge
-                    balanceBadge
-                    Spacer(minLength: 0)
-                }
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 11)
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        if !composerFocused { addMenu }
-                        composerInput
-                            .padding(.leading, composerFocused ? 7 : 0)
-                        if !composerFocused { sendButton }
-                    }
-                    if composerFocused {
-                        HStack(spacing: 8) {
-                            addMenu
-                            permissionButton
-                            Spacer(minLength: 0)
-                            Button { composerFocused = false } label: {
-                                Image(systemName: "keyboard.chevron.compact.down")
-                                    .font(.system(size: 17))
-                                    .frame(width: 44, height: 44)
-                            }
-                            .accessibilityLabel("收起键盘")
-                            sendButton
+                    composerInput.padding(.horizontal, 7)
+                    HStack(spacing: 0) {
+                        addMenu
+                        permissionButton
+                        HStack(spacing: 4) {
+                            modelBadge
+                            balanceBadge.layoutPriority(1)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Button { composerFocused = false } label: {
+                            Image(systemName: "keyboard.chevron.compact.down")
+                                .font(.system(size: 17))
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("收起键盘")
+                        sendButton
                     }
                 }
                 .padding(.horizontal, 13).padding(.vertical, 9)
-                .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: composerFocused ? 23 : 30))
-                .overlay(RoundedRectangle(cornerRadius: composerFocused ? 23 : 30).stroke(Color(uiColor: .separator).opacity(0.3)))
+                .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 24))
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color(uiColor: .separator).opacity(0.3)))
                 .shadow(color: .black.opacity(0.07), radius: 14, y: 5)
             }
             .padding(.horizontal, 15).padding(.bottom, 10)
@@ -1189,16 +1178,11 @@ struct RemoteChatView: View {
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "shield.lefthalf.filled")
-                Text(chat.permissions.first { $0.id == chat.selectedPermission }?.name ?? "访问权限")
-                    .lineLimit(1)
-                Image(systemName: "chevron.up").font(.system(size: 9))
-            }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(.secondary)
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
+            Image(systemName: "shield.lefthalf.filled")
+                .font(.system(size: 17))
+                .foregroundStyle(.orange)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .tint(Color(uiColor: .secondaryLabel))
         .accessibilityLabel("访问权限")

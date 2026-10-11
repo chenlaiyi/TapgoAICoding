@@ -1252,13 +1252,7 @@ private struct RemoteNewConversationView: View {
                 .onSubmit { startDraft() }
                 .disabled(submitting)
                 .accessibilityIdentifier("newConversationInput")
-            ViewThatFits(in: .horizontal) {
-                composerToolbar(includingMetadata: true)
-                VStack(alignment: .leading, spacing: 8) {
-                    composerMetadata
-                    composerToolbar(includingMetadata: false)
-                }
-            }
+            composerToolbar
         }
         .padding(.horizontal, 17).padding(.vertical, 14)
         .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 24))
@@ -1284,6 +1278,7 @@ private struct RemoteNewConversationView: View {
             if currentModel != nil {
                 Text("余额 \(sessions.funds.available(provider: currentModel?.provider) ?? "暂不可用")")
                     .accessibilityIdentifier("newConversationBalance")
+                    .layoutPriority(1)
             }
         }
         .font(.caption2)
@@ -1292,8 +1287,8 @@ private struct RemoteNewConversationView: View {
         .minimumScaleFactor(0.8)
     }
 
-    private func composerToolbar(includingMetadata: Bool) -> some View {
-        HStack(spacing: 4) {
+    private var composerToolbar: some View {
+        HStack(spacing: 0) {
             Button { showingFullWorkspace = true } label: {
                 Image(systemName: "plus").font(.system(size: 22))
                     .frame(width: 44, height: 44)
@@ -1314,11 +1309,8 @@ private struct RemoteNewConversationView: View {
             }
             .disabled(submitting)
             .accessibilityLabel("访问权限")
-            if includingMetadata {
-                composerMetadata.fixedSize(horizontal: true, vertical: false)
-            }
-            Spacer(minLength: 0)
-            if inputFocused {
+            composerMetadata.frame(maxWidth: .infinity, alignment: .leading)
+            Group {
                 Button { inputFocused = false } label: {
                     Image(systemName: "keyboard.chevron.compact.down")
                         .font(.system(size: 17))
