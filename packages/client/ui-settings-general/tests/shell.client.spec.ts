@@ -113,7 +113,7 @@ describe('ui-settings-general shell', () => {
   }, COLD_BOOT_TIMEOUT_MS)
 
   it('declares its services', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts', 'modules'])
   })
 
   it('occupies sidebar.settings, declared by ui-sidebar, and declares every child slot', async ({ start }) => {
@@ -160,6 +160,21 @@ describe('ui-settings-general shell', () => {
     await vi.waitFor(() => { expect(sections.getSnapshot().filter(row => row.id === 'account')).toHaveLength(1) })
     c.mock.streams.push('account/watch', { status: 'signed-out', attempt: null })
     await vi.waitFor(() => { expect(sections.getSnapshot().map(row => row.id)).toEqual(['account', ...PRODUCT_SECTIONS]) })
+  })
+
+  it('shows Account first only while signed in and removes it on sign-out', async ({ start }) => {
+    const c = await start()
+    const { sections } = injectedOf(c).hooks
+    await c.mock.streams.opened('account/watch', 1)
+    expect(sections.getSnapshot().map(row => row.id)).toEqual(PRODUCT_SECTIONS)
+    c.mock.streams.push('account/watch', { status: 'credential-stored', attempt: null })
+    await vi.waitFor(() => {
+      expect(sections.getSnapshot().map(row => row.id)).toEqual(['account', ...PRODUCT_SECTIONS])
+    })
+    c.mock.streams.push('account/watch', { status: 'credential-stored', attempt: null })
+    await vi.waitFor(() => { expect(sections.getSnapshot().filter(row => row.id === 'account')).toHaveLength(1) })
+    c.mock.streams.push('account/watch', { status: 'signed-out', attempt: null })
+    await vi.waitFor(() => { expect(sections.getSnapshot().map(row => row.id)).toEqual(PRODUCT_SECTIONS) })
   })
 
   it('projects the roster Connection control without copying its state; reconnect opens a new $events generation', async ({ start }) => {

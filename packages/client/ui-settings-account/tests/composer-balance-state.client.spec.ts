@@ -11,6 +11,7 @@ const selected = (provider: string): ModelDirectoryState => ({
   current: { provider, model: 'model' }, routable: true, status: 'ready', groups: [], failures: [], pending: null, error: null,
 })
 const accountState: AccountSnapshot = {
+  avatar: undefined,
   view: { status: 'credential-stored', attempt: null, links: { usageUrl: '', topUpUrl: '' } }, failed: false,
   details: { balance: { status: 'ready', value: [{ currency: 'CNY', balance: '10.00' }],
     bonusWallets: [{ currency: 'CNY', balance: '1.00' }] } },
@@ -33,7 +34,7 @@ it('uses account wallets only for an available account model and keeps API-key f
   b.directory.set(selected('deepseek-official'))
   expect(b.balance.store.getSnapshot()).toBeNull()
   await vi.waitFor(() => { expect(b.balance.store.getSnapshot()).toEqual(funds) })
-  b.account.set({ failed: false, view: undefined, details: undefined })
+  b.account.set({ avatar: undefined, failed: false, view: undefined, details: undefined })
   expect(b.balance.store.getSnapshot()).toEqual(funds)
   b.directory.set(selected('deepseek-account'))
   expect(b.balance.store.getSnapshot()).toBeNull()

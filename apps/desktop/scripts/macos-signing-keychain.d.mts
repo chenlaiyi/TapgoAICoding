@@ -15,3 +15,18 @@ export function withMacOSSigningKeychain(
   action: (environment: NodeJS.ProcessEnv) => Promise<void>,
   run?: (command: string, args: string[]) => string,
 ): Promise<void>
+
+/**
+ * Sign and verify a temporary probe with an existing keychain before packaging.
+ * @param environment Validated installed signing identity.
+ * @param keychain Existing default keychain; its access settings remain unchanged.
+ * @param action Signing work settled before probe cleanup.
+ * @param run Apple command executor.
+ * @returns Resolves after work and cleanup; rejects before work when probe signing fails.
+ */
+export function withInstalledMacOSSigningProbe(
+  environment: NodeJS.ProcessEnv,
+  keychain: string,
+  action: (environment: NodeJS.ProcessEnv) => Promise<void>,
+  run?: (command: string, args: string[]) => string,
+): Promise<void>

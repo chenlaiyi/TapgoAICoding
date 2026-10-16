@@ -126,7 +126,9 @@ async function main(): Promise<void> {
   })
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
-  if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId, ctx.webServer.port)
+  const port = ctx.webServer.port
+  if (port === undefined) throw new Error('desktop Host listener has no bound TCP port')
+  if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId, port)
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   control.quitInspection = installDesktopQuitInspection(ctx)
   await ctx.plugin(desktopOffice, {
@@ -137,7 +139,7 @@ async function main(): Promise<void> {
   installPlatformSessionPublisher(ctx, (session) => {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })
-  const url = ctx.connection.authenticatedUrl(`${ctx.webServer.protocol}//127.0.0.1:${String(ctx.webServer.port)}`)
+  const url = ctx.connection.authenticatedUrl(`${ctx.webServer.protocol}//127.0.0.1:${String(port)}`)
   const mobileUrl = mobile === undefined ? undefined : ctx.connection.authenticatedUrl(mobile.origin)
   if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, mobileOrigin: mobile?.origin,
     injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })

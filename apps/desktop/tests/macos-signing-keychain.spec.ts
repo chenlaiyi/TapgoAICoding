@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { withMacOSSigningKeychain } from '../scripts/macos-signing-keychain.mjs'
+import { withInstalledMacOSSigningProbe, withMacOSSigningKeychain } from '../scripts/macos-signing-keychain.mjs'
 
 const environment = { CSC_LINK: '/signing.p12', CSC_KEY_PASSWORD: 'export-secret', DSH_DESKTOP_MACOS_SIGNING_IDENTITY: 'Example (TEAMID1234)' }
 const USER_KEYCHAINS = ['/Users/example/Library/Keychains/login.keychain-db', '/Library/Keychains/System.keychain']
@@ -65,5 +65,29 @@ describe('temporary macOS signing identity', () => {
     ])
     expect(new Set(paths).size).toBe(2)
     expect(paths.every(path => !existsSync(dirname(path)))).toBe(true)
+  })
+})
+
+describe('installed macOS signing identity', () => {
+  it.each(['success', '--force', '--verify', 'build'])('keeps the existing keychain and cleans its probe after %s', async (stage) => {
+    let probe = ''
+    const action = vi.fn(async (env: NodeJS.ProcessEnv) => {
+      expect(env.CSC_KEYCHAIN).toBe(USER_KEYCHAINS[0])
+      expect(env.DSH_DESKTOP_MACOS_SIGNING_PROBE).toBe(probe)
+      expect(existsSync(dirname(probe))).toBe(true)
+      expect(env.CSC_KEY_PASSWORD).toBeUndefined()
+      if (stage === 'build') throw Error('build failure')
+    })
+    const run = vi.fn<(command: string, args: string[]) => string>((command, args) => {
+      if (command === '/bin/cp') probe = args[1]!
+      if (args[0] === stage) throw Error('tool failure')
+      return ''
+    })
+    const work = withInstalledMacOSSigningProbe(environment, USER_KEYCHAINS[0]!, action, run)
+    if (stage === 'success') await work
+    else await expect(work).rejects.toThrow(/failure/u)
+    expect(action).toHaveBeenCalledTimes(stage === 'success' || stage === 'build' ? 1 : 0)
+    expect(existsSync(dirname(probe))).toBe(false)
+    expect(run.mock.calls.every(([command]) => command !== '/usr/bin/security')).toBe(true)
   })
 })
