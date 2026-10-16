@@ -16,6 +16,9 @@ describe('desktop auto-update environment', () => {
       DOWNLOAD_PROD_FEED_URL: 'https://github.com/chenlaiyi/TapgoAICoding/releases/download/desktop-feed-arm64' },
     'darwin', 'arm64')
     expect(config.publicUrl).toBe('https://github.com/chenlaiyi/TapgoAICoding/releases/download/desktop-feed-arm64/')
+    expect(config.channel).toBe('nightly')
+    expect(resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'production',
+      DSH_DESKTOP_UPDATE_CHANNEL: 'latest', DOWNLOAD_PROD_FEED_URL: config.publicUrl }, 'darwin', 'arm64').channel).toBe('latest')
     expect(() => resolveDesktopUploadConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'production',
       DOWNLOAD_PROD_FEED_URL: config.publicUrl }, 'darwin', 'arm64')).toThrow(/release-asset feeds/u)
     expect(() => resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'production',
@@ -51,7 +54,7 @@ describe('desktop auto-update environment', () => {
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com/',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
     }, 'darwin', 'arm64')).toEqual({
-      environment: 'test',
+      environment: 'test', channel: 'nightly',
       target: 'mac-arm64',
       origin: 'https://desktop-updates.example.com',
       publicUrl: `https://desktop-updates.example.com/dsh-desk/${RELEASE_ID}/feeds/mac-arm64/`,

@@ -4,11 +4,12 @@ import { expect, it, vi, afterEach } from 'vitest'
 import type { AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 import { apply, type AccountSectionInjected } from '../src/client/index.ts'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
 it.each(['accepted', 'refused', 'disconnected', 'pending'] as const)('initializes account models and keeps reading account state: %s', async (outcome) => {
   vi.stubGlobal('dshDesktop', {})
-  const log = vi.spyOn(console, 'info').mockImplementation(() => {})
+  vi.stubEnv('DSH_CLIENT_VERSION', '0.0.0-test')
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
   const observed: { status: string | undefined; failed: boolean | undefined }[] = []
   const abort = new AbortController()
   const done = Promise.withResolvers<undefined>()
@@ -29,7 +30,7 @@ it.each(['accepted', 'refused', 'disconnected', 'pending'] as const)('initialize
   const ctx = {
     effect: (install: () => (() => void) | undefined) => { const dispose = install(); if (dispose) disposers.push(dispose) },
     on: () => () => {},
-    locale: { register: () => () => {}, bind: () => (key: string) => key },
+    locale: { register: () => () => {}, bind: () => (key: string) => key, getSnapshot: () => ({ active: 'en' }) },
     configForms: {
       get: () => ({ subscribe: () => () => {}, getSnapshot: () => ({ status: 'loading', value: undefined }) }),
       describe: () => ({ subscribe: () => () => {}, getSnapshot: () => ({ error: null }) }),

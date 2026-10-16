@@ -105,6 +105,8 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'docs/subsystems/schedule.zh.md', upstream: ['cordis'] },
   { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.md', upstream: ['cordis'] },
   { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.zh.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.zh.md', upstream: ['cordis'] },
   { file: 'docs/user/guide/schedule.md', upstream: ['cordis'] },
   { file: 'docs/user/guide/schedule.zh.md', upstream: ['cordis'] },
   { file: 'packages/bundle/web-app/cordis.patch.yml', upstream: ['cordis'] },
