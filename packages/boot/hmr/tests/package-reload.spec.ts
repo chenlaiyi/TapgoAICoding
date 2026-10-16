@@ -264,6 +264,27 @@ function resolution(
   return calls
 }
 
+it('keeps cached modules and running plugins when the recomputed package mapping is unchanged', async () => {
+  const f = await fixture()
+  const url = pathToFileURL(join(f.dir, 'node_modules', 'addon', 'index.mjs')).href
+  const module = await f.ctx.loader.import(url)
+  const entry = [...f.ctx.loader.entries()].find(row => row.options.id === 'addon')!
+  const fiber = entry.fiber
+  expect(fiber).toBeDefined()
+  const mapping = table('/packages/addon', 'gone')
+  const calls = resolution(f.ctx, structuredClone(mapping), undefined, mapping)
+  const published = f.ctx.pluginPackages.resolution
+  f.trace.length = 0
+
+  await expect(f.reconcile()).resolves.toEqual({ warnings: [], pending: [] })
+
+  expect(calls).toEqual([])
+  expect(f.ctx.pluginPackages.resolution).toBe(published)
+  expect(await f.ctx.loader.import(url)).toBe(module)
+  expect(entry.fiber).toBe(fiber)
+  expect(f.trace).toEqual([])
+})
+
 it('stops the rows a generation drops before publishing its resolution, then applies it', async () => {
   const f = await fixture()
   f.trace.length = 0
