@@ -267,7 +267,7 @@ function resolution(
 it('keeps cached modules and running plugins when the recomputed package mapping is unchanged', async () => {
   const f = await fixture()
   const url = pathToFileURL(join(f.dir, 'node_modules', 'addon', 'index.mjs')).href
-  const module = await f.ctx.loader.import(url)
+  const module: unknown = await f.ctx.loader.import(url)
   const entry = [...f.ctx.loader.entries()].find(row => row.options.id === 'addon')!
   const fiber = entry.fiber
   expect(fiber).toBeDefined()
