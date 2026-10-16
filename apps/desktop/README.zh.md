@@ -51,7 +51,7 @@ Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOM
 
 手机公网连接使用 `mobile-picker.overlay.yml` 将 Remote WebSocket 心跳间隔设为 15 秒，避免默认 2 秒时限在蜂窝网络或中继短暂停顿时过早断开；Host 仍会终止持续未回复 Ping 的连接。
 
-`TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库；Intel Node 运行时还保留可执行内存授权。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
+`TAPGO_DESKTOP_SKIP_NOTARIZATION=1` 使用本机已安装的 Developer ID 签名身份，产出未公证安装包。打包会使用该钥匙串签名并验证临时探针，将原生签名缓存绑定到对应证书，任务结束后清理探针。该证书的 macOS 签名元数据没有 TeamIdentifier，因此发布校验要求精确匹配 Developer ID 签发者，并允许内置解释器加载其已签名的原生库；Intel Node 运行时还保留可执行内存授权。macOS 可能通过 Gatekeeper 阻止全新下载的应用。若要发布已公证版本，移除此设置并提供签名 p12 与 Apple 公证凭据。
 
 桌面应用是完整 dsh Web 应用外的一层 Electron 壳。Electron RunAsNode 子进程启动共享 profile runner，Electron 立即从 `dsh-app://app/` 加载打包内的 Web 入口。共享加载页等待 Host 启动注入，然后在同一文档中启动客户端。Electron 将应用 HTTP 请求转发给已认证的 Web Host，转发时丢弃描述 Node fetch 连接而非资源本身的响应头（`transfer-encoding`、`connection`、`keep-alive`），并把插件 bundle 响应标记为 `no-store`，因为其每次启动都变化的 revision 只会在 Chromium 磁盘缓存中累积；WebSocket 流连接到该 Host，仅为归属的应用窗口附加凭据。Node IPC 承载启动注入、就绪与关闭。Desktop 默认使用系统自动分配的端口，共享手机中继转发到实际监听端口。未启用共享中继的固定公网 HTTPS 地址继续使用 `19388`，兼容现有反向代理；可通过 `webserver.config.port` patch 覆盖。
 

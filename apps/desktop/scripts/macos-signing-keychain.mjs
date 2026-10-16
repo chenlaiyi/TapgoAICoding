@@ -83,3 +83,25 @@ export async function withMacOSSigningKeychain(environment, action, run = execut
     finally { rmSync(directory, { recursive: true, force: true }) }
   }
 }
+
+/**
+ * Sign and verify a temporary probe with an existing keychain before packaging.
+ * @param {NodeJS.ProcessEnv} environment Validated installed signing identity.
+ * @param {string} keychain Existing default keychain; its access settings remain unchanged.
+ * @param {(environment: NodeJS.ProcessEnv) => Promise<void>} action Signing work settled before probe cleanup.
+ * @param {(command: string, args: string[]) => string} run Apple command executor.
+ * @returns {Promise<void>} Resolves after work and cleanup; rejects before work when probe signing fails.
+ */
+export async function withInstalledMacOSSigningProbe(environment, keychain, action, run = execute) {
+  const directory = mkdtempSync(join(tmpdir(), 'tapgo-macos-signing-'))
+  const probe = join(directory, 'probe')
+  try {
+    run('/bin/cp', ['/usr/bin/true', probe])
+    run('/usr/bin/codesign', ['--force', '--sign', `Developer ID Application: ${environment.DSH_DESKTOP_MACOS_SIGNING_IDENTITY}`, '--keychain', keychain, '--timestamp', '--options', 'runtime', probe])
+    run('/usr/bin/codesign', ['--verify', '--strict', probe])
+    const childEnvironment = { ...environment, CSC_KEYCHAIN: keychain, DSH_DESKTOP_MACOS_SIGNING_PROBE: probe }
+    delete childEnvironment.CSC_LINK
+    delete childEnvironment.CSC_KEY_PASSWORD
+    await action(childEnvironment)
+  } finally { rmSync(directory, { recursive: true, force: true }) }
+}

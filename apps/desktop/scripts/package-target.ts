@@ -14,7 +14,7 @@ import { loadDesktopPackageEnvironment, localMacOSPackageEnvironment, validateDe
 import { createPackagingRun, recordPackagingEvent } from './packaging-run.mjs'
 import { withWindowsSigningStage } from './windows-signing-stage.mjs'
 import { prepareWindowsSignatureCacheDirectory, resolveWindowsSignatureCacheDirectory } from './windows-signature-cache-directory.mjs'
-import { withMacOSSigningKeychain } from './macos-signing-keychain.mjs'
+import { withInstalledMacOSSigningProbe, withMacOSSigningKeychain } from './macos-signing-keychain.mjs'
 import { macOSDownloadEnvironment, resolveMacOSPackageSettings } from './macos-package-settings.mjs'
 import { packagingErrorDetails, packagingStep } from './packaging-step.mjs'
 import { notarizeMacOS } from './notarize-macos.mjs'
@@ -389,7 +389,8 @@ async function main(): Promise<void> {
         if (skipTapgoNotarization(environment)) {
           const keychain = execFileSync('/usr/bin/security', ['default-keychain', '-d', 'user'], { encoding: 'utf8' }).trim().replace(/^"|"$/gu, '')
           if (!isAbsolute(keychain) || !existsSync(keychain)) throw new Error('desktop package: no readable default macOS signing keychain')
-          return packageTarget(invocation, { ...environment, CSC_KEYCHAIN: keychain }, run)
+          return withInstalledMacOSSigningProbe(environment, keychain,
+            signingEnvironment => packageTarget(invocation, signingEnvironment, run))
         }
         return withMacOSSigningKeychain(environment,
           signingEnvironment => packageTarget(invocation, signingEnvironment, run))
