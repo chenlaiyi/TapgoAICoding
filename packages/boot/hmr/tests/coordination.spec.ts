@@ -88,6 +88,24 @@ it('holds configuration handlers behind configuration mutations', async () => {
   expect(order).toEqual(['write', 'refresh'])
 })
 
+it('queues configuration notifications emitted inside a mutation without treating them as nested calls', async () => {
+  const { ctx, hmr, dir } = await fixture()
+  const filename = join(dir, 'package.json')
+  writeFileSync(filename, '{}')
+  const refresh = vi.fn(async () => {})
+  const warn = vi.spyOn(ctx.logger, 'warn')
+  onTestFinished(() => { warn.mockRestore() })
+  const dispose = await hmr.watchConfig(filename, refresh)
+  await hmr.runExclusive(async () => {
+    watchers.at(-1)!.emit('change', filename)
+    expect(refresh).not.toHaveBeenCalled()
+  })
+  await hmr.runExclusive(async () => {})
+  await dispose()
+  expect(refresh).toHaveBeenCalledOnce()
+  expect(warn).not.toHaveBeenCalled()
+})
+
 it('reports unrelated lock-file notifications without reloading', async () => {
   const { ctx, dir, hmr } = await fixture()
   const loaded = vi.spyOn(ctx.loader, 'await')

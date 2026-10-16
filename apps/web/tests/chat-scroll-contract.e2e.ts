@@ -593,7 +593,8 @@ describe('web e2e: long Chat scroll contract', () => {
       const artifactRoot = fileURLToPath(new URL('../../../.artifacts/screenshots/visible-fold/', import.meta.url))
       await mkdir(artifactRoot, { recursive: true })
       const evidence = await mkdtemp(join(artifactRoot, `${scenario.name}-`))
-      const controlledClock = scenario.name === 'content-growth-during-fold' || scenario.name === 'cancel-all-during-fold'
+      // A paused clock keeps intermediate fold frames observable on contended hosts.
+      const controlledClock = !scenario.reduced
       await withScrollWorld({
         failureShot: `visible-fold-${scenario.name}`,
         controlledClock,
@@ -767,10 +768,17 @@ describe('web e2e: long Chat scroll contract', () => {
                 if (!(button instanceof HTMLButtonElement)) throw new Error('Send control is not a button')
                 button.click()
               })
-              await expect.poll(async () => {
-                await page.clock.runFor(16)
-                return page.locator('[data-fold-race-applied]').count()
-              }, { timeout: 10_000 }).toBe(1)
+              if (scenario.name === 'content-growth-during-fold' || scenario.name === 'cancel-all-during-fold') {
+                await expect.poll(async () => {
+                  await page.clock.runFor(16)
+                  return page.locator('[data-fold-race-applied]').count()
+                }, { timeout: 10_000 }).toBe(1)
+              } else {
+                await expect.poll(async () => {
+                  await page.clock.runFor(16)
+                  return page.locator('[data-chat-motion="collapse"]').count()
+                }, { timeout: 10_000 }).toBeGreaterThan(0)
+              }
               await expect.poll(async () => {
                 await page.clock.runFor(16)
                 return page.locator('[data-chat-motion="collapse"]').count()

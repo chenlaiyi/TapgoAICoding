@@ -276,9 +276,9 @@ class Hmr extends Service {
   }
 
   private runReload(operation: () => Promise<void>): Promise<void> {
-    return this.runExclusive(async () => {
+    return this.executing.exit(() => this.runExclusive(async () => {
       if (await this.applicationReady) await operation()
-    })
+    }))
   }
 
   /** Watch a configuration path through the same queue as module replacement.
