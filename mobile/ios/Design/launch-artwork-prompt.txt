@@ -1,0 +1,5 @@
+Tool: built-in image_gen
+Reference: Assets.xcassets/SplashMark.imageset/splash-mark.png (brand identity)
+Output: Assets.xcassets/LaunchArtwork.imageset/launch-artwork.png
+
+Use case: stylized-concept. Create a polished production illustration asset for the iOS launch screen of 点点够终端, an AI coding remote terminal. Reference image is brand mascot identity only: retain recognizable friendly cyan-blue face, huge dark eyes, white pointed hood, small red d emblem. Reimagine as a refined premium 3D collectible, less toy clutter, restrained and calm. Square 1024 image, pure very pale icy-white background #F5F8FC, main full-body small mascot at center using a slim silver laptop, seated on a subtle floating white circular disc, a few tiny blue light dots suggesting possibilities. Gentle blue rim light, soft contact shadow, ceramic matte materials, beautifully composed generous negative space (subject occupies central 65%). No rounded app-icon rectangle, no desk props, no busy scene, no text, no letters except existing tiny red d emblem, no UI, no watermark. Intended to place above native Chinese typography on a minimalist iPhone launch screen.

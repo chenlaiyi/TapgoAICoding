@@ -91,19 +91,40 @@ struct MobileWelcomeMessage: View {
     }
 }
 
+/// Matches the system launch storyboard with a fixed brand palette in both appearances.
 private struct MobileLaunchView: View {
     var body: some View {
-        VStack(spacing: 0) {
-            MobileWelcomeBrand()
-            Spacer()
-            MobileWelcomeMessage()
-            Spacer()
+        GeometryReader { geometry in
+            let artworkSize = min(geometry.size.width - 64, 300)
+            let artworkCenter = geometry.size.height / 2 - 72
+            ZStack {
+                Color(red: 245 / 255, green: 249 / 255, blue: 252 / 255)
+                Image("LaunchArtwork")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: artworkSize, height: artworkSize)
+                    .position(x: geometry.size.width / 2, y: artworkCenter)
+                    .accessibilityHidden(true)
+                VStack(spacing: 12) {
+                    Text("点点够终端")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(Color(red: 20 / 255, green: 37 / 255, blue: 61 / 255))
+                    Text("点点够，一切都一点点变好！")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color(red: 92 / 255, green: 112 / 255, blue: 136 / 255))
+                }
+                .position(x: geometry.size.width / 2, y: artworkCenter + artworkSize / 2 + 62)
+                Text("组装无限可能，共探智能上限")
+                    .font(.system(size: 12))
+                    .tracking(2)
+                    .foregroundStyle(Color(red: 92 / 255, green: 112 / 255, blue: 136 / 255))
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 82)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("launchBrand")
         }
-        .padding(.horizontal, 32)
-        .padding(.top, 44)
-        .padding(.bottom, 100)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+        .ignoresSafeArea()
     }
 }
 
