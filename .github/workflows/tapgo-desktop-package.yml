@@ -39,7 +39,10 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 90
     env:
-      TAPGO_CONFIRMED_VERSION: ${{ inputs.version || '0.6.15' }}
+      # Manual runs pass the version; every other event reads the repository
+      # variable. Neither is defaulted, so a missing version fails the run
+      # instead of stamping a stale release number onto the installer.
+      TAPGO_CONFIRMED_VERSION: ${{ inputs.version || vars.TAPGO_DESKTOP_RELEASE_VERSION }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -50,7 +53,9 @@ jobs:
       - name: Configure unsigned Tapgo release
         shell: pwsh
         run: |
-          if ($env:TAPGO_CONFIRMED_VERSION -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          if ($env:TAPGO_CONFIRMED_VERSION -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+            throw 'Invalid release version. Pass the workflow_dispatch version input or set the repository variable TAPGO_DESKTOP_RELEASE_VERSION to a canonical x.y.z release version.'
+          }
           @"
           DSH_DESKTOP_APP_ID=com.tapgo.aicoding
           TAPGO_DESKTOP_RELEASE_VERSION=$env:TAPGO_CONFIRMED_VERSION
