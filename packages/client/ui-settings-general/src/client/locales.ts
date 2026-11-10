@@ -251,11 +251,11 @@ export const fr = {
   'hostRelease.unknown': 'Inconnu',
   'hostRelease.reload': 'Recharger pour charger la nouvelle version',
   'hostRelease.later': 'Pas maintenant',
-  'general.computerName': 'Nom de l'ordinateur',
-  'general.computerNameDescription': 'Affiché lors de l'association et de la connexion d'un téléphone ; utilise par défaut le nom de l'ordinateur du système',
+  'general.computerName': "Nom de l'ordinateur",
+  'general.computerNameDescription': "Affiché lors de l'association et de la connexion d'un téléphone ; utilise par défaut le nom de l'ordinateur du système",
   'general.computerNameSave': 'Enregistrer',
-  'general.computerNameError': 'Impossible d'enregistrer le nom de l'ordinateur. Réessayez.',
-  'general.computerNameInvalid': 'Saisissez un nom d'ordinateur de 1 à 80 caractères.',
+  'general.computerNameError': "Impossible d'enregistrer le nom de l'ordinateur. Réessayez.",
+  'general.computerNameInvalid': "Saisissez un nom d'ordinateur de 1 à 80 caractères.",
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
