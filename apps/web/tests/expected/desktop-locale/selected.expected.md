@@ -1,6 +1,6 @@
 - dialog "Settings":
+  - text: Settings
   - navigation:
-    - text: Settings
     - button "Account"
     - button "General"
     - button "Models"
@@ -25,6 +25,8 @@
   - button "Standard"
   - text: When to Collapse Work Details Choose when to automatically collapse work details
   - button "On completion"
+  - text: Replies After Collapse Choose which assistant replies stay visible when work details collapse
+  - button "All replies"
   - text: Coding Tools Shows trajectory, code diffs, and all Agent presets
   - switch "Coding Tools" [checked]
   - text: Keyboard shortcuts

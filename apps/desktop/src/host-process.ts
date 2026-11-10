@@ -2,8 +2,10 @@
 
 import { spawn, type ChildProcess } from 'node:child_process'
 import { join } from 'node:path'
+import { z } from 'zod'
 import type { PlatformSession } from '@deepseek-ai/dsh-deepseek-account'
 import { desktopNodeEnvironment } from './node-environment.ts'
+import { parsePluginOperationRecord, type PluginOperationRecord, type PluginOperationRunId } from '@deepseek-ai/dsh-plugin-manager/diagnostic'
 
 interface ReadyEvent {
   readonly type: 'ready'
@@ -43,7 +45,15 @@ interface PlatformSessionEvent {
   readonly session: PlatformSession | null
 }
 
-type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | MobilePairingEvent | { readonly type: 'shutdown-complete' } | {
+type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | MobilePairingEvent | {
+  readonly type: 'starting'
+  readonly runId: PluginOperationRunId
+} | { readonly type: 'shutdown-complete' } | {
+  readonly type: 'file-drag-resource'
+  readonly requestId: number
+  readonly resource: { readonly path: string; readonly sha256: string; readonly size: number } | null
+  readonly error?: string
+} | {
   readonly type: 'update-tasks'
   readonly requestId: number
   readonly active: boolean
@@ -69,6 +79,7 @@ export interface DesktopQuitInspection {
 export const QUIT_INSPECTION_DEADLINE_MS = 2_000
 
 const MAX_HOST_DIAGNOSTIC_CHARS = 64 * 1024
+const runIdSchema = z.uuid()
 
 function isMobilePairing(value: unknown): value is DesktopMobilePairing {
   if (typeof value !== 'object' || value === null) return false
@@ -82,6 +93,8 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
   if (typeof message !== 'object' || message === null || !('type' in message)) return false
   const candidate = message as Record<string, unknown>
   switch (candidate.type) {
+    case 'starting':
+      return runIdSchema.safeParse(candidate.runId).success
     case 'shutdown-complete':
       return true
     case 'ready':
@@ -140,6 +153,13 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
     case 'update-tasks':
       return Number.isSafeInteger(candidate.requestId) && typeof candidate.active === 'boolean'
         && (candidate.error === undefined || typeof candidate.error === 'string')
+    case 'file-drag-resource': {
+      const resource = candidate.resource
+      return Number.isSafeInteger(candidate.requestId) && (candidate.error === undefined || typeof candidate.error === 'string')
+        && (resource === null || (typeof resource === 'object' && 'path' in resource && typeof resource.path === 'string'
+          && 'sha256' in resource && typeof resource.sha256 === 'string' && /^[a-f0-9]{64}$/u.test(resource.sha256)
+          && 'size' in resource && typeof resource.size === 'number' && Number.isSafeInteger(resource.size) && resource.size >= 0))
+    }
     case 'quit-inspection':
       return Number.isSafeInteger(candidate.requestId) && typeof candidate.activeTasks === 'boolean'
         && typeof candidate.scheduledTasks === 'boolean' && (candidate.error === undefined || typeof candidate.error === 'string')
@@ -196,6 +216,7 @@ export class DesktopHostFatalError extends Error {
 
 /** One Web backend running under the Electron executable in Node mode. */
 export class DesktopHostProcess {
+  private runId: PluginOperationRunId | undefined
   private child: ChildProcess | undefined
   private readyResolve!: (ready: DesktopHostReady) => void
   private readyReject!: (error: Error) => void
@@ -228,6 +249,7 @@ export class DesktopHostProcess {
    *   `office-skills` resources fail Host startup.
    * @param packageManager - Bundled pnpm entry and Node launcher directory, scoped to package operations.
    * @param onPlatformSession - Private credential updates for embedded Platform views.
+   * @param onPluginOperation - Optional diagnostic sink; malformed records are ignored without failing the Host.
    */
   constructor(
     private readonly node: string,
@@ -240,6 +262,7 @@ export class DesktopHostProcess {
     private readonly packageManager?: { readonly pnpm: string; readonly nodeBin: string },
 
     private readonly onPlatformSession?: (session: PlatformSession | null) => void,
+    private readonly onPluginOperation?: (record: PluginOperationRecord) => void,
   ) {}
 
   /**
@@ -267,12 +290,24 @@ export class DesktopHostProcess {
     child.stderr?.on('data', (chunk: string) => { this.stderr = (this.stderr + chunk).slice(-MAX_HOST_DIAGNOSTIC_CHARS) })
     child.stdout?.pipe(process.stdout)
     child.on('message', (message: unknown) => {
+      if (typeof message === 'object' && message !== null && 'type' in message && message.type === 'plugin-operation') {
+        const record = 'record' in message ? parsePluginOperationRecord(message.record) : undefined
+        if (record !== undefined && record.runId === this.runId) {
+          try { this.onPluginOperation?.(record) }
+          catch (_error) {
+            // Diagnostic persistence cannot invalidate the Host's business IPC channel.
+            console.error('desktop plugin operation diagnostic sink failed')
+          }
+        }
+        return
+      }
       if (!isDesktopHostEvent(message)) {
         this.fail(new Error('dsh desktop host sent an invalid IPC event'))
         child.kill('SIGTERM')
         return
       }
-      if (message.type === 'ready') this.readyResolve({ url: message.url, mobileUrl: message.mobileUrl,
+      if (message.type === 'starting') this.runId = message.runId
+      else if (message.type === 'ready') this.readyResolve({ url: message.url, mobileUrl: message.mobileUrl,
         mobileOrigin: message.mobileOrigin, injections: message.injections })
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
       else if (message.type === 'shutdown-complete') {
@@ -305,7 +340,7 @@ export class DesktopHostProcess {
    * an unanswered drain fails at the control-request deadline without authorizing installation.
    */
   async updateTasks(action: 'inspect' | 'lock' | 'unlock'): Promise<boolean> {
-    const response = await this.control({ type: 'update-tasks', action }, 10_000, 'desktop update: task inspection timed out')
+    const response = await this.control({ type: 'update-tasks', action }, 10_000, 'desktop update: task inspection timed out', 'desktop update')
     if (response.type !== 'update-tasks') throw new Error('desktop update: Host answered with a different control response')
     return response.active
   }
@@ -316,14 +351,14 @@ export class DesktopHostProcess {
    * {@link QUIT_INSPECTION_DEADLINE_MS}, and the shell then asks before quitting.
    */
   async inspectQuit(): Promise<DesktopQuitInspection> {
-    const response = await this.control({ type: 'quit-inspection' }, QUIT_INSPECTION_DEADLINE_MS, 'desktop quit: inspection timed out')
+    const response = await this.control({ type: 'quit-inspection' }, QUIT_INSPECTION_DEADLINE_MS, 'desktop quit: inspection timed out', 'desktop quit')
     if (response.type !== 'quit-inspection') throw new Error('desktop quit: Host answered with a different control response')
     return { activeTasks: response.activeTasks, scheduledTasks: response.scheduledTasks }
   }
 
   /** Create one independently revocable phone link. */
   async createMobilePairing(name: string): Promise<{ url: string; pairing: DesktopMobilePairing }> {
-    const response = await this.control({ type: 'mobile-pairing', action: 'create', name }, 10_000, 'mobile pairing timed out')
+    const response = await this.control({ type: 'mobile-pairing', action: 'create', name }, 10_000, 'mobile pairing timed out', 'mobile pairing')
     if (response.type !== 'mobile-pairing' || response.action !== 'create'
       || response.url === undefined || response.pairing === undefined) throw new Error('invalid mobile pairing response')
     return { url: response.url, pairing: response.pairing }
@@ -331,7 +366,7 @@ export class DesktopHostProcess {
 
   /** Read active phone pairing metadata. */
   async listMobilePairings(): Promise<readonly DesktopMobilePairing[]> {
-    const response = await this.control({ type: 'mobile-pairing', action: 'list' }, 10_000, 'mobile pairing list timed out')
+    const response = await this.control({ type: 'mobile-pairing', action: 'list' }, 10_000, 'mobile pairing list timed out', 'mobile pairing')
     if (response.type !== 'mobile-pairing' || response.action !== 'list' || response.pairings === undefined) {
       throw new Error('invalid mobile pairing list response')
     }
@@ -340,8 +375,21 @@ export class DesktopHostProcess {
 
   /** Revoke one phone's link and cookies. */
   async revokeMobilePairing(id: string): Promise<void> {
-    const response = await this.control({ type: 'mobile-pairing', action: 'revoke', id }, 10_000, 'mobile pairing revoke timed out')
+    const response = await this.control({ type: 'mobile-pairing', action: 'revoke', id }, 10_000, 'mobile pairing revoke timed out', 'mobile pairing')
     if (response.type !== 'mobile-pairing' || response.action !== 'revoke') throw new Error('invalid mobile pairing revoke response')
+  }
+
+  /**
+   * @param address - Session-scoped file reference.
+   * @param signal - preparation cancellation.
+   * @returns privately authorized local resource, or null when nonlocal.
+   */
+  async resolveDragResource(address: string, signal?: AbortSignal): Promise<
+    { readonly path: string; readonly sha256: string; readonly size: number } | null
+  > {
+    const response = await this.control({ type: 'file-drag-resource', address }, 12_000, 'File drag authorization timed out', 'file drag', signal)
+    if (response.type !== 'file-drag-resource') throw new Error('Host returned a different control response')
+    return response.resource
   }
 
   private async control(
@@ -349,23 +397,34 @@ export class DesktopHostProcess {
       | { readonly type: 'quit-inspection' }
       | { readonly type: 'mobile-pairing'; readonly action: 'create'; readonly name: string }
       | { readonly type: 'mobile-pairing'; readonly action: 'list' }
-      | { readonly type: 'mobile-pairing'; readonly action: 'revoke'; readonly id: string },
-    deadlineMs: number, deadlineMessage: string,
+      | { readonly type: 'mobile-pairing'; readonly action: 'revoke'; readonly id: string }
+      | { readonly type: 'file-drag-resource'; readonly address: string },
+    deadlineMs: number, deadlineMessage: string, operation: string, signal?: AbortSignal,
   ): Promise<DesktopHostControlResponse> {
     const child = this.child
     if (child === undefined || !child.connected || this.failureReported || this.stopping) {
-      throw new Error(`${request.type === 'update-tasks' ? 'desktop update' : request.type === 'quit-inspection' ? 'desktop quit' : 'mobile pairing'}: Host is unavailable`)
+      throw new Error(`${operation}: Host is unavailable`)
     }
+    signal?.throwIfAborted()
     const requestId = this.nextControlId++
     let timer: ReturnType<typeof setTimeout> | undefined
+    const abort = (): void => {
+      if (request.type === 'file-drag-resource' && child.connected) child.send({ type: 'file-drag-cancel', requestId }, (_error) => {
+        // The request still rejects locally if the Host has disconnected.
+      })
+      const reason: unknown = signal?.reason
+      this.controlRequests.get(requestId)?.reject(reason instanceof Error ? reason : new Error(deadlineMessage))
+    }
     try {
       return await new Promise<DesktopHostControlResponse>((resolve, reject) => {
         this.controlRequests.set(requestId, { resolve, reject })
-        timer = setTimeout(() => { reject(new Error(deadlineMessage)) }, deadlineMs)
+        timer = setTimeout(abort, deadlineMs)
+        signal?.addEventListener('abort', abort, { once: true })
         child.send({ ...request, requestId }, (error) => { if (error !== null) reject(error) })
       })
     } finally {
       clearTimeout(timer)
+      signal?.removeEventListener('abort', abort)
       this.controlRequests.delete(requestId)
     }
   }
@@ -399,6 +458,7 @@ export class DesktopHostProcess {
   }
 
   private fail(error: Error): void {
+    if (this.runId !== undefined) Object.assign(error, { hostRunId: this.runId })
     this.onPlatformSession?.(null)
     this.readyReject(error)
     for (const request of this.controlRequests.values()) request.reject(error)

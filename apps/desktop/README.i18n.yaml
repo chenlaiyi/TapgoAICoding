@@ -12,17 +12,17 @@
   en: 7bc8bf30de693222
   zh: e85993d8852b6cab
 /desktop/table-of-contents:
-  en: 05fd227f99ee535a
-  zh: 60d7d62bc0026973
+  en: 127ea90553cb6af7
+  zh: 7b1c5aec8558c684
 /desktop/application-overview:
-  en: 9f7938e5d5548934
-  zh: 35e9c79e28b3c11e
+  en: 299c43530b1d9cf9
+  zh: 35c3ea090d0b66a6
 /desktop/terminal-command:
   en: 5f2d25a1d8472647
   zh: 2acb5c5d7d1917e2
 /desktop/closing-the-window-and-quitting:
-  en: 826db0ab64ddbd1f
-  zh: 8d478531a948ae67
+  en: 618a4a8248df9edf
+  zh: 0a73172fffbc8345
 /desktop/key-technical-decisions:
   en: a7691fa67dffbb4c
   zh: f0c57dc1451b3a74
@@ -33,20 +33,20 @@
   en: 372297005b57a08b
   zh: 074a635ac17e4362
 /desktop/installation-ownership:
-  en: 22153a298a6662e1
-  zh: 3600803c8c9d0274
+  en: 160b500cdcd6a39a
+  zh: 6c267f1762ec3689
 /desktop/installation-ownership/runtime-and-plugin-activation:
-  en: dcb6172064113f26
-  zh: d2da6cc82424be5d
+  en: 4828f6bcf2944b54
+  zh: 63fc6c906c525c78
 /desktop/installation-ownership/host-environment:
   en: 98cf848762482d48
   zh: 74f9100a39ec8c2f
 /desktop/develop:
-  en: 809f6b9fa0ab0360
-  zh: 028ed0606828d40f
+  en: c8f1f9440f3ebf02
+  zh: 72f538019880ed24
 /desktop/develop/startup-onboarding:
-  en: f61da77488d06957
-  zh: b0f908bd973a77d3
+  en: c726ce9e01de8146
+  zh: f92c521c97809ac5
 /desktop/develop/welcome-window-appearance:
   en: 617a89aeb28131b9
   zh: 4d84bd5d86501c86
@@ -54,26 +54,26 @@
   en: ac31ebdd9de54f34
   zh: 921e534d5c4b3a16
 /desktop/windows-installer-interface:
-  en: 8cb4b7babbd8714d
-  zh: b4aebc1d2d152e01
+  en: 9b90a2651a6d2b52
+  zh: 86d4d9c4358aad80
 /desktop/updates:
-  en: 58374555a0b3ed0e
-  zh: c3bfb95873b41f9e
+  en: c6e5267be045c8ed
+  zh: a80e3ed2d4ee2d8c
 /desktop/updates/local-desktop-settings:
   en: 2e57457c44c85b5f
   zh: 5b8510a3dc4c6c9d
 /desktop/updates/mandatory-update-policy:
-  en: 54596bef0706d305
-  zh: 48737302dcf3c939
+  en: 182a9c6705213e13
+  zh: 681762f83490f4c6
 /desktop/updates/local-updater-qualification:
-  en: 68ec2f8bd5763ea6
-  zh: 23b932dfe8503602
+  en: db5e898140a73d53
+  zh: 80a9d58c74b4bb24
 /desktop/low-level-development-overrides:
   en: 8264b135871e8978
   zh: 0939aafb1b2961fc
 /desktop/known-limitations:
-  en: 53ac19071ce38950
-  zh: abe3b8f05a219e85
+  en: 173953278976cb14
+  zh: 4d4e008ae9da1067
 /desktop/dev-note:
   en: 457f83d1ddc925c4
   zh: e621f8ffee04b05b
