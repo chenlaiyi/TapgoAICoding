@@ -54,3 +54,6 @@ native/system/test/bin/
 /appcast.xml.bak
 /artifacts/
 /Tapgo AICoding.app/
+
+# Generated company-signed CUA release record.
+/packages/experimental/cua-macos/cua-helper.json

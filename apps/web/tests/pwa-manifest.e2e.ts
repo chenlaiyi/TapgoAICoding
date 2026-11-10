@@ -7,7 +7,15 @@ const DIST_ROOT = fileURLToPath(new URL('../dist', import.meta.url))
 
 it('ships install metadata with the built web application', async () => {
   const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
+  expect(index).toContain('<meta name="viewport" content="width=device-width, initial-scale=1" />')
   expect(index).toContain('<link rel="manifest" href="./manifest.webmanifest" />')
+  expect(index).toContain('<link rel="apple-touch-icon" href="./tapgo-icon.png" />')
+  expect(index).toContain('<meta name="mobile-web-app-capable" content="yes" />')
+  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="点点够" />')
+  // No `theme-color` here: `ThemePresenter` owns the single metadata node and
+  // follows the resolved in-application theme, which a static media query
+  // cannot. The manifest's `theme_color` covers the surrounding chrome before
+  // the presenter runs, and `settings-chrome.e2e.ts` pins the live contract.
 
   const manifest: unknown = JSON.parse(await readFile(join(DIST_ROOT, 'manifest.webmanifest'), 'utf8'))
   // No `id`: a browser resolves an explicit `id` against the start URL's origin,
@@ -18,7 +26,13 @@ it('ships install metadata with the built web application', async () => {
     short_name: '点点够',
     start_url: './',
     scope: './',
-    display: 'fullscreen',
+    // `standalone` keeps the phone's status bar; `fullscreen` hides it and the
+    // navigation bar, which strands a chat surface with no clock or battery.
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: '#ffffff',
+    // The Tapgo application installs with its own brand artwork rather than the
+    // upstream launcher variants.
     icons: [{
       src: 'tapgo-icon.png',
       sizes: '1024x1024',
