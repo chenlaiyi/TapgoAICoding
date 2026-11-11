@@ -42,7 +42,11 @@ export async function queryBalance(connection: ResolvedDeepSeekOptions, apiKey: 
   })
   if (!response.ok) {
     await response.body?.cancel()
-    throw new LlmError(`DeepSeek balance query failed (HTTP ${response.status}).`, 'BALANCE_UNAVAILABLE', { status: response.status })
+    throw LlmError.fromFailure({
+      message: `DeepSeek balance query failed (HTTP ${response.status}).`,
+      code: 'BALANCE_UNAVAILABLE',
+      status: response.status,
+    })
   }
   const value: unknown = await response.json()
   return balances(value)
