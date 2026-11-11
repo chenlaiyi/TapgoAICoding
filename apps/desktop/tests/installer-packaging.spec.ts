@@ -52,10 +52,12 @@ describe('installer preparation preserves application dependencies', () => {
         metadata: { value: metadata },
       })
       const appInfo = new AppInfo(metadataPackager, undefined)
-      expect(appInfo.companyName).toBe('Hangzhou DeepSeek Artificial Intelligence Co., Ltd.')
-      expect(appInfo.copyright).toBe(`Copyright © ${new Date().getFullYear()} DeepSeek Harness`)
+      // Desktop's package.json carries no upstream author, so the Tapgo product name owns the metadata.
+      expect(appInfo.companyName).toBeNull()
+      expect(appInfo.productName).toBe('点点够终端')
+      expect(appInfo.copyright).toBe(`Copyright © ${new Date().getFullYear()} 点点够终端`)
       if (platform === 'win32') {
-        expect(expandMacro(config.nsis.uninstallDisplayName, null, appInfo, {}, false)).toBe('DeepSeek Harness')
+        expect(expandMacro(config.nsis.uninstallDisplayName, null, appInfo, {}, false)).toBe('点点够终端')
         expect(config.nsis.installerLanguages).toEqual(readInstallerLocales().map(locale => locale.id))
       }
       const aboutIcon = config.extraResources.find(resource => resource.to === 'icon.png')

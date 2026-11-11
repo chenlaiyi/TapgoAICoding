@@ -3,32 +3,35 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-brand-official/README.md
 /:
-  en: 603679aa106d3840
-  zh: 7d4c322b8f711482
+  en: 3897c922439421de
+  zh: 987f41ef466b5b9e
 /deepseek-ai-dsh-client-ui-brand-official:
   en: 7cee1be833cea807
   zh: 9953e1b38cb23d34
 /deepseek-ai-dsh-client-ui-brand-official/summary:
-  en: 12c3238cbbcf48a5
-  zh: 3c8edf47eaf65cb4
+  en: a3c891334ceaafac
+  zh: f865b96fdde68ef7
 /deepseek-ai-dsh-client-ui-brand-official/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-client-ui-brand-official/use-this-package:
-  en: 743e0208cfa73816
-  zh: bd332b436f917a7e
+  en: 81ba1f8189383ab4
+  zh: 7854b86a3b72b3aa
 /deepseek-ai-dsh-client-ui-brand-official/use-this-package/choosing-the-profile:
-  en: 3ba65e745f660a00
-  zh: 69677d6b600946d2
+  en: 1deb2e6099df8ee1
+  zh: 3344b7b6ab1b251b
+/deepseek-ai-dsh-client-ui-brand-official/use-this-package/home-feedback:
+  en: f79f52c71a3d1491
+  zh: bda67c8b4050316a
 /deepseek-ai-dsh-client-ui-brand-official/use-this-package/replacing-the-brand:
-  en: 296235d50f365339
-  zh: ae497488cd850342
+  en: a159455deafa0dba
+  zh: aec1720b6743f55e
 /deepseek-ai-dsh-client-ui-brand-official/understand-the-implementation:
-  en: 19f8b516d66c493b
-  zh: b7cf8b830b2a6207
+  en: 1107157be11fe1cd
+  zh: 1160f25c6b7b71d3
 /deepseek-ai-dsh-client-ui-brand-official/further-exploration:
-  en: c9ae240d8e831cc0
-  zh: a7c9170bae79824f
+  en: 268cb9edf0c7d2f0
+  zh: 9b75285a61b44008
 /deepseek-ai-dsh-client-ui-brand-official/model-experience:
   en: 618008c7641070e7
   zh: 7233febb4d92ccfb
@@ -36,8 +39,8 @@
   en: ca75c51c89c2c9b0
   zh: f57cc48a1b5cbfa9
 /deepseek-ai-dsh-client-ui-brand-official/known-limitations-and-deferred-work:
-  en: 89e2b4bd095a0265
-  zh: a002f0c8a60267ad
+  en: b8f0ff2ff02bc0be
+  zh: 8f52f9dee0225fad
 /deepseek-ai-dsh-client-ui-brand-official/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

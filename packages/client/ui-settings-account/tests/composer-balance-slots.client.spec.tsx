@@ -53,8 +53,8 @@ it.for(['deepseek-account', 'deepseek-official'])('renders provider funds throug
   let seq = 1
   const selectProjection = async (provider: string): Promise<void> => {
     mock.streams.push('session/control', {
-      type: 'projection', sessionId, key: 'modelSelection', seq: seq++,
-      value: { next: { provider, model: 'flash' }, lastUsed: null },
+      type: 'projection', sessionId, seq: seq++,
+      changes: [{ key: 'modelSelection', val: { next: { provider, model: 'flash' }, lastUsed: null } }],
     })
     await mock.streams.drained('session/control')
   }
@@ -64,8 +64,11 @@ it.for(['deepseek-account', 'deepseek-official'])('renders provider funds throug
   })
   await selectProjection(initialProvider)
   mock.streams.push('account/watch', {
-    status: 'credential-stored', attempt: null,
-    links: { usageUrl: 'https://example.invalid/usage', topUpUrl: 'https://example.invalid/top-up' },
+    type: 'snapshot',
+    state: {
+      status: 'credential-stored', attempt: null,
+      links: { usageUrl: 'https://example.invalid/usage', topUpUrl: 'https://example.invalid/top-up' },
+    },
   })
   type FrameProps = PropsRenderSlots<'conversation.input.right' | 'conversation.input.model'> & {
     SessionProvider: SessionProviderComponent

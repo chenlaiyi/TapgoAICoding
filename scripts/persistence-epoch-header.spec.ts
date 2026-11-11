@@ -16,8 +16,9 @@ function property(nodes: readonly SchemaNode[], index: number, name: string): nu
   return field.type
 }
 
-// Whole-repository TypeScript extraction uses the coverage lane's contention budget.
-const timeout = parseCoverageTestTimeout(process.env[COVERAGE_TEST_TIMEOUT_ENV]) ?? 60_000
+// Whole-repository TypeScript extraction uses the coverage lane's contention budget,
+// defaulting to the same 90_000 ms budget as persistence-schema.spec.ts.
+const timeout = parseCoverageTestTimeout(process.env[COVERAGE_TEST_TIMEOUT_ENV]) ?? 90_000
 
 it('requires compatibility review before request headers can carry retired system text', { timeout }, () => {
   const inventory = extractPersistenceSchema(resolve(import.meta.dirname, '..'))

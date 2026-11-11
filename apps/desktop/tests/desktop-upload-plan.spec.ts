@@ -38,7 +38,7 @@ async function fixture(
   target: DesktopPackageTargetName,
   version = '1.2.3',
   environment: 'test' | 'production' = 'test',
-  channel: 'nightly' | 'latest' = 'nightly',
+  channel: 'nightly' | 'stable' = 'nightly',
 ): Promise<Fixture> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-desktop-upload-'))
   temporaryDirectories.push(root)
@@ -53,7 +53,7 @@ async function fixture(
   const base = `deepseek-harness-${version}-${os}-${arch}`
   const origin = environment === 'test'
     ? TEST_ORIGIN
-    : 'https://updates.example.com'
+    : 'https://download.deepseek.com'
   await writeFile(join(artifactsRoot, `${target}-release.json`), `${JSON.stringify({
     schemaVersion: 1,
     channel,
@@ -104,7 +104,6 @@ async function fixture(
       : {
         DSH_DESKTOP_UPDATE_CHANNEL: channel,
         DSH_DESKTOP_AUTO_UPDATE_ENV: 'production',
-        DOWNLOAD_PROD_ORIGIN: 'https://updates.example.com',
         DOWNLOAD_PROD_COS_BUCKET: PRODUCTION_BUCKET,
       },
   }
@@ -136,6 +135,7 @@ describe('desktop upload plan', () => {
           expect(request.method).toBe('PUT')
           expect(request.path).toBe(`/${artifact.key}`)
           expect(request.body).toEqual(await readFile(artifact.path))
+          expect(request.headers['content-disposition']).toBe(`attachment; filename="deepseek-harness-1.2.3-${target}.${target === 'win-x64' ? 'exe' : 'dmg'}"`)
           expect(JSON.parse(await readFile(join(directory, 'result.json'), 'utf8'))).toMatchObject({
             success: true, confirmedPuts: 1, publicReadback: 'not-performed',
           })
@@ -158,6 +158,7 @@ describe('desktop upload plan', () => {
     expect(plan.artifacts[0]).toMatchObject({
       path: join(paths.artifactsRoot, 'deepseek-harness-1.2.3-alpha.4-win-x64.exe'),
       key: 'desktop/dsh-latest-windows-x64.exe', channelMetadata: false,
+      contentDisposition: 'attachment; filename="deepseek-harness-1.2.3-alpha.4-win-x64.exe"',
     })
   })
 
@@ -176,14 +177,34 @@ describe('desktop upload plan', () => {
       .rejects.toThrow(failure === 'checksum' ? /SHA-512/u : /completion record/u)
   })
 
-  it.each(['test', 'production'] as const)('isolates stable latest packages from nightly in %s', async (environment) => {
-    const nightly = await createDesktopUploadPlan('win-x64', await fixture('win-x64', '1.2.3', environment, 'nightly'))
-    const latest = await createDesktopUploadPlan('win-x64', await fixture('win-x64', '1.2.3', environment, 'latest'))
-    expect(latest.artifacts.filter(file => file.channelMetadata).map(file => file.filename)).toEqual(['latest.yml'])
+  it.each(['test', 'production'] as const)('isolates stable-channel packages from nightly in %s', async (environment) => {
+    const nightly = await createDesktopUploadPlan('win-x64', { ...await fixture('win-x64', '1.2.3', environment, 'nightly'), stagingPercentage: 10 })
+    const stable = await createDesktopUploadPlan('win-x64', { ...await fixture('win-x64', '1.2.3', environment, 'stable'), stagingPercentage: 10 })
+    expect(stable.artifacts.filter(file => file.channelMetadata).map(file => file.filename)).toEqual(['stable.yml'])
     expect(nightly.artifacts.filter(file => file.channelMetadata).map(file => file.filename)).toEqual(['nightly.yml'])
-    expect(latest.artifacts.every(file => !nightly.artifacts.some(other => other.key === file.key))).toBe(true)
-    const prerelease = await fixture('win-x64', '1.2.3-alpha.1', environment, 'latest')
-    await expect(createDesktopUploadPlan('win-x64', prerelease)).rejects.toThrow(/latest requires a stable version/u)
+    expect(stable.artifacts.every(file => !nightly.artifacts.some(other => other.key === file.key))).toBe(true)
+    for (const plan of [nightly, stable]) {
+      expect(plan.artifacts.find(file => file.channelMetadata)!.contents).toContain('stagingPercentage: 10')
+    }
+  })
+
+  it.each(['mac-arm64', 'mac-x64', 'win-x64'] as const)('publishes manually selected prereleases on stable for %s', async (target) => {
+    const summaries: { environment: string; version: string; keys: string[] }[] = []
+    for (const environment of ['test', 'production'] as const) {
+      for (const version of ['1.2.3-alpha.1', '1.2.3-rc.1']) {
+        const plan = await createDesktopUploadPlan(target, await fixture(target, version, environment, 'stable'))
+        expect(plan.version).toBe(version)
+        const feed = plan.artifacts.find(file => file.channelMetadata)!
+        expect(feed.filename).toBe(target === 'win-x64' ? 'stable.yml' : 'stable-mac.yml')
+        const payload = plan.artifacts.find(file => file.filename.endsWith(target === 'win-x64' ? '.exe' : '.zip'))!
+        expect(payload.key).toContain(`/bin/${target}/stable/`)
+        expect(load(feed.contents!)).toMatchObject({ version, files: [{
+          url: `${environment === 'test' ? TEST_ORIGIN : 'https://download.deepseek.com'}/${payload.key}`,
+        }] })
+        summaries.push({ environment, version, keys: plan.artifacts.map(file => file.key) })
+      }
+    }
+    await expect(`${JSON.stringify(summaries, null, 2)}\n`).toMatchFileSnapshot(`./expected/stable-prerelease-${target}.json`)
   })
 
   it('publishes fixed feeds referencing versioned binaries without overriding CDN cache policy', async () => {
@@ -197,7 +218,7 @@ describe('desktop upload plan', () => {
     expect(load(plan.artifacts[2]!.contents!)).toMatchObject({
       version: '1.2.3',
       files: [{
-        url: 'https://updates.example.com/dsh-desk/bin/win-x64/deepseek-harness-1.2.3-win-x64.exe',
+        url: 'https://download.deepseek.com/dsh-desk/bin/win-x64/deepseek-harness-1.2.3-win-x64.exe',
         sha512: digest('signed NSIS executable fixture'),
       }],
     })
@@ -272,7 +293,7 @@ describe('desktop upload plan', () => {
       'nightly.yml',
     ])
     expect(plan).toMatchObject({
-      publicUrl: 'https://updates.example.com/dsh-desk/feeds/win-x64/',
+      publicUrl: 'https://download.deepseek.com/dsh-desk/feeds/win-x64/',
       bucket: PRODUCTION_BUCKET,
     })
   })

@@ -15,8 +15,8 @@
   en: 127ea90553cb6af7
   zh: 7b1c5aec8558c684
 /desktop/application-overview:
-  en: 299c43530b1d9cf9
-  zh: 35c3ea090d0b66a6
+  en: 757717d208d790ae
+  zh: 00e715eadc03a2bf
 /desktop/terminal-command:
   en: 5f2d25a1d8472647
   zh: 2acb5c5d7d1917e2
@@ -27,14 +27,14 @@
   en: a7691fa67dffbb4c
   zh: f0c57dc1451b3a74
 /desktop/key-technical-decisions/bundled-workspace-dependencies:
-  en: 9a24855d07a355c0
-  zh: b10fd5ad07586c9f
+  en: d7c9a37e4fb9d5c3
+  zh: b3df743fb354807e
 /desktop/bundled-command-runtime:
   en: 372297005b57a08b
   zh: 074a635ac17e4362
 /desktop/installation-ownership:
-  en: 160b500cdcd6a39a
-  zh: 6c267f1762ec3689
+  en: 575d82acb5d61018
+  zh: b1064786f63863f7
 /desktop/installation-ownership/runtime-and-plugin-activation:
   en: 4828f6bcf2944b54
   zh: 63fc6c906c525c78
@@ -54,14 +54,14 @@
   en: ac31ebdd9de54f34
   zh: 921e534d5c4b3a16
 /desktop/windows-installer-interface:
-  en: 9b90a2651a6d2b52
-  zh: 86d4d9c4358aad80
+  en: f1302ed4a3ab58bb
+  zh: cb53b9b349815028
 /desktop/updates:
-  en: c6e5267be045c8ed
-  zh: a80e3ed2d4ee2d8c
+  en: 78e4b916b16e81e6
+  zh: 111ffb5c3ebbba4c
 /desktop/updates/local-desktop-settings:
-  en: 2e57457c44c85b5f
-  zh: 5b8510a3dc4c6c9d
+  en: dbe57394894b7368
+  zh: a3bb788c2ce631a4
 /desktop/updates/mandatory-update-policy:
   en: 182a9c6705213e13
   zh: 681762f83490f4c6
