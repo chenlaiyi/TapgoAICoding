@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { PixelWhale } from './home-whale/PixelWhale.tsx'
 import { OfficialBrandMark, OfficialBrandName } from './Brand.tsx'
-import { en, zh, type BrandKey } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh, type BrandKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -28,7 +28,7 @@ export function apply(ctx: ClientContext): void {
     id: 'pixel-whale',
   }, PixelWhale))
   if (process.env.DSH_CLIENT_BUILD_PROFILE !== 'official') return
-  ctx.effect(() => ctx.locale.register('brand-official', { zh, en }), 'ui-brand-official: dictionaries')
+  ctx.effect(() => ctx.locale.register('brand-official', { zh, en, ja, es, fr, de, ru, pt }), 'ui-brand-official: dictionaries')
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.inject('sidebar.brand.name', function* () {
       yield ctx.slots.register({ name: 'sidebar.brand.mark' }, OfficialBrandMark)
