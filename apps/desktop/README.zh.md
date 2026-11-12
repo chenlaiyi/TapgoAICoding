@@ -47,7 +47,7 @@ Tapgo 默认将 `DSH_HOME` 设为 `~/.tapgo-aicoding`，已有的显式 `DSH_HOM
 
 `TAPGO_DESKTOP_RELEASE_VERSION` 独立设置 Tapgo 应用的对外版本号。[GitHub Releases](https://github.com/chenlaiyi/TapgoAICoding/releases) 列出已发布版本；运行时元数据记录实际内置的 DSH 源码版本。
 
-原生 Cua Driver 在 Tapgo Host 内运行。macOS 上使用桌面读取或输入前，需在“系统设置”中给 点点够终端 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
+Tapgo Host 拥有原生 Cua Driver 运行时。macOS 上使用桌面读取或输入前，需在“系统设置”中给 点点够终端 授予“辅助功能”和“屏幕录制”权限。安装应用不会自动授权；缺少权限时工具虽能加载，但窗口元素可能为空，截图可能失败。
 
 [iOS 配套应用](../../mobile/ios/README.zh.md) 经由 HTTPS 访问桌面 Host。统一接入部署在 `~/.tapgo-aicoding/.env` 设置 `TAPGO_RELAY_DOMAIN`、`TAPGO_RELAY_SERVER` 和 `TAPGO_RELAY_TOKEN_FILE`；应用内置的 frpc 主动连接[共享中继](deploy/shared-relay.frps.toml)，为这台电脑 在一次配置的泛域名下分配稳定随机主机名，并将请求转发到本机 Host 实际监听端口。令牌文件只允许本机用户读取，由中继管理员配置。Windows 内置 `frpc.exe`，使用系统 TLS 证书库，并拒绝向当前用户、SYSTEM 和 Administrators 之外的账户授予访问权限的令牌文件。ACL 检查显式加载 Windows PowerShell 内置安全模块，从 PowerShell 7 启动时也使用该模块。Desktop 仅信任该 HTTPS 主机，并在应用菜单提供带二维码和可复制认证链接的“连接手机”窗口。电脑名称默认取 macOS“电脑名称”，可在“设置 → 通用设置”或配对窗口中修改；iOS 配对后显示该名称。未设置中继时，现有 `TAPGO_MOBILE_HTTPS_ORIGIN` 连接继续可用。公网代理[配置](deploy/public-mobile.nginx.conf)让 Host 保持仅监听本机，为 Cookie 添加 Secure、设置 HSTS，并关闭可能记录配对令牌的访问日志。
 
@@ -187,7 +187,7 @@ macOS 上自定义菜单保留 Electron 的标准 Window 菜单及应用隐藏�
 
 ### 运行时与插件激活
 
-Desktop 首次启动或升级时，在 profile patch 中加入原生 Cua Driver 电脑操作服务和提供者，之后不覆盖用户修改。这两个包随签名运行时交付；原生恢复可禁用提供者。Host 操作桌面和截图需要 macOS 辅助功能与屏幕录制权限。工具使用 `cua_driver_native__` 前缀，不沿用旧 Tapgo Computer Use Helper 的工具名。
+Desktop 首次启动或升级时，在 profile patch 中加入原生 Cua Driver 电脑操作服务和提供者，之后不覆盖用户修改。这两个包随签名运行时交付；原生恢复可禁用提供者。Host 操作桌面和截图需要 macOS 辅助功能与屏幕录制权限。工具使用 `cua_driver_native__` 前缀，不沿用旧 Tapgo Computer Use Helper 的工具名。 打包 macOS 应用为默认提供者配置签名的私有 worker，提供 Finder 所需的 AppKit 主循环；SDK 通过继承的标准输入输出监督进程，卸载时关闭。已有自定义提供者配置或 `CUA_DRIVER_*` 环境配置保持原运行方式。开发模式和其他平台仍使用进程内模式。
 
 签名资源中的 `resources/app.asar/dsh/desktop-runtime.json` 绑定 shell 版本、Electron 的 Node 版本、平台、架构、共享包版本和最终文件清单。启动读取元数据，并检查共享包记录。发布 schema、shell 版本、目标兼容性和文件完整性在打包时验证。首次启动不会把核心包复制到 profile 存储或通过 pnpm 安装核心包。
 

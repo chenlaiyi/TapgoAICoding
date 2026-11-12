@@ -1156,6 +1156,36 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-native -->
+<a id="deepseek-aidsh-experimental-computer-use-cua-driver-native"></a>
+
+## `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native`
+
+- `inject`: `computerUse` · `tools` · `systemPrompt`
+- `source`: [`packages/experimental/computer-use-cua-driver-native/src/index.ts:18`](../packages/experimental/computer-use-cua-driver-native/src/index.ts)
+
+```ts config-catalog
+/** Optional supervised native process for hosts without an AppKit main loop. */
+export interface Config {
+  /** False selects the in-process runtime; an object selects the supervised private process. */
+  worker?: false | {
+    /** Absolute path to the executable matching the installed SDK version. */
+    binaryPath: string
+    /** Installed host application identifier used for permission attribution. */
+    hostBundleId: string
+    /** Maximum private-process startup handshake time in milliseconds. */
+    startupTimeoutMs: number
+    /** Maximum graceful private-process shutdown time in milliseconds. */
+    shutdownTimeoutMs: number
+    /** Maximum authorization session lifetime in seconds. */
+    maxSessionTtlSeconds: number
+    /** Maximum authorization session idle lifetime in seconds. */
+    maxIdleTtlSeconds: number
+  }
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-native -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-cua-macos -->
 <a id="deepseek-aidsh-experimental-cua-macos"></a>
 
@@ -5135,7 +5165,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-experimental-client-ui-claude-code-mods` | — | [`packages/experimental/client-ui-claude-code-mods/src/index.ts`](../packages/experimental/client-ui-claude-code-mods/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-stats` | — | [`packages/experimental/client-ui-stats/src/index.ts`](../packages/experimental/client-ui-stats/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | — | [`packages/experimental/client-ui-voice-input/src/index.ts`](../packages/experimental/client-ui-voice-input/src/index.ts) |
-| `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-session-inspector` | — | [`packages/experimental/session-inspector/src/index.ts`](../packages/experimental/session-inspector/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-tool-worktree` | `tools` · `worktrees` | [`packages/experimental/tool-worktree/src/index.ts`](../packages/experimental/tool-worktree/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |

@@ -57,7 +57,7 @@ afterEach(async () => {
   root = undefined
 })
 
-it('loads from cordis.yml and logs the native screenshot before the next model request', async () => {
+it.each([false, true])('loads from cordis.yml and logs the native screenshot before the next model request (worker=%s)', async (worker) => {
   resetFixture()
   root = await mkdtemp(join(tmpdir(), 'dsh-native-composition-'))
   const configPath = join(root, 'cordis.yml')
@@ -77,6 +77,7 @@ it('loads from cordis.yml and logs the native screenshot before the next model r
   ])
   await writeFile(configPath, [...modules.keys()].flatMap(name => [
     `- name: '${name}'`,
+    ...worker && name === '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native' ? ['  config:', '    worker:', '      binaryPath: /signed/cua-driver', '      hostBundleId: com.example.desktop'] : [],
     ...name === '@deepseek-ai/dsh-attachment-local' ? ['  config:', `    dshHome: ${JSON.stringify(root)}`] : [],
   ]).join('\n') + '\n')
 

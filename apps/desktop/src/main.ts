@@ -2,6 +2,7 @@
 
 import { mkdirSync } from 'node:fs'
 import { installFileActions } from './file-actions.ts'
+import { resolveDesktopNativeCuaWorker } from './native-cua-worker.ts'
 import { configurationFailure, channelSaveFailure, configurationMessage } from './update-configuration.ts'
 import type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-ai/dsh-client-ui-settings-general/types'
 import { DesktopUpdateSettings } from './update-settings.ts'
@@ -397,6 +398,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
+  const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
   const desktopSettings = await readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
@@ -420,7 +422,12 @@ async function main(): Promise<void> {
     return result.environment
   })
   let hostEnvironment: NodeJS.ProcessEnv = process.env
-  const prepareHostEnvironment = async (): Promise<void> => { hostEnvironment = await loginShell }
+  const prepareHostEnvironment = async (): Promise<void> => {
+    const environment = await loginShell
+    hostEnvironment = { ...environment, DSH_DESKTOP_CUA_WORKER: JSON.stringify(
+      resolveDesktopNativeCuaWorker(process.platform, app.isPackaged, process.resourcesPath, manifest, environment) ?? null,
+    ) }
+  }
   let quitting = false
   let startup: Promise<void> | undefined
   let workspaceRecovery: Promise<void> | undefined
@@ -726,7 +733,6 @@ async function main(): Promise<void> {
     return startup
   }
 
-  const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
   const packagedChannel = desktopUpdateChannel(manifest)
   const channelSettings = new DesktopUpdateSettings(app.getPath('userData'), packagedChannel)
   const initialChannel = await channelSettings.load()

@@ -38,6 +38,7 @@
     "@deepseek-ai/dsh-tools": "workspace:*"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-error": "workspace:*",
     "@deepseek-ai/dsh-mcp-client": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "@trycua/cua-driver": "0.47.19",

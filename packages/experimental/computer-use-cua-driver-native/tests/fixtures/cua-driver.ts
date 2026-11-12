@@ -1,4 +1,8 @@
 /** External native SDK fixture usable by Vitest and test-only Node module hooks. */
+import type { PrivateWorkerOptions } from '@trycua/cua-driver'
+
+/** Upstream numeric standard permission mode. */
+export const SessionPermissionMode = { Standard: 0 } as const
 
 /** A valid one-pixel PNG keeps image admission on the real attachment path. */
 export const screenshotBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWNgZGIGAAAOAAeCcsnOAAAAAElFTkSuQmCC'
@@ -42,6 +46,7 @@ export const catalog = {
 
 /** Mutable controls represent only the external native implementation. */
 export const fixture: {
+  workerOptions?: PrivateWorkerOptions
   creates: number
   createOptions?: { embedded: boolean; claudeCodeCompatibility: boolean }
   destroys: number
@@ -58,6 +63,7 @@ export const fixture: {
 export function resetFixture(): void {
   fixture.creates = 0
   delete fixture.createOptions
+  delete fixture.workerOptions
   fixture.destroys = 0
   fixture.shutdowns = 0
   fixture.clicked = false
@@ -70,6 +76,11 @@ export function resetFixture(): void {
 
 /** The subset of the published SDK exercised by the provider. */
 export class CuaDriver {
+  static createPrivateWorker(options: PrivateWorkerOptions): CuaDriver {
+    fixture.workerOptions = options
+    return CuaDriver.create()
+  }
+
   static create(options?: { embedded: boolean; claudeCodeCompatibility: boolean }): CuaDriver {
     fixture.creates += 1
     if (options) fixture.createOptions = options

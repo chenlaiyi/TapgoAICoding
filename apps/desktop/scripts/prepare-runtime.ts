@@ -13,6 +13,7 @@ import { packagingStep } from './packaging-step.mjs'
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
 import { prepareDesktopCli } from './prepare-cli.ts'
 import { prepareCommandLink } from './prepare-command-link.ts'
+import { prepareCuaWorker } from './prepare-cua-worker.ts'
 
 const BUILD_PATHS = resolveDesktopTargetBuildPaths()
 const RUNTIME_ROOT = BUILD_PATHS.runtime
@@ -68,10 +69,15 @@ async function main(): Promise<void> {
   const { pnpm } = await readPrimaryRuntime(join(RUNTIME_ROOT, 'primary-runtime'))
   if (pnpm === undefined) throw new Error('desktop runtime: primary-runtime manifest has no pnpm version')
   await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'prepare:cli', async () => { prepareCli(target) })
+  const cuaDriver = target.platform === 'darwin'
+    ? await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'prepare:cua-worker',
+      () => prepareCuaWorker(join(RUNTIME_ROOT, 'cua-driver'), BUILD_PATHS.downloads))
+    : undefined
   writeFileSync(join(RUNTIME_ROOT, 'versions.json'), `${JSON.stringify({
     schemaVersion: 1,
     node: nodeVersion,
     pnpm,
+    ...cuaDriver === undefined ? {} : { cuaDriver },
   }, undefined, 2)}\n`)
 }
 

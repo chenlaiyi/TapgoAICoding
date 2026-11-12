@@ -39,6 +39,50 @@ function execute(rawName: string, args: Record<string, unknown> = {}) {
 }
 
 describe('Cua Driver native provider', () => {
+  it('owns a standard-mode worker and preserves raw native actions', async () => {
+    const fiber = ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } })
+    await fiber
+    expect(fixture.createOptions).toBeUndefined()
+    expect(fixture.workerOptions).toMatchObject({ binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop',
+      configuredDriver: { authorization: { allowedModes: [0], compatibilityMode: 0, unrestrictedAcknowledged: false } } })
+    expect((await execute('click', { pid: 9, window_id: 7 })).isError).toBe(false)
+    await fiber.dispose()
+    expect(fixture.shutdowns).toBe(1)
+    expect(fixture.destroys).toBe(1)
+  })
+
+  it('rejects worker policy replacement before starting a process', async () => {
+    vi.stubEnv('CUA_DRIVER_PERMISSION_MODE', 'bounded')
+    try {
+      await expect(ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } })).rejects.toMatchObject({ code: 'NATIVE_WORKER_CONFIGURATION_INVALID' })
+      expect(fixture.creates).toBe(0)
+      expect(ctx.computerUse.providerName).toBeUndefined()
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  it('reports worker startup failure without retaining the provider', async () => {
+    fixture.createError = new Error('worker handshake failed')
+    await expect(ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } })).rejects.toMatchObject({ code: 'NATIVE_WORKER_STARTUP_FAILED' })
+    expect(ctx.computerUse.providerName).toBeUndefined()
+  })
+
+  it('closes a worker whose catalog discovery fails', async () => {
+    fixture.list = async () => { throw new Error('worker discovery failed') }
+    await expect(ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } })).rejects.toMatchObject({ code: 'NATIVE_WORKER_STARTUP_FAILED' })
+    expect(fixture.shutdowns).toBe(1)
+    expect(fixture.destroys).toBe(1)
+    expect(ctx.computerUse.providerName).toBeUndefined()
+  })
+
+  it('warns against replaying input after a worker call loses its result', async () => {
+    fixture.call = async () => { throw new Error('worker exited after input') }
+    await ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } })
+    const result = await execute('click', { pid: 9, window_id: 7 })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('input may already have been delivered')
+    expect(fixture.calls).toHaveLength(1)
+  })
+
   it('preserves explicit foreground trusted browser input without substituting a synthetic route', async () => {
     await ctx.plugin(NativeProvider)
     const args = { target_id: 'browser-1', tab_id: 'tab-1', ref: 'p1:0', input_route: 'trusted', delivery_mode: 'foreground' }
@@ -225,9 +269,9 @@ describe('Cua Driver native provider', () => {
     expect(fixture.destroys).toBe(1)
   })
 
-  it('keeps the reservation when native shutdown cannot prove completion', async () => {
+  it.each([false, true])('keeps the reservation when native shutdown cannot prove completion (worker=%s)', async (worker) => {
     fixture.shutdown = async () => { throw new Error('Native shutdown failed') }
-    const fiber = ctx.plugin(NativeProvider)
+    const fiber = ctx.plugin(NativeProvider, worker ? { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } } : {})
     await fiber
     await fiber.dispose()
     expect(ctx.tools.schemas()).toEqual([])

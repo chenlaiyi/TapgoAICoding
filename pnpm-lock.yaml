@@ -9693,6 +9693,9 @@ importers:
 
   packages/experimental/computer-use-cua-driver-native:
     dependencies:
+      '@deepseek-ai/dsh-error':
+        specifier: workspace:*
+        version: link:../../util/error
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:*
         version: link:../../mcp/mcp-client

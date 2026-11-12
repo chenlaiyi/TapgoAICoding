@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-使用 Cua Driver 检查和操作桌面窗口，无需安装其独立 CLI 或应用。原生 npm 依赖在 DSH 主机进程内运行，提供 Cua Driver 自己的工具。截图通过持久化附件传给支持图像的模型。此实验性软件包会发布到 npm，需要启动主机的桌面权限，并且必须在组合配置中显式启用。
+使用 Cua Driver 检查和操作桌面窗口，无需安装独立持有权限的应用。原生 npm 依赖在 DSH 主机进程内运行，或监督私有 worker，提供 Cua Driver 自己的工具。截图通过持久化附件传给支持图像的模型。此实验性软件包会发布到 npm，需要启动主机的桌面权限，并且必须在组合配置中显式启用。
 
 ## 目录
 
@@ -34,13 +34,15 @@ kind: "package-reference"
 - name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
 ```
 
-此提供者没有配置字段。它加载 [package.json](package.json) 声明的确切 Cua Driver npm 版本，并强制使用进程内运行时，不连接独立的 Cua Driver 守护进程。原生模块导入、运行时初始化、目录格式、工具重名或电脑操作注册冲突会使激活失败，并回滚所拥有的资源。注册的提供者名称为 `cua-driver-native`。
+默认 `worker: false` 使用进程内运行时。`worker` 对象指定 `binaryPath` 和 `hostBundleId`，通过继承的标准输入输出启动 SDK 监督的私有进程，不开放套接字。此进程提供 macOS AppKit 主循环，适用于 Finder 文件夹交接。它仅允许标准权限模式，沿用宿主权限，不请求额外系统授权；存在任意 `CUA_DRIVER_*` 环境配置时会拒绝启动，以免替换自定义策略。它加载 [package.json](package.json) 声明的确切 SDK 版本。初始化、目录或独占注册失败会回滚资源。注册名称为 `cua-driver-native`。
+
+Worker 时间参数为 `startupTimeoutMs`（10000）、`shutdownTimeoutMs`（2000）、`maxSessionTtlSeconds`（86400）和 `maxIdleTtlSeconds`（3600），均为正整数。启动和关闭失败分别报告 `NATIVE_WORKER_STARTUP_FAILED`、`NATIVE_WORKER_SHUTDOWN_FAILED`；策略冲突报告 `NATIVE_WORKER_CONFIGURATION_INVALID`。`NATIVE_WORKER_CALL_FAILED` 表示结果丢失，输入可能已送达，重试前须读取新状态。关闭失败保留独占注册，须重启 Host。
 
 挂载附件存储并使用明确声明支持图像输入的模型路由，才能接收截图。[MCP 结果适配器](../../mcp/mcp-client/README.zh.md) 负责图像接纳和诊断行为；模型无法接收图像时，程序调用方仍保留规范原始结果。调用采用 Cua Driver 上游的工具参数和结果。
 
 ### 主机要求
 
-原生依赖通过 npm 可选依赖提供各平台二进制文件，因此必须保留可选依赖安装。请向启动 DSH 的应用授予桌面权限；此提供者既不安装独立持有权限的应用，也不更改操作系统授权。原生运行时与主机共享进程，因此原生崩溃可能终止该进程。如果需要由独立的 Cua Driver 应用持有权限并执行操作，请使用[已安装的 MCP 提供者](../computer-use-cua-driver-mcp/README.zh.md)。
+原生依赖通过 npm 可选依赖提供各平台二进制文件，因此必须保留可选依赖安装。请向启动 DSH 的应用授予桌面权限；此提供者既不安装独立持有权限的应用，也不更改操作系统授权。进程内模式与主机共享进程，因此原生崩溃可能终止主机。私有 worker 由 SDK 监督并在卸载时关闭。如果需要由独立的 Cua Driver 应用持有权限并执行操作，请使用[已安装的 MCP 提供者](../computer-use-cua-driver-mcp/README.zh.md)。
 
 ### 验证已安装的 SDK
 
@@ -95,7 +97,7 @@ Cua Driver native computer-use tools operate the host desktop. For native window
 
 Prefer background delivery. A refusal does not authorize a foreground retry. Verify the requested outcome from fresh state after an action; a delivered click alone does not prove the outcome. After cancellation, inspect current state before retrying because completed input is not rolled back. Other sessions and applications may change the same desktop.
 
-On macOS, cursor-overlay operations may return facility_unavailable even when screenshots and input work.
+On macOS, in-process cursor-overlay operations may return facility_unavailable even when screenshots and input work. If no active application is reported, focus is unknown; the presence of another process does not identify what changed it.
 ```
 
 #### Token 影响

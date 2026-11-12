@@ -59,6 +59,25 @@ describe('desktop external plugin profile', () => {
     expect(readFileSync(patch, 'utf8')).toBe('- id: locale\n  config:\n    preference: en\n')
   })
 
+  it.each([false, true])('migrates an existing native profile once without replacing custom configuration (custom=%s)', async (custom) => {
+    const { manager } = setup()
+    const profile = manager.paths.profile
+    mkdirSync(profile, { recursive: true })
+    const patch = join(profile, 'cordis.patch.yml')
+    const source = "- insert:\n    - id: computer-use-cua-driver-native\n      name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'\n"
+      + (custom ? '      config:\n        worker: false\n' : '')
+      + '- id: computer-use-cua-driver-native\n  disabled: true\n'
+    writeFileSync(patch, source)
+    writeFileSync(join(profile, 'desktop-computer-use-v1'), '1\n')
+    await manager.applyRelease()
+    const migrated = readFileSync(patch, 'utf8')
+    expect(migrated).toContain('disabled: true')
+    if (custom) expect(migrated).toBe(source)
+    else expect(migrated).toContain('JSON.parse(process.env.DSH_DESKTOP_CUA_WORKER')
+    await manager.applyRelease()
+    expect(readFileSync(patch, 'utf8')).toBe(migrated)
+  })
+
   it('keeps an existing computer-use choice during first launch', async () => {
     const { manager } = setup()
     mkdirSync(manager.paths.profile, { recursive: true })

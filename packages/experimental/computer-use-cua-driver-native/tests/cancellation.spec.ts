@@ -36,7 +36,7 @@ afterEach(async () => {
   root = undefined
 })
 
-it('aborts model admission on unload, restores caller cancellation, and closes the native runtime', async () => {
+it.each([false, true])('aborts model admission on unload, restores caller cancellation, and closes the native runtime (worker=%s)', async (worker) => {
   const resolving = Promise.withResolvers<AbortSignal>()
   const resolved = Promise.withResolvers<LlmResolvedModelInfo>()
   class BlockingModel extends LlmAdapter {
@@ -56,7 +56,7 @@ it('aborts model admission on unload, restores caller cancellation, and closes t
   ctx.llm.registerAdapter(['visual'], new BlockingModel())
   const harness = await mountAgentLoopTestHarness(ctx)
   const agent = await harness.create(SessionId('native-admission'), { provider: 'visual', model: 'vision' })
-  const fiber = ctx.plugin(NativeProvider)
+  const fiber = ctx.plugin(NativeProvider, worker ? { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop' } } : {})
   await fiber
   let dispatch: ToolExecution | undefined
   ctx.on('tools/pre-execute', async (exec, next) => {

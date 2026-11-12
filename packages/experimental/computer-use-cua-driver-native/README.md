@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use Cua Driver to inspect and operate desktop windows without installing its separate CLI or application. The native npm dependency runs inside the DSH host and exposes Cua Driver's own tools. Screenshots reach image-capable models through durable attachments. This published experimental package requires the launching host's desktop permissions and remains an explicit composition choice.
+Use Cua Driver to inspect and operate desktop windows without installing a separate permission-owning application. The native npm dependency runs inside the DSH host or supervises a private worker and exposes Cua Driver's own tools. Screenshots reach image-capable models through durable attachments. This published experimental package requires the launching host's desktop permissions and remains an explicit composition choice.
 
 ## Table of Contents
 
@@ -34,13 +34,15 @@ Mount the provider in a composition that already supplies the tool registry and 
 - name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
 ```
 
-The provider has no configuration fields. It loads the exact Cua Driver npm version declared in [package.json](package.json) and forces its in-process runtime without connecting to a separate Cua Driver daemon. Native import, runtime initialization, malformed catalog, duplicate tool name, or occupied computer-use registration failures reject activation and roll back owned resources. The registered provider name is `cua-driver-native`.
+The default `worker: false` uses the in-process runtime. A `worker` object supplies `binaryPath` and `hostBundleId` for an SDK-supervised private process over inherited stdio, without a socket. This process supplies the macOS AppKit main loop needed for Finder folder handoff. It permits standard permission mode only, retains host permission attribution, and requests no additional OS grant. Any `CUA_DRIVER_*` environment configuration rejects worker startup rather than replacing custom policy. The provider loads the exact SDK version in [package.json](package.json). Initialization, catalog, or exclusive registration failures roll back resources. Its registered name is `cua-driver-native`.
+
+Worker timing fields are positive integers: `startupTimeoutMs` (10000), `shutdownTimeoutMs` (2000), `maxSessionTtlSeconds` (86400), and `maxIdleTtlSeconds` (3600). Startup and shutdown failures report `NATIVE_WORKER_STARTUP_FAILED` and `NATIVE_WORKER_SHUTDOWN_FAILED`; policy conflicts report `NATIVE_WORKER_CONFIGURATION_INVALID`. `NATIVE_WORKER_CALL_FAILED` means the result was lost and input may have been delivered; inspect fresh state before retrying. Failed shutdown retains the exclusive registration and requires a Host restart.
 
 Use an attachment store and a model route that explicitly declares image input to receive screenshots. The [MCP result adapter](../../mcp/mcp-client/README.md) owns image admission and diagnostic behavior; programmatic callers retain the canonical raw result when a model cannot receive its images. Calls use Cua Driver's upstream tool parameters and results.
 
 ### Host requirements
 
-The native dependency supplies platform binaries through npm optional dependencies. Keep optional dependencies enabled. Grant desktop permissions to the application that launches DSH; this provider neither installs a permission-owning app nor changes OS grants. The native runtime shares the host process, so native crashes can terminate that process. Use the [installed MCP provider](../computer-use-cua-driver-mcp/README.md) when the separate Cua Driver application should own permissions and execution.
+The native dependency supplies platform binaries through npm optional dependencies. Keep optional dependencies enabled. Grant desktop permissions to the application that launches DSH; this provider neither installs a permission-owning app nor changes OS grants. In-process mode shares the host process, so native crashes can terminate the host. The SDK supervises a private worker and closes it on unload. Use the [installed MCP provider](../computer-use-cua-driver-mcp/README.md) when the separate Cua Driver application should own permissions and execution.
 
 ### Verify the installed SDK
 
@@ -95,7 +97,7 @@ Cua Driver native computer-use tools operate the host desktop. For native window
 
 Prefer background delivery. A refusal does not authorize a foreground retry. Verify the requested outcome from fresh state after an action; a delivered click alone does not prove the outcome. After cancellation, inspect current state before retrying because completed input is not rolled back. Other sessions and applications may change the same desktop.
 
-On macOS, cursor-overlay operations may return facility_unavailable even when screenshots and input work.
+On macOS, in-process cursor-overlay operations may return facility_unavailable even when screenshots and input work. If no active application is reported, focus is unknown; the presence of another process does not identify what changed it.
 ```
 
 #### Token effect
@@ -127,7 +129,7 @@ An unchanged catalog preserves its tool-definition prefix. Tool results append t
 The package preserves the upstream driver's platform and application limits.
 
 - **Host permissions and graphics session** — npm installation does not grant desktop access or create a graphical session.
-- **Native cursor overlay** — a headless macOS Node host can receive `facility_unavailable` for overlay operations while screenshots and background input remain usable.
+- **Native cursor overlay** — an in-process macOS Node host without AppKit can receive `facility_unavailable` for overlay operations while screenshots and background input remain usable.
 - **macOS drag and trusted browser input** — background window drags support pointer widgets; macOS drag-and-drop sessions can require explicit foreground delivery. Trusted browser clicks and pointer actions accept `delivery_mode: "foreground"` when their background route refuses. `input_route: "dom_event"` remains synthetic and does not satisfy controls that require trusted events. Verify each result from fresh state.
 - **Shared desktop** — the provider does not reserve windows or complete workflows for a Session. Other callers and applications can change the same desktop between calls.
 - **Cancellation** — an aborted call can have delivered input already; inspect fresh state before retrying. The provider waits for SDK shutdown during unload but does not promise native action rollback.

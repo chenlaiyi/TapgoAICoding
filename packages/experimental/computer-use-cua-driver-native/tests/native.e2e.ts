@@ -20,7 +20,10 @@ it.skipIf(process.env.DSH_COMPUTER_USE_NATIVE_E2E !== '1')(
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
       await ctx.plugin(NativeToolExecutor)
-      const provider = ctx.plugin(NativeProvider)
+      const workerPath = process.env.DSH_COMPUTER_USE_NATIVE_WORKER_BINARY
+      const provider = ctx.plugin(NativeProvider, workerPath === undefined ? {} : { worker: {
+        binaryPath: workerPath, hostBundleId: 'com.tapgo.aicoding',
+      } })
       await provider
       expect(ctx.computerUse.providerName).toBe('cua-driver-native')
       const names = ctx.tools.schemas().map(tool => tool.name)

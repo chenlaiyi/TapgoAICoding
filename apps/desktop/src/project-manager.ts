@@ -34,6 +34,7 @@ const CORE_BUILD_PACKAGE = '@deepseek-ai/dsh-subprocess-local'
 const WEB_PROFILE = PROFILE_TEMPLATES.web as ProfileTemplate
 const WORKSPACE_SETTINGS = 'nodeLinker: hoisted\nautoInstallPeers: false\n'
 const COMPUTER_USE_MARKER = 'desktop-computer-use-v1'
+const NATIVE_WORKER_MARKER = 'desktop-native-cua-worker-v1'
 const COMPUTER_USE_PATCH = `- insert:
     - id: computer-use
       name: '@deepseek-ai/dsh-computer-use'
@@ -57,6 +58,23 @@ async function enableDesktopComputerUse(projectDir: string): Promise<void> {
   }
   await writeFileAtomic(marker, '1\n', { mode: 0o600 })
 }
+
+async function configureDesktopNativeWorker(projectDir: string): Promise<void> {
+  const marker = join(projectDir, NATIVE_WORKER_MARKER)
+  if (existsSync(marker)) return
+  const path = join(projectDir, 'cordis.patch.yml')
+  const entries = loadOverlayPatches('dsh', path)
+  const id = 'computer-use-cua-driver-native'
+  const native = entries.flatMap(entry => entry.insert ?? []).find(row => row.id === id
+    && row.name === '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native')
+  const customized = native?.config !== undefined || entries.some(entry => entry.id === id && entry.config !== undefined)
+  if (native !== undefined && !customized) {
+    const source = readFileSync(path, 'utf8')
+    await writeFileAtomic(path, `${source.trimEnd()}\n- id: ${id}\n  config:\n    worker: !!js "JSON.parse(process.env.DSH_DESKTOP_CUA_WORKER ?? 'null') ?? undefined"\n`, { mode: 0o600 })
+  }
+  await writeFileAtomic(marker, '1\n', { mode: 0o600 })
+}
+
 function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, undefined, 2)}\n`, { mode: 0o600 })
 }
@@ -200,4 +218,5 @@ export function createDevelopmentProjectMetadata(projectDir: string, release: De
 export async function createPluginProfile(projectDir: string): Promise<void> {
   initProfile(projectDir, WEB_PROFILE.bundles)
   await enableDesktopComputerUse(projectDir)
+  await configureDesktopNativeWorker(projectDir)
 }
