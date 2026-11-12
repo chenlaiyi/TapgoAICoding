@@ -94,6 +94,45 @@
       }
     },
     {
+      "name": "cua_driver_native__browser_click",
+      "description": "Click an exactly-bound browser tab.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string"
+          },
+          "tab_id": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "input_route": {
+            "type": "string",
+            "enum": [
+              "trusted",
+              "dom_event"
+            ],
+            "default": "trusted"
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "background",
+              "foreground"
+            ],
+            "default": "background"
+          }
+        },
+        "required": [
+          "target_id",
+          "tab_id",
+          "ref"
+        ]
+      }
+    },
+    {
       "name": "cua_driver_native__check_permissions",
       "description": "Read host desktop permissions without prompting.",
       "parameters": {
@@ -112,6 +151,13 @@
           },
           "window_id": {
             "type": "integer"
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "background",
+              "foreground"
+            ]
           }
         },
         "required": [

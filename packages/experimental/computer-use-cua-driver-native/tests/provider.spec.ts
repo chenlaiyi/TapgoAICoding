@@ -39,10 +39,19 @@ function execute(rawName: string, args: Record<string, unknown> = {}) {
 }
 
 describe('Cua Driver native provider', () => {
+  it('preserves explicit foreground trusted browser input without substituting a synthetic route', async () => {
+    await ctx.plugin(NativeProvider)
+    const args = { target_id: 'browser-1', tab_id: 'tab-1', ref: 'p1:0', input_route: 'trusted', delivery_mode: 'foreground' }
+    const result = await execute('browser_click', args)
+    expect(result.isError).toBe(false)
+    expect(fixture.calls).toMatchObject([{ name: 'browser_click', args }])
+  })
+
   it('registers the upstream catalog and calls its raw names', async () => {
     const fiber = ctx.plugin(NativeProvider)
     await fiber
     expect(ctx.computerUse.providerName).toBe('cua-driver-native')
+    expect(fixture.createOptions).toEqual({ embedded: true, claudeCodeCompatibility: false })
     expect(ctx.tools.schemas().map(tool => tool.name)).toEqual(catalog.tools.map(tool => `cua_driver_native__${tool.name}`))
     const result = await execute('click', { pid: 9, window_id: 7 })
     expect(result.isError).toBe(false)

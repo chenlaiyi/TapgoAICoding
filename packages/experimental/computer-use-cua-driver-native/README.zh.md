@@ -34,7 +34,7 @@ kind: "package-reference"
 - name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
 ```
 
-此提供者没有配置字段。它加载 [package.json](package.json) 声明的确切 Cua Driver npm 版本，并采用其进程内默认配置。原生模块导入、运行时初始化、目录格式、工具重名或电脑操作注册冲突会使激活失败，并回滚所拥有的资源。注册的提供者名称为 `cua-driver-native`。
+此提供者没有配置字段。它加载 [package.json](package.json) 声明的确切 Cua Driver npm 版本，并强制使用进程内运行时，不连接独立的 Cua Driver 守护进程。原生模块导入、运行时初始化、目录格式、工具重名或电脑操作注册冲突会使激活失败，并回滚所拥有的资源。注册的提供者名称为 `cua-driver-native`。
 
 挂载附件存储并使用明确声明支持图像输入的模型路由，才能接收截图。[MCP 结果适配器](../../mcp/mcp-client/README.zh.md) 负责图像接纳和诊断行为；模型无法接收图像时，程序调用方仍保留规范原始结果。调用采用 Cua Driver 上游的工具参数和结果。
 
@@ -128,6 +128,7 @@ On macOS, cursor-overlay operations may return facility_unavailable even when sc
 
 - **主机权限与图形会话**——npm 安装不会授予桌面访问权限或创建图形会话。
 - **原生光标覆盖层**——无界面的 macOS Node 主机可能对覆盖层操作返回 `facility_unavailable`，同时截图和后台输入仍可用。
+- **macOS 拖拽与受信浏览器输入** — 后台窗口拖拽支持指针控件；macOS 拖放会话可能需要显式前台投递。受信浏览器点击和指针操作在后台路径拒绝时接受 `delivery_mode: "foreground"`。`input_route: "dom_event"` 仍为合成事件，不能满足要求受信事件的控件。每次操作后都应读取最新状态验证结果。
 - **共享桌面**——此提供者不为某个 Session 预留窗口或完整工作流。其他调用方和应用可以在两次调用之间更改同一桌面。
 - **取消**——被取消的调用可能已经传入输入；重试前必须检查新状态。卸载时提供者等待 SDK 关闭，但不承诺回滚原生操作。
 - **关闭失败**——如果原生关闭失败，注册名额保持占用。挂载其他电脑操作提供者之前必须重启主机。

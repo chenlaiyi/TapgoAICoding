@@ -27,6 +27,12 @@ it.skipIf(process.env.DSH_COMPUTER_USE_NATIVE_E2E !== '1')(
       expect(names).toContain('cua_driver_native__check_permissions')
       expect(names).toContain('cua_driver_native__get_window_state')
       expect(names.every(name => name.startsWith('cua_driver_native__'))).toBe(true)
+      for (const name of ['browser_click', 'browser_pointer', 'drag']) {
+        const schema = ctx.tools.schemas().find(tool => tool.name === `cua_driver_native__${name}`)
+        expect(schema?.parameters).toMatchObject({
+          properties: { delivery_mode: { enum: ['background', 'foreground'] } },
+        })
+      }
 
       const result = await executeToolFixture(ctx, {
         name: 'cua_driver_native__check_permissions',

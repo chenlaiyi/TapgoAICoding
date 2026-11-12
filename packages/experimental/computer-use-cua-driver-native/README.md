@@ -34,7 +34,7 @@ Mount the provider in a composition that already supplies the tool registry and 
 - name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
 ```
 
-The provider has no configuration fields. It loads the exact Cua Driver npm version declared in [package.json](package.json) and uses its same-process defaults. Native import, runtime initialization, malformed catalog, duplicate tool name, or occupied computer-use registration failures reject activation and roll back owned resources. The registered provider name is `cua-driver-native`.
+The provider has no configuration fields. It loads the exact Cua Driver npm version declared in [package.json](package.json) and forces its in-process runtime without connecting to a separate Cua Driver daemon. Native import, runtime initialization, malformed catalog, duplicate tool name, or occupied computer-use registration failures reject activation and roll back owned resources. The registered provider name is `cua-driver-native`.
 
 Use an attachment store and a model route that explicitly declares image input to receive screenshots. The [MCP result adapter](../../mcp/mcp-client/README.md) owns image admission and diagnostic behavior; programmatic callers retain the canonical raw result when a model cannot receive its images. Calls use Cua Driver's upstream tool parameters and results.
 
@@ -128,6 +128,7 @@ The package preserves the upstream driver's platform and application limits.
 
 - **Host permissions and graphics session** — npm installation does not grant desktop access or create a graphical session.
 - **Native cursor overlay** — a headless macOS Node host can receive `facility_unavailable` for overlay operations while screenshots and background input remain usable.
+- **macOS drag and trusted browser input** — background window drags support pointer widgets; macOS drag-and-drop sessions can require explicit foreground delivery. Trusted browser clicks and pointer actions accept `delivery_mode: "foreground"` when their background route refuses. `input_route: "dom_event"` remains synthetic and does not satisfy controls that require trusted events. Verify each result from fresh state.
 - **Shared desktop** — the provider does not reserve windows or complete workflows for a Session. Other callers and applications can change the same desktop between calls.
 - **Cancellation** — an aborted call can have delivered input already; inspect fresh state before retrying. The provider waits for SDK shutdown during unload but does not promise native action rollback.
 - **Failed shutdown** — if native shutdown fails, the registration remains occupied. Restart the host before mounting another computer-use provider.

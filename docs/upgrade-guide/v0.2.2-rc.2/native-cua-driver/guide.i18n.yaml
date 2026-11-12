@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.2-rc.2/native-cua-driver/guide.md
+/:
+  en: 5255a77e14783d5c
+  zh: 923596c459838a4e
+/native-cua-driver-arguments:
+  en: af27ef2b0df0532a
+  zh: dac193ac007f7b19
+/native-cua-driver-arguments/change:
+  en: b79c9321d035cabc
+  zh: 313cfd06d7b62e04
+/native-cua-driver-arguments/migration:
+  en: 36651b7d05aff31e
+  zh: 0e6234a5dd734ab2

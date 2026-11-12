@@ -17,12 +17,25 @@ export const catalog = {
     {
       name: 'click',
       description: 'Click the selected Cua Driver window.',
-      inputSchema: { type: 'object', properties: { pid: { type: 'integer' }, window_id: { type: 'integer' } }, required: ['pid', 'window_id'] },
+      inputSchema: { type: 'object', properties: { pid: { type: 'integer' }, window_id: { type: 'integer' }, delivery_mode: { type: 'string', enum: ['background', 'foreground'] } }, required: ['pid', 'window_id'] },
     },
     {
       name: 'check_permissions',
       description: 'Read host desktop permissions without prompting.',
       inputSchema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'browser_click',
+      description: 'Click an exactly-bound browser tab.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          target_id: { type: 'string' }, tab_id: { type: 'string' }, ref: { type: 'string' },
+          input_route: { type: 'string', enum: ['trusted', 'dom_event'], default: 'trusted' },
+          delivery_mode: { type: 'string', enum: ['background', 'foreground'], default: 'background' },
+        },
+        required: ['target_id', 'tab_id', 'ref'],
+      },
     },
   ],
 }
@@ -30,6 +43,7 @@ export const catalog = {
 /** Mutable controls represent only the external native implementation. */
 export const fixture: {
   creates: number
+  createOptions?: { embedded: boolean; claudeCodeCompatibility: boolean }
   destroys: number
   shutdowns: number
   clicked: boolean
@@ -43,6 +57,7 @@ export const fixture: {
 /** Reset the external fixture between independently owned test contexts. */
 export function resetFixture(): void {
   fixture.creates = 0
+  delete fixture.createOptions
   fixture.destroys = 0
   fixture.shutdowns = 0
   fixture.clicked = false
@@ -55,8 +70,9 @@ export function resetFixture(): void {
 
 /** The subset of the published SDK exercised by the provider. */
 export class CuaDriver {
-  static create(): CuaDriver {
+  static create(options?: { embedded: boolean; claudeCodeCompatibility: boolean }): CuaDriver {
     fixture.creates += 1
+    if (options) fixture.createOptions = options
     if (fixture.createError) throw fixture.createError
     return new CuaDriver()
   }

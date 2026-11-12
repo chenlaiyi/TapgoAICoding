@@ -19,7 +19,7 @@ export const name = 'experimental-computer-use-cua-driver-native'
 /** Services required before the native runtime can publish tools. */
 export const inject = ['computerUse', 'tools', 'systemPrompt']
 
-/** The native provider uses the installed SDK's same-process defaults. */
+/** The native provider forces the installed SDK's in-process runtime. */
 export const Config = Schema.object({})
 
 const ToolCatalog = z.object({
@@ -89,7 +89,7 @@ export async function apply(ctx: Context): Promise<void> {
     lifetime.signal.throwIfAborted()
     // The generated constructor returns its class with an owned binding handle,
     // but declares only CuaDriverLike, which omits uniffiDestroy().
-    const activeDriver = driver = CuaDriver.create(undefined) as NativeDriver
+    const activeDriver = driver = CuaDriver.create({ embedded: true, claudeCodeCompatibility: false }) as NativeDriver
     const catalog = ToolCatalog.parse(JSON.parse(await activeDriver.listToolsJson({ signal: lifetime.signal })))
     lifetime.signal.throwIfAborted()
     const names = new Set<string>()
