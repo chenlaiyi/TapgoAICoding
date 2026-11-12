@@ -479,7 +479,8 @@ describe('tool execution', () => {
       expect(rich.attachments.saved).toEqual([])
     } else {
       expect(result.content[0]?.type).toBe('image')
-      expect(rich.attachments.saved[0]?.data).toEqual(bytes)
+      expect(rich.attachments.saved).toHaveLength(1)
+      expect(Buffer.compare(rich.attachments.saved[0]!.data, bytes)).toBe(0)
     }
   })
 
