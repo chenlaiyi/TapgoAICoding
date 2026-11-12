@@ -34,7 +34,7 @@ const ToolCatalog = z.object({
 /** DeepSeek's function-name alphabet and maximum length are protocol constants. */
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/u
 
-const GUIDANCE = `Cua Driver native computer-use tools operate the host desktop. Discover the exact app and window, then get a fresh window snapshot before acting. Use element_token from that snapshot, or coordinates from its screenshot. A new snapshot of that window invalidates its earlier element tokens. Select either target or the legacy pid/window_id fields; do not combine them.
+const GUIDANCE = `Cua Driver native computer-use tools operate the host desktop. For native window actions, discover the exact app and window, then get a fresh window snapshot before acting. Use element_token from that snapshot, or coordinates from its screenshot. A new snapshot of that window invalidates its earlier element tokens. Select either target or the legacy pid/window_id fields; do not combine them. For browser actions, bind the exact tab with get_browser_state and use its page refs or viewport screenshot; do not infer viewport coordinates from a native window screenshot.
 
 Prefer background delivery. A refusal does not authorize a foreground retry. Verify the requested outcome from fresh state after an action; a delivered click alone does not prove the outcome. After cancellation, inspect current state before retrying because completed input is not rolled back. Other sessions and applications may change the same desktop.
 
