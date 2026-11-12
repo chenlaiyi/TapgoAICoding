@@ -106,6 +106,7 @@ export async function apply(ctx: Context): Promise<void> {
         description: tool.description ?? '',
         inputSchema: tool.inputSchema,
         outputSchema: tool.outputSchema,
+        includeStructuredContent: true,
         async call(args, execution) {
           const combined = AbortSignal.any([execution.signal, lifetime.signal])
           combined.throwIfAborted()

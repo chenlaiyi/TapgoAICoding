@@ -154,7 +154,7 @@ SDK 通过旧版通知或现代协议订阅接收工具列表变化。监督器�
 
 ### 工具执行内部细节
 
-工具调用向 SDK 提供原始名称、完整工具定义、JSON 参数、取消信号及配置的超时。SDK 负责协议校验、已声明输出 schema 的校验和现代协议请求 header。成功结果规范值为 `{ content: JsonValue[], structuredContent? }`，为编程调用方及 PTC 模式保留有效的 MCP JSON 块。MCP `isError` 结果会在图片持久化前抛出。桥接器在保存前校验整批图片；拒绝时将每张图片投影为诊断文本。对未声明 `resources` 能力的服务器，资源列表与模板列表直接返回空页而不调用 SDK，因为 SDK 的兜底逻辑会把诊断写到 stdout，而 ACP 配置档在 stdout 上传输 JSON-RPC。
+工具调用向 SDK 提供原始名称、完整工具定义、JSON 参数、取消信号及配置的超时。SDK 负责协议校验、已声明输出 schema 的校验和现代协议请求 header。成功结果规范值为 `{ content: JsonValue[], structuredContent? }`，为编程调用方及 PTC 模式保留有效的 MCP JSON 块。MCP `isError` 结果会在图片持久化前抛出。桥接器通过解码后重新编码校验规范 Base64，不使用可能在桌面截图上栈溢出的重复分组正则表达式。它在保存前校验整批图片；拒绝时将每张图片投影为诊断文本。原生提供方可选择将结构化 JSON 加入模型内容，同时保持规范值不变。对未声明 `resources` 能力的服务器，资源列表与模板列表直接返回空页而不调用 SDK，因为 SDK 的兜底逻辑会把诊断写到 stdout，而 ACP 配置档在 stdout 上传输 JSON-RPC。
 
 ### 环境清洗（stdio）
 

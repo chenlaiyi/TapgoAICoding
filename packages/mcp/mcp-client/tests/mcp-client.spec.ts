@@ -63,9 +63,9 @@ async function mountRegistry(): Promise<Context> {
 }
 
 const IMAGE_LIMITS: ImageAttachmentLimits = {
-  maxImageBytes: 1024,
+  maxImageBytes: 8 * 1024 * 1024,
   maxImagesPerMessage: 4,
-  maxMessageImageBytes: 2048,
+  maxMessageImageBytes: 16 * 1024 * 1024,
   maxImagePixels: 1024,
   maxImageDimension: 2000,
   mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
@@ -459,6 +459,28 @@ describe('tool execution', () => {
     expect(JSON.stringify(result.content)).not.toContain('Ag==')
     if (result.isError) throw new Error('expected MCP success')
     expect(result.value).toEqual({ content: blocks })
+  })
+
+  it.each([false, true])('validates a desktop-sized image without overflowing the stack (invalid: %s)', async (invalid) => {
+    const rich = await mountRichRegistry()
+    const bytes = Buffer.alloc(4 * 1024 * 1024, 17)
+    const data = bytes.toString('base64') + (invalid ? '\n' : '')
+    const client = createMockClient([{ name: 'desktop', inputSchema: { type: 'object' } }], {
+      content: [{ type: 'image', mimeType: 'image/png', data }],
+    })
+    await syncTools(client as never, rich.ctx, defaultOpts, new Map())
+    const result = await executeToolFixture(rich.ctx, {
+      signal: testToolSignal, callId: ToolCallId('desktop-image'),
+      name: 'mcp__srv__desktop', arguments: {}, agent: agentOn() as never,
+    })
+    expect(result.isError).toBe(false)
+    if (invalid) {
+      expect(textAt(result.content)).toContain('not canonical base64')
+      expect(rich.attachments.saved).toEqual([])
+    } else {
+      expect(result.content[0]?.type).toBe('image')
+      expect(rich.attachments.saved[0]?.data).toEqual(bytes)
+    }
   })
 
   it('keeps a valid raw image result while explicitly refusing it without a durable route', async () => {

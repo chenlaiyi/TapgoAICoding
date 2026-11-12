@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createMcpToolDefinition } from '../src/index.ts'
 
 describe('MCP result callback adaptation', () => {
-  it('preserves the exact execution, arguments and canonical structured results', async () => {
+  it.each([false, true])('preserves canonical results while selecting structured model content (%s)', async (includeStructuredContent) => {
     const ctx = new Context()
     try {
       await ctx.plugin(SystemPrompt)
@@ -28,6 +28,7 @@ describe('MCP result callback adaptation', () => {
         name: 'native_window', rawName: 'window', description: 'Read the selected window.',
         inputSchema: { type: 'object', properties: { window: { type: 'integer' } } },
         outputSchema: { type: 'object', properties: { window: { type: 'integer' } }, required: ['window'] },
+        includeStructuredContent,
         call,
       }))
       const signal = new AbortController().signal
@@ -40,6 +41,10 @@ describe('MCP result callback adaptation', () => {
       expect(result.value).toEqual({
         content: [{ type: 'text', text: 'Observed window.' }], structuredContent: { window: 7 },
       })
+      expect(result.content).toEqual([
+        { type: 'text', text: 'Observed window.' },
+        ...includeStructuredContent ? [{ type: 'text', text: '{"window":7}' }] : [],
+      ])
     } finally {
       await ctx.fiber.dispose()
     }

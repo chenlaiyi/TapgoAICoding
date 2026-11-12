@@ -110,7 +110,7 @@ The unchanged guidance preserves its repeated prompt prefix. Mounting, removing,
 
 #### What the model sees
 
-Tools use the `cua_driver_native__` prefix followed by the upstream name and retain the upstream descriptions and input schemas. Upstream tool refusals become tool errors. Supported screenshots appear as durable image references beside result text; the canonical raw result remains available to programmatic callers.
+Tools use the `cua_driver_native__` prefix followed by the upstream name and retain the upstream descriptions and input schemas. Upstream tool refusals become tool errors. Supported screenshots appear as durable image references beside result text. Structured result JSON also reaches model history, including window identifiers, element tokens, coordinates, and browser refusal details; the canonical raw result remains available to programmatic callers.
 
 #### Token effect
 

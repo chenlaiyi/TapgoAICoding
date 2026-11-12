@@ -119,6 +119,8 @@ it('loads from cordis.yml and logs the native screenshot before the next model r
   const stored = await context.attachments.readImage(image.attachment)
   expect(Buffer.from(stored.data).toString('base64')).toBe(screenshotBase64)
   expect(JSON.stringify(model.requests[1]?.messages)).toContain(JSON.stringify(image.attachment))
+  expect(toolResult.content).toContainEqual({ type: 'text', text: '{"window_id":7,"clicked":false}' })
+  expect(JSON.stringify(model.requests[1]?.messages)).toContain('\\"window_id\\":7')
   expect(JSON.stringify(toolResult.content)).not.toContain(screenshotBase64)
   const direct = await executeToolFixture(context, {
     agent, signal: new AbortController().signal, callId: ToolCallId('programmatic-window'),

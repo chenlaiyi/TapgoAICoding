@@ -71,9 +71,6 @@ const IMAGE_MEDIA_TYPES: readonly ImageMediaType[] = [
   'image/gif',
 ]
 
-/** Canonical RFC 4648 base64, excluding whitespace and URL-safe aliases. */
-const CANONICAL_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
-
 /**
  * Derive the model-facing public name for one MCP tool.
  *
@@ -232,6 +229,8 @@ export interface McpToolDefinitionOptions {
   outputSchema?: unknown
   /** Whether the upstream tool requires the unsupported task execution extension. */
   taskRequired?: boolean
+  /** Include structured result JSON in model content as well as the canonical value. */
+  includeStructuredContent?: boolean
   /**
    * Obtain one raw MCP result from the provider.
    * @param args - model arguments admitted by the ToolRuntime.
@@ -258,7 +257,7 @@ export function createMcpToolDefinition(
     name,
     description,
     parameters: inputSchema,
-    output: createOutput(rawName, supportedOutputSchema(options.outputSchema)),
+    output: createOutput(rawName, supportedOutputSchema(options.outputSchema), options.includeStructuredContent === true),
     execute: createExecutor(ctx, options, projections),
     projectContent(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>) {
       const projection = projections.get(exec)
@@ -273,7 +272,7 @@ export function createMcpToolDefinition(
 }
 
 /** Build the canonical result schema and existing Native text projection. */
-function createOutput(rawName: string, structuredSchema: JsonSchemaNode | undefined): ToolDefinition['output'] {
+function createOutput(rawName: string, structuredSchema: JsonSchemaNode | undefined, includeStructured: boolean): ToolDefinition['output'] {
   return {
     schema: {
       type: 'object',
@@ -286,7 +285,7 @@ function createOutput(rawName: string, structuredSchema: JsonSchemaNode | undefi
     },
     render(_args: unknown, value: JsonValue) {
       const result = value as McpResult
-      return [{ type: 'text', text: extractText(result.content, rawName) }]
+      return appendStructuredContent([{ type: 'text', text: extractText(result.content, rawName) }], result.structuredContent, includeStructured)
     },
   }
 }
@@ -300,7 +299,7 @@ function createExecutor(
   options: McpToolDefinitionOptions,
   projections: WeakMap<ToolExecution, PreparedProjection>,
 ): ToolDefinition['execute'] {
-  const { rawName, taskRequired } = options
+  const { rawName, taskRequired, includeStructuredContent = false } = options
   return async (args: unknown, exec: ToolExecution) => {
     if (taskRequired) {
       throw new Error(`Tool "${rawName}" requires task-based execution, which this bridge does not support`)
@@ -331,12 +330,23 @@ function createExecutor(
         : {},
     }
     if (containsImage(content)) {
-      const fallback: ContentBlock[] = [{ type: 'text', text: extractText(content, rawName) }]
-      const projected = await prepareImageProjection(ctx, exec, content, rawName)
+      const fallback = appendStructuredContent(
+        [{ type: 'text', text: extractText(content, rawName) }], value.structuredContent, includeStructuredContent,
+      )
+      const projected = appendStructuredContent(
+        await prepareImageProjection(ctx, exec, content, rawName), value.structuredContent, includeStructuredContent,
+      )
       projections.set(exec, { value, fallback, content: projected })
     }
     return value
   }
+}
+
+/** Keep structured-only identifiers and observations available to model callers. */
+function appendStructuredContent(content: ContentBlock[], value: JsonValue | undefined, include: boolean): ContentBlock[] {
+  return include && value !== undefined
+    ? [...content, { type: 'text', text: JSON.stringify(value) }]
+    : content
 }
 
 /** Whether an untrusted MCP content array contains a declared image block. */
@@ -358,9 +368,6 @@ function isImageMediaType(value: string): value is ImageMediaType {
 function decodeImage(block: ImageContent): SaveImageAttachment {
   if (!isImageMediaType(block.mimeType)) {
     throw new Error('the declared media type is not PNG, JPEG, WebP, or GIF')
-  }
-  if (!CANONICAL_BASE64.test(block.data)) {
-    throw new Error('the image data is not canonical base64')
   }
   const data = Buffer.from(block.data, 'base64')
   if (data.toString('base64') !== block.data) {

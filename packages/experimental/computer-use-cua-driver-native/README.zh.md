@@ -110,7 +110,7 @@ On macOS, cursor-overlay operations may return facility_unavailable even when sc
 
 #### 模型看到什么
 
-工具名称使用 `cua_driver_native__` 前缀并附加上游名称，保留上游描述和输入 schema。上游工具拒绝转为工具错误。支持的截图作为持久化图像引用出现在结果文本旁；程序调用方仍可读取规范原始结果。
+工具名称使用 `cua_driver_native__` 前缀并附加上游名称，保留上游描述和输入 schema。上游工具拒绝转为工具错误。支持的截图作为持久化图像引用出现在结果文本旁。结构化结果 JSON 也会进入模型历史，包括窗口标识符、元素令牌、坐标和浏览器拒绝详情；程序调用方仍可读取规范原始结果。
 
 #### Token 影响
 
