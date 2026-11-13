@@ -40,6 +40,17 @@ Worker 时间参数为 `startupTimeoutMs`（10000）、`shutdownTimeoutMs`（200
 
 挂载附件存储并使用明确声明支持图像输入的模型路由，才能接收截图。[MCP 结果适配器](../../mcp/mcp-client/README.zh.md) 负责图像接纳和诊断行为；模型无法接收图像时，程序调用方仍保留规范原始结果。调用采用 Cua Driver 上游的工具参数和结果。
 
+<a id="restore-state-after-foreground-drags"></a>
+### 前台拖放后的状态恢复
+
+打包 macOS Desktop 为默认 worker 配置 `restoration`，其 `helperPath` 指向同一签名应用内的原生观察程序。该配置串行执行 SDK 调用，避免同一提供者的调用与恢复交错。观察程序只记录输入来源 PID、应用激活和位置，不记录按键或文本，也不请求新的系统授权。
+
+桌面级 `drag` 显式使用 `delivery_mode: foreground` 时，默认启用 `restore_user_state`：记录原应用和指针，等待驱动释放按键及原生拖放会话结束，再恢复。外部输入、意外激活、指针偏离落点、观察失效或原应用退出会阻止恢复。设置 `restore_user_state: false` 保留上游行为。其他拖放模式不启用恢复；显式传 `true` 会被拒绝。该行为仍占用前台和物理指针，不是后台拖放。
+
+结果中的 `user_state_restoration` 独立报告焦点、指针、输入来源和恢复状态，不代表文件已落入目标；仍需新状态验证。跳过或失败返回工具错误，已执行的拖放不会回滚。观察不可用会在发送拖放前报告 `NATIVE_INTERACTION_UNAVAILABLE`；发送后的进程或协议故障报告 `NATIVE_INTERACTION_FAILED`，重试前先检查状态。取消或 Host 退出会关闭观察程序，不进行延迟恢复。
+
+`restoration.timeoutMs`（5000）限定握手和结束阶段，`pollMs`（20）设置原生状态轮询间隔，`leaseMs`（30000）限定进程总寿命，单位均为毫秒。
+
 ### 主机要求
 
 原生依赖通过 npm 可选依赖提供各平台二进制文件，因此必须保留可选依赖安装。请向启动 DSH 的应用授予桌面权限；此提供者既不安装独立持有权限的应用，也不更改操作系统授权。进程内模式与主机共享进程，因此原生崩溃可能终止主机。私有 worker 由 SDK 监督并在卸载时关闭。如果需要由独立的 Cua Driver 应用持有权限并执行操作，请使用[已安装的 MCP 提供者](../computer-use-cua-driver-mcp/README.zh.md)。

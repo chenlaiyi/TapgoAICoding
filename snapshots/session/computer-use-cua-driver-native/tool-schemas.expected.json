@@ -167,6 +167,51 @@
       }
     },
     {
+      "name": "cua_driver_native__drag",
+      "description": "Drag through native desktop coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "window"
+            ]
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "background",
+              "foreground"
+            ]
+          },
+          "from_x": {
+            "type": "number"
+          },
+          "from_y": {
+            "type": "number"
+          },
+          "to_x": {
+            "type": "number"
+          },
+          "to_y": {
+            "type": "number"
+          },
+          "restore_user_state": {
+            "type": "boolean",
+            "description": "For macOS desktop-scope foreground drags, defaults to true: restore the original application focus and physical pointer only after the gesture ends and no outside input or unexpected activation was observed. Fails before input if observation is unavailable. False keeps the upstream behavior. Restoration is reported separately from whether the drop landed. Other drag modes do not use this option."
+          }
+        },
+        "required": [
+          "from_x",
+          "from_y",
+          "to_x",
+          "to_y"
+        ]
+      }
+    },
+    {
       "name": "cua_driver_native__get_window_state",
       "description": "Capture a Cua Driver window screenshot.",
       "parameters": {

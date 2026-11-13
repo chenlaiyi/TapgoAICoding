@@ -29,6 +29,14 @@ export const catalog = {
       inputSchema: { type: 'object', properties: {} },
     },
     {
+      name: 'drag',
+      description: 'Drag through native desktop coordinates.',
+      inputSchema: { type: 'object', properties: {
+        scope: { type: 'string', enum: ['desktop', 'window'] }, delivery_mode: { type: 'string', enum: ['background', 'foreground'] },
+        from_x: { type: 'number' }, from_y: { type: 'number' }, to_x: { type: 'number' }, to_y: { type: 'number' },
+      }, required: ['from_x', 'from_y', 'to_x', 'to_y'] },
+    },
+    {
       name: 'browser_click',
       description: 'Click an exactly-bound browser tab.',
       inputSchema: {
@@ -105,6 +113,8 @@ export class CuaDriver {
         structuredContent: { window_id: 7, clicked: fixture.clicked },
       }) }
     }
+    if (name === 'check_permissions') return { rawJson: JSON.stringify({ content: [{ type: 'text', text: 'Desktop permissions granted.' }], structuredContent: { source: { pid: 123 } } }) }
+    if (name === 'drag') return { rawJson: JSON.stringify({ content: [{ type: 'text', text: 'Native drag posted; verify the drop.' }], structuredContent: { effect: 'unverifiable' } }) }
     if (name === 'click') fixture.clicked = true
     return { rawJson: JSON.stringify({ content: [{ type: 'text', text: name === 'click' ? 'Cua Driver fixture clicked.' : 'Desktop permissions granted.' }] }) }
   }

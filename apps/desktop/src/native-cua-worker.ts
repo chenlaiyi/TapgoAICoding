@@ -5,6 +5,7 @@ import { join } from 'node:path'
 export interface DesktopNativeCuaWorker {
   readonly binaryPath: string
   readonly hostBundleId: string
+  readonly restoration: { readonly helperPath: string }
 }
 
 /**
@@ -24,5 +25,6 @@ export function resolveDesktopNativeCuaWorker(
     || typeof manifest.dshDesktopAppId !== 'string' || !/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u.test(manifest.dshDesktopAppId)) {
     throw new Error('desktop native computer use: missing or invalid packaged application identifier')
   }
-  return { binaryPath: join(resources, 'runtime', 'cua-driver', 'cua-driver'), hostBundleId: manifest.dshDesktopAppId }
+  return { binaryPath: join(resources, 'runtime', 'cua-driver', 'cua-driver'), hostBundleId: manifest.dshDesktopAppId,
+    restoration: { helperPath: join(resources, 'runtime', 'cua-driver', 'interaction-lease') } }
 }

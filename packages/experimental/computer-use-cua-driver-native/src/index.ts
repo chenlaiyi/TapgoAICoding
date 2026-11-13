@@ -13,6 +13,8 @@ import type {} from '@deepseek-ai/dsh-computer-use'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import { NativeWorkerError } from './errors.ts'
+import type { InteractionConfig } from './interaction.ts'
+import { restoringDrag, restoringDragSchema } from './restoring-drag.ts'
 
 /** Optional supervised native process for hosts without an AppKit main loop. */
 export interface Config {
@@ -30,6 +32,8 @@ export interface Config {
     maxSessionTtlSeconds: number
     /** Maximum authorization session idle lifetime in seconds. */
     maxIdleTtlSeconds: number
+    /** Native user-state observation for desktop foreground drags; false preserves upstream delivery. */
+    restoration?: false | InteractionConfig
   }
 }
 
@@ -48,6 +52,12 @@ export const Config = Schema.object({
     shutdownTimeoutMs: Schema.natural().min(1).max(Number.MAX_SAFE_INTEGER).default(2_000),
     maxSessionTtlSeconds: Schema.natural().min(1).max(Number.MAX_SAFE_INTEGER).default(86_400),
     maxIdleTtlSeconds: Schema.natural().min(1).max(Number.MAX_SAFE_INTEGER).default(3_600),
+    restoration: Schema.union([Schema.const(false), Schema.object({
+      helperPath: Schema.string().required(),
+      timeoutMs: Schema.natural().min(1).max(2_147_483_647).default(5_000),
+      pollMs: Schema.natural().min(1).max(2_147_483_647).default(20),
+      leaseMs: Schema.natural().min(1).max(2_147_483_647).default(30_000),
+    })]).default(false),
   })]).default(false),
 })
 
@@ -164,6 +174,8 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     }
     const catalog = ToolCatalog.parse(JSON.parse(rawCatalog))
     lifetime.signal.throwIfAborted()
+    const restoration = worker && worker.restoration
+    let queue = Promise.resolve()
     const names = new Set<string>()
     for (const tool of catalog.tools) {
       const publicName = `cua_driver_native__${tool.name}`
@@ -176,22 +188,34 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
         name: publicName,
         rawName: tool.name,
         description: tool.description ?? '',
-        inputSchema: tool.inputSchema,
+        inputSchema: restoration && tool.name === 'drag' ? restoringDragSchema(tool.inputSchema) : tool.inputSchema,
         outputSchema: tool.outputSchema,
         includeStructuredContent: true,
         async call(args, execution) {
           const combined = AbortSignal.any([execution.signal, lifetime.signal])
           combined.throwIfAborted()
-          let result: Awaited<ReturnType<NativeDriver['callTool']>>
-          try {
-            result = await activeDriver.callTool(tool.name, JSON.stringify(args), { signal: combined })
-          } catch (error) {
-            combined.throwIfAborted()
-            if (worker) throw new NativeWorkerError('call', error)
-            throw error
+          const invoke = async (name: string, values: Record<string, unknown>, signal: AbortSignal): Promise<unknown> => {
+            try {
+              const result = await activeDriver.callTool(name, JSON.stringify(values), { signal })
+              signal.throwIfAborted()
+              return JSON.parse(result.rawJson)
+            } catch (error) {
+              signal.throwIfAborted()
+              if (worker) throw new NativeWorkerError('call', error)
+              throw error
+            }
           }
-          combined.throwIfAborted()
-          return JSON.parse(result.rawJson) as unknown
+          const run = async (): Promise<unknown> => {
+            combined.throwIfAborted()
+            return restoration && tool.name === 'drag'
+              ? restoringDrag(args, restoration, invoke, combined)
+              : invoke(tool.name, args, combined)
+          }
+          if (!restoration) return run()
+          // The provider owns the desktop lease; SDK calls cannot interleave with its restore.
+          const operation = queue.then(run)
+          queue = operation.then(() => {}, () => {})
+          return operation
         },
       })
       inner.tools.register(definition)

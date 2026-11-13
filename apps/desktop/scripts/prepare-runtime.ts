@@ -13,6 +13,7 @@ import { packagingStep } from './packaging-step.mjs'
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
 import { prepareDesktopCli } from './prepare-cli.ts'
 import { prepareCommandLink } from './prepare-command-link.ts'
+import { prepareInteractionHelper } from './prepare-interaction-helper.ts'
 import { prepareCuaWorker } from './prepare-cua-worker.ts'
 
 const BUILD_PATHS = resolveDesktopTargetBuildPaths()
@@ -73,6 +74,10 @@ async function main(): Promise<void> {
     ? await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'prepare:cua-worker',
       () => prepareCuaWorker(join(RUNTIME_ROOT, 'cua-driver'), BUILD_PATHS.downloads))
     : undefined
+  if (target.platform === 'darwin') {
+    await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'prepare:interaction-helper',
+      () => prepareInteractionHelper(join(RUNTIME_ROOT, 'cua-driver'), target.arch))
+  }
   writeFileSync(join(RUNTIME_ROOT, 'versions.json'), `${JSON.stringify({
     schemaVersion: 1,
     node: nodeVersion,

@@ -1,4 +1,6 @@
 /** Native SDK lifecycle and catalog behavior without desktop access. */
+import { rm } from 'node:fs/promises'
+import { createInteractionFixture } from './fixtures/interaction-helper.ts'
 import { executeToolFixture } from '@deepseek-ai/dsh-tool-testkit'
 
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
@@ -14,6 +16,7 @@ import { catalog, fixture, resetFixture } from './fixtures/cua-driver.ts'
 
 vi.mock('@trycua/cua-driver', async () => import('./fixtures/cua-driver.ts'))
 
+const helperRoots: string[] = []
 let ctx: Context
 
 beforeEach(async () => {
@@ -27,6 +30,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await ctx.fiber.dispose()
+  for (const root of helperRoots.splice(0)) await rm(root, { recursive: true, force: true })
 })
 
 function execute(rawName: string, args: Record<string, unknown> = {}) {
@@ -81,6 +85,53 @@ describe('Cua Driver native provider', () => {
     expect(result.isError).toBe(true)
     expect(JSON.stringify(result.content)).toContain('input may already have been delivered')
     expect(fixture.calls).toHaveLength(1)
+  })
+
+  it.skipIf(process.platform === 'win32')('logs restoration through the MCP adapter and excludes interleaved SDK calls', async () => {
+    const helper = await createInteractionFixture()
+    helperRoots.push(helper.root)
+    const dragStarted: PromiseWithResolvers<void> = Promise.withResolvers()
+    const dragFinished = Promise.withResolvers<unknown>()
+    const clickEntered: PromiseWithResolvers<void> = Promise.withResolvers()
+    fixture.call = async (name) => {
+      if (name === 'check_permissions') return { content: [], structuredContent: { source: { pid: 123 } } }
+      if (name === 'drag') { dragStarted.resolve(); return dragFinished.promise }
+      return { content: [{ type: 'text', text: 'click delivered' }] }
+    }
+    await ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop', restoration: helper.config } })
+    const schema = ctx.tools.schemas().find(tool => tool.name === 'cua_driver_native__drag')
+    expect(schema?.parameters).toMatchObject({ properties: { restore_user_state: { type: 'boolean' } } })
+    ctx.on('tools/execute', (execution, next) => {
+      if (execution.name === 'cua_driver_native__click') clickEntered.resolve()
+      return next()
+    }, { prepend: true })
+    const drag = execute('drag', { scope: 'desktop', delivery_mode: 'foreground', from_x: 1, from_y: 2, to_x: 3, to_y: 4 })
+    await dragStarted.promise
+    const click = execute('click', { pid: 1, window_id: 7 })
+    try {
+      await clickEntered.promise
+      expect(fixture.calls.map(call => call.name)).toEqual(['check_permissions', 'drag'])
+    } finally { dragFinished.resolve({ content: [], structuredContent: { effect: 'unverifiable' } }) }
+    const result = await drag
+    expect(result.isError).toBe(false)
+    expect(JSON.stringify(result.content)).toContain('focus_restored=true, pointer_restored=true')
+    expect((await click).isError).toBe(false)
+    expect(fixture.calls.map(call => call.name)).toEqual(['check_permissions', 'drag', 'click'])
+  })
+
+  it.skipIf(process.platform === 'win32')('retains skipped-restoration diagnostics in model-visible MCP errors', async () => {
+    const helper = await createInteractionFixture('outside_input_or_activation')
+    helperRoots.push(helper.root)
+    fixture.call = async name => name === 'check_permissions'
+      ? { content: [], structuredContent: { source: { pid: 123 } } }
+      : { content: [], structuredContent: { effect: 'unverifiable' } }
+    await ctx.plugin(NativeProvider, { worker: { binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop', restoration: helper.config } })
+    const result = await execute('drag', { scope: 'desktop', delivery_mode: 'foreground' })
+    expect(result.isError).toBe(true)
+    const text = result.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
+    expect(text).toContain('outside_input_or_activation')
+    expect(text).toContain('"external_source_pids":[3000]')
+    expect(text).toContain('"driver_pid":123')
   })
 
   it('preserves explicit foreground trusted browser input without substituting a synthetic route', async () => {

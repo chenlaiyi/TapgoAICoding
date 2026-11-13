@@ -40,6 +40,17 @@ Worker timing fields are positive integers: `startupTimeoutMs` (10000), `shutdow
 
 Use an attachment store and a model route that explicitly declares image input to receive screenshots. The [MCP result adapter](../../mcp/mcp-client/README.md) owns image admission and diagnostic behavior; programmatic callers retain the canonical raw result when a model cannot receive its images. Calls use Cua Driver's upstream tool parameters and results.
 
+<a id="restore-state-after-foreground-drags"></a>
+### Restore state after foreground drags
+
+Packaged macOS Desktop configures `restoration` for its default worker. Its `helperPath` points to a native observer inside the same signed application. This configuration serializes SDK calls so another call from the provider cannot interleave with restoration. The observer records input-source PIDs, application activations, and positions, without recording keys or text or requesting new OS grants.
+
+A desktop-scope `drag` with explicit `delivery_mode: foreground` enables `restore_user_state` by default: capture the original application and pointer, wait for release and native drag-session completion, then restore them. Outside input, unexpected activation, a pointer away from the release point, lost observation, or original-application exit prevents restoration. Set `restore_user_state: false` to keep upstream behavior. Other drag modes do not enable restoration and reject explicit `true`. This still uses the foreground and physical pointer.
+
+The result's `user_state_restoration` reports focus, pointer, input sources, and restoration status independently of whether the drop landed; verify the drop from fresh state. Skipped or failed restoration is a tool error and does not undo the drag. Unavailable observation reports `NATIVE_INTERACTION_UNAVAILABLE` before dispatch; later process or protocol failures report `NATIVE_INTERACTION_FAILED`, requiring inspection before retry. Cancellation or Host exit closes the observer without deferred restoration.
+
+`restoration.timeoutMs` (5000) bounds handshake and finish, `pollMs` (20) controls native polling, and `leaseMs` (30000) bounds the process lifetime, all in milliseconds.
+
 ### Host requirements
 
 The native dependency supplies platform binaries through npm optional dependencies. Keep optional dependencies enabled. Grant desktop permissions to the application that launches DSH; this provider neither installs a permission-owning app nor changes OS grants. In-process mode shares the host process, so native crashes can terminate the host. The SDK supervises a private worker and closes it on unload. Use the [installed MCP provider](../computer-use-cua-driver-mcp/README.md) when the separate Cua Driver application should own permissions and execution.
@@ -116,7 +127,7 @@ Tools use the `cua_driver_native__` prefix followed by the upstream name and ret
 
 #### Token effect
 
-The discovered catalog adds tool definitions to each request. Accessibility trees, result text, and admitted screenshots add per-call context. Raw base64 remains in execution-local canonical values and is not copied into model history.
+The discovered catalog adds tool definitions to each request. Enabling restoration adds its drag parameter description and per-drag observation results. Accessibility trees, result text, and admitted screenshots add per-call context. Raw base64 remains in execution-local canonical values and is not copied into model history.
 
 #### KV Cache effect
 

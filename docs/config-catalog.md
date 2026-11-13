@@ -1162,7 +1162,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native`
 
 - `inject`: `computerUse` · `tools` · `systemPrompt`
-- `source`: [`packages/experimental/computer-use-cua-driver-native/src/index.ts:18`](../packages/experimental/computer-use-cua-driver-native/src/index.ts)
+- `source`: [`packages/experimental/computer-use-cua-driver-native/src/index.ts:20`](../packages/experimental/computer-use-cua-driver-native/src/index.ts)
 
 ```ts config-catalog
 /** Optional supervised native process for hosts without an AppKit main loop. */
@@ -1181,7 +1181,21 @@ export interface Config {
     maxSessionTtlSeconds: number
     /** Maximum authorization session idle lifetime in seconds. */
     maxIdleTtlSeconds: number
+    /** Native user-state observation for desktop foreground drags; false preserves upstream delivery. */
+    restoration?: false | InteractionConfig
   }
+}
+
+/** Bounds and executable for the packaged macOS restoration observer. */
+export interface InteractionConfig {
+  /** Signed native executable owned by the Desktop application. */
+  helperPath: string
+  /** Deadline for the observer handshake and post-drag restoration. */
+  timeoutMs: number
+  /** Native observation polling interval. */
+  pollMs: number
+  /** Absolute lifetime limit for the observer process. */
+  leaseMs: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-native -->

@@ -187,7 +187,7 @@ macOS 上自定义菜单保留 Electron 的标准 Window 菜单及应用隐藏�
 
 ### 运行时与插件激活
 
-Desktop 首次启动或升级时，在 profile patch 中加入原生 Cua Driver 电脑操作服务和提供者，之后不覆盖用户修改。这两个包随签名运行时交付；原生恢复可禁用提供者。Host 操作桌面和截图需要 macOS 辅助功能与屏幕录制权限。工具使用 `cua_driver_native__` 前缀，不沿用旧 Tapgo Computer Use Helper 的工具名。 打包 macOS 应用为默认提供者配置签名的私有 worker，提供 Finder 所需的 AppKit 主循环；SDK 通过继承的标准输入输出监督进程，卸载时关闭。已有自定义提供者配置或 `CUA_DRIVER_*` 环境配置保持原运行方式。开发模式和其他平台仍使用进程内模式。
+Desktop 首次启动或升级时，在 profile patch 中加入原生 Cua Driver 电脑操作服务和提供者，之后不覆盖用户修改。这两个包随签名运行时交付；原生恢复可禁用提供者。Host 操作桌面和截图需要 macOS 辅助功能与屏幕录制权限。工具使用 `cua_driver_native__` 前缀，不沿用旧 Tapgo Computer Use Helper 的工具名。 打包 macOS 应用为默认提供者配置签名的私有 worker，提供 Finder 所需的 AppKit 主循环；SDK 通过继承的标准输入输出监督进程，卸载时关闭。已有自定义提供者配置或 `CUA_DRIVER_*` 环境配置保持原运行方式。开发模式和其他平台仍使用进程内模式。 其前台桌面拖放通过签名的无内容观察程序有条件地恢复原应用和物理指针；[提供者参考](../../packages/experimental/computer-use-cua-driver-native/README.zh.md#restore-state-after-foreground-drags) 定义关闭恢复、接管和失败行为。
 
 签名资源中的 `resources/app.asar/dsh/desktop-runtime.json` 绑定 shell 版本、Electron 的 Node 版本、平台、架构、共享包版本和最终文件清单。启动读取元数据，并检查共享包记录。发布 schema、shell 版本、目标兼容性和文件完整性在打包时验证。首次启动不会把核心包复制到 profile 存储或通过 pnpm 安装核心包。
 

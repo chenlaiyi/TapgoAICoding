@@ -18,8 +18,11 @@
   en: b1d93e5d9cdefd2c
   zh: 26bf7c66a154e831
 /deepseek-ai-dsh-experimental-computer-use-cua-driver-native/use-this-package/minimal-configuration:
-  en: 1ebc8c737e773d56
-  zh: 0fa00959d0d54a65
+  en: 57561f0684aecaeb
+  zh: 540cf815e07f52a1
+/deepseek-ai-dsh-experimental-computer-use-cua-driver-native/use-this-package/restore-state-after-foreground-drags:
+  en: 2a84cd9e0722ef15
+  zh: abb123786a22a28d
 /deepseek-ai-dsh-experimental-computer-use-cua-driver-native/use-this-package/host-requirements:
   en: 9552464664d52d09
   zh: 757cc678402f60dd
@@ -57,7 +60,7 @@
   en: 308d4fffbac074dc
   zh: db1f5fb8a7ac174e
 /deepseek-ai-dsh-experimental-computer-use-cua-driver-native/model-experience/discovered-cua-driver-tools-and-results/token-effect:
-  en: 45ae4538a26eef00
+  en: 4dbe5af60207e532
   zh: 1df500d07e8a5cb9
 /deepseek-ai-dsh-experimental-computer-use-cua-driver-native/model-experience/discovered-cua-driver-tools-and-results/kv-cache-effect:
   en: dd4780c267daf1a6
