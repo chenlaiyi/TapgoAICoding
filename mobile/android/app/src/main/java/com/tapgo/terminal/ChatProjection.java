@@ -9,6 +9,7 @@ final class ChatProjection {
     final Set<Long> seen=new HashSet<>();
     String live="",reasoning="",activity="";
     boolean running;
+    final NextPrompts nextPrompts=new NextPrompts();
     JSONObject projections=new JSONObject();
     Line currentTurn;
     String liveReasoning="";
@@ -16,15 +17,17 @@ final class ChatProjection {
     private void recordedReasoning(String value){if(value.isEmpty())return;if(!liveReasoning.isEmpty()&&reasoning.endsWith(liveReasoning))reasoning=reasoning.substring(0,reasoning.length()-liveReasoning.length());reasoning+=value;if(currentTurn!=null)currentTurn.reasoning+=value;liveReasoning="";}
     void receive(JSONObject value) throws JSONException {
         if(value.optString("type").equals("snapshot")){
-            lines.clear();seen.clear();reasoning="";activity="";live="";running=false;currentTurn=null;liveReasoning="";
+            nextPrompts.reset();projections=new JSONObject();lines.clear();seen.clear();reasoning="";activity="";live="";running=false;currentTurn=null;liveReasoning="";
             JSONArray records=value.optJSONArray("records");if(records!=null)for(int i=0;i<records.length();i++)consume(records.getJSONObject(i).optJSONObject("event"));
             JSONObject assistant=value.optJSONObject("assistantStream");JSONObject attempt=assistant==null?null:assistant.optJSONObject("activeAttempt");if(attempt!=null){running=true;live=streamText(attempt.optJSONArray("stream"),"text");liveReasoning=streamText(attempt.optJSONArray("stream"),"reasoning");reasoning+=liveReasoning;}
             JSONObject p=value.optJSONObject("projections");if(p!=null&&p.optJSONObject("values")!=null)projections=p.getJSONObject("values");
+            nextPrompts.restore(projections.optJSONObject("nextPrompts"),running);
         } else if(value.optJSONObject("event")!=null){consume(value.getJSONObject("event"));}
         else if(value.optString("type").equals("assistant-stream") && value.optJSONObject("frame")!=null){JSONObject stream=value.getJSONObject("frame");String type=stream.optString("type");if(type.equals("start")){live="";running=true;}else if(type.equals("chunk")){JSONObject chunk=stream.optJSONObject("chunk");if(chunk!=null){if(chunk.optString("type").equals("text-delta"))live+=chunk.optString("text");if(chunk.optString("type").equals("reasoning-delta")){String valueText=chunk.optString("text");reasoning+=valueText;liveReasoning+=valueText;}}}else if(type.equals("end")){JSONObject outcome=stream.optJSONObject("outcome");if(outcome!=null&&outcome.optString("kind").equals("abandoned")){live="";running=false;}}}
     }
     private void consume(JSONObject event) throws JSONException {
         if(event==null||!event.has("seq")||!seen.add(event.getLong("seq")))return;String type=event.optString("type");JSONObject data=event.optJSONObject("data");if(data==null)return;
+        nextPrompts.consume(type,data);
         if(type.equals("model/selection")){projections.put("modelSelection",new JSONObject().put("next",data));return;}
         if(type.equals("turn/start")){running=true;currentTurn=new Line("turn","");lines.add(currentTurn);return;}if(type.equals("turn/end")){running=false;live="";if(currentTurn!=null)currentTurn.reasoning+=liveReasoning;liveReasoning="";return;}
         if(type.equals("tool/call")){String name=data.optString("name");activity+=name+"\n";if(currentTurn!=null)currentTurn.tools.put(data.optString("callId",Long.toString(event.getLong("seq"))),"… "+name);return;}

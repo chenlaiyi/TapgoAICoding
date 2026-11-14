@@ -1,0 +1,8 @@
+.root { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.notice { font-size: 13px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.prompts { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.prompt { max-width: 100%; height: auto; min-height: 32px; white-space: normal; overflow-wrap: anywhere; text-align: start; font-weight: 400; }
+
+@media (pointer: coarse) {
+  .prompt { min-height: 44px; }
+}

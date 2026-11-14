@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-next-prompts/README.md
+/:
+  en: db9a5a09f8d7336a
+  zh: 648c3c45535e2dd7
+/deepseek-ai-dsh-client-ui-next-prompts:
+  en: a5e38b5a9a2295dd
+  zh: 994eef1e0653d664
+/deepseek-ai-dsh-client-ui-next-prompts/summary:
+  en: 0787b59808b4e3f8
+  zh: 78234a640499efb1
+/deepseek-ai-dsh-client-ui-next-prompts/table-of-contents:
+  en: 122f0d41696980b1
+  zh: 5423073f383f055d
+/deepseek-ai-dsh-client-ui-next-prompts/use-this-package:
+  en: 4d9e2c9f246765c6
+  zh: c64a133aea096291
+/deepseek-ai-dsh-client-ui-next-prompts/understand-the-implementation:
+  en: f64479144a98a7ad
+  zh: 7cb07a95d7b4696e
+/deepseek-ai-dsh-client-ui-next-prompts/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-next-prompts/model-experience/user-confirmed-prompt:
+  en: 36efc7491673565d
+  zh: c66e8e2e795842f9
+/deepseek-ai-dsh-client-ui-next-prompts/model-experience/user-confirmed-prompt/what-the-model-sees:
+  en: 5d08403036087f08
+  zh: 739594d29aa97940
+/deepseek-ai-dsh-client-ui-next-prompts/model-experience/user-confirmed-prompt/token-effect:
+  en: 8ca81ca3a24795c3
+  zh: 38e34d737d36e9be
+/deepseek-ai-dsh-client-ui-next-prompts/model-experience/user-confirmed-prompt/kv-cache-effect:
+  en: 0a33f8cfbcdb357c
+  zh: 62ecde016fc819ba
+/deepseek-ai-dsh-client-ui-next-prompts/known-limitations-and-deferred-work:
+  en: 6870e440631c8284
+  zh: 85300dc5ff80cf97
+/deepseek-ai-dsh-client-ui-next-prompts/known-limitations-and-deferred-work/dev-note:
+  en: 2bd35d60f16dbfbd
+  zh: 0dace3253a68fce0

@@ -399,7 +399,8 @@ final class MobileConnectionUITests: XCTestCase {
             "--dsh-mobile-test-url", "https://running.example/?token=fixture&name=Studio%20Mac",
             "--dsh-mobile-test-sessions",
             "[{\"sessionId\":\"running\",\"cwd\":\"/work/TapgoAICoding\",\"running\":true,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"运行中\"}}}]",
-            "--dsh-mobile-test-events", String(decoding: payload, as: UTF8.self)
+            "--dsh-mobile-test-events", String(decoding: payload, as: UTF8.self),
+            "--dsh-mobile-test-send", "controlled-success"
         ]
         app.launch()
         app.buttons["运行中"].tap()
@@ -407,7 +408,47 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["README.md"].exists)
         app.staticTexts["过程 · 1 项操作"].tap()
         XCTAssertTrue(app.staticTexts["README.md"].exists)
-        XCTAssertFalse(app.buttons["发送"].exists)
+        XCTAssertTrue(app.buttons["发送"].exists)
+        XCTAssertFalse(app.buttons["发送"].isEnabled)
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        composer.typeText("Also check the mobile layout")
+        XCTAssertTrue(app.buttons["发送"].isEnabled)
+        XCTAssertTrue(app.buttons["停止运行"].isHittable)
+        app.buttons["发送"].tap()
+        XCTAssertTrue(app.buttons["完成测试发送"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["停止运行"].exists)
+        app.buttons["完成测试发送"].tap()
+        XCTAssertTrue(app.buttons["发送"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["发送"].isEnabled)
+        keepScreenshot(app, name: "running-mobile-send-and-stop")
+    }
+
+    func testNextPromptSuggestionsFillDraftWithoutSending() throws {
+        let events: [[String: Any]] = [
+            ["seq": 1, "type": "turn/start", "data": ["turn": 1]],
+            ["seq": 2, "type": "turn/end", "data": ["turn": 1]],
+            ["seq": 3, "type": "session/next-prompts-result", "data": ["turn": 1, "status": "ready",
+                "prompts": ["解释实现步骤", "补充手机端自动化测试，覆盖任务执行中发送补充提示词、保留已有草稿和照片，以及断线恢复后再次显示推荐提示词"]]]
+        ]
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://suggestions.example/?token=fixture&name=Studio%20Mac",
+            "--dsh-mobile-test-sessions",
+            "[{\"sessionId\":\"suggestions\",\"cwd\":\"/work/TapgoAICoding\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"推荐测试\"}}}]",
+            "--dsh-mobile-test-events", String(decoding: try JSONSerialization.data(withJSONObject: events), as: UTF8.self),
+            "--dsh-mobile-test-send", "controlled-success"]
+        app.launch()
+        app.buttons["推荐测试"].tap()
+        let suggestion = app.buttons["nextPromptSuggestion"].firstMatch
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        let composer = app.descendants(matching: .any)["chatComposerInput"]
+        composer.tap()
+        composer.typeText("Existing draft")
+        suggestion.tap()
+        XCTAssertEqual(composer.value as? String, "Existing draft\n\n解释实现步骤")
+        XCTAssertFalse(app.buttons["完成测试发送"].exists)
+        XCTAssertTrue(app.buttons["发送"].isEnabled)
+        keepScreenshot(app, name: "native-next-prompt-draft")
     }
 
     func testRemoteProjectsAndSearch() {

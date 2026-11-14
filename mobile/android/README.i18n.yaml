@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write mobile/android/README.md
 /tapgo-android:
-  en: 8eba7798d23ab123
-  zh: abdfd05177e18b57
+  en: db9233e3e5c5ce12
+  zh: 981d5704cae57eab
 /tapgo-android/build:
   en: 844d0f7fc187b342
   zh: beb16d5117a866d7

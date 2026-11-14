@@ -2648,6 +2648,21 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-message-feedback -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-next-prompts -->
+<a id="deepseek-aidsh-next-prompts"></a>
+
+## `@deepseek-ai/dsh-next-prompts`
+
+- `inject`: `llm` · `sessions` · `agents` · `sessionProjections`
+- `refs`: `z` (`zod`)
+- `source`: [`packages/session/next-prompts/src/index.ts:25`](../packages/session/next-prompts/src/index.ts)
+
+```ts config-catalog
+/** Validated request limits. */
+export type Config = z.infer<typeof Config>
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-next-prompts -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-office-kit -->
 <a id="deepseek-aidsh-office-kit"></a>
 
@@ -5134,6 +5149,7 @@ export interface Config {
 | `@deepseek-ai/dsh-client-ui-layout` | — | [`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-message-feedback` | — | [`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-model-selection` | — | [`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-next-prompts` | — | [`packages/client/ui-next-prompts/src/index.ts`](../packages/client/ui-next-prompts/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-open-in-app` | — | [`packages/client/ui-open-in-app/src/index.ts`](../packages/client/ui-open-in-app/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-permission-presets` | — | [`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-plan` | — | [`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts) |

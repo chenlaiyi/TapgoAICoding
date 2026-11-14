@@ -26,7 +26,7 @@ final class MobileComposer extends LinearLayout {
         send=icon(R.string.send,android.R.drawable.ic_menu_upload,submit);toolbar.addView(send,new LayoutParams(dp(44),dp(48)));
         stop=icon(R.string.stop,android.R.drawable.ic_media_pause,cancel);toolbar.addView(stop,new LayoutParams(dp(44),dp(48)));stop.setVisibility(GONE);
     }
-    void running(boolean running){send.setVisibility(running?GONE:VISIBLE);stop.setVisibility(running?VISIBLE:GONE);stop.setEnabled(running);}
+    void running(boolean running){send.setVisibility(VISIBLE);stop.setVisibility(running?VISIBLE:GONE);stop.setEnabled(running);}
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private Button icon(int label,int drawable,Runnable action){Button button=new Button(getContext());button.setContentDescription(getContext().getString(label));button.setTooltipText(getContext().getString(label));button.setMinWidth(0);button.setMinimumWidth(0);button.setPadding(dp(8),dp(12),dp(8),dp(12));button.setBackground(null);android.graphics.drawable.Drawable image=getContext().getDrawable(drawable);if(image!=null)image.setTint(getContext().getColor(R.color.primary));button.setCompoundDrawablesWithIntrinsicBounds(image,null,null,null);button.setOnClickListener(v->action.run());return button;}
 }

@@ -5,6 +5,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.view.View;
+import android.view.Gravity;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import io.noties.markwon.*;
@@ -73,14 +74,32 @@ final class NativeChat {
         JSONObject access=state.projections.optJSONObject("permissions");if(access!=null)for(int i=0;i<permissions.length();i++){JSONObject preset=permissions.optJSONObject(i);if(preset.optString("value").equals(access.optString("currentValue"))){permission.setContentDescription(preset.optString("name"));break;}}
         boolean atBottom=scroll.getChildAt(0)==null||scroll.getScrollY()+scroll.getHeight()>=scroll.getChildAt(0).getHeight()-80;transcript.removeAllViews();
         for(ChatProjection.Line line:state.lines){if(line.role.equals("turn")){String process=state.process(line);if(!process.isEmpty()){transcript.addView(button(R.string.reasoning,()->{if(!expandedTurns.add(line))expandedTurns.remove(line);render();}));if(expandedTurns.contains(line))transcript.addView(text(process));}continue;}TextView view=text(line.text);if(line.role.equals("assistant"))markdown.setMarkdown(view,line.text);else{GradientDrawable bg=new GradientDrawable();bg.setColor(0xff1767c7);bg.setCornerRadius(18);view.setTextColor(0xffffffff);view.setPadding(18,12,18,12);view.setBackground(bg);}transcript.addView(view);}
-        if(!state.live.isEmpty()){TextView live=text("");markdown.setMarkdown(live,state.live);transcript.addView(live);}composerView.running(state.running);if(atBottom)scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
+        if(!state.live.isEmpty()){TextView live=text("");markdown.setMarkdown(live,state.live);transcript.addView(live);}if(!state.running){
+            if(state.nextPrompts.failed)transcript.addView(text(activity.getString(R.string.next_prompts_failed)));
+            else if(!state.nextPrompts.prompts.isEmpty()){
+                transcript.addView(text(activity.getString(R.string.next_prompts)));
+                for(String prompt:state.nextPrompts.prompts){
+                    Button suggestion=new Button(activity);suggestion.setText(prompt);suggestion.setAllCaps(false);
+                    suggestion.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);suggestion.setTextColor(activity.getColor(R.color.primary));
+                    UiStyles.button(suggestion);suggestion.setEnabled(!sending);
+                    suggestion.setOnClickListener(v->{
+                        composer.setText(NextPrompts.appending(prompt,composer.getText().toString()));
+                        composer.setSelection(composer.length());composer.requestFocus();
+                        ((android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE))
+                            .showSoftInput(composer,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                    });
+                    transcript.addView(suggestion);
+                }
+            }
+        }
+        composerView.running(state.running);if(atBottom)scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
     }
     void photo(Uri uri){worker.execute(()->{try(java.io.InputStream input=activity.getContentResolver().openInputStream(uri)){if(input==null)throw new java.io.IOException();java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();byte[] buffer=new byte[8192];int n;while((n=input.read(buffer))!=-1){bytes.write(buffer,0,n);if(bytes.size()>12*1024*1024)throw new java.io.IOException();}byte[] data=bytes.toByteArray();android.graphics.BitmapFactory.Options options=new android.graphics.BitmapFactory.Options();options.inJustDecodeBounds=true;android.graphics.BitmapFactory.decodeByteArray(data,0,data.length,options);options.inSampleSize=1;while(options.outWidth/options.inSampleSize>2048||options.outHeight/options.inSampleSize>2048)options.inSampleSize*=2;options.inJustDecodeBounds=false;android.graphics.Bitmap bitmap=android.graphics.BitmapFactory.decodeByteArray(data,0,data.length,options);if(bitmap==null)throw new java.io.IOException();java.io.ByteArrayOutputStream jpeg=new java.io.ByteArrayOutputStream();bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,85,jpeg);bitmap.recycle();byte[] encoded=jpeg.toByteArray();android.graphics.BitmapFactory.Options previewOptions=new android.graphics.BitmapFactory.Options();previewOptions.inSampleSize=8;android.graphics.Bitmap preview=android.graphics.BitmapFactory.decodeByteArray(encoded,0,encoded.length,previewOptions);handler.post(()->{if(closed){if(preview!=null)preview.recycle();return;}clearPhoto();photo=encoded;previewBitmap=preview;photoPreview.setImageBitmap(preview);photoPreview.setVisibility(View.VISIBLE);removePhoto.setVisibility(View.VISIBLE);status.setText(R.string.photo_ready);});}catch(Exception exception){handler.post(()->{if(!closed)Toast.makeText(activity,R.string.photo_error,Toast.LENGTH_LONG).show();});}});}
     void prefill(String value){composer.setText(value);if(!value.trim().isEmpty())send();}
-    private void send(){String message=composer.getText().toString().trim();if(sending||(message.isEmpty()&&photo==null))return;sending=true;send.setEnabled(false);byte[] attachment=photo;
+    private void send(){String submittedDraft=composer.getText().toString();String message=submittedDraft.trim();if(sending||(message.isEmpty()&&photo==null))return;sending=true;send.setEnabled(false);byte[] attachment=photo;
         try{JSONArray content=new JSONArray();if(!message.isEmpty())content.put(new JSONObject().put("type","text").put("text",message));if(attachment!=null)content.put(new JSONObject().put("type","image").put("mediaType","image/jpeg").put("data",android.util.Base64.encodeToString(attachment,android.util.Base64.NO_WRAP)));
             JSONObject payload=request(new JSONObject().put("requestId",UUID.randomUUID().toString()).put("mode","queue").put("content",content).put("clientTimeZone",TimeZone.getDefault().getID()));
-            worker.execute(()->{try{client.rpc("session/prompt",payload);handler.post(()->{if(closed)return;sending=false;send.setEnabled(true);composer.setText("");clearPhoto();});}catch(Exception exception){handler.post(()->{if(closed)return;sending=false;send.setEnabled(true);status.setText(R.string.send_failed);});}});
+            worker.execute(()->{try{client.rpc("session/prompt",payload);handler.post(()->{if(closed)return;sending=false;send.setEnabled(true);if(composer.getText().toString().equals(submittedDraft))composer.setText("");if(photo==attachment)clearPhoto();});}catch(Exception exception){handler.post(()->{if(closed)return;sending=false;send.setEnabled(true);status.setText(R.string.send_failed);});}});
         }catch(JSONException exception){sending=false;send.setEnabled(true);status.setText(R.string.send_failed);}
     }
     private void loadSettings(){worker.execute(()->{try{JSONObject catalog=client.rpc("session/modelCatalog",new JSONObject());JSONArray all=new JSONArray();JSONArray groups=catalog.optJSONArray("groups");if(groups!=null)for(int i=0;i<groups.length();i++){JSONObject group=groups.getJSONObject(i);JSONArray rows=group.optJSONArray("models");if(rows!=null)for(int j=0;j<rows.length();j++)all.put(new JSONObject(rows.getJSONObject(j).toString()).put("provider",group.getString("id")));}JSONArray access=client.rpc("permissionPresets/catalog",new JSONObject()).optJSONArray("options");handler.post(()->{if(closed)return;models=all;permissions=access==null?new JSONArray():access;});

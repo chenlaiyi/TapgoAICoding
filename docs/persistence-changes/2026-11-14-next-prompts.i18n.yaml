@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-11-14-next-prompts.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-11-14-next-prompts.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-11-14-next-prompts:
+  en: 59325f35bdec0b5d
+  zh: 17ee7ef1119d86c9
+/2026-11-14-next-prompts/summary:
+  en: 5538e6921b087e89
+  zh: 12a22c9d10009c76
+/2026-11-14-next-prompts/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-11-14-next-prompts/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-11-14-next-prompts/compatibility:
+  en: addc8dbbff4d61ef
+  zh: a47291280faaf53d
+/2026-11-14-next-prompts/verification:
+  en: a1f437219ef86f54
+  zh: 794b108a22c6c59e
+/2026-11-14-next-prompts/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

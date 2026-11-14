@@ -7,7 +7,7 @@ const {WebSocketServer}=require('ws')
 const key=process.env.TAPGO_ANDROID_FIXTURE_KEY
 if(!key)throw new Error('Set TAPGO_ANDROID_FIXTURE_KEY to the local generated test key')
 const follows=new Map();let nextSeq=2;
-let questionAnswered=false;let approvalAnswered=false
+let questionAnswered=false;let approvalAnswered=false;let turn=0
 const server=https.createServer({key:readFileSync(key),cert:readFileSync(new URL('../app/src/debug/res/raw/fixture_ca.pem',import.meta.url))},(req,res)=>{
  let body='';req.on('data',part=>body+=part);req.on('end',()=>{
   if(req.url==='/reset'){approvalAnswered=false;questionAnswered=false;res.end('reset');return}
@@ -29,19 +29,21 @@ const server=https.createServer({key:readFileSync(key),cert:readFileSync(new URL
    if(rpc.method==='commands/execute')value={result:{kind:'success'}};
    if(rpc.method==='session/prompt'){
     const request=rpc.payload.args.request;
-    if(request.sessionId!=='session-one'||!request.requestId||request.mode!=='queue'||!['模拟器消息','停止验收'].includes(request.content?.[0]?.text)){res.writeHead(400).end();return}
+    if(request.sessionId!=='session-one'||!request.requestId||request.mode!=='queue'||!['模拟器消息','停止验收','执行中补充'].includes(request.content?.[0]?.text)){res.writeHead(400).end();return}
     if(request.content[0].text==='模拟器消息'&&(request.content[1]?.type!=='image'||request.content[1]?.mediaType!=='image/jpeg'||!request.content[1]?.data?.startsWith('/9j/'))){res.writeHead(400).end();return}
+    if(request.content[0].text==='执行中补充'){res.setHeader('content-type','application/json');res.end(JSON.stringify({type:'client-response',rpcId:rpc.rpcId,result:{ok:true,value:null}}));return}
+    turn++;
     for(const [socket,streamId] of follows){const emit=value=>socket.send(JSON.stringify({type:'item',streamId,value}));
      emit({type:'event',event:{seq:nextSeq++,type:'user/message',data:{source:{kind:'user'},content:request.content}}});
-     emit({type:'event',event:{seq:nextSeq++,type:'turn/start',data:{}}});
+     emit({type:'event',event:{seq:nextSeq++,type:'turn/start',data:{turn}}});
      if(request.content[0].text==='停止验收')continue;
      emit({type:'assistant-stream',frame:{type:'start'}});
      emit({type:'assistant-stream',frame:{type:'chunk',chunk:{type:'text-delta',text:'流式验收回复'}}});
      emit({type:'event',event:{seq:nextSeq++,type:'assistant/message',data:{message:{content:[{type:'text',text:'流式验收回复'}]}}}});
-     emit({type:'event',event:{seq:nextSeq++,type:'turn/end',data:{}}});
+     emit({type:'event',event:{seq:nextSeq++,type:'turn/end',data:{turn}}});
     }
    }
-   if(rpc.method==='session/cancel'){if(rpc.payload.args.request.sessionId!=='session-one'){res.writeHead(400).end();return}for(const [socket,streamId] of follows)socket.send(JSON.stringify({type:'item',streamId,value:{type:'event',event:{seq:nextSeq++,type:'turn/end',data:{}}}}))}
+   if(rpc.method==='session/cancel'){if(rpc.payload.args.request.sessionId!=='session-one'){res.writeHead(400).end();return}for(const [socket,streamId] of follows)socket.send(JSON.stringify({type:'item',streamId,value:{type:'event',event:{seq:nextSeq++,type:'turn/end',data:{turn}}}}))}
    if(rpc.method==='$events/result'){
     if(rpc.payload.args.clientId!=='android-fixture'||!['approval-one','question-one'].includes(rpc.payload.args.eventId)){res.writeHead(400).end();return}
     if(rpc.payload.args.eventId==='approval-one')approvalAnswered=rpc.payload.args.outcome.value==='allowed-once';
@@ -60,7 +62,7 @@ sockets.on('connection',(socket,request)=>{
  socket.on('message',raw=>{const open=JSON.parse(raw);
   const send=value=>socket.send(JSON.stringify({type:'item',streamId:open.streamId,value}))
   if(open.endpoint==='workspace/follow'){send({type:'baseline',value:{items:[]}});return}
-  if(open.endpoint==='session/follow'){follows.set(socket,open.streamId);socket.on('close',()=>follows.delete(socket));send({type:'snapshot',projections:{values:{modelSelection:{next:{provider:"deepseek-account",model:"fixture-model"}},tokenUsage:{uncachedInputTokens:75,outputTokens:25},contextPressure:{contextWindow:1000,projectedTokens:250}}},records:[{event:{seq:1,type:'assistant/message',data:{message:{content:[{type:'text',text:'安卓原生对话已连接'}]}}}}]});return}
+  if(open.endpoint==='session/follow'){follows.set(socket,open.streamId);socket.on('close',()=>follows.delete(socket));send({type:'snapshot',projections:{values:{nextPrompts:{turn:0,status:'ready',prompts:['解释实现步骤','补充自动化测试']},modelSelection:{next:{provider:"deepseek-account",model:"fixture-model"}},tokenUsage:{uncachedInputTokens:75,outputTokens:25},contextPressure:{contextWindow:1000,projectedTokens:250}}},records:[{event:{seq:1,type:'assistant/message',data:{message:{content:[{type:'text',text:'安卓原生对话已连接'}]}}}}]});return}
   if(open.endpoint!=='$events')return;
   send({type:'ready',clientId:'android-fixture'})
   if(!approvalAnswered)send({type:'waterfall',eventId:'approval-one',agentId:'session-one',event:'approval/request',request:{toolName:'fixture-check',reason:'模拟器隔离审批测试'}})

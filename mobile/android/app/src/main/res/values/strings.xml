@@ -32,4 +32,6 @@
     <string name="edit_computer_named">编辑%1$s</string>
     <string name="remove_computer_named">删除%1$s</string>
     <string name="repair_connection_help">只修改这台手机显示的名称。连接信息变化时，请使用电脑提供的新链接重新配对。</string>
+    <string name="next_prompts">下一步建议</string>
+    <string name="next_prompts_failed">暂时无法生成建议，可继续输入</string>
 </resources>

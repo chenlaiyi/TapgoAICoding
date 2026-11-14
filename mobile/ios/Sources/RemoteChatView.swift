@@ -48,6 +48,7 @@ private struct RemotePermission: Identifiable {
 private final class RemoteChat: ObservableObject {
     private let connectionLog = Logger(subsystem: "com.devtools.terminalSimple", category: "remote-chat")
     @Published var lines: [ChatLine] = []
+    @Published var nextPrompts = MobileNextPrompts()
     @Published var loading = true
     @Published var sending = false
     #if DEBUG
@@ -129,7 +130,10 @@ private final class RemoteChat: ObservableObject {
            let data = arguments[index + 1].data(using: .utf8),
            let fixture = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             var projected: [ChatLine] = []
-            for event in fixture { Self.consume(event, into: &projected) }
+            for event in fixture {
+                Self.consume(event, into: &projected)
+                nextPrompts.consume(event)
+            }
             lines = projected
             if let streamIndex = arguments.firstIndex(of: "--dsh-mobile-test-stream"),
                arguments.indices.contains(streamIndex + 1),
@@ -242,9 +246,11 @@ private final class RemoteChat: ObservableObject {
                 if value["type"] as? String == "snapshot" {
                     let records = value["records"] as? [[String: Any]] ?? []
                     var projected: [ChatLine] = []
+                    nextPrompts = MobileNextPrompts()
                     for record in records {
                         if let event = record["event"] as? [String: Any] {
                             Self.consume(event, into: &projected)
+                            nextPrompts.consume(event)
                         }
                     }
                     lines = projected
@@ -262,6 +268,7 @@ private final class RemoteChat: ObservableObject {
                     error = nil
                     retryCount = 0
                     if let values = (value["projections"] as? [String: Any])?["values"] as? [String: Any] {
+                        nextPrompts.restore(values["nextPrompts"] as? [String: Any], running: running)
                         if let selection = values["modelSelection"] as? [String: Any],
                            let next = selection["next"] as? [String: Any],
                            let provider = next["provider"] as? String,
@@ -293,6 +300,7 @@ private final class RemoteChat: ObservableObject {
                 } else if let event = value["event"] as? [String: Any] {
                     var projected = lines
                     Self.consume(event, into: &projected)
+                    nextPrompts.consume(event)
                     lines = projected
                     if event["type"] as? String == "model/selection",
                        let data = event["data"] as? [String: Any],
@@ -843,6 +851,9 @@ struct RemoteChatView: View {
                                     AssistantMessageView(text: chat.liveText, reasoning: nil, showCopy: false)
                                 }
                             }
+                            if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
+                                nextPromptSuggestions
+                            }
                             Color.clear.frame(height: 1)
                                 .id(bottomAnchor)
                                 .background {
@@ -945,6 +956,7 @@ struct RemoteChatView: View {
                                 .frame(width: 44, height: 44)
                         }
                         .accessibilityLabel("收起键盘")
+                        if chat.running { stopButton }
                         sendButton
                     }
                 }
@@ -1206,15 +1218,10 @@ struct RemoteChatView: View {
     }
 
     private var sendButton: some View {
-        let busy = chat.sending || chat.cancelling
-        let enabled = chat.running ? (!busy && chat.connected) :
-            ((!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachedImage != nil)
-             && !chat.sending && !chat.loading && chat.connected)
+        let busy = chat.sending
+        let enabled = (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachedImage != nil)
+            && !chat.sending && !chat.loading && chat.connected
         return Button {
-            if chat.running {
-                Task { await chat.cancel(computer: computer, sessionId: sessionId) }
-                return
-            }
             let submittedDraft = draft
             let submittedImage = attachedImage
             let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1230,7 +1237,7 @@ struct RemoteChatView: View {
                 if busy {
                     ProgressView().tint(.white)
                 } else {
-                    Image(systemName: chat.running ? "stop.fill" : "arrow.up")
+                    Image(systemName: "arrow.up")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(.white)
                 }
@@ -1241,7 +1248,42 @@ struct RemoteChatView: View {
             .contentShape(Rectangle())
         }
         .disabled(!enabled)
-        .accessibilityLabel(chat.sending ? "正在发送" : chat.cancelling ? "正在停止" : chat.running ? "停止运行" : "发送")
+        .accessibilityLabel(chat.sending ? "正在发送" : "发送")
+    }
+
+    private var stopButton: some View {
+        Button {
+            Task { await chat.cancel(computer: computer, sessionId: sessionId) }
+        } label: {
+            Group {
+                if chat.cancelling { ProgressView() }
+                else { Image(systemName: "stop.fill").foregroundStyle(.primary) }
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .disabled(chat.cancelling || !chat.connected)
+        .accessibilityLabel(chat.cancelling ? "正在停止" : "停止运行")
+    }
+
+    private var nextPromptSuggestions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(chat.nextPrompts.failed ? "暂时无法生成建议，可继续输入" : "下一步建议")
+                .font(.subheadline).foregroundStyle(.secondary)
+            ForEach(chat.nextPrompts.prompts, id: \.self) { prompt in
+                Button {
+                    draft = MobileNextPrompts.appending(prompt, to: draft)
+                    composerFocused = true
+                } label: {
+                    Text(prompt).font(.subheadline).multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(chat.sending)
+                .accessibilityIdentifier("nextPromptSuggestion")
+            }
+        }
     }
 
     private func chatRow(_ line: ChatLine) -> some View {

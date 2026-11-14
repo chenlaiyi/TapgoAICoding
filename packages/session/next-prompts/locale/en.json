@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Next prompts",
+    "description": "Generate next prompts after completed replies without delaying the answer."
+  }
+}

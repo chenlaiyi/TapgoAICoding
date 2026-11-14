@@ -8,6 +8,8 @@ Android 应用支持 Android 8.0 及以上版本。原生欢迎页使用桌面�
 
 对话采用原生消息界面，支持 Markdown、流式回复、按轮次折叠的推理与工具完成状态、发送／停止、模型选择、权限确认及可预览／移除的系统选择器照片附件。新对话可选择已登记项目，或登记／创建目录，并记住每台电脑最后选择的模型。Host 提供余额时请求展示。文件与终端仍通过限制来源的 WebView 打开完整 Host 工作区。照片使用系统选择器，尚未实现直接拍照或历史图片展示。原生设置在 Host 提供数据时显示主币种充值／赠送余额、会话令牌用量和可用上下文。同源跳转允许；跨站跳转、明文 HTTP、混合内容、本地文件加载和原生 JavaScript 桥接均禁用。TLS 错误不会被忽略。
 
+回复完成后，原生对话展示配对 Host 提供的最多三条下一步提示词。点击会追加到已有草稿，保留已选照片并弹出输入键盘，不自动发送。新轮次清除旧建议。任务运行时发送按钮始终可见，可将补充提示词排队；停止按钮独立取消当前轮次。发送成功后，只有尚未改变的已提交文字与照片会被清空。需同时更新手机应用和配对 Host 以启用[生成器](../../packages/session/next-prompts/README.zh.md)；旧 Host 不提供建议。
+
 ## 构建
 
 使用 JDK 17、Android SDK 平台 36／构建工具 36.0.0 与固定版本的 Gradle wrapper。配置 `ANDROID_HOME`，或在忽略的 `local.properties` 中填写 `sdk.dir`。运行 `./gradlew testDebugUnitTest assembleDebug lintDebug`。调试 APK 位于 `app/build/outputs/apk/debug/app-debug.apk`，属于测试构建，并非正式发布。`assembleRelease` 从 `TAPGO_ANDROID_SIGNING_PROPERTIES` 指向的外部 Java properties 文件读取 `storeFile`、`storePassword`、`keyAlias` 和 `keyPassword`；未设置该变量时生成未签名 APK，不能作为可安装的正式版本分发。该文件及 keystore 应放在 Git 之外，且仅允许所有者读取。禁止提交签名密钥或密码。应用标识为 `com.tapgo.terminal`。
