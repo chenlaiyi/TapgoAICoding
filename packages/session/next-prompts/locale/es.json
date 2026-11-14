@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Siguientes indicaciones",
+    "description": "Genera las siguientes indicaciones tras completar una respuesta, sin retrasarla."
+  }
+}

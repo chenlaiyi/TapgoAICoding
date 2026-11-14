@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Prochaines requêtes",
+    "description": "Génère les prochaines requêtes après une réponse terminée, sans la retarder."
+  }
+}

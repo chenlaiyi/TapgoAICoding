@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Nächste Prompts",
+    "description": "Erzeugt nach abgeschlossenen Antworten weitere Prompts, ohne die Antwort zu verzögern."
+  }
+}
