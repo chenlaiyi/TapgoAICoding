@@ -1276,6 +1276,7 @@ struct RemoteChatView: View {
                     composerFocused = true
                 } label: {
                     Text(prompt).font(.subheadline).multilineTextAlignment(.leading)
+                        .padding(.vertical, 8)
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         .padding(.horizontal, 12)
                         .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
