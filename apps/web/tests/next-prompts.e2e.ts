@@ -19,13 +19,14 @@ function response(text: string): StreamChunk[] {
   ]
 }
 
-it.each([false, true])('recommends contextual prompts and waits for confirmation (mobile=%s)', async (mobile) => {
+it.each([false, true])('recovers a transient recommendation failure and waits for confirmation (mobile=%s)', async (mobile) => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-next-prompts-'))
   onTestFinished(() => rm(dir, { recursive: true, force: true }))
   const override = join(dir, 'replay.override.json')
   const prompts = ['Implement the SQLite option', 'Compare migration costs', 'Explain how the recommended SQLite design handles concurrent writes and preserves all data during a rolling upgrade'] as const
   await writeFile(override, JSON.stringify([
     { kind: 'chunks', chunks: response('SQLite fits this local application. The alternative is a hosted database.') },
+    { kind: 'chunks', chunks: [{ type: 'finish', reason: { kind: 'error', failure: { code: 'SERVER', message: 'Temporary recommendation failure' } } }] },
     { kind: 'chunks', chunks: response(JSON.stringify(prompts)) },
     { kind: 'chunks', chunks: response('Here is the implementation plan.') },
     { kind: 'chunks', chunks: response('[]') },
@@ -49,7 +50,7 @@ it.each([false, true])('recommends contextual prompts and waits for confirmation
   const group = page.getByRole('group', { name: 'Suggested next prompts' })
   await group.waitFor()
   expect(await group.getByRole('button').count()).toBe(3)
-  expect(events.filter(event => event.type === 'session/next-prompts-request')).toHaveLength(1)
+  expect(events.filter(event => event.type === 'session/next-prompts-request')).toHaveLength(2)
   await composer.fill('Keep my existing draft.')
   const suggestion = group.getByRole('button', { name: prompts[0], exact: true })
   if (mobile) await suggestion.tap()
@@ -74,7 +75,7 @@ it.each([false, true])('recommends contextual prompts and waits for confirmation
   await page.reload()
   await group.waitFor()
   expect(await composer.innerText()).toBe('Keep my existing draft.\n\nImplement the SQLite option')
-  expect(events.filter(event => event.type === 'session/next-prompts-request')).toHaveLength(1)
+  expect(events.filter(event => event.type === 'session/next-prompts-request')).toHaveLength(2)
   if (mobile) await page.getByRole('button', { name: 'Send message', exact: true }).tap()
   else await composer.press('Enter')
   await expect.poll(() => events.filter(event => event.type === 'session/next-prompts-result').length).toBe(2)
@@ -82,5 +83,5 @@ it.each([false, true])('recommends contextual prompts and waits for confirmation
   await expect.poll(() => group.count()).toBe(0)
   await page.reload()
   await expect.poll(() => group.count()).toBe(0)
-  expect(events.filter(event => event.type === 'session/next-prompts-request')).toHaveLength(2)
+  expect(events.filter(event => event.type === 'session/next-prompts-request')).toHaveLength(3)
 })

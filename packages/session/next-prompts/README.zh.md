@@ -22,7 +22,7 @@ Web 和桌面端在主会话成功回复后请求最多三条上下文推荐。�
 <a id="use-this-package"></a>
 ## 使用此包
 
-Web bundle 的 `next-prompts` 条目启用生成。在该条目设置 `config.enabled: false` 可关闭独立请求。默认配置为 `maxContextChars: 12000`、`maxPromptChars: 200`、`maxOutputTokens: 512`、`timeoutMs: 15000`。这些请求独立于正文消耗已配置提供方的 token。失败时显示局部提示，不自动重试。
+Web bundle 的 `next-prompts` 条目启用生成。在该条目设置 `config.enabled: false` 可关闭独立请求。默认配置为 `maxContextChars: 12000`、`maxPromptChars: 200`、`maxOutputTokens: 512`、`maxAttempts: 2`（范围 1–3）、`timeoutMs: 15000`。这些请求独立于正文消耗已配置提供方的 token。临时传输故障和无效模型输出在共用超时与尝试次数限制内重试；凭据、额度和输出未完成故障不重试。耗尽生成预算后显示局部提示，诊断保留失败代码。
 
 <a id="understand-the-implementation"></a>
 ## 理解实现
@@ -48,7 +48,7 @@ Recommend 1 to 3 useful next prompts for the user based on the conversation belo
 
 #### Token 影响
 
-每个符合条件的轮次发起一次有界独立请求，输出上限为 `maxOutputTokens`；禁用后不消耗 token。
+每个符合条件的轮次最多发起 `maxAttempts` 次独立请求，每次输出上限为 `maxOutputTokens`，共用一个 `timeoutMs` 截止时间；禁用后不消耗 token。
 
 #### KV Cache 影响
 
@@ -57,7 +57,7 @@ Recommend 1 to 3 useful next prompts for the user based on the conversation belo
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与后续工作
 
-- 推荐依赖模型可用性和 JSON 输出。无效、超长或被截断的输出产生提示，不自动重试。
+- 推荐依赖模型可用性和 JSON 输出。接受完整的 JSON 代码围栏。无效或超长输出在配置预算内重试；耗尽预算或被截断的输出产生提示。
 - 客户端视图只保留最新轮次的推荐。超出上下文预算的历史文字、工具和图片不用于生成。
 
 <a id="dev-note"></a>

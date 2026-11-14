@@ -52,7 +52,7 @@ it('generates contextual draft prompts after the reply and logs the exact indepe
 })
 
 it.each(['not json', '["a","b","c","d"]', '[" "]'])('isolates invalid model output without retrying: %s', async (output) => {
-  const f = await fixture([textResponse('Done'), textResponse(output)])
+  const f = await fixture([textResponse('Done'), textResponse(output)], { maxAttempts: 1 })
   await f.send('Help')
   await f.result
   expect(f.results).toEqual([{ turn: 1, status: 'error', prompts: [] }])
@@ -227,4 +227,49 @@ it('cancels a deferred recommendation before dispatch when the next turn starts 
   await f.plugin.dispose()
   expect(f.adapter.requests).toHaveLength(0)
   expect(f.results).toEqual([])
+})
+
+
+it('accepts a complete JSON code fence without accepting surrounding prose', async () => {
+  const f = await fixture([textResponse('Done'), textResponse('```json\n["继续实施"]\n```')])
+  await f.send('Help')
+  await f.result
+  expect(f.results).toEqual([{ turn: 1, status: 'ready', prompts: ['继续实施'] }])
+  expect(f.adapter.requests).toHaveLength(2)
+})
+
+it.each(['TRANSPORT', 'SERVER', 'STREAM_CLOSED'])('recovers a transient %s finish without interrupting the reply', async (code) => {
+  const f = await fixture([textResponse('Done'), [{ type: 'finish', reason: { kind: 'error', failure: { code, message: 'Temporary failure' } } }], textResponse('["继续实施"]')])
+  await f.send('Help')
+  await f.result
+  expect(f.results).toEqual([{ turn: 1, status: 'ready', prompts: ['继续实施'] }])
+  expect(f.adapter.requests).toHaveLength(3)
+  expect(f.agent.session.snapshotEvents().filter(event => event.type === 'session/next-prompts-request')).toHaveLength(2)
+})
+
+it('recovers invalid model output with one bounded independent attempt', async () => {
+  const f = await fixture([textResponse('Done'), textResponse('Not JSON'), textResponse('["继续实施"]')])
+  await f.send('Help')
+  await f.result
+  expect(f.results).toEqual([{ turn: 1, status: 'ready', prompts: ['继续实施'] }])
+  expect(f.adapter.requests).toHaveLength(3)
+})
+
+it('stops after the configured attempt budget and keeps the provider failure code in diagnostics', async () => {
+  const failure = [{ type: 'finish', reason: { kind: 'error', failure: { code: 'SERVER', message: 'Temporary failure' } } }] as const
+  const f = await fixture([textResponse('Done'), [...failure], [...failure]])
+  await f.send('Help')
+  await f.result
+  expect(f.results).toEqual([{ turn: 1, status: 'error', prompts: [] }])
+  expect(f.adapter.requests).toHaveLength(3)
+  expect(f.ctx.logger.buffer.at(-1)?.args).toContain('SERVER')
+})
+
+it('does not retry a credential failure', async () => {
+  const f = await fixture([textResponse('Done'), [{ type: 'finish', reason: { kind: 'error', failure: { code: 'AUTH', message: 'Authentication rejected' } } }]])
+  await f.send('Help')
+  await f.result
+  expect(f.results).toEqual([{ turn: 1, status: 'error', prompts: [] }])
+  expect(f.adapter.requests).toHaveLength(2)
+  expect(f.ctx.logger.buffer.at(-1)?.args).toContain('AUTH')
 })

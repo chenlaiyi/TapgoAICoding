@@ -1,7 +1,7 @@
 /** Generate optional next prompts after a successful root reply without delaying that reply. */
 import type { Context } from '@deepseek-ai/cordis'
 import { z } from 'zod'
-import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { BlockAssembler, createUserMessage, HarnessError, LlmError } from '@deepseek-ai/dsh-llm'
 import { type Session } from '@deepseek-ai/dsh-session'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import type {} from '@deepseek-ai/dsh-agent'
@@ -18,17 +18,25 @@ export const Config = z.object({
   maxPromptChars: z.number().int().min(1).default(200),
   /** Output token cap independent of the main reply. */
   maxOutputTokens: z.number().int().min(1).default(512),
-  /** End-to-end recommendation timeout. */
+  /** Maximum attempts for transient transport failures or invalid recommendation output. */
+  maxAttempts: z.number().int().min(1).max(3).default(2),
+  /** End-to-end recommendation timeout shared by every attempt. */
   timeoutMs: z.number().int().min(1).max(2147483647).default(15000),
 }).prefault({})
 /** Validated request limits. */
 export type Config = z.infer<typeof Config>
 
+/** A failed auxiliary attempt has no conversation effects and can safely repeat within its deadline. */
+const retryableCodes: ReadonlySet<string> = new Set([
+  'EMPTY_RESPONSE', 'MALFORMED_RESPONSE', 'RATE_LIMIT', 'SERVER', 'STREAM_CLOSED', 'TIMEOUT', 'TRANSPORT',
+  'NEXT_PROMPTS_INVALID_OUTPUT',
+])
+
 /** Services used by the auxiliary generator and its log-backed Client view. */
 export const inject = ['llm', 'sessions', 'agents', 'sessionProjections']
 
 /**
- * Register the projection and cancellable, single-attempt generation.
+ * Register the projection and cancellable generation with bounded recovery.
  * @param ctx - owning Host plugin context.
  * @param config - validated generation limits.
  * @returns once projection registration and event subscriptions are ready.
@@ -70,26 +78,46 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
       const messages = [createUserMessage({ content: [{ type: 'text', text: state.context }], source: { kind: 'user' } })]
       try {
         using limit = deadline(controller.signal, config.timeoutMs, 'NEXT_PROMPTS_TIMEOUT')
-        const call = await ctx.llm.prepareCall({ ...route, maxTokens: config.maxOutputTokens }, limit.signal, (controls, model) => {
-          const effort = model.reasoning?.efforts[0]?.id
-          return { ...controls, ...effort === undefined ? {} : { reasoningEffort: effort } }
-        })
-        limit.signal.throwIfAborted()
-        session.append('session/next-prompts-request', { turn, system, messages, config: call.config })
-        const assembler = new BlockAssembler()
-        for await (const chunk of call.stream({ ...call.config, system, messages, sessionId: session.id, purpose: 'next-prompts', signal: limit.signal })) {
-          limit.signal.throwIfAborted()
-          assembler.push(chunk)
+        for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
+          try {
+            const call = await ctx.llm.prepareCall({ ...route, maxTokens: config.maxOutputTokens }, limit.signal, (controls, model) => {
+              const effort = model.reasoning?.efforts[0]?.id
+              return { ...controls, ...effort === undefined ? {} : { reasoningEffort: effort } }
+            })
+            limit.signal.throwIfAborted()
+            session.append('session/next-prompts-request', { turn, system, messages, config: call.config })
+            const assembler = new BlockAssembler()
+            for await (const chunk of call.stream({ ...call.config, system, messages, sessionId: session.id, purpose: 'next-prompts', signal: limit.signal })) {
+              limit.signal.throwIfAborted()
+              assembler.push(chunk)
+            }
+            limit.signal.throwIfAborted()
+            const finish = assembler.finish
+            if (finish.kind === 'error' || finish.kind === 'aborted') throw LlmError.fromFailure(finish.failure)
+            if (finish.kind !== 'stop') throw new HarnessError('Recommendation output was truncated or incomplete', 'NEXT_PROMPTS_INCOMPLETE')
+            const text = assembler.blocks().flatMap(block => block.type === 'text' ? [block.text] : []).join('')
+            const json = text.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/u, '$1')
+            let value: unknown
+            try { value = JSON.parse(json) } catch (cause) {
+              throw new HarnessError('Recommendation output is not JSON', 'NEXT_PROMPTS_INVALID_OUTPUT', { cause })
+            }
+            const parsed = z.array(z.string().trim().min(1).max(config.maxPromptChars)).max(3).safeParse(value)
+            if (!parsed.success) throw new HarnessError('Recommendation output does not contain up to three bounded prompts', 'NEXT_PROMPTS_INVALID_OUTPUT', { cause: parsed.error })
+            const prompts = parsed.data
+            session.append('session/next-prompts-result', { turn, status: 'ready', prompts: [...new Set(prompts)] })
+            return
+          } catch (error) {
+            if (isCancelled() || limit.signal.aborted || attempt === config.maxAttempts
+              || !(error instanceof HarnessError) || !retryableCodes.has(error.code)) throw error
+            ctx.logger.warn('Next prompt attempt %d failed (%s); retrying within the existing deadline', attempt, error.code)
+          }
         }
-        limit.signal.throwIfAborted()
-        if (assembler.finish.kind !== 'stop') throw new Error('Recommendation request did not complete')
-        const text = assembler.blocks().flatMap(block => block.type === 'text' ? [block.text] : []).join('')
-        const prompts = z.array(z.string().trim().min(1).max(config.maxPromptChars)).max(3).parse(JSON.parse(text))
-        session.append('session/next-prompts-result', { turn, status: 'ready', prompts: [...new Set(prompts)] })
       } catch (error) {
         // Cancellation belongs to navigation, a newer turn or shutdown; it must not publish stale recommendations.
         if (!isCancelled()) {
-          ctx.logger.warn('Next prompt generation failed: %s', error instanceof Error ? error.message : String(error))
+          const code = error instanceof HarnessError ? error.code : 'UNEXPECTED'
+          ctx.logger.warn('Next prompt generation failed (%s): %s', code, error instanceof Error ? error.message : String(error))
+          console.warn('[next-prompts] Generation failed', { turn, code })
           session.append('session/next-prompts-result', { turn, status: 'error', prompts: [] })
         }
       }

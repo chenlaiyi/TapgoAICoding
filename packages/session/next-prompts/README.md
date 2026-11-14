@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The Web and desktop compositions request up to three contextual next prompts after a successful root reply. One independent request uses the same provider and model, the least supported reasoning effort, and recent human and assistant text. Tools, attachments and system instructions are excluded. Selecting a prompt is owned by the [browser plugin](../../client/ui-next-prompts/README.md).
+The Web and desktop compositions request up to three contextual next prompts after a successful root reply. Independent requests use the same provider and model, the least supported reasoning effort, and recent human and assistant text. Tools, attachments and system instructions are excluded. Selecting a prompt is owned by the [browser plugin](../../client/ui-next-prompts/README.md).
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ The Web and desktop compositions request up to three contextual next prompts aft
 <a id="use-this-package"></a>
 ## Use this package
 
-The `next-prompts` row in the Web bundle enables generation. Set `config.enabled: false` on that row to disable auxiliary requests. Defaults are `maxContextChars: 12000`, `maxPromptChars: 200`, `maxOutputTokens: 512`, and `timeoutMs: 15000`. These requests consume the configured provider's tokens independently of the main answer. Failure creates a local notice and never retries automatically.
+The `next-prompts` row in the Web bundle enables generation. Set `config.enabled: false` on that row to disable auxiliary requests. Defaults are `maxContextChars: 12000`, `maxPromptChars: 200`, `maxOutputTokens: 512`, `maxAttempts: 2` (range 1–3), and `timeoutMs: 15000`. These requests consume the configured provider's tokens independently of the main answer. Transient transport failures and invalid model output retry within the shared timeout and attempt budget. Credential, quota and incomplete-output failures do not retry. Exhausted generation creates a local notice; diagnostics retain the failure code.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -48,7 +48,7 @@ Recommend 1 to 3 useful next prompts for the user based on the conversation belo
 
 #### Token effect
 
-One bounded auxiliary request per eligible turn, capped by `maxOutputTokens`; disabled generation consumes no tokens.
+At most `maxAttempts` auxiliary requests per eligible turn, each capped by `maxOutputTokens` and sharing one `timeoutMs` deadline; disabled generation consumes no tokens.
 
 #### KV Cache effect
 
@@ -56,7 +56,7 @@ The auxiliary request is independent of the conversation request. Its recent-tex
 
 ## Known Limitations and Deferred Work
 
-- Recommendations depend on model availability and JSON output. Invalid, oversized or truncated output produces a notice; no automatic retry occurs.
+- Recommendations depend on model availability and JSON output. Complete JSON code fences are accepted. Invalid or oversized output retries within the configured budget; exhausted or truncated output produces a notice.
 - Only the latest turn's recommendations are retained in the Client view. Historical text outside the context budget, tools and images are not used for generation.
 
 <a id="dev-note"></a>

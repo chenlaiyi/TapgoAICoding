@@ -2655,7 +2655,7 @@ export interface Config {
 
 - `inject`: `llm` · `sessions` · `agents` · `sessionProjections`
 - `refs`: `z` (`zod`)
-- `source`: [`packages/session/next-prompts/src/index.ts:25`](../packages/session/next-prompts/src/index.ts)
+- `source`: [`packages/session/next-prompts/src/index.ts:27`](../packages/session/next-prompts/src/index.ts)
 
 ```ts config-catalog
 /** Validated request limits. */
