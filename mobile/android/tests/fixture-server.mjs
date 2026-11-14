@@ -62,7 +62,7 @@ sockets.on('connection',(socket,request)=>{
  socket.on('message',raw=>{const open=JSON.parse(raw);
   const send=value=>socket.send(JSON.stringify({type:'item',streamId:open.streamId,value}))
   if(open.endpoint==='workspace/follow'){send({type:'baseline',value:{items:[]}});return}
-  if(open.endpoint==='session/follow'){follows.set(socket,open.streamId);socket.on('close',()=>follows.delete(socket));send({type:'snapshot',projections:{values:{nextPrompts:{turn:0,status:'ready',prompts:['解释实现步骤','补充自动化测试']},modelSelection:{next:{provider:"deepseek-account",model:"fixture-model"}},tokenUsage:{uncachedInputTokens:75,outputTokens:25},contextPressure:{contextWindow:1000,projectedTokens:250}}},records:[{event:{seq:1,type:'assistant/message',data:{message:{content:[{type:'text',text:'安卓原生对话已连接'}]}}}}]});return}
+  if(open.endpoint==='session/follow'){follows.set(socket,open.streamId);socket.on('close',()=>follows.delete(socket));send({type:'snapshot',projections:{values:{nextPrompts:{turn:0,status:'ready',prompts:['解释实现步骤','补充手机端自动化测试，覆盖任务执行中发送补充提示词、保留已有草稿和照片，以及断线恢复后再次显示推荐提示词']},modelSelection:{next:{provider:"deepseek-account",model:"fixture-model"}},tokenUsage:{uncachedInputTokens:75,outputTokens:25},contextPressure:{contextWindow:1000,projectedTokens:250}}},records:[{event:{seq:1,type:'assistant/message',data:{message:{content:[{type:'text',text:'安卓原生对话已连接'}]}}}}]});return}
   if(open.endpoint!=='$events')return;
   send({type:'ready',clientId:'android-fixture'})
   if(!approvalAnswered)send({type:'waterfall',eventId:'approval-one',agentId:'session-one',event:'approval/request',request:{toolName:'fixture-check',reason:'模拟器隔离审批测试'}})
