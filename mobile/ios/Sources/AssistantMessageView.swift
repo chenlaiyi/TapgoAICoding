@@ -231,17 +231,20 @@ struct AssistantMessageView: View {
             .background(Color(uiColor: .secondarySystemBackground),
                         in: RoundedRectangle(cornerRadius: 10))
         case .list(let items):
+            let markerWidth = max(18, items.map {
+                ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15)]).width)
+            }.max() ?? 18)
             VStack(alignment: .leading, spacing: 5) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         if let checked = item.checked {
                             Image(systemName: checked ? "checkmark.square.fill" : "square")
                                 .foregroundStyle(.secondary)
-                                .frame(width: 18)
+                                .frame(width: markerWidth)
                         } else {
                             Text(item.marker)
                                 .foregroundStyle(.secondary)
-                                .frame(width: 18, alignment: .trailing)
+                                .frame(width: markerWidth, alignment: .trailing)
                         }
                         inline(item.text).frame(maxWidth: .infinity, alignment: .leading)
                     }

@@ -55,6 +55,7 @@ private final class RemoteChat: ObservableObject {
     private var testModelCompletion: CheckedContinuation<Bool, Never>?
 
     private var testOutputBatch = 0
+    private var testReplyIndex = 0
 
     func appendTestToolOutput() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -91,9 +92,10 @@ private final class RemoteChat: ObservableObject {
               arguments.indices.contains(index + 1),
               let data = arguments[index + 1].data(using: .utf8),
               let replies = try? JSONDecoder().decode([String].self, from: data),
-              let reply = replies.first else { return }
-        liveActive = true
-        liveText += reply
+              replies.indices.contains(testReplyIndex) else { return }
+        if !liveActive { receiveStream(["type": "start"]) }
+        receiveStream(["type": "chunk", "chunk": ["type": "text-delta", "text": replies[testReplyIndex]]])
+        testReplyIndex += 1
     }
     #endif
     @Published var error: String?
@@ -1033,6 +1035,12 @@ struct RemoteChatView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 } else if !chat.liveText.isEmpty {
                                     AssistantMessageView(text: chat.liveText, reasoning: nil, showCopy: false)
+                                    HStack(spacing: 6) {
+                                        ProgressView().controlSize(.mini)
+                                        Text("正在回复").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityIdentifier("assistantReplyStreaming")
                                 }
                             }
                             Color.clear.frame(height: 1)

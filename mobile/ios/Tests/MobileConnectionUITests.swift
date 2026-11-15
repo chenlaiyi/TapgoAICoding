@@ -556,6 +556,40 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["正在核对输出格式"].waitForExistence(timeout: 5))
     }
 
+    func testAssistantReplyGrowsAcrossChunksBeforeTurnEnds() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--dsh-mobile-test-url", "https://chunks.example/?token=fixture&name=Studio%20Mac",
+            "--dsh-mobile-test-sessions",
+            "[{\"sessionId\":\"chunks\",\"cwd\":\"/work\",\"running\":true,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"逐步回复\"}}}]",
+            "--dsh-mobile-test-events", "[]",
+            "--dsh-mobile-test-stream", "[{\"type\":\"start\"},{\"type\":\"chunk\",\"chunk\":{\"type\":\"text-delta\",\"text\":\"第一段\"}}]",
+            "--dsh-mobile-test-append", "[\"，继续第二段\",\"，再到第三段\"]"
+        ]
+        app.launch()
+        app.buttons["逐步回复"].tap()
+        for text in ["第一段", "第一段，继续第二段", "第一段，继续第二段，再到第三段"] {
+            XCTAssertTrue(app.staticTexts[text].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.descendants(matching: .any)["assistantReplyStreaming"].exists)
+            XCTAssertTrue(app.buttons["停止运行"].exists)
+            XCTAssertFalse(app.buttons["复制回复"].exists)
+            if !text.hasSuffix("第三段") { app.buttons["追加测试回复"].tap() }
+        }
+        keepScreenshot(app, name: "assistant-reply-growing-before-completion")
+    }
+
+    func testNumberedReplyKeepsMultiDigitMarkersOnOneLine() throws {
+        let app = try launchInteractionChat(messages: [["id": 1, "role": "assistant", "text":
+            "9. 第九项\n10. 第十项\n100. 第一百项"]])
+        let single = app.staticTexts["9."]
+        XCTAssertTrue(single.waitForExistence(timeout: 5))
+        for marker in ["10.", "100."] {
+            XCTAssertLessThanOrEqual(app.staticTexts[marker].frame.height, single.frame.height + 1)
+        }
+        XCTAssertEqual(app.staticTexts["第九项"].frame.minX, app.staticTexts["第一百项"].frame.minX, accuracy: 1)
+        keepScreenshot(app, name: "multi-digit-reply-markers")
+    }
+
     func testRunningTurnShowsProcessAndStopButton() {
         let app = XCUIApplication()
         let events: [[String: Any]] = [
