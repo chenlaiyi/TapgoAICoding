@@ -16,6 +16,8 @@ export async function prepareInteractionHelper(destination: string, arch: 'arm64
   const binary = join(destination, 'interaction-lease')
   const target = `${arch === 'x64' ? 'x86_64' : 'arm64'}-apple-macos13.0`
   await promisify(execFile)('/usr/bin/swiftc', ['-O', '-parse-as-library', '-target', target,
-    fileURLToPath(new URL('../native/InteractionLease.swift', import.meta.url)), '-o', binary])
+    fileURLToPath(new URL('../native/InteractionLease.swift', import.meta.url)),
+    fileURLToPath(new URL('../native/InteractionInput.swift', import.meta.url)),
+    fileURLToPath(new URL('../native/InteractionFocus.swift', import.meta.url)), '-o', binary])
   await promisify(execFile)(binary, ['--self-test'])
 }
