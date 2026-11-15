@@ -15,6 +15,8 @@ description: "原生 Cua Driver 调用使用元素令牌和具名配置字段。
 
 打包 macOS 的桌面级前台 `drag` 默认有条件地恢复原应用焦点与物理指针。恢复被跳过或失败时会返回工具错误，即使拖放已经送达。结果新增 `user_state_restoration`，与拖放结果独立。
 
+打包 macOS 的桌面级前台拖放还默认启用 `interrupt_on_user_input`。外部输入会阻止 worker 的后续事件，并请求取消源手势。清理前仍等待 SDK 调用结束，因此停止输入不代表工具立即返回。带修饰键的拖放必须显式设置 `interrupt_on_user_input: false`；状态恢复和中途停止分别控制。
+
 ## 迁移
 
 1. 对于原生元素操作，读取最新 `get_window_state`，传入返回的 `element_token`，替代 `element_index` 和 `snapshot_id`。再次获取该窗口快照后应刷新令牌。
@@ -23,4 +25,4 @@ description: "原生 Cua Driver 调用使用元素令牌和具名配置字段。
 
 4. 自定义配置若需使用 worker，在原生提供者的 `config.worker` 中指定已签名 `binaryPath` 和 `hostBundleId`，并移除冲突的 `CUA_DRIVER_*` 配置；使用 `worker: false` 保留进程内模式。调用失败或取消后先读取新状态，再决定是否重试。
 
-5. 需要保留上游前台拖放行为时，传入 `restore_user_state: false`。否则读取恢复报告并验证目标；`NATIVE_INTERACTION_UNAVAILABLE` 表示未发送拖放，`NATIVE_INTERACTION_FAILED` 表示结果不确定，不能直接重试。自定义 worker 可通过 `restoration.helperPath` 配置签名观察程序，或用 `restoration: false` 关闭该行为。
+5. 需要保留上游前台拖放行为时，同时传入 `restore_user_state: false` 和 `interrupt_on_user_input: false`。否则读取恢复报告并验证目标；`NATIVE_INTERACTION_UNAVAILABLE` 表示未发送拖放，`NATIVE_INTERACTION_FAILED` 表示结果不确定，不能直接重试。自定义 worker 可通过 `restoration.helperPath` 配置使用 stdio 协议 2 的签名辅助程序，或用 `restoration: false` 关闭该行为。`NATIVE_GESTURE_CANCEL_UNCONFIRMED` 要求在本机按 Escape 并重新检查桌面；`NATIVE_INPUT_STOP_UNCONFIRMED` 表示输入可能继续，须检查现场；`NATIVE_INTERACTION_UNTRUSTED` 要求重启 Host。

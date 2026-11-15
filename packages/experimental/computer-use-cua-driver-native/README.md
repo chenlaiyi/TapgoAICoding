@@ -43,13 +43,19 @@ Use an attachment store and a model route that explicitly declares image input t
 <a id="restore-state-after-foreground-drags"></a>
 ### Restore state after foreground drags
 
-Packaged macOS Desktop configures `restoration` for its default worker. Its `helperPath` points to a native observer inside the same signed application. This configuration serializes SDK calls so another call from the provider cannot interleave with restoration. The observer records input-source PIDs, application activations, and positions, without recording keys or text or requesting new OS grants.
+Packaged macOS Desktop configures `restoration` for its default worker. Its `helperPath` points to a native input helper inside the same signed application. This configuration serializes SDK calls so another call from the provider cannot interleave with restoration. The helper records input-source PIDs, application activations, and positions, without recording keys or text or requesting new OS grants.
 
-A desktop-scope `drag` with explicit `delivery_mode: foreground` enables `restore_user_state` by default: capture the original application and pointer, wait for release and native drag-session completion, then restore them. Outside input, unexpected activation, a pointer away from the release point, lost observation, or original-application exit prevents restoration. Set `restore_user_state: false` to keep upstream behavior. Other drag modes do not enable restoration and reject explicit `true`. This still uses the foreground and physical pointer.
+A desktop-scope `drag` with explicit `delivery_mode: foreground` enables `restore_user_state` by default: capture the original application and pointer, wait for release and native drag-session completion, then restore them. Outside input, unexpected activation, a pointer away from the release point, lost observation, or original-application exit prevents restoration. Set `restore_user_state: false` to disable restoration independently of interruption. Other drag modes do not enable restoration and reject explicit `true`. This still uses the foreground and physical pointer.
 
-The result's `user_state_restoration` reports focus, pointer, input sources, and restoration status independently of whether the drop landed; verify the drop from fresh state. Skipped or failed restoration is a tool error and does not undo the drag. Unavailable observation reports `NATIVE_INTERACTION_UNAVAILABLE` before dispatch; later process or protocol failures report `NATIVE_INTERACTION_FAILED`, requiring inspection before retry. Cancellation or Host exit closes the observer without deferred restoration.
+The result's `user_state_restoration` reports focus, pointer, input sources, and restoration status independently of whether the drop landed; verify the drop from fresh state. Skipped or failed restoration is a tool error and does not undo the drag. Unavailable observation reports `NATIVE_INTERACTION_UNAVAILABLE` before dispatch; later process or protocol failures report `NATIVE_INTERACTION_FAILED`, requiring inspection before retry. Caller cancellation fences protected input immediately, while the SDK call drains before cleanup. Host exit leaves an orphan fence until the worker releases or exits, without delayed restoration.
 
-`restoration.timeoutMs` (5000) bounds handshake and finish, `pollMs` (20) controls native polling, and `leaseMs` (30000) bounds the process lifetime, all in milliseconds.
+`interrupt_on_user_input` defaults to true for these desktop foreground drags. External input passes through; subsequent events from the leased worker are discarded, Escape is sent to the source process, and only the gesture's synthetic buttons are released. The report includes blocked-event counts, stop and release times, and whether a native drag image was observed and cancelled. Completed input is not rolled back. Modifier drags require an explicit `interrupt_on_user_input: false`; set both options to false for upstream delivery.
+
+`NATIVE_INPUT_STOP_UNCONFIRMED` means observation was interrupted; input may have continued. `NATIVE_GESTURE_CANCEL_UNCONFIRMED` requires local Escape and fresh state before further input. An uncertain worker failure closes SDK admission and drains its operations; failed shutdown keeps the fence and reports `NATIVE_INTERACTION_UNTRUSTED`. `NATIVE_WORKER_QUARANTINED` requires restarting the Host.
+
+Exact-window activation can independently verify a focused AX window when the SDK counted an unmapped surface covering its three native window buttons. The result preserves both observations. Real sibling windows, unknown surfaces, modal sheets, and unverifiable focus remain failures. PID-only activation resolves a sole AX window only when every other visible surface is proven to be that control cluster.
+
+`restoration.timeoutMs` (5000) bounds handshake and finish, `pollMs` (20) controls native polling, and `leaseMs` (30000) stops unfinished input at its deadline; teardown still waits for SDK quiescence. All values are milliseconds.
 
 ### Host requirements
 
@@ -127,7 +133,7 @@ Tools use the `cua_driver_native__` prefix followed by the upstream name and ret
 
 #### Token effect
 
-The discovered catalog adds tool definitions to each request. Enabling restoration adds its drag parameter description and per-drag observation results. Accessibility trees, result text, and admitted screenshots add per-call context. Raw base64 remains in execution-local canonical values and is not copied into model history.
+The discovered catalog adds tool definitions to each request. Enabling the native helper adds drag option descriptions and per-drag input and restoration reports. Accessibility trees, result text, and admitted screenshots add per-call context. Raw base64 remains in execution-local canonical values and is not copied into model history.
 
 #### KV Cache effect
 

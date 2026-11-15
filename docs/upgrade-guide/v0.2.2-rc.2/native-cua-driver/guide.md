@@ -15,6 +15,8 @@ Packaged macOS Desktop changes its default native provider to an SDK-supervised 
 
 Packaged macOS desktop-scope foreground `drag` now conditionally restores the original application focus and physical pointer by default. Skipped or failed restoration reports a tool error even if the drag was delivered. The result adds `user_state_restoration` independently of the drop outcome.
 
+Packaged macOS desktop foreground drags also default `interrupt_on_user_input` to true. Outside input fences subsequent worker events and requests cancellation of the source gesture. The SDK call drains before cleanup, so stopping input does not promise immediate tool completion. Modifier drags require an explicit `interrupt_on_user_input: false`; restoration and interruption are separate choices.
+
 ## Migration
 
 1. For native element actions, read a fresh `get_window_state` and pass the returned `element_token` instead of `element_index` and `snapshot_id`. Refresh the token after another snapshot of that window.
@@ -23,4 +25,4 @@ Packaged macOS desktop-scope foreground `drag` now conditionally restores the or
 
 4. To opt a custom configuration into a worker, supply its signed `binaryPath` and `hostBundleId` under the native provider's `config.worker` and remove conflicting `CUA_DRIVER_*` configuration. Use `worker: false` to retain in-process mode. After a failed or cancelled call, inspect fresh state before retrying.
 
-5. Pass `restore_user_state: false` when saved foreground drags must keep upstream behavior. Otherwise read the restoration report and verify the destination. `NATIVE_INTERACTION_UNAVAILABLE` means no drag was sent; `NATIVE_INTERACTION_FAILED` means the outcome is uncertain and must be inspected before retry. Custom workers can configure a signed observer with `restoration.helperPath` or disable it with `restoration: false`.
+5. Pass both `restore_user_state: false` and `interrupt_on_user_input: false` when saved foreground drags must keep upstream behavior. Otherwise read the restoration report and verify the destination. `NATIVE_INTERACTION_UNAVAILABLE` means no drag was sent; `NATIVE_INTERACTION_FAILED` means the outcome is uncertain and must be inspected before retry. Custom workers can configure a signed helper with stdio protocol 2 using `restoration.helperPath`, or disable it with `restoration: false`. `NATIVE_GESTURE_CANCEL_UNCONFIRMED` requires local Escape and fresh desktop inspection. `NATIVE_INPUT_STOP_UNCONFIRMED` requires inspection because input may have continued; `NATIVE_INTERACTION_UNTRUSTED` requires a Host restart.

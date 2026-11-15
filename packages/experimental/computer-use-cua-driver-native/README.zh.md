@@ -43,13 +43,19 @@ Worker 时间参数为 `startupTimeoutMs`（10000）、`shutdownTimeoutMs`（200
 <a id="restore-state-after-foreground-drags"></a>
 ### 前台拖放后的状态恢复
 
-打包 macOS Desktop 为默认 worker 配置 `restoration`，其 `helperPath` 指向同一签名应用内的原生观察程序。该配置串行执行 SDK 调用，避免同一提供者的调用与恢复交错。观察程序只记录输入来源 PID、应用激活和位置，不记录按键或文本，也不请求新的系统授权。
+打包 macOS Desktop 为默认 worker 配置 `restoration`，其 `helperPath` 指向同一签名应用内的原生输入辅助程序。该配置串行执行 SDK 调用，避免同一提供者的调用与恢复交错。辅助程序只记录输入来源 PID、应用激活和位置，不记录按键或文本，也不请求新的系统授权。
 
-桌面级 `drag` 显式使用 `delivery_mode: foreground` 时，默认启用 `restore_user_state`：记录原应用和指针，等待驱动释放按键及原生拖放会话结束，再恢复。外部输入、意外激活、指针偏离落点、观察失效或原应用退出会阻止恢复。设置 `restore_user_state: false` 保留上游行为。其他拖放模式不启用恢复；显式传 `true` 会被拒绝。该行为仍占用前台和物理指针，不是后台拖放。
+桌面级 `drag` 显式使用 `delivery_mode: foreground` 时，默认启用 `restore_user_state`：记录原应用和指针，等待驱动释放按键及原生拖放会话结束，再恢复。外部输入、意外激活、指针偏离落点、观察失效或原应用退出会阻止恢复。设置 `restore_user_state: false` 可独立关闭状态恢复。其他拖放模式不启用恢复；显式传 `true` 会被拒绝。该行为仍占用前台和物理指针，不是后台拖放。
 
-结果中的 `user_state_restoration` 独立报告焦点、指针、输入来源和恢复状态，不代表文件已落入目标；仍需新状态验证。跳过或失败返回工具错误，已执行的拖放不会回滚。观察不可用会在发送拖放前报告 `NATIVE_INTERACTION_UNAVAILABLE`；发送后的进程或协议故障报告 `NATIVE_INTERACTION_FAILED`，重试前先检查状态。取消或 Host 退出会关闭观察程序，不进行延迟恢复。
+结果中的 `user_state_restoration` 独立报告焦点、指针、输入来源和恢复状态，不代表文件已落入目标；仍需新状态验证。跳过或失败返回工具错误，已执行的拖放不会回滚。观察不可用会在发送拖放前报告 `NATIVE_INTERACTION_UNAVAILABLE`；发送后的进程或协议故障报告 `NATIVE_INTERACTION_FAILED`，重试前先检查状态。调用方取消时立即阻止受保护输入，清理前仍等待 SDK 调用结束。Host 退出后，孤立的输入拦截会持续到 worker 松键或退出，不进行延迟恢复。
 
-`restoration.timeoutMs`（5000）限定握手和结束阶段，`pollMs`（20）设置原生状态轮询间隔，`leaseMs`（30000）限定进程总寿命，单位均为毫秒。
+此类桌面级前台拖放还默认启用 `interrupt_on_user_input`。外部输入原样通过；当前 worker 的后续事件会被丢弃，Escape 定向发送到源进程，只释放本次手势持有的合成按钮。报告包括被阻止的事件数、停止与松键时间，以及是否观察到并取消原生拖放图像。已完成的输入不会回滚。带修饰键的拖放必须显式设置 `interrupt_on_user_input: false`；两个选项均为 false 时使用上游投递。
+
+`NATIVE_INPUT_STOP_UNCONFIRMED` 表示观察中断，输入可能仍有继续。`NATIVE_GESTURE_CANCEL_UNCONFIRMED` 要求先在本机按 Escape 并读取新状态，再进行输入。结果不确定的 worker 故障会关闭 SDK 接纳并等待已有操作结束；关闭失败时保留输入拦截，报告 `NATIVE_INTERACTION_UNTRUSTED`。`NATIVE_WORKER_QUARANTINED` 要求重启 Host。
+
+精确窗口置前若因 SDK 把覆盖三个原生窗口按钮的未映射表面计为独立窗口而失败，可独立验证已聚焦的 AX 窗口；结果保留两份观察。真实兄弟窗口、未知表面、模态附页和无法验证的焦点仍判失败。仅当其它可见表面均已证明属于该按钮簇时，只有 PID 的置前才会解析为唯一 AX 窗口。
+
+`restoration.timeoutMs`（5000）限定握手和结束阶段，`pollMs`（20）设置原生轮询间隔，`leaseMs`（30000）到期时停止未结束的输入，清理仍等待 SDK 静止。单位均为毫秒。
 
 ### 主机要求
 
@@ -127,7 +133,7 @@ On macOS, in-process cursor-overlay operations may return facility_unavailable e
 
 #### Token 影响
 
-发现的目录为每个请求加入工具定义。无障碍树、结果文本和获准接纳的截图增加每次调用的上下文。原始 base64 保留在执行期间的规范值中，不复制到模型历史。
+发现的目录为每个请求加入工具定义。启用原生辅助程序会增加拖放选项描述，以及每次拖放的输入与恢复报告。无障碍树、结果文本和获准接纳的截图增加每次调用的上下文。原始 base64 保留在执行期间的规范值中，不复制到模型历史。
 
 #### KV Cache 影响
 

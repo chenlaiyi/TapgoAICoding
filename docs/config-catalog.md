@@ -1162,7 +1162,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native`
 
 - `inject`: `computerUse` · `tools` · `systemPrompt`
-- `source`: [`packages/experimental/computer-use-cua-driver-native/src/index.ts:20`](../packages/experimental/computer-use-cua-driver-native/src/index.ts)
+- `source`: [`packages/experimental/computer-use-cua-driver-native/src/index.ts:21`](../packages/experimental/computer-use-cua-driver-native/src/index.ts)
 
 ```ts config-catalog
 /** Optional supervised native process for hosts without an AppKit main loop. */
@@ -1194,7 +1194,7 @@ export interface InteractionConfig {
   timeoutMs: number
   /** Native observation polling interval. */
   pollMs: number
-  /** Absolute lifetime limit for the observer process. */
+  /** Deadline before an unfinished lease stops input; teardown still awaits worker quiescence. */
   leaseMs: number
 }
 ```
