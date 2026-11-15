@@ -34,3 +34,23 @@ struct MobileNextPrompts: Equatable {
         draft.isEmpty ? prompt : draft + "\n\n" + prompt
     }
 }
+
+/// Prefills each completed turn once; user edits and deliberately cleared drafts survive replay.
+struct MobileRecommendationDraft {
+    private var handledTurns: Set<Int> = []
+    private var selected: String?
+
+    mutating func receiving(_ recommendations: MobileNextPrompts, draft: String) -> String {
+        guard let turn = recommendations.turn, let first = recommendations.prompts.first,
+              handledTurns.insert(turn).inserted else { return draft }
+        guard draft.isEmpty else { selected = nil; return draft }
+        selected = first
+        return first
+    }
+
+    mutating func selecting(_ prompt: String, draft: String) -> String {
+        let result = draft == selected ? prompt : MobileNextPrompts.appending(prompt, to: draft)
+        selected = result == prompt ? prompt : nil
+        return result
+    }
+}

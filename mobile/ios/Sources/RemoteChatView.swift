@@ -821,6 +821,7 @@ struct RemoteChatView: View {
     let onUnauthorized: () -> Void
     @StateObject private var chat = RemoteChat()
     @State private var draft = ""
+    @State private var recommendationDraft = MobileRecommendationDraft()
     @State private var showingWorkspace = false
     @State private var showingSettings = false
     @State private var showingModels = false
@@ -887,9 +888,6 @@ struct RemoteChatView: View {
                                 } else if !chat.liveText.isEmpty {
                                     AssistantMessageView(text: chat.liveText, reasoning: nil, showCopy: false)
                                 }
-                            }
-                            if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
-                                nextPromptSuggestions
                             }
                             Color.clear.frame(height: 1)
                                 .id(bottomAnchor)
@@ -1003,6 +1001,9 @@ struct RemoteChatView: View {
                 }
                 MobileComposerAttachmentStrip(additions: additions)
                 VStack(alignment: .leading, spacing: 12) {
+                    if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
+                        nextPromptSuggestions
+                    }
                     composerInput.padding(.horizontal, 7)
                     HStack(spacing: 0) {
                         addMenu
@@ -1018,8 +1019,7 @@ struct RemoteChatView: View {
                                 .frame(width: 44, height: 44)
                         }
                         .accessibilityLabel("收起键盘")
-                        if chat.running { stopButton }
-                        sendButton
+                        primaryButton
                     }
                 }
                 .padding(.horizontal, 13).padding(.vertical, 9)
@@ -1040,6 +1040,10 @@ struct RemoteChatView: View {
             if phase == .active && !chat.connected && !chat.loading {
                 Task { await chat.retry(computer: computer, sessionId: sessionId) }
             }
+        }
+        .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
+        .onChange(of: chat.running) { running in
+            if !running { applyRecommendation() }
         }
         .onDisappear { chat.disconnect() }
         .alert("清除当前目标？", isPresented: $confirmingGoalClear) {
@@ -1252,12 +1256,18 @@ struct RemoteChatView: View {
             .disabled(chat.sending || additions.importing)
     }
 
-    private var sendButton: some View {
-        let busy = chat.sending
+    private var primaryButton: some View {
+        let stopping = chat.running && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !additions.hasAttachments
+        let busy = chat.sending || chat.cancelling
         let enabled = (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additions.hasAttachments)
             && !chat.sending && !chat.loading && chat.connected && !additions.importing
             && (additions.mode != .goal || !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         return Button {
+            if stopping {
+                Task { await chat.cancel(computer: computer, sessionId: sessionId) }
+                return
+            }
             let submittedDraft = draft
             let submittedAttachments = additions.attachments
             let submittedMode = additions.mode
@@ -1277,66 +1287,73 @@ struct RemoteChatView: View {
                 if busy {
                     ProgressView().tint(.white)
                 } else {
-                    Image(systemName: "arrow.up")
+                    Image(systemName: stopping ? "stop.fill" : "arrow.up")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(.white)
                 }
             }
             .frame(width: 34, height: 34)
-            .background(enabled || busy ? Color.blue : Color(uiColor: .tertiaryLabel), in: Circle())
+            .background(enabled || stopping || busy ? Color.blue : Color(uiColor: .tertiaryLabel), in: Circle())
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
-        .disabled(!enabled)
-        .accessibilityLabel(chat.sending ? "正在发送" : "发送")
+        .disabled(busy || (stopping ? !chat.connected : !enabled))
+        .accessibilityLabel(chat.cancelling ? "正在停止" : chat.sending ? "正在发送" : stopping ? "停止运行" : "发送")
+        .contextMenu {
+            if chat.running && !stopping {
+                Button("停止当前任务", role: .destructive) {
+                    Task { await chat.cancel(computer: computer, sessionId: sessionId) }
+                }
+                .disabled(busy || !chat.connected)
+            }
+        }
     }
 
-    private var stopButton: some View {
-        Button {
-            Task { await chat.cancel(computer: computer, sessionId: sessionId) }
-        } label: {
-            Group {
-                if chat.cancelling { ProgressView() }
-                else { Image(systemName: "stop.fill").foregroundStyle(.primary) }
-            }
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
-        }
-        .disabled(chat.cancelling || !chat.connected)
-        .accessibilityLabel(chat.cancelling ? "正在停止" : "停止运行")
+    private func applyRecommendation() {
+        guard !chat.running else { return }
+        draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft)
     }
 
     private var nextPromptSuggestions: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(chat.nextPrompts.failed ? "暂时无法生成建议，可继续输入" : "下一步建议")
-                .font(.subheadline).foregroundStyle(.secondary)
-            ForEach(chat.nextPrompts.prompts, id: \.self) { prompt in
-                Button {
-                    draft = MobileNextPrompts.appending(prompt, to: draft)
-                    composerFocused = true
-                } label: {
-                    Text(prompt).font(.subheadline).multilineTextAlignment(.leading)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .font(.caption).foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(chat.nextPrompts.prompts, id: \.self) { prompt in
+                        Button {
+                            draft = recommendationDraft.selecting(prompt, draft: draft)
+                            composerFocused = true
+                        } label: {
+                            Text(prompt).font(.caption).lineLimit(1)
+                                .frame(maxWidth: 220, minHeight: 44, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                        }
+                        .disabled(chat.sending)
+                        .accessibilityIdentifier("nextPromptSuggestion")
+                    }
                 }
-                .disabled(chat.sending)
-                .accessibilityIdentifier("nextPromptSuggestion")
             }
         }
+        .accessibilityIdentifier("composerRecommendations")
+    }
+
+    private func inspectProcess() {
+        followingLatest = false
+        composerFocused = false
     }
 
     private func chatRow(_ line: ChatLine) -> some View {
         HStack(alignment: .top) {
             if line.role == "user" { Spacer(minLength: 45) }
             if line.role == "activity" {
-                ActivityGroupView(activities: line.activities)
+                ActivityGroupView(activities: line.activities, onInspect: inspectProcess)
             } else if line.role == "turn" {
                 TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt,
                                 activities: line.activities, reasoning: line.reasoning,
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
-                                    ? chat.liveReasoning : "")
+                                    ? chat.liveReasoning : "", onInspect: inspectProcess)
             } else if line.role == "assistant" {
                 AssistantMessageView(text: line.text, reasoning: line.reasoning,
                     showCopy: isLastAssistantInTurn(line.id))
@@ -1391,30 +1408,10 @@ private struct ActivityGroupView: View {
         return labels.joined(separator: "，")
     }
 
+    let onInspect: () -> Void
+
     var body: some View {
-        DisclosureGroup {
-            VStack(alignment: .leading, spacing: 9) {
-                ForEach(activities) { activity in
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: activity.failed ? "exclamationmark.circle" :
-                                activity.finished ? "checkmark.circle" : "circle.dotted")
-                            .foregroundStyle(activity.failed ? Color.orange : Color(uiColor: .secondaryLabel))
-                        Text(activity.detail).lineLimit(3)
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color(uiColor: .secondaryLabel))
-                }
-            }
-            .padding(.top, 8)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                Text(title)
-            }
-            .font(.system(size: 13))
-            .foregroundStyle(Color(uiColor: .secondaryLabel))
-        }
-        .tint(Color(uiColor: .secondaryLabel))
+        ProcessDisclosureView(summary: title, reasoning: "", activities: activities, onInspect: onInspect)
     }
 }
 
@@ -1424,7 +1421,7 @@ private struct TurnProcessView: View {
     let activities: [ChatActivity]
     let reasoning: String?
     let liveReasoning: String
-    @State private var expanded = false
+    let onInspect: () -> Void
 
     private var processSummary: String {
         let count = activities.count
@@ -1450,38 +1447,100 @@ private struct TurnProcessView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.primary)
                 Divider()
-                DisclosureGroup(isExpanded: $expanded) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        let processText = [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
-                            .compactMap { $0 }.joined(separator: "\n\n")
-                        if !processText.isEmpty {
-                            Text(processText)
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
-                        }
-                        ForEach(activities) { activity in
-                            HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: activity.failed ? "exclamationmark.circle" :
-                                        activity.finished ? "checkmark.circle" : "circle.dotted")
-                                Text(activity.detail)
-                                    .lineLimit(3)
-                            }
-                            .font(.system(size: 12))
-                            .foregroundStyle(activity.failed ? Color.orange : Color(uiColor: .secondaryLabel))
-                        }
-                    }
-                    .padding(.top, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } label: {
-                    Label(processSummary, systemImage: "list.bullet.clipboard")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color(uiColor: .secondaryLabel))
-                }
-                .tint(Color(uiColor: .secondaryLabel))
+                ProcessDisclosureView(summary: processSummary,
+                    reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
+                        .compactMap { $0 }.joined(separator: "\n\n"),
+                    activities: activities, onInspect: onInspect)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// Keeps the transcript preview bounded while full live details remain independently dismissible.
+private struct ProcessDisclosureView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let summary: String
+    let reasoning: String
+    let activities: [ChatActivity]
+    let onInspect: () -> Void
+    @State private var expanded = false
+    @State private var showingDetails = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                onInspect()
+                expanded.toggle()
+            } label: {
+                HStack {
+                    Label(summary, systemImage: "list.bullet.clipboard")
+                    Spacer(minLength: 8)
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                }
+                .font(.system(size: 13))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(expanded ? "已展开" : "已收起")
+            if expanded {
+                if !reasoning.isEmpty {
+                    Text(reasoning).font(.system(size: 13)).lineLimit(4)
+                }
+                ForEach(Array(activities.suffix(3))) { activity in
+                    activityRow(activity, preview: true)
+                }
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) { detailButton; collapseButton }
+                } else {
+                    HStack { detailButton; Spacer(); collapseButton }
+                }
+            }
+        }
+        .foregroundStyle(.secondary)
+        .sheet(isPresented: $showingDetails) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if !reasoning.isEmpty {
+                            Text(reasoning).font(.body).textSelection(.enabled)
+                        }
+                        ForEach(activities) { activity in activityRow(activity, preview: false) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding()
+                }
+                .navigationTitle("执行过程")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("关闭过程详情") { showingDetails = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var detailButton: some View {
+        Button("查看完整过程") { showingDetails = true }
+            .font(.caption).foregroundStyle(Color.accentColor).frame(minHeight: 44)
+    }
+
+    private var collapseButton: some View {
+        Button("收起过程") { expanded = false }
+            .font(.caption).foregroundStyle(Color.accentColor).frame(minHeight: 44)
+    }
+
+    private func activityRow(_ activity: ChatActivity, preview: Bool) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: activity.failed ? "exclamationmark.circle" :
+                    activity.finished ? "checkmark.circle" : "circle.dotted")
+            Text(activity.detail).lineLimit(preview ? 2 : nil).textSelection(.enabled)
+        }
+        .font(.system(size: preview ? 12 : 14))
+        .foregroundStyle(activity.failed ? Color.orange : Color(uiColor: .secondaryLabel))
     }
 }
 

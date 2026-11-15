@@ -577,20 +577,60 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["README.md"].exists)
         app.staticTexts["过程 · 1 项操作"].tap()
         XCTAssertTrue(app.staticTexts["README.md"].exists)
-        XCTAssertTrue(app.buttons["发送"].exists)
-        XCTAssertFalse(app.buttons["发送"].isEnabled)
+        app.buttons["查看完整过程"].tap()
+        XCTAssertTrue(app.buttons["关闭过程详情"].waitForExistence(timeout: 5))
+        app.buttons["关闭过程详情"].tap()
+        app.buttons["收起过程"].tap()
+        XCTAssertFalse(app.staticTexts["README.md"].exists)
+        XCTAssertTrue(app.buttons["停止运行"].exists)
+        XCTAssertFalse(app.buttons["发送"].exists)
         let composer = app.descendants(matching: .any)["chatComposerInput"]
         composer.tap()
         composer.typeText("Also check the mobile layout")
         XCTAssertTrue(app.buttons["发送"].isEnabled)
-        XCTAssertTrue(app.buttons["停止运行"].isHittable)
+        XCTAssertFalse(app.buttons["停止运行"].exists)
+        app.buttons["发送"].press(forDuration: 1)
+        XCTAssertTrue(app.buttons["停止当前任务"].waitForExistence(timeout: 3))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertEqual(composer.value as? String, "Also check the mobile layout")
         app.buttons["发送"].tap()
         XCTAssertTrue(app.buttons["完成测试发送"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["停止运行"].exists)
+        XCTAssertFalse(app.buttons["停止运行"].exists)
         app.buttons["完成测试发送"].tap()
-        XCTAssertTrue(app.buttons["发送"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["发送"].isEnabled)
-        keepScreenshot(app, name: "running-mobile-send-and-stop")
+        XCTAssertTrue(app.buttons["停止运行"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["发送"].exists)
+        keepScreenshot(app, name: "running-mobile-polymorphic-primary")
+    }
+
+    func testLongRunningProcessCanCollapseWithoutWaitingForCompletion() throws {
+        var events: [[String: Any]] = [["seq": 1, "type": "turn/start", "data": ["turn": 1]]]
+        for index in 1...40 {
+            events.append(["seq": index + 1, "type": "tool/call", "data": [
+                "callId": "read-\(index)", "name": "read",
+                "arguments": "{\"file_path\":\"file-\(index).md\"}"]])
+        }
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--dsh-mobile-test-url", "https://process.example/?token=fixture&name=Studio%20Mac",
+            "--dsh-mobile-test-sessions",
+            "[{\"sessionId\":\"long-process\",\"cwd\":\"/work/TapgoAICoding\",\"running\":true,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"长过程测试\"}}}]",
+            "--dsh-mobile-test-events", String(decoding: try JSONSerialization.data(withJSONObject: events), as: UTF8.self)]
+        app.launchArguments += ["-AppleInterfaceStyle", "Dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        app.buttons["长过程测试"].tap()
+        let summary = app.staticTexts["过程 · 40 项操作"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        summary.tap()
+        XCTAssertFalse(app.staticTexts["file-1.md"].exists)
+        XCTAssertTrue(app.staticTexts["file-40.md"].isHittable)
+        XCTAssertTrue(app.buttons["收起过程"].isHittable)
+        keepScreenshot(app, name: "bounded-running-process-dark-large")
+        app.buttons["查看完整过程"].tap()
+        XCTAssertTrue(app.staticTexts["file-1.md"].waitForExistence(timeout: 5))
+        app.buttons["关闭过程详情"].tap()
+        app.buttons["收起过程"].tap()
+        XCTAssertFalse(app.staticTexts["file-40.md"].exists)
+        XCTAssertTrue(app.buttons["停止运行"].exists)
     }
 
     func testNextPromptSuggestionsFillDraftWithoutSending() throws {
@@ -611,10 +651,15 @@ final class MobileConnectionUITests: XCTestCase {
         let suggestion = app.buttons["nextPromptSuggestion"].firstMatch
         XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
         let composer = app.descendants(matching: .any)["chatComposerInput"]
+        XCTAssertEqual(composer.value as? String, "解释实现步骤")
+        app.buttons.matching(identifier: "nextPromptSuggestion").element(boundBy: 1).tap()
+        XCTAssertTrue((composer.value as? String)?.hasPrefix("补充手机端自动化测试") == true)
         composer.tap()
-        composer.typeText("Existing draft")
+        composer.typeText(" Existing draft")
+        let editedDraft = composer.value as? String ?? ""
+        XCTAssertTrue(editedDraft.contains("Existing draft"), "Edited draft: \(editedDraft)")
         suggestion.tap()
-        XCTAssertEqual(composer.value as? String, "Existing draft\n\n解释实现步骤")
+        XCTAssertEqual(composer.value as? String, editedDraft + "\n\n解释实现步骤")
         XCTAssertFalse(app.buttons["完成测试发送"].exists)
         XCTAssertTrue(app.buttons["发送"].isEnabled)
         keepScreenshot(app, name: "native-next-prompt-draft")
@@ -859,9 +904,10 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertFalse(app.buttons["正在发送"].isEnabled)
         composer.typeText(" next draft")
         app.buttons["完成测试发送"].tap()
-        XCTAssertTrue(app.buttons["停止运行"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["发送"].waitForExistence(timeout: 5))
         XCTAssertEqual(composer.value as? String, "first message next draft")
-        XCTAssertTrue(app.buttons["停止运行"].isEnabled)
+        XCTAssertFalse(app.buttons["停止运行"].exists)
+        XCTAssertTrue(app.buttons["发送"].isEnabled)
         keepScreenshot(app, name: "preserved-draft-after-send")
     }
 

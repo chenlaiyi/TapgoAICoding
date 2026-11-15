@@ -26,4 +26,17 @@ final class MobileNextPromptsTests: XCTestCase {
         XCTAssertTrue(state.failed)
         XCTAssertTrue(state.prompts.isEmpty)
     }
+    func testPrefillOnceAndSwitchWithoutDuplicatingRecommendations() {
+        var prompts = MobileNextPrompts()
+        prompts.restore(["turn": 3, "status": "ready", "prompts": ["继续", "运行测试"]], running: false)
+        var composer = MobileRecommendationDraft()
+        XCTAssertEqual(composer.receiving(prompts, draft: ""), "继续")
+        XCTAssertEqual(composer.selecting("运行测试", draft: "继续"), "运行测试")
+        XCTAssertEqual(composer.receiving(prompts, draft: ""), "")
+        XCTAssertEqual(composer.selecting("继续", draft: "我的草稿"), "我的草稿\n\n继续")
+        prompts.restore(["turn": 4, "status": "ready", "prompts": ["下一步"]], running: false)
+        XCTAssertEqual(composer.receiving(prompts, draft: "保留草稿"), "保留草稿")
+        XCTAssertEqual(composer.receiving(prompts, draft: ""), "")
+    }
+
 }
