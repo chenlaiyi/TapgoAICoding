@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 import WebKit
 import os
 
@@ -99,6 +98,11 @@ private final class RemoteChat: ObservableObject {
     private var generation = UUID()
     private var retryCount = 0
     private var origin: URL?
+    @Published private var composerState = MobileComposerState()
+    @Published var composerStatusError: String?
+    var planActive: Bool { composerState.planActive }
+    var goalObjective: String? { composerState.goalObjective }
+    var goalPhase: String? { composerState.goalPhase }
     private var sessionId: String?
 
     var running: Bool {
@@ -110,6 +114,11 @@ private final class RemoteChat: ObservableObject {
         self.sessionId = sessionId
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "--dsh-mobile-test-composer-projections"),
+           arguments.indices.contains(index + 1), let data = arguments[index + 1].data(using: .utf8),
+           let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            composerState.restore(value)
+        }
         if let index = arguments.firstIndex(of: "--dsh-mobile-test-messages"),
            arguments.indices.contains(index + 1),
            let data = arguments[index + 1].data(using: .utf8),
@@ -201,6 +210,15 @@ private final class RemoteChat: ObservableObject {
             ]
             let serialized = try JSONSerialization.data(withJSONObject: opening)
             guard let text = String(data: serialized, encoding: .utf8) else { throw ChatFailure.unavailable }
+            let projectionOpening: [String: Any] = [
+                "type": "open", "streamId": streamId + "-composer", "endpoint": "session/observeProjections",
+                "payload": ["args": ["request": ["sessionId": sessionId]]]
+            ]
+            let projectionData = try JSONSerialization.data(withJSONObject: projectionOpening)
+            guard let projectionText = String(data: projectionData, encoding: .utf8) else { throw ChatFailure.unavailable }
+            composerState = MobileComposerState()
+            composerStatusError = nil
+            try await socket.send(.string(projectionText))
             try await socket.send(.string(text))
             heartbeat.start(socket: socket) { [weak self, weak socket] in
                 guard let self, let socket, self.generation == current,
@@ -239,6 +257,28 @@ private final class RemoteChat: ObservableObject {
                 }
                 guard let frame = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let frameStream = frame["streamId"] as? String else { continue }
+                if frameStream == streamId + "-composer" {
+                    if frame["type"] as? String == "error" {
+                        composerState = MobileComposerState()
+                        composerStatusError = "此电脑无法同步方案与目标状态，请更新电脑端"
+                        continue
+                    }
+                    if let value = frame["value"] as? [String: Any] {
+                        if value["type"] as? String == "ready", let sessionId {
+                            do {
+                                let baseline = try await call("session/projections", arguments: ["request": ["sessionId": sessionId]], computer: computer)
+                                guard self.generation == current else { return }
+                                if let baseline = baseline as? [String: Any] { composerState.restore(baseline) }
+                            } catch {
+                                guard self.generation == current else { return }
+                                composerStatusError = "无法读取方案与目标状态，请重新打开对话"
+                            }
+                        } else if value["type"] as? String == "projection" {
+                            composerState.consume(value)
+                        }
+                    }
+                    continue
+                }
                 guard frameStream == streamId else { continue }
                 if frame["type"] as? String == "error" { throw ChatFailure.unavailable }
                 guard frame["type"] as? String == "item",
@@ -269,6 +309,7 @@ private final class RemoteChat: ObservableObject {
                     retryCount = 0
                     if let values = (value["projections"] as? [String: Any])?["values"] as? [String: Any] {
                         nextPrompts.restore(values["nextPrompts"] as? [String: Any], running: running)
+                        if let baseline = value["projections"] as? [String: Any] { composerState.restore(baseline) }
                         if let selection = values["modelSelection"] as? [String: Any],
                            let next = selection["next"] as? [String: Any],
                            let provider = next["provider"] as? String,
@@ -519,8 +560,9 @@ private final class RemoteChat: ObservableObject {
         return "调用工具"
     }
 
-    func send(_ text: String, image: Data?, computer: SavedComputer, sessionId: String) async -> Bool {
-        guard !sending, connected, !text.isEmpty || image != nil else { return false }
+    func send(_ text: String, attachments: [MobileDraftAttachment], mode: MobileComposerMode,
+              computer: SavedComputer, sessionId: String) async -> Bool {
+        guard !sending, connected, !text.isEmpty || !attachments.isEmpty else { return false }
         sending = true
         defer { sending = false }
         #if DEBUG
@@ -535,33 +577,29 @@ private final class RemoteChat: ObservableObject {
         #endif
         guard let session, let origin = URL(string: computer.id) else { return false }
         do {
-            var request = URLRequest(url: origin.appendingPathComponent("api/session/prompt"))
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            var content: [[String: Any]] = []
-            if !text.isEmpty { content.append(["type": "text", "text": text]) }
-            if let image { content.append(["type": "image", "mediaType": "image/jpeg",
-                                           "data": image.base64EncodedString()]) }
-            request.httpBody = try JSONSerialization.data(withJSONObject: [
-                "type": "client-request", "rpcId": UUID().uuidString,
-                "method": "session/prompt", "payload": ["args": ["request": [
-                    "requestId": UUID().uuidString, "sessionId": sessionId,
-                    "mode": "queue", "content": content,
-                    "clientTimeZone": TimeZone.current.identifier
-                ]]]
-            ])
-            let (data, response) = try await session.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let body = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let result = body["result"] as? [String: Any], result["ok"] as? Bool == true else {
-                throw ChatFailure.unavailable
-            }
+            try await MobileComposerTransport(session: session, origin: origin)
+                .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId)
             error = nil
             return true
         } catch {
-            self.error = "发送失败，草稿已保留，请再次发送"
+            self.error = "发送失败，草稿与附件已保留：\(error.localizedDescription)"
             return false
         }
+    }
+
+    func composerCommand(_ line: String, computer: SavedComputer, sessionId: String) async {
+        guard !sending else { return }
+        guard connected, let session, let origin = URL(string: computer.id) else {
+            error = "当前未连接到电脑，请重连后再操作"
+            return
+        }
+        sending = true
+        defer { sending = false }
+        do {
+            try await MobileComposerTransport(session: session, origin: origin)
+                .execute(line: line, sessionId: sessionId)
+            error = nil
+        } catch { self.error = "操作失败：\(error.localizedDescription)" }
     }
 
     func cancel(computer: SavedComputer, sessionId: String) async {
@@ -786,10 +824,9 @@ struct RemoteChatView: View {
     @State private var showingWorkspace = false
     @State private var showingSettings = false
     @State private var showingModels = false
-    @State private var showingAddActions = false
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var attachedImage: Data?
+    @StateObject private var additions = MobileComposerAdditions()
     @State private var pendingPermission: RemotePermission?
+    @State private var confirmingGoalClear = false
     @FocusState private var composerFocused: Bool
     @State private var followingLatest = true
     @State private var bottomVisible = true
@@ -932,14 +969,39 @@ struct RemoteChatView: View {
                 .padding(.horizontal, 16)
             }
             VStack(alignment: .leading, spacing: 8) {
-                if attachedImage != nil {
+                if let statusError = chat.composerStatusError {
+                    Text(statusError).font(.caption).foregroundStyle(.orange)
+                }
+                if chat.planActive && additions.mode != .plan {
                     HStack {
-                        Label("已添加图片", systemImage: "photo")
-                            .font(.caption)
+                        Label("方案模式", systemImage: "list.bullet")
                         Spacer()
-                        Button("移除") { attachedImage = nil }.font(.caption)
+                        Button("退出方案模式") {
+                            Task { await chat.composerCommand("/plan off", computer: computer, sessionId: sessionId) }
+                        }
+                        .disabled(chat.sending)
+                    }
+                    .font(.caption).frame(minHeight: 44)
+                }
+                if let objective = chat.goalObjective {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("目标：\(objective)").font(.caption).lineLimit(2)
+                        HStack {
+                            Text(chat.goalPhase == "active" ? "进行中" : chat.goalPhase == "complete" ? "已完成" : "已暂停或阻塞")
+                            Spacer()
+                            if chat.goalPhase != "complete" {
+                                Button(chat.goalPhase == "active" ? "暂停目标" : "继续目标") {
+                                    let line = chat.goalPhase == "active" ? "/goal pause" : "/goal resume"
+                                    Task { await chat.composerCommand(line, computer: computer, sessionId: sessionId) }
+                                }
+                                .disabled(chat.sending)
+                            }
+                            Button("清除目标") { confirmingGoalClear = true }.disabled(chat.sending)
+                        }
+                        .font(.caption).frame(minHeight: 44)
                     }
                 }
+                MobileComposerAttachmentStrip(additions: additions)
                 VStack(alignment: .leading, spacing: 12) {
                     composerInput.padding(.horizontal, 7)
                     HStack(spacing: 0) {
@@ -979,15 +1041,13 @@ struct RemoteChatView: View {
                 Task { await chat.retry(computer: computer, sessionId: sessionId) }
             }
         }
-        .onChange(of: selectedPhoto) { item in
-            Task {
-                if let data = try? await item?.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data)?.jpegData(compressionQuality: 0.8) {
-                    attachedImage = image
-                }
-            }
-        }
         .onDisappear { chat.disconnect() }
+        .alert("清除当前目标？", isPresented: $confirmingGoalClear) {
+            Button("取消", role: .cancel) {}
+            Button("清除", role: .destructive) {
+                Task { await chat.composerCommand("/goal clear", computer: computer, sessionId: sessionId) }
+            }
+        } message: { Text("清除后将停止自动追求此目标，已有对话会保留") }
         #if DEBUG
         .overlay(alignment: .topLeading) {
             HStack {
@@ -1006,29 +1066,8 @@ struct RemoteChatView: View {
                 DshWebView(url: url, sessionId: sessionId, onUnauthorized: onUnauthorized)
             }
         }
-        .sheet(isPresented: $showingAddActions) {
-            NavigationStack {
-                List {
-                    Button("选择模型与权限", systemImage: "slider.horizontal.3") {
-                        showingAddActions = false
-                        showingSettings = true
-                    }
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label("添加图片", systemImage: "photo")
-                    }
-                    Button("添加文件", systemImage: "paperclip") {
-                        showingAddActions = false
-                        showingWorkspace = true
-                    }
-                    Button("完整工作区", systemImage: "rectangle.on.rectangle") {
-                        showingAddActions = false
-                        showingWorkspace = true
-                    }
-                }
-                .navigationTitle("添加到对话")
-                .toolbar { Button("完成") { showingAddActions = false } }
-            }
-            .presentationDetents([.medium])
+        .mobileComposerActions(additions, computer: computer, planActive: chat.planActive) {
+            Task { await chat.composerCommand("/plan off", computer: computer, sessionId: sessionId) }
         }
         .sheet(isPresented: $showingModels) {
             NavigationStack {
@@ -1209,27 +1248,28 @@ struct RemoteChatView: View {
     }
 
     private var addMenu: some View {
-        Button { showingAddActions = true } label: {
-            Image(systemName: "plus").font(.system(size: 22, weight: .light))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-        }
-        .accessibilityLabel("添加与会话设置")
+        MobileComposerAddButton(additions: additions) { composerFocused = false }
+            .disabled(chat.sending || additions.importing)
     }
 
     private var sendButton: some View {
         let busy = chat.sending
-        let enabled = (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || attachedImage != nil)
-            && !chat.sending && !chat.loading && chat.connected
+        let enabled = (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || additions.hasAttachments)
+            && !chat.sending && !chat.loading && chat.connected && !additions.importing
+            && (additions.mode != .goal || !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         return Button {
             let submittedDraft = draft
-            let submittedImage = attachedImage
+            let submittedAttachments = additions.attachments
+            let submittedMode = additions.mode
             let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
             scrollRequestCount += 1
             Task {
-                if await chat.send(text, image: submittedImage, computer: computer, sessionId: sessionId) {
+                if await chat.send(text, attachments: submittedAttachments, mode: submittedMode,
+                                   computer: computer, sessionId: sessionId) {
                     if draft == submittedDraft { draft = "" }
-                    if attachedImage == submittedImage { attachedImage = nil }
+                    let delivered = Set(submittedAttachments.map(\.id))
+                    additions.attachments.removeAll { delivered.contains($0.id) }
+                    if additions.mode == submittedMode { additions.mode = .message }
                 }
             }
         } label: {

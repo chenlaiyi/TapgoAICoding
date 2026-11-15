@@ -6,8 +6,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.0.58"
-    CURRENT_PROJECT_VERSION: "61"
+    MARKETING_VERSION: "1.0.59"
+    CURRENT_PROJECT_VERSION: "62"
     DEVELOPMENT_TEAM: "KF2CE24685"
     CODE_SIGN_STYLE: "Automatic"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
@@ -48,6 +48,8 @@ targets:
       - path: UnitTests
       - path: Sources/MobileBalance.swift
       - path: Sources/MobileNextPrompts.swift
+      - path: Sources/MobileComposerSubmission.swift
+      - path: Sources/MobileComposerState.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: "YES"

@@ -322,7 +322,9 @@ private final class RemoteSessions: ObservableObject {
     }
 
     func start(text: String?, computer: SavedComputer, cwd: String? = nil,
-               permission: String? = nil, model: ComposerModel? = nil) async -> RemoteSession? {
+               permission: String? = nil, model: ComposerModel? = nil,
+               attachments: [MobileDraftAttachment] = [], mode: MobileComposerMode = .message,
+               existingSessionID: String? = nil, onCreated: ((String) -> Void)? = nil) async -> RemoteSession? {
         guard !starting, let origin = URL(string: computer.id),
               let pairing = URL(string: computer.url) else { return nil }
         starting = true
@@ -330,6 +332,15 @@ private final class RemoteSessions: ObservableObject {
         defer { starting = false }
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--dsh-mobile-test-sessions"),
+           let index = arguments.firstIndex(of: "--dsh-mobile-test-start"),
+           arguments.indices.contains(index + 1), arguments[index + 1] == "success" {
+            let id = existingSessionID ?? UUID().uuidString
+            onCreated?(id)
+            return RemoteSession(sessionId: id, cwd: cwd, running: false,
+                                 updatedAt: Date().timeIntervalSince1970 * 1000,
+                                 projections: nil, draftTitle: "新对话测试")
+        }
         if arguments.contains("--dsh-mobile-test-sessions"),
            let index = arguments.firstIndex(of: "--dsh-mobile-test-start"),
            arguments.indices.contains(index + 1), arguments[index + 1] == "delayed-failure" {
@@ -358,9 +369,16 @@ private final class RemoteSessions: ObservableObject {
             let workspaceId = workspaces.first(where: { $0.path == cwd })?.workspaceId
             let createRequest: [String: Any] = workspaceId.map { ["workspaceId": $0] }
                 ?? cwd.map { ["cwd": $0] } ?? [:]
-            let created = try await rpc(session: session, origin: origin,
-                                        method: "session/create", args: ["request": createRequest])
-            guard let sessionId = created["sessionId"] as? String else { throw RemoteError.unavailable }
+            let sessionId: String
+            if let existingSessionID {
+                sessionId = existingSessionID
+            } else {
+                let created = try await rpc(session: session, origin: origin,
+                                            method: "session/create", args: ["request": createRequest])
+                guard let id = created["sessionId"] as? String else { throw RemoteError.unavailable }
+                sessionId = id
+                onCreated?(id)
+            }
             if let model {
                 _ = try await rpc(session: session, origin: origin, method: "session/selectModel",
                                   args: ["request": ["sessionId": sessionId,
@@ -376,24 +394,20 @@ private final class RemoteSessions: ObservableObject {
                       command["kind"] as? String == "success" else { throw RemoteError.unavailable }
             }
             if let text {
-                _ = try await rpc(session: session, origin: origin,
-                                  method: "session/prompt", args: ["request": [
-                                    "requestId": UUID().uuidString,
-                                    "sessionId": sessionId,
-                                    "mode": "queue",
-                                    "content": [["type": "text", "text": text]],
-                                    "clientTimeZone": TimeZone.current.identifier
-                                  ]])
+                try await MobileComposerTransport(session: session, origin: origin)
+                    .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId)
             }
             error = nil
             if let model { MobileModelPreference.save(model.id, computerID: computer.id) }
             return RemoteSession(sessionId: sessionId, cwd: cwd,
                                  running: text != nil, updatedAt: Date().timeIntervalSince1970 * 1000,
-                                 projections: nil, draftTitle: text.map { String($0.prefix(40)) } ?? "新对话")
+                                 projections: nil, draftTitle: text.flatMap { $0.isEmpty ? nil : String($0.prefix(40)) } ?? "新对话")
         } catch {
             self.error = "无法开始对话：\(error.localizedDescription)"
             if case RemoteError.pairingExpired = error {
                 startError = "配对已过期，请从电脑重新扫码连接"
+            } else if let failure = error as? MobileComposerFailure {
+                startError = "草稿与附件已保留：\(failure.localizedDescription)"
             } else {
                 startError = "无法开始对话，请重试"
             }
@@ -607,6 +621,7 @@ struct RemoteHomeView: View {
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 18)
                 .frame(height: 62)
+                computerShortcuts
                 if showingSearch {
                     TextField("搜索项目或对话", text: $search)
                         .textFieldStyle(.roundedBorder).padding(.horizontal, 20).padding(.bottom, 8)
@@ -717,6 +732,45 @@ struct RemoteHomeView: View {
             .onChange(of: showingNewConversation) { visible in
                 if !visible { Task { await sessions.load(computer: computer) } }
             }
+        }
+    }
+
+    private var computerShortcuts: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(connection.computers) { item in
+                        let selected = item.id == computer.id
+                        Button {
+                            if !selected { connection.select(item.id) }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: "desktopcomputer")
+                                Text(item.name)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .frame(maxWidth: 220)
+                                if selected {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(selected ? .primary : .secondary)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .background(selected ? Color(uiColor: .tertiarySystemFill) : .clear,
+                                        in: Capsule())
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(selected ? [.isSelected] : [])
+                        .accessibilityIdentifier("computerShortcut-\(item.id)")
+                        .id(item.id)
+                    }
+                }
+                .padding(.horizontal, 18)
+            }
+            .onAppear { proxy.scrollTo(computer.id, anchor: .center) }
         }
     }
 
@@ -1026,6 +1080,8 @@ private struct RemoteNewConversationView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
     @State private var draft = ""
+    @StateObject private var additions = MobileComposerAdditions()
+    @State private var createdDraftID: String?
     @State private var selectedWorkspace: String?
     @State private var selectedPermission: String?
     @State private var selectedModelID: String?
@@ -1083,6 +1139,7 @@ private struct RemoteNewConversationView: View {
                 }
             }
         }
+        .mobileComposerActions(additions, computer: computer)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingDirectoryBrowser) {
             RemoteDirectoryBrowser(computer: computer, sessions: sessions) { path in
@@ -1107,6 +1164,7 @@ private struct RemoteNewConversationView: View {
             selectedWorkspace = availableWorkspaces.first?.path
             inputFocused = true
         }
+        .onChange(of: selectedWorkspace) { _ in createdDraftID = nil }
         .onChange(of: sessions.workspaces.count) { _ in
             if selectedWorkspace == nil { selectedWorkspace = availableWorkspaces.first?.path }
         }
@@ -1225,6 +1283,7 @@ private struct RemoteNewConversationView: View {
 
     private var composer: some View {
         VStack(alignment: .leading, spacing: 14) {
+            MobileComposerAttachmentStrip(additions: additions)
             if submitting {
                 Text("正在创建对话…")
                     .font(.footnote)
@@ -1289,13 +1348,11 @@ private struct RemoteNewConversationView: View {
 
     private var composerToolbar: some View {
         HStack(spacing: 0) {
-            Button { showingFullWorkspace = true } label: {
-                Image(systemName: "plus").font(.system(size: 22))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+            MobileComposerAddButton(additions: additions) {
+                inputFocused = false
+                showingProjectMenu = false
             }
-            .disabled(submitting)
-            .accessibilityLabel("打开完整工作区")
+            .disabled(submitting || additions.importing)
             Menu {
                 Button("仅可查看") { selectedPermission = "read-only" }
                 Button("工作区内修改") { selectedPermission = "workspace-write" }
@@ -1333,8 +1390,9 @@ private struct RemoteNewConversationView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
             }
-            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                      || submitting || sessions.starting)
+            .disabled((draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !additions.hasAttachments)
+                      || submitting || sessions.starting || additions.importing
+                      || (additions.mode == .goal && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             .accessibilityLabel(submitting ? "正在创建对话" : "发送新对话")
             .accessibilityIdentifier("newConversationSend")
         }
@@ -1342,15 +1400,27 @@ private struct RemoteNewConversationView: View {
 
     private func startDraft() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !submitting, !sessions.starting else { return }
+        guard (!text.isEmpty || additions.hasAttachments), !submitting, !sessions.starting,
+              !additions.importing, additions.mode != .goal || !text.isEmpty else { return }
+        let submittedDraft = draft
+        let submittedAttachments = additions.attachments
+        let submittedMode = additions.mode
         submitting = true
         showingProjectMenu = false
+        additions.showingMenu = false
         Task {
             defer { submitting = false }
             if let session = await sessions.start(text: text, computer: computer,
                                                   cwd: selectedWorkspace, permission: selectedPermission,
-                                                  model: currentModel) {
+                                                  model: currentModel, attachments: submittedAttachments,
+                                                  mode: submittedMode, existingSessionID: createdDraftID,
+                                                  onCreated: { createdDraftID = $0 }) {
                 inputFocused = false
+                if draft == submittedDraft { draft = "" }
+                let delivered = Set(submittedAttachments.map(\.id))
+                additions.attachments.removeAll { delivered.contains($0.id) }
+                if additions.mode == submittedMode { additions.mode = .message }
+                createdDraftID = nil
                 createdSession = session
                 showingCreatedSession = true
             }

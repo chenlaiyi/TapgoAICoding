@@ -1,6 +1,175 @@
 import XCTest
 
 final class MobileConnectionUITests: XCTestCase {
+    func testUnifiedComposerQuickMenu() {
+        for appearance in ["Light", "Dark"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
+                                   "--dsh-mobile-test-sessions", "[{\"sessionId\":\"menu\",\"cwd\":\"/work\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"Menu chat\"}}}]",
+                                   "--dsh-mobile-test-messages", "[]", "-AppleInterfaceStyle", appearance]
+            app.launch()
+            app.buttons["新对话输入框"].tap()
+            inspectQuickMenu(app, name: "new-menu-" + appearance)
+            app.buttons["composerAction-plan"].tap()
+            XCTAssertTrue(app.buttons["取消模式"].waitForExistence(timeout: 3))
+            app.buttons["取消模式"].tap()
+            app.buttons["返回远程首页"].tap()
+            app.buttons["Menu chat"].tap()
+            inspectQuickMenu(app, name: "chat-menu-" + appearance)
+            app.buttons["composerAction-goal"].tap()
+            XCTAssertTrue(app.buttons["取消模式"].waitForExistence(timeout: 3))
+            XCTAssertFalse(app.buttons["发送"].isEnabled)
+            app.buttons["取消模式"].tap()
+            app.buttons["composerAdd"].tap()
+            app.buttons["composerAction-files"].tap()
+            XCTAssertFalse(app.buttons["composerAction-plan"].exists)
+            let cancelPicker = app.buttons.matching(NSPredicate(format: "label IN %@", ["取消", "Cancel"])).firstMatch
+            XCTAssertTrue(cancelPicker.waitForExistence(timeout: 10), app.debugDescription)
+            keepScreenshot(app, name: "native-file-picker-" + appearance)
+            cancelPicker.tap()
+            app.terminate()
+        }
+    }
+
+    func testNewComposerRetainsFileAndModeAfterFailure() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]", "--dsh-mobile-test-start", "delayed-failure",
+                               "--dsh-mobile-test-attachments", "--dsh-mobile-test-many-attachments", "-AppleInterfaceStyle", "Dark",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
+        app.launch()
+        app.buttons["新对话输入框"].tap()
+        app.buttons["composerAdd"].tap()
+        let plan = app.buttons["composerAction-plan"]
+        XCTAssertTrue(plan.waitForExistence(timeout: 3))
+        if !plan.isHittable { app.scrollViews.containing(.button, identifier: "composerAction-camera").firstMatch.swipeUp() }
+        plan.tap()
+        let input = app.descendants(matching: .any)["newConversationInput"]
+        input.tap()
+        input.typeText("review this file")
+        app.buttons["newConversationSend"].tap()
+        XCTAssertTrue(app.staticTexts["newConversationError"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["移除fixture.txt"].exists)
+        XCTAssertTrue(app.buttons["取消模式"].exists)
+        XCTAssertEqual(input.value as? String, "review this file")
+        keepScreenshot(app, name: "composer-file-plan-error-large-text")
+    }
+
+    func testComposerAttachmentPickersAndUnavailableCamera() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]", "--dsh-mobile-test-attachments"]
+        app.launch()
+        app.buttons["新对话输入框"].tap()
+        app.buttons["composerAdd"].tap()
+        app.buttons["composerAction-camera"].tap()
+        XCTAssertTrue(app.staticTexts["此设备无法使用相机，请选择照片"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["移除fixture.txt"].exists)
+        app.buttons["composerAdd"].tap()
+        app.buttons["composerAction-photos"].tap()
+        let cancel = app.buttons.matching(NSPredicate(format: "label IN %@", ["取消", "Cancel"])).firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10), app.debugDescription)
+        let loading = app.activityIndicators.firstMatch
+        XCTAssertTrue(loading.waitForNonExistence(timeout: 15), app.debugDescription)
+        keepScreenshot(app, name: "native-photo-picker")
+        cancel.tap()
+        XCTAssertTrue(app.buttons["移除fixture.txt"].exists)
+    }
+
+    func testNewComposerClearsDeliveredDraftWhenReturningFromChat() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]", "--dsh-mobile-test-start", "success",
+                               "--dsh-mobile-test-messages", "[]", "--dsh-mobile-test-attachments"]
+        app.launch()
+        app.buttons["新对话输入框"].tap()
+        let input = app.descendants(matching: .any)["newConversationInput"]
+        input.tap()
+        input.typeText("review this file")
+        app.buttons["newConversationSend"].tap()
+        XCTAssertTrue(app.buttons["返回"].waitForExistence(timeout: 5))
+        app.buttons["返回"].tap()
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["移除fixture.txt"].exists)
+        XCTAssertNotEqual(input.value as? String, "review this file")
+    }
+
+    func testHostPlanAndGoalStateRemainManageable() throws {
+        let app = XCUIApplication()
+        let baseline: [String: Any] = ["asOfSeq": 2, "values": [
+            "plan": ["active": true, "pending": false],
+            "goal": ["goal": ["objective": "检查项目", "phase": "active"]]
+        ]]
+        app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[{\"sessionId\":\"state\",\"cwd\":\"/work\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"State chat\"}}}]",
+                               "--dsh-mobile-test-messages", "[]", "--dsh-mobile-test-composer-projections",
+                               String(decoding: try JSONSerialization.data(withJSONObject: baseline), as: UTF8.self)]
+        app.launch()
+        app.buttons["State chat"].tap()
+        XCTAssertTrue(app.buttons["退出方案模式"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["目标：检查项目"].exists)
+        XCTAssertTrue(app.buttons["暂停目标"].exists)
+        app.buttons["清除目标"].tap()
+        XCTAssertTrue(app.alerts["清除当前目标？"].waitForExistence(timeout: 3))
+        app.alerts.buttons["取消"].tap()
+        XCTAssertTrue(app.staticTexts["目标：检查项目"].exists)
+        keepScreenshot(app, name: "host-plan-goal-controls")
+    }
+
+    func testPluginMenuReportsUnavailableHostWithoutLosingDraft() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[]", "--dsh-mobile-test-attachments"]
+        app.launch()
+        app.buttons["新对话输入框"].tap()
+        app.buttons["composerAdd"].tap()
+        app.buttons["composerAction-plugins"].tap()
+        XCTAssertTrue(app.staticTexts["无法读取插件，此电脑可能不支持插件管理，请重试"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["重试"].exists)
+        keepScreenshot(app, name: "native-plugin-unavailable")
+        app.buttons["完成"].tap()
+        XCTAssertTrue(app.buttons["移除fixture.txt"].exists)
+    }
+
+    private func inspectQuickMenu(_ app: XCUIApplication, name: String) {
+        let add = app.buttons["composerAdd"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.tap()
+        for action in ["camera", "photos", "files", "plugins", "plan", "goal"] {
+            let row = app.buttons["composerAction-" + action]
+            XCTAssertTrue(row.waitForExistence(timeout: 3))
+            XCTAssertTrue(row.isHittable)
+            XCTAssertGreaterThanOrEqual(row.frame.height, 44)
+            XCTAssertGreaterThanOrEqual(row.frame.minX, app.frame.minX)
+            XCTAssertLessThanOrEqual(row.frame.maxX, app.frame.maxX)
+            XCTAssertLessThanOrEqual(row.frame.maxY, add.frame.minY)
+        }
+        keepScreenshot(app, name: name)
+        app.otherElements["composerMenuDismiss"].tap()
+        XCTAssertFalse(app.buttons["composerAction-camera"].exists)
+        add.tap()
+    }
+
+    func testSwitchComputerFromHomeShortcuts() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-second-computer", "--dsh-mobile-test-sessions", "[]"]
+        app.launch()
+        let studio = app.buttons["computerShortcut-https://studio.example"]
+        let second = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+                                                       "computerShortcut-", "Second Mac")).firstMatch
+        XCTAssertTrue(studio.waitForExistence(timeout: 5))
+        XCTAssertTrue(studio.isSelected)
+        second.tap()
+        XCTAssertTrue(second.waitForExistence(timeout: 5))
+        XCTAssertTrue(second.isSelected)
+        XCTAssertFalse(studio.isSelected)
+        studio.tap()
+        XCTAssertTrue(studio.waitForExistence(timeout: 5))
+        XCTAssertTrue(studio.isSelected)
+        keepScreenshot(app, name: "native-home-computer-shortcuts")
+    }
+
     func testEditAndDeletePairedComputers() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-url", "https://studio.example/?token=fixture&name=Studio%20Mac",
