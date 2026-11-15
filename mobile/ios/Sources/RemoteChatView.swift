@@ -13,6 +13,17 @@ private struct ChatLine: Identifiable, Equatable {
     var endedAt: TimeInterval?
     var endReason: String?
     var mergedEventIds: Set<Int> = []
+    var messageID: String?
+    var timestamp: Double?
+    var changesSequence: Int?
+    var endSequence: Int?
+    var step: Int?
+    var live = false
+    var interrupted = false
+    var presentationID: String {
+        if role == "assistant", let turn, let step { return "assistant-\(turn)-\(step)" }
+        return "event-\(id)"
+    }
 
     init(id: Int, role: String, text: String, reasoning: String? = nil) {
         self.id = id
@@ -42,11 +53,22 @@ private final class RemoteChat: ObservableObject {
     @Published var nextPrompts = MobileNextPrompts()
     @Published var toolOutputs: [String: MobileToolOutput] = [:]
     @Published var toolOutputUnavailable = false
+    @Published var feedbackItems: [String: MobileMessageFeedback] = [:]
+    @Published var feedbackLoaded = false
+    @Published var feedbackPending: String?
+    @Published var feedbackPendingRating: MobileMessageFeedback.Rating?
+    @Published var feedbackError: String?
+    @Published var feedbackIssueMessageID: String?
+    @Published var forkPending: Int?
+    @Published var forkUnknown: Set<Int> = []
+    private var feedbackLoading = false
+    private var feedbackTouched: Set<String> = []
     private var jobStreams: [String: String] = [:]
     private var issuedJobStreams: Set<String> = []
     private var visibleJobs: [String: String] = [:]
     private var toolOutputOrder: [String] = []
     @Published var loading = true
+    @Published var isFork = false
     @Published var sending = false
     #if DEBUG
     @Published var testSendPending = false
@@ -56,6 +78,9 @@ private final class RemoteChat: ObservableObject {
 
     private var testOutputBatch = 0
     private var testReplyIndex = 0
+    private var testStreamStep = 0
+    private var testAssistantBatch = 0
+    private var testFeedbackRecords: [String: [String: Any]] = [:]
 
     func appendTestToolOutput() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -97,6 +122,34 @@ private final class RemoteChat: ObservableObject {
         receiveStream(["type": "chunk", "chunk": ["type": "text-delta", "text": replies[testReplyIndex]]])
         testReplyIndex += 1
     }
+
+    func appendTestAssistantBatch() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "--dsh-mobile-test-assistant-batches"), arguments.indices.contains(index + 1),
+              let data = arguments[index + 1].data(using: .utf8),
+              let batches = try? JSONSerialization.jsonObject(with: data) as? [[[String: Any]]],
+              batches.indices.contains(testAssistantBatch) else { return }
+        for item in batches[testAssistantBatch] {
+            if let frame = item["stream"] as? [String: Any] { receiveStream(frame) }
+            if let event = item["event"] as? [String: Any] {
+                if assistantStream.matches(event), let seq = event["seq"] as? Int {
+                    pendingAssistantEvents[seq] = event
+                } else {
+                    var projected = lines
+                    Self.consume(event, into: &projected, owner: sessionId)
+                    lines = projected
+                    if let seq = event["seq"] as? Int, ["assistant/message", "assistant/attempt"].contains(event["type"] as? String ?? "") {
+                        seenAssistantSettlements.insert(seq)
+                    }
+                    if event["type"] as? String == "turn/end" {
+                        assistantStream.retire()
+                        publishStream(immediate: true)
+                    }
+                }
+            }
+        }
+        testAssistantBatch += 1
+    }
     #endif
     @Published var error: String?
     @Published var models: [RemoteModel] = []
@@ -115,6 +168,22 @@ private final class RemoteChat: ObservableObject {
     @Published var liveText = ""
     @Published var liveReasoning = ""
     @Published var liveActive = false
+    private var assistantStream = MobileAssistantStream()
+    private var pendingAssistantEvents: [Int: [String: Any]] = [:]
+    private var seenAssistantSettlements: Set<Int> = []
+    private var streamPublication: Task<Void, Never>?
+    private var streamNeedsResync = false
+    var displayLines: [ChatLine] {
+        var visible = lines
+        if liveActive, !liveText.isEmpty {
+            var line = ChatLine(id: -1, role: "assistant", text: liveText)
+            line.turn = assistantStream.turn
+            line.step = assistantStream.step
+            line.live = true
+            if !visible.contains(where: { $0.presentationID == line.presentationID }) { visible.append(line) }
+        }
+        return visible
+    }
     @Published var cancelling = false
     @Published var reconnecting = false
     @Published var connected = false
@@ -142,6 +211,7 @@ private final class RemoteChat: ObservableObject {
     func connect(computer: SavedComputer, sessionId: String, reconnect: Bool = false) async {
         self.sessionId = sessionId
         #if DEBUG
+        isFork = sessionId == "fixture-fork"
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--dsh-mobile-test-composer-projections"),
            arguments.indices.contains(index + 1), let data = arguments[index + 1].data(using: .utf8),
@@ -156,8 +226,11 @@ private final class RemoteChat: ObservableObject {
                 guard let id = item["id"] as? Int,
                       let role = item["role"] as? String,
                       let text = item["text"] as? String else { return nil }
-                return ChatLine(id: id, role: role, text: text,
-                                reasoning: item["reasoning"] as? String)
+                var line = ChatLine(id: id, role: role, text: text,
+                                    reasoning: item["reasoning"] as? String)
+                line.messageID = item["messageId"] as? String
+                line.timestamp = item["time"] as? Double
+                return line
             }
             loading = false
             connected = true
@@ -180,6 +253,7 @@ private final class RemoteChat: ObservableObject {
                let stream = try? JSONSerialization.jsonObject(with: streamData) as? [[String: Any]] {
                 for frame in stream { receiveStream(frame) }
             }
+            appendTestAssistantBatch()
             loading = false
             connected = true
             return
@@ -187,17 +261,33 @@ private final class RemoteChat: ObservableObject {
         #endif
         guard let origin = URL(string: computer.id), let pairing = URL(string: computer.url) else { return }
         disconnect()
+        pendingAssistantEvents = [:]
+        streamNeedsResync = false
+        feedbackLoading = false
+        feedbackPending = nil
+        feedbackPendingRating = nil
+        forkPending = nil
         self.origin = origin
         connected = false
         reconnecting = reconnect
         if !reconnect {
             lines = []
+            seenAssistantSettlements = []
             toolOutputs = [:]
             toolOutputOrder = []
             toolOutputUnavailable = false
+            feedbackItems = [:]
+            feedbackLoaded = false
+            feedbackError = nil
+            feedbackIssueMessageID = nil
+            feedbackLoading = false
+            feedbackPending = nil
+            feedbackTouched = []
+            forkUnknown = []
             liveActive = false
             liveText = ""
             liveReasoning = ""
+            assistantStream = MobileAssistantStream()
             retryCount = 0
             loading = true
             error = nil
@@ -352,11 +442,17 @@ private final class RemoteChat: ObservableObject {
                 guard frame["type"] as? String == "item",
                       let value = frame["value"] as? [String: Any] else { continue }
                 if value["type"] as? String == "snapshot" {
+                    isFork = (value["header"] as? [String: Any])?["isSeeded"] as? Bool == true
                     let records = value["records"] as? [[String: Any]] ?? []
                     var projected: [ChatLine] = []
+                    seenAssistantSettlements = []
                     nextPrompts = MobileNextPrompts()
                     for record in records {
                         if let event = record["event"] as? [String: Any] {
+                            if let seq = event["seq"] as? Int,
+                               ["assistant/message", "assistant/attempt"].contains(event["type"] as? String ?? "") {
+                                seenAssistantSettlements.insert(seq)
+                            }
                             Self.consume(event, into: &projected, owner: sessionId)
                             nextPrompts.consume(event)
                         }
@@ -364,19 +460,19 @@ private final class RemoteChat: ObservableObject {
                     lines = projected
                     try await openToolOutputs(socket: socket, generation: current)
                     guard current == generation, self.socket === socket else { return }
-                    let activeAttempt = (value["assistantStream"] as? [String: Any])?["activeAttempt"] as? [String: Any]
-                    liveActive = activeAttempt != nil
-                    liveText = ""
-                    liveReasoning = ""
-                    if let stream = activeAttempt?["stream"] as? [[String: Any]] {
-                        liveText = Self.streamText(stream, kind: "text")
-                        liveReasoning = Self.streamText(stream, kind: "reasoning")
+                    pendingAssistantEvents = [:]
+                    guard assistantStream.restore(value["assistantStream"] as? [String: Any]) else {
+                        scheduleRetry(computer: computer, generation: current)
+                        error = "回复流不完整，正在重新同步"
+                        return
                     }
+                    publishStream(immediate: true)
                     loading = false
                     connected = true
                     reconnecting = false
                     error = nil
                     retryCount = 0
+                    Task { await self.loadFeedback(computer: computer) }
                     if let values = (value["projections"] as? [String: Any])?["values"] as? [String: Any] {
                         nextPrompts.restore(values["nextPrompts"] as? [String: Any], running: running)
                         if let baseline = value["projections"] as? [String: Any] { composerState.restore(baseline) }
@@ -409,7 +505,21 @@ private final class RemoteChat: ObservableObject {
                 } else if value["type"] as? String == "assistant-stream",
                           let stream = value["frame"] as? [String: Any] {
                     receiveStream(stream)
+                    if streamNeedsResync {
+                        scheduleRetry(computer: computer, generation: current)
+                        error = "回复流不完整，正在重新同步"
+                        return
+                    }
                 } else if let event = value["event"] as? [String: Any] {
+                    if assistantStream.matches(event), let seq = event["seq"] as? Int {
+                        pendingAssistantEvents[seq] = event
+                        continue
+                    }
+                    consumeFeedback(event)
+                    if let seq = event["seq"] as? Int,
+                       ["assistant/message", "assistant/attempt"].contains(event["type"] as? String ?? "") {
+                        seenAssistantSettlements.insert(seq)
+                    }
                     var projected = lines
                     Self.consume(event, into: &projected, owner: sessionId)
                     nextPrompts.consume(event)
@@ -423,15 +533,14 @@ private final class RemoteChat: ObservableObject {
                         funds.providers.removeAll()
                         Task { await self.refreshBalances(computer: computer) }
                     }
-                    if event["type"] as? String == "assistant/message" {
-                        liveText = ""
-                        liveReasoning = ""
-                        liveActive = false
-                    }
                     if event["type"] as? String == "turn/end" {
-                        liveActive = false
-                        liveText = ""
-                        liveReasoning = ""
+                        if !pendingAssistantEvents.isEmpty {
+                            scheduleRetry(computer: computer, generation: current)
+                            error = "回复流正在确认最终内容"
+                            return
+                        }
+                        assistantStream.retire()
+                        publishStream(immediate: true)
                         cancelling = false
                         Task { await self.refreshBalances(computer: computer) }
                     }
@@ -514,24 +623,76 @@ private final class RemoteChat: ObservableObject {
         await connect(computer: computer, sessionId: sessionId, reconnect: true)
     }
 
-    private func receiveStream(_ frame: [String: Any]) {
-        switch frame["type"] as? String {
-        case "start":
-            liveText = ""
-            liveReasoning = ""
-            liveActive = true
-        case "chunk":
-            guard let chunk = frame["chunk"] as? [String: Any],
-                  let text = chunk["text"] as? String else { return }
-            if chunk["type"] as? String == "text-delta" { liveText += text }
-            if chunk["type"] as? String == "reasoning-delta" { liveReasoning += text }
-        case "end":
-            if (frame["outcome"] as? [String: Any])?["kind"] as? String == "abandoned" {
-                liveText = ""
-                liveReasoning = ""
-                liveActive = false
+    private func publishStream(immediate: Bool) {
+        if !immediate {
+            guard streamPublication == nil else { return }
+            let current = generation
+            streamPublication = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(33))
+                guard !Task.isCancelled, let self, self.generation == current else { return }
+                self.streamPublication = nil
+                self.publishStream(immediate: true)
             }
-        default: break
+            return
+        }
+        streamPublication?.cancel()
+        streamPublication = nil
+        liveText = assistantStream.text
+        liveReasoning = assistantStream.reasoning
+        liveActive = assistantStream.active
+    }
+
+    private func receiveStream(_ incoming: [String: Any]) {
+        var frame = incoming
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-url") {
+            if frame["type"] as? String == "start" {
+                testStreamStep += 1
+                if frame["attemptId"] == nil { frame["attemptId"] = UUID().uuidString }
+                if frame["turn"] == nil { frame["turn"] = lines.last(where: { $0.role == "turn" })?.turn ?? 1 }
+                if frame["step"] == nil { frame["step"] = testStreamStep }
+                if frame["startedAfterSeq"] == nil { frame["startedAfterSeq"] = lines.map(\.id).max() ?? -1 }
+            } else {
+                if frame["attemptId"] == nil { frame["attemptId"] = assistantStream.attemptID }
+                if frame["index"] == nil { frame["index"] = assistantStream.nextIndex }
+            }
+            if frame["revision"] == nil { frame["revision"] = assistantStream.revision + 1 }
+            if var chunk = frame["chunk"] as? [String: Any], chunk["index"] == nil {
+                chunk["index"] = 0
+                frame["chunk"] = chunk
+            }
+        }
+        #endif
+        switch assistantStream.receive(frame) {
+        case .ignored: break
+        case .updated:
+            publishStream(immediate: frame["type"] as? String == "start")
+        case .abandoned:
+            if !pendingAssistantEvents.isEmpty {
+                streamPublication?.cancel()
+                streamPublication = nil
+                streamNeedsResync = true
+                return
+            }
+            publishStream(immediate: true)
+        case .resync:
+            streamPublication?.cancel()
+            streamPublication = nil
+            streamNeedsResync = true
+        case .committed(let sequence, let eventType):
+            if let event = pendingAssistantEvents.removeValue(forKey: sequence), event["type"] as? String == eventType {
+                var projected = lines
+                Self.consume(event, into: &projected, owner: sessionId)
+                lines = projected
+                seenAssistantSettlements.insert(sequence)
+            } else if !seenAssistantSettlements.contains(sequence) {
+                streamPublication?.cancel()
+                streamPublication = nil
+                streamNeedsResync = true
+                return
+            }
+            assistantStream.retire()
+            publishStream(immediate: true)
         }
     }
 
@@ -549,8 +710,15 @@ private final class RemoteChat: ObservableObject {
         }
         if type == "turn/end", let turn = data["turn"] as? Int {
             if let index = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn }) {
+                lines[index].endSequence = seq
                 lines[index].endedAt = event["time"] as? TimeInterval ?? 0
                 lines[index].endReason = (data["reason"] as? [String: Any])?["kind"] as? String
+            }
+            return
+        }
+        if type == "workspace/changes", let turn = data["turn"] as? Int {
+            if let index = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn }) {
+                lines[index].changesSequence = seq
             }
             return
         }
@@ -638,16 +806,13 @@ private final class RemoteChat: ObservableObject {
             }
         }
         if type == "assistant/message", text.isEmpty { return }
-        if type == "assistant/message", !text.isEmpty,
-           let turnIndex = lines.lastIndex(where: { $0.role == "turn" }),
-           let assistantIndex = lines.indices.dropFirst(turnIndex + 1).last(where: { lines[$0].role == "assistant" }) {
-            if lines[assistantIndex].mergedEventIds.insert(seq).inserted {
-                lines[assistantIndex].text += "\n\n" + text
-            }
-            return
-        }
         var line = ChatLine(id: seq, role: type == "user/message" ? "user" : "assistant",
                             text: text, reasoning: nil)
+        line.messageID = message["id"] as? String
+        line.timestamp = event["time"] as? Double
+        line.turn = data["turn"] as? Int ?? lines.last(where: { $0.role == "turn" })?.turn
+        line.step = data["step"] as? Int
+        line.interrupted = data["interrupted"] as? Bool == true
         if type == "assistant/message" { line.mergedEventIds.insert(seq) }
         if type == "user/message", lines.last?.role == "turn" {
             lines.insert(line, at: lines.count - 1)
@@ -737,6 +902,12 @@ private final class RemoteChat: ObservableObject {
     }
 
     private func call(_ method: String, arguments: [String: Any], computer: SavedComputer) async throws -> Any {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-reply-actions"),
+           method.hasPrefix("messageFeedback/") || method == "session/fork" {
+            return try replyActionFixture(method, arguments: arguments)
+        }
+        #endif
         guard let session, let origin = URL(string: computer.id) else { throw ChatFailure.unavailable }
         var request = URLRequest(url: origin.appendingPathComponent("api/\(method)"))
         request.httpMethod = "POST"
@@ -752,6 +923,216 @@ private final class RemoteChat: ObservableObject {
               let value = result["value"] else { throw ChatFailure.unavailable }
         return value
     }
+
+    private func decodeReplyValue<Value: Decodable>(_ value: Any, as type: Value.Type) throws -> Value {
+        try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: value))
+    }
+
+    private func consumeFeedback(_ event: [String: Any]) {
+        guard let type = event["type"] as? String, let data = event["data"] as? [String: Any],
+              data["sessionId"] as? String == sessionId else { return }
+        if type == "feedback/message-put", let value = data["item"],
+           let item = try? decodeReplyValue(value, as: MobileMessageFeedback.self),
+           !item.messageId.isEmpty, !item.version.isEmpty {
+            feedbackItems[item.messageId] = item
+            feedbackTouched.insert(item.messageId)
+        } else if type == "feedback/message-delete", let id = data["messageId"] as? String {
+            feedbackItems.removeValue(forKey: id)
+            feedbackTouched.insert(id)
+        }
+    }
+
+    func loadFeedback(computer: SavedComputer) async {
+        guard !feedbackLoading, let owner = sessionId else { return }
+        let current = generation
+        feedbackLoading = true
+        feedbackTouched = []
+        defer { if current == generation { feedbackLoading = false } }
+        do {
+            guard let result = try await call("messageFeedback/list", arguments: ["request": ["sessionId": owner]],
+                                             computer: computer) as? [String: Any],
+                  result["ok"] as? Bool == true, let value = result["value"] as? [String: Any],
+                  let raw = value["items"] else { throw MobileReplyFailure.unavailable }
+            let items = try decodeReplyValue(raw, as: [MobileMessageFeedback].self)
+            guard items.allSatisfy({ !$0.messageId.isEmpty && !$0.version.isEmpty }) else { throw MobileReplyFailure.invalidData }
+            guard current == generation, sessionId == owner else { return }
+            var loaded: [String: MobileMessageFeedback] = [:]
+            for item in items { loaded[item.messageId] = item }
+            for id in feedbackTouched {
+                if let item = feedbackItems[id] { loaded[id] = item }
+                else { loaded.removeValue(forKey: id) }
+            }
+            feedbackItems = loaded
+            feedbackLoaded = true
+            feedbackError = nil
+            feedbackIssueMessageID = nil
+        } catch {
+            if current == generation, sessionId == owner {
+                feedbackLoaded = false
+                feedbackError = "暂时无法读取回复反馈"
+                feedbackIssueMessageID = lines.last(where: { $0.role == "assistant" })?.messageID
+            }
+        }
+    }
+
+    func rateReply(_ id: String, rating: MobileMessageFeedback.Rating, computer: SavedComputer) async {
+        guard feedbackLoaded, feedbackPending == nil, let owner = sessionId else { return }
+        let current = generation
+        let observed = feedbackItems[id]
+        let retract = observed?.rating == rating
+        feedbackPending = id
+        feedbackPendingRating = rating
+        feedbackError = nil
+        defer {
+            if current == generation {
+                feedbackPending = nil
+                feedbackPendingRating = nil
+            }
+        }
+        var request: [String: Any] = ["sessionId": owner, "messageId": id]
+        if let observed { request["ifVersion"] = observed.version }
+        else { request["ifVersion"] = NSNull() }
+        if !retract {
+            request["rating"] = rating.rawValue
+            if let note = observed?.note { request["note"] = note }
+            if let category = observed?.category { request["category"] = category }
+        }
+        do {
+            guard let result = try await call(retract ? "messageFeedback/delete" : "messageFeedback/put",
+                                             arguments: ["request": request], computer: computer) as? [String: Any] else {
+                throw MobileReplyFailure.invalidData
+            }
+            guard current == generation, sessionId == owner else { return }
+            if result["ok"] as? Bool == true {
+                if retract {
+                    guard (result["value"] as? [String: Any])?["absent"] as? Bool == true else {
+                        throw MobileReplyFailure.invalidData
+                    }
+                    feedbackItems.removeValue(forKey: id)
+                }
+                else {
+                    guard let raw = result["value"] else { throw MobileReplyFailure.invalidData }
+                    let item = try decodeReplyValue(raw, as: MobileMessageFeedback.self)
+                    guard item.messageId == id, !item.version.isEmpty else { throw MobileReplyFailure.invalidData }
+                    feedbackItems[id] = item
+                }
+                feedbackTouched.insert(id)
+            } else {
+                if let failure = result["error"] as? [String: Any], failure["code"] as? String == "version-conflict" {
+                    if let raw = failure["current"], !(raw is NSNull),
+                       let item = try? decodeReplyValue(raw, as: MobileMessageFeedback.self), item.messageId == id {
+                        feedbackItems[id] = item
+                    } else { feedbackItems.removeValue(forKey: id) }
+                    feedbackError = "反馈已在其他设备更新，请确认后重试"
+                    feedbackTouched.insert(id)
+                } else { feedbackError = "反馈未保存，请稍后重试" }
+                feedbackIssueMessageID = id
+            }
+        } catch {
+            guard current == generation, sessionId == owner else { return }
+            await loadFeedback(computer: computer)
+            guard current == generation, sessionId == owner else { return }
+            feedbackError = "提交结果未确认，已尝试刷新当前反馈"
+            feedbackIssueMessageID = id
+        }
+    }
+
+    func forkReply(at sequence: Int, computer: SavedComputer) async -> String? {
+        guard forkPending == nil, !forkUnknown.contains(sequence), let owner = sessionId else { return nil }
+        let current = generation
+        forkPending = sequence
+        defer { if current == generation { forkPending = nil } }
+        do {
+            guard let result = try await call("session/fork", arguments: ["request": ["sessionId": owner, "atSeq": sequence]],
+                                             computer: computer) as? [String: Any],
+                  let id = result["sessionId"] as? String, !id.isEmpty else { throw MobileReplyFailure.invalidData }
+            guard current == generation, sessionId == owner else { return nil }
+            return id
+        } catch {
+            if current == generation, sessionId == owner {
+                forkUnknown.insert(sequence)
+                self.error = "分支创建结果未确认，请回到会话列表查看；此处不会重复创建"
+            }
+            return nil
+        }
+    }
+
+    private func replyDocument(_ path: String, sequence: Int, index: Int? = nil, computer: SavedComputer) async throws -> Data {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        let flag = index == nil ? "--dsh-mobile-test-change-summary" : "--dsh-mobile-test-change-diff"
+        if let position = arguments.firstIndex(of: flag), arguments.indices.contains(position + 1),
+           let data = arguments[position + 1].data(using: .utf8) {
+            if arguments[position + 1] == "__expired__" { throw MobileReplyFailure.expired }
+            return data
+        }
+        #endif
+        guard let session, let owner = sessionId,
+              var parts = URLComponents(string: computer.id) else { throw MobileReplyFailure.unavailable }
+        let current = generation
+        parts.path = path
+        parts.queryItems = [URLQueryItem(name: "sessionId", value: owner), URLQueryItem(name: "seq", value: String(sequence))]
+        if let index { parts.queryItems?.append(URLQueryItem(name: "index", value: String(index))) }
+        guard let url = parts.url else { throw MobileReplyFailure.unavailable }
+        let (data, response) = try await session.data(from: url)
+        guard current == generation, sessionId == owner else { throw MobileReplyFailure.unavailable }
+        if (response as? HTTPURLResponse)?.statusCode == 404 { throw MobileReplyFailure.expired }
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw MobileReplyFailure.unavailable }
+        return data
+    }
+
+    func changesSummary(_ sequence: Int, computer: SavedComputer) async throws -> MobileChangesSummary {
+        let data = try await replyDocument("/api/changes.summary", sequence: sequence, computer: computer)
+        guard let value = try? JSONDecoder().decode(MobileChangesSummary.self, from: data) else {
+            throw MobileReplyFailure.invalidData
+        }
+        guard value.valid else { throw MobileReplyFailure.invalidData }
+        return value
+    }
+
+    func fileDiff(_ sequence: Int, index: Int, computer: SavedComputer) async throws -> MobileFileDiff {
+        let data = try await replyDocument("/api/changes.diff", sequence: sequence, index: index, computer: computer)
+        guard let value = try? JSONDecoder().decode(MobileFileDiff.self, from: data) else {
+            throw MobileReplyFailure.invalidData
+        }
+        guard !value.path.isEmpty, !value.display.isEmpty,
+              value.kind != .text || value.before != nil && value.after != nil && value.coarse != nil
+                && value.hunks?.allSatisfy({ hunk in
+                  hunk.oldStart >= 1 && hunk.newStart >= 1 && hunk.oldLines >= 0 && hunk.newLines >= 0
+                    && hunk.lines.allSatisfy { $0.hasPrefix("+") || $0.hasPrefix("-") || $0.hasPrefix(" ") }
+              }) == true else { throw MobileReplyFailure.invalidData }
+        return value
+    }
+
+    #if DEBUG
+    private func replyActionFixture(_ method: String, arguments: [String: Any]) throws -> Any {
+        if method == "session/fork" {
+            guard (arguments["request"] as? [String: Any])?["atSeq"] as? Int == 3 else { throw ChatFailure.unavailable }
+            if ProcessInfo.processInfo.arguments.contains("fork-response-lost") { throw ChatFailure.unavailable }
+            return ["sessionId": "fixture-fork"]
+        }
+        if method == "messageFeedback/list" { return ["ok": true, "value": ["items": Array(testFeedbackRecords.values)]] }
+        let request = arguments["request"] as? [String: Any] ?? [:]
+        guard let id = request["messageId"] as? String else { throw ChatFailure.unavailable }
+        let mode = ProcessInfo.processInfo.arguments
+        if mode.contains("feedback-rejected") { return ["ok": false, "error": ["code": "message-not-found"]] }
+        if let observed = testFeedbackRecords[id] {
+            if request["ifVersion"] as? String != observed["version"] as? String {
+                return ["ok": false, "error": ["code": "version-conflict", "current": observed]]
+            }
+        } else if !(request["ifVersion"] is NSNull) {
+            return ["ok": false, "error": ["code": "version-conflict", "current": NSNull()]]
+        }
+        if method == "messageFeedback/delete" {
+            testFeedbackRecords.removeValue(forKey: id)
+            return ["ok": true, "value": ["absent": true]]
+        }
+        let item: [String: Any] = ["messageId": id, "rating": request["rating"] ?? "positive", "version": UUID().uuidString]
+        testFeedbackRecords[id] = item
+        if mode.contains("feedback-response-lost") { throw ChatFailure.unavailable }
+        return ["ok": true, "value": item]
+    }
+    #endif
 
     func loadSettings(computer: SavedComputer) async {
         #if DEBUG
@@ -929,6 +1310,8 @@ private final class RemoteChat: ObservableObject {
         testModelPending = false
         #endif
         generation = UUID()
+        streamPublication?.cancel()
+        streamPublication = nil
         disconnectToolOutputs()
         heartbeat.stop()
         retryTask?.cancel()
@@ -957,6 +1340,8 @@ private final class RemoteChat: ObservableObject {
     }
 }
 
+private struct MobileForkTarget: Identifiable { let id: String }
+
 struct RemoteChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -980,6 +1365,8 @@ struct RemoteChatView: View {
     @State private var followingLatest = true
     @State private var bottomVisible = true
     @State private var bottomPosition = CGFloat.infinity
+    @State private var readingComposer = false
+    @State private var forkTarget: MobileForkTarget?
     @State private var draggingTranscript = false
     @State private var scrollRequestCount = 0
     private let bottomAnchor = "chat-bottom"
@@ -995,7 +1382,7 @@ struct RemoteChatView: View {
                 .accessibilityLabel("返回")
                 .mobileGlass(in: Circle(), interactive: true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(chat.sessionTitle ?? title).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                    Text(chatTitle).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                     Text("\(project) · \(computer.name)")
                         .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                 }
@@ -1027,25 +1414,15 @@ struct RemoteChatView: View {
                         VStack(alignment: .leading, spacing: 14) {
                             LazyVStack(alignment: .leading, spacing: 14) {
                                 if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
-                                ForEach(chat.lines) { line in
+                                ForEach(chat.displayLines, id: \.presentationID) { line in
                                     chatRow(line)
-                                        .id(line.id)
+                                        .id(line.presentationID)
                                 }
                             }
-                            if chat.liveActive {
-                                if chat.liveText.isEmpty, !chat.lines.contains(where: { $0.role == "turn" }) {
-                                    Label("正在思考", systemImage: "sparkle")
-                                        .font(.subheadline).foregroundStyle(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                } else if !chat.liveText.isEmpty {
-                                    AssistantMessageView(text: chat.liveText, reasoning: nil, showCopy: false)
-                                    HStack(spacing: 6) {
-                                        ProgressView().controlSize(.mini)
-                                        Text("正在回复").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    .accessibilityElement(children: .combine)
-                                    .accessibilityIdentifier("assistantReplyStreaming")
-                                }
+                            if chat.liveActive && chat.liveText.isEmpty && !chat.lines.contains(where: { $0.role == "turn" }) {
+                                Label("正在思考", systemImage: "sparkle")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             Color.clear.frame(height: 1)
                                 .id(bottomAnchor)
@@ -1069,11 +1446,15 @@ struct RemoteChatView: View {
                         if bottomVisible && movedTowardBottom && !draggingTranscript { followingLatest = true }
                         if followingLatest && !bottomVisible { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
-                    .simultaneousGesture(DragGesture().onChanged { _ in
+                    .simultaneousGesture(DragGesture().onChanged { gesture in
                         draggingTranscript = true
+                        if abs(gesture.translation.height) > 12 && abs(gesture.translation.height) > abs(gesture.translation.width) {
+                            readingComposer = true
+                        }
                         followingLatest = false
                     }.onEnded { gesture in
                         draggingTranscript = false
+                        if readingComposer { composerFocused = false }
                         if gesture.translation.height < 0 && bottomVisible { followingLatest = true }
                     })
                     .onChange(of: chat.lines) { _ in
@@ -1166,24 +1547,7 @@ struct RemoteChatView: View {
                     }
                 }
                 MobileComposerAttachmentStrip(additions: additions)
-                VStack(alignment: .leading, spacing: 12) {
-                    if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
-                        nextPromptSuggestions
-                    }
-                    composerInput.padding(.horizontal, 7)
-                    HStack(spacing: 0) {
-                        addMenu
-                        permissionButton
-                        HStack(spacing: 4) {
-                            modelBadge
-                            balanceBadge.layoutPriority(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        primaryButton
-                    }
-                }
-                .padding(.horizontal, 13).padding(.vertical, 9)
-                .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                composerCard
             }
             .padding(.horizontal, 15).padding(.bottom, 10)
         }
@@ -1192,6 +1556,11 @@ struct RemoteChatView: View {
         .task(id: sessionId) {
             await chat.connect(computer: computer, sessionId: sessionId)
             await chat.loadSettings(computer: computer)
+            await chat.loadFeedback(computer: computer)
+        }
+        .fullScreenCover(item: $forkTarget) { target in
+            RemoteChatView(computer: computer, sessionId: target.id, title: "分支对话", project: project,
+                           onUnauthorized: onUnauthorized)
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await chat.loadSettings(computer: computer) } }
@@ -1221,6 +1590,9 @@ struct RemoteChatView: View {
                 }
                 if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-append") {
                     Button("追加测试回复") { chat.appendTestReply() }
+                }
+                if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-assistant-batches") {
+                    Button("追加回复事件") { chat.appendTestAssistantBatch() }
                 }
             }
             .font(.caption).padding(.top, 66)
@@ -1367,6 +1739,61 @@ struct RemoteChatView: View {
             }
         }
         .frame(minHeight: 44)
+    }
+
+    private var compactComposer: Bool {
+        readingComposer && !composerFocused && !additions.hasAttachments && additions.mode == .message
+    }
+
+    private var chatTitle: String {
+        let value = chat.sessionTitle ?? title
+        return chat.isFork && !value.hasPrefix("分支") ? "分支 · \(value)" : value
+    }
+
+    @ViewBuilder
+    private var composerCard: some View {
+        if compactComposer {
+            HStack(spacing: 0) {
+                addMenu
+                Button {
+                    readingComposer = false
+                    composerFocused = true
+                } label: {
+                    Text(draft.isEmpty ? "在 \(computer.name) 上工作" : draft)
+                        .font(.subheadline)
+                        .foregroundStyle(draft.isEmpty ? Color.secondary : Color.primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 6)
+                .accessibilityLabel("展开输入框")
+                .accessibilityIdentifier("expandChatComposer")
+                primaryButton
+            }
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .mobileGlass(in: Capsule())
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
+                    nextPromptSuggestions
+                }
+                composerInput.padding(.horizontal, 7)
+                HStack(spacing: 0) {
+                    addMenu
+                    permissionButton
+                    HStack(spacing: 4) {
+                        modelBadge
+                        balanceBadge.layoutPriority(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    primaryButton
+                }
+            }
+            .padding(.horizontal, 13).padding(.vertical, 9)
+            .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
     }
 
     private var composerInput: some View {
@@ -1557,8 +1984,22 @@ struct RemoteChatView: View {
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
                                     ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "assistant" {
-                AssistantMessageView(text: line.text, reasoning: line.reasoning,
-                    showCopy: isLastAssistantInTurn(line.id))
+                VStack(alignment: .leading, spacing: 4) {
+                    AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false)
+                    if line.live {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.mini)
+                            Text(chat.reconnecting ? "正在恢复回复" : "正在回复").font(.caption).foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("assistantReplyStreaming")
+                    } else {
+                        if line.interrupted { Text("已停止 · 保留已收到的回复").font(.caption).foregroundStyle(.secondary) }
+                        if isLastAssistantInTurn(line.id), replyTurn(line)?.endedAt != nil || replyTurn(line) == nil {
+                            replyFooter(line)
+                        }
+                    }
+                }
             } else {
                 Text(line.text)
                     .font(.system(size: 16, weight: .medium)).lineSpacing(5)
@@ -1570,6 +2011,40 @@ struct RemoteChatView: View {
                                 in: RoundedRectangle(cornerRadius: 20))
             }
             if line.role != "user" { Spacer(minLength: 20) }
+        }
+    }
+
+    private func replyTurn(_ line: ChatLine) -> ChatLine? {
+        if let turn = line.turn { return chat.lines.last(where: { $0.role == "turn" && $0.turn == turn }) }
+        guard let index = chat.lines.firstIndex(where: { $0.id == line.id }) else { return nil }
+        return chat.lines.prefix(index).last(where: { $0.role == "turn" })
+    }
+
+    private func replyFooter(_ line: ChatLine) -> some View {
+        let cut = replyTurn(line)?.endSequence ?? line.mergedEventIds.max() ?? line.id
+        let issueID = chat.feedbackIssueMessageID ?? chat.lines.last(where: { $0.role == "assistant" })?.messageID
+        return VStack(alignment: .leading, spacing: 8) {
+            MobileReplyActionsView(text: line.text, timestamp: line.timestamp,
+                rating: line.messageID.flatMap { chat.feedbackItems[$0]?.rating },
+                feedbackEnabled: chat.feedbackLoaded && chat.feedbackPending == nil && line.messageID != nil,
+                feedbackBusy: chat.feedbackPending == line.messageID && line.messageID != nil,
+                pendingRating: chat.feedbackPendingRating,
+                feedbackError: line.messageID != nil && issueID == line.messageID ? chat.feedbackError : nil,
+                forkEnabled: line.messageID != nil && chat.forkPending == nil && !chat.forkUnknown.contains(cut),
+                forkBusy: chat.forkPending == cut,
+                rate: { rating in
+                    if let id = line.messageID { Task { await chat.rateReply(id, rating: rating, computer: computer) } }
+                }, fork: {
+                    Task {
+                        if let id = await chat.forkReply(at: cut, computer: computer) { forkTarget = MobileForkTarget(id: id) }
+                    }
+                }, retryFeedback: { Task { await chat.loadFeedback(computer: computer) } })
+            if let sequence = replyTurn(line)?.changesSequence {
+                MobileChangesView(sequence: sequence,
+                    loadSummary: { try await chat.changesSummary($0, computer: computer) },
+                    loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) })
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
     }
 

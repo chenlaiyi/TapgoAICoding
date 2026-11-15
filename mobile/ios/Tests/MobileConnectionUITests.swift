@@ -403,6 +403,11 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(balance.waitForExistence(timeout: 5))
         for focused in [false, true, false] {
             if focused { input.tap() } else { dismissKeyboard(app) }
+            if inputID == "chatComposerInput", app.buttons["expandChatComposer"].exists {
+                XCTAssertFalse(app.keyboards.firstMatch.exists)
+                app.buttons["expandChatComposer"].tap()
+                XCTAssertTrue(model.waitForExistence(timeout: 3))
+            }
             XCTAssertGreaterThanOrEqual(model.frame.minY, input.frame.maxY)
             XCTAssertGreaterThan(balance.frame.minY, input.frame.maxY)
             XCTAssertLessThan(abs(model.frame.midY - balance.frame.midY), 10)
@@ -438,6 +443,165 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         dismissKeyboard(app)
         XCTAssertFalse(app.keyboards.firstMatch.exists)
+    }
+
+    func testReadingCompactsComposerAndRestoresDraftAfterMenu() throws {
+        let messages: [[String: Any]] = (1...24).map {
+            ["id": $0, "role": "assistant", "text": "阅读历史 \($0)\n\n这里有足够的正文用于真实滚动。"]
+        }
+        let app = try launchInteractionChat(messages: messages)
+        let input = app.descendants(matching: .any)["chatComposerInput"]
+        input.tap()
+        input.typeText("Preserve this unsent draft")
+        app.scrollViews["chatTranscript"].swipeDown()
+        let expand = app.buttons["expandChatComposer"]
+        XCTAssertTrue(expand.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        let compactY = app.buttons["composerAdd"].frame.minY
+        inspectQuickMenu(app, name: "reading-compact-menu")
+        XCTAssertEqual(app.buttons["composerAdd"].frame.minY, compactY, accuracy: 2)
+        app.otherElements["composerMenuDismiss"].tap()
+        XCTAssertTrue(expand.exists)
+        keepScreenshot(app, name: "reading-compact-draft")
+        expand.tap()
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertEqual(input.value as? String, "Preserve this unsent draft")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        keepScreenshot(app, name: "reading-restored-draft")
+    }
+
+    func testReplyActionsFeedbackFilesAndFork() throws {
+        let app = try launchReplyActions()
+        app.buttons["复制回复"].tap()
+        XCTAssertTrue(app.buttons["已复制回复"].waitForExistence(timeout: 3))
+        app.buttons["赞这条回复"].tap()
+        XCTAssertTrue(app.buttons["撤回赞"].waitForExistence(timeout: 3))
+        app.buttons["踩这条回复"].tap()
+        XCTAssertTrue(app.buttons["撤回踩"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["撤回赞"].exists)
+        app.buttons["撤回踩"].tap()
+        XCTAssertTrue(app.buttons["踩这条回复"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["replyTimestamp"].exists)
+        keepScreenshot(app, name: "reply-actions-and-file-chip")
+        app.buttons["replyFileChanges"].tap()
+        app.buttons["changedFile-0"].tap()
+        XCTAssertTrue(app.scrollViews["replyFileDiff"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["+new"].exists)
+        XCTAssertTrue(app.staticTexts["-old"].exists)
+        keepScreenshot(app, name: "reply-file-diff")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["关闭文件变更"].tap()
+        app.buttons["分支新对话"].tap()
+        app.buttons["从这条回复分支新对话"].tap()
+        XCTAssertTrue(app.staticTexts["分支 · 原对话标题"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["测试回复正文"].exists)
+        keepScreenshot(app, name: "reply-forked-chat")
+    }
+
+    func testRejectedFeedbackKeepsUnselectedRating() throws {
+        let app = try launchReplyActions(mode: "feedback-rejected")
+        app.buttons["赞这条回复"].tap()
+        XCTAssertTrue(app.staticTexts["反馈未保存，请稍后重试"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["赞这条回复"].exists)
+        XCTAssertFalse(app.buttons["撤回赞"].exists)
+    }
+
+    func testLostFeedbackResponseReadsCommittedRating() throws {
+        let app = try launchReplyActions(mode: "feedback-response-lost")
+        app.buttons["赞这条回复"].tap()
+        XCTAssertTrue(app.buttons["撤回赞"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["提交结果未确认，已尝试刷新当前反馈"].exists)
+        app.buttons["撤回赞"].tap()
+        XCTAssertTrue(app.buttons["赞这条回复"].waitForExistence(timeout: 3))
+    }
+
+    func testUnconfirmedForkPreventsDuplicateCreation() throws {
+        let app = try launchReplyActions(mode: "fork-response-lost")
+        app.buttons["分支新对话"].tap()
+        app.buttons["从这条回复分支新对话"].tap()
+        XCTAssertTrue(app.staticTexts["分支创建结果未确认，请回到会话列表查看；此处不会重复创建"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["分支新对话"].isEnabled)
+    }
+
+    func testReplyActionsRemainReadableWithDarkAccessibilityText() throws {
+        let app = try launchReplyActions(accessibility: true)
+        let transcript = app.scrollViews["chatTranscript"]
+        transcript.swipeUp()
+        for label in ["复制回复", "赞这条回复", "踩这条回复", "分支新对话"] {
+            let action = app.buttons[label]
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+            XCTAssertLessThanOrEqual(action.frame.maxX, app.frame.maxX)
+        }
+        keepScreenshot(app, name: "reply-actions-dark-accessibility")
+        app.buttons["replyFileChanges"].tap()
+        XCTAssertTrue(app.buttons["changedFile-0"].waitForExistence(timeout: 5))
+    }
+
+    func testInvalidFileMetadataShowsFailureWithoutInventedChanges() throws {
+        var app = try launchReplyActions(invalidMetadata: "summary")
+        XCTAssertFalse(app.buttons["replyFileChanges"].exists)
+        XCTAssertTrue(app.staticTexts["返回内容无法读取，请重试"].exists)
+        XCTAssertTrue(app.buttons["复制回复"].isEnabled)
+        app.terminate()
+        app = try launchReplyActions(invalidMetadata: "diff")
+        app.buttons["replyFileChanges"].tap()
+        app.buttons["changedFile-0"].tap()
+        XCTAssertTrue(app.staticTexts["返回内容无法读取，请重试"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.scrollViews["replyFileDiff"].exists)
+    }
+
+    func testExpiredFilePreviewsDoNotOfferIneffectiveRetries() throws {
+        var app = try launchReplyActions(invalidMetadata: "expired-summary")
+        XCTAssertTrue(app.staticTexts["这次文件变更的预览已不可用"].exists)
+        XCTAssertFalse(app.buttons["重试"].exists)
+        app.terminate()
+        app = try launchReplyActions(invalidMetadata: "expired-diff")
+        app.buttons["replyFileChanges"].tap()
+        app.buttons["changedFile-0"].tap()
+        XCTAssertTrue(app.staticTexts["这次文件变更的预览已不可用"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["重试"].exists)
+    }
+
+    private func launchReplyActions(mode: String? = nil, accessibility: Bool = false,
+                                    invalidMetadata: String? = nil) throws -> XCUIApplication {
+        let app = XCUIApplication()
+        let events: [[String: Any]] = [
+            ["seq": 1, "type": "turn/start", "time": 1_800_000_000_000, "data": ["turn": 1]],
+            ["seq": 2, "type": "assistant/message", "time": 1_800_000_001_000,
+             "data": ["turn": 1, "message": ["id": "reply-1", "role": "assistant",
+                       "content": [["type": "text", "text": "测试回复正文"]]]]],
+            ["seq": 3, "type": "turn/end", "time": 1_800_000_002_000, "data": ["turn": 1, "reason": ["kind": "completed"]]],
+            ["seq": 4, "type": "workspace/changes", "data": ["turn": 1]]
+        ]
+        app.launchArguments = ["--dsh-mobile-test-url", "https://reply.example/?token=fixture&name=Studio%20Mac",
+            "--dsh-mobile-test-sessions", "[{\"sessionId\":\"reply\",\"cwd\":\"/work\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"回复操作\"}}}]",
+            "--dsh-mobile-test-events", String(decoding: try JSONSerialization.data(withJSONObject: events), as: UTF8.self),
+            "--dsh-mobile-test-balance", "23.51", "--dsh-mobile-test-reply-actions",
+            "--dsh-mobile-test-composer-projections", "{\"asOfSeq\":4,\"values\":{\"title\":\"原对话标题\"}}",
+            "--dsh-mobile-test-change-summary", "{\"turn\":1,\"files\":[{\"path\":\"demo.txt\",\"display\":\"demo.txt\",\"added\":2,\"deleted\":1}],\"total\":1,\"added\":2,\"deleted\":1}",
+            "--dsh-mobile-test-change-diff", "{\"kind\":\"text\",\"path\":\"demo.txt\",\"display\":\"demo.txt\",\"before\":true,\"after\":true,\"coarse\":false,\"hunks\":[{\"oldStart\":1,\"oldLines\":2,\"newStart\":1,\"newLines\":3,\"lines\":[\" keep\",\"-old\",\"+new\",\"+extra\"]}]}"
+        ]
+        if let mode { app.launchArguments.append(mode) }
+        if let invalidMetadata {
+            let flag = invalidMetadata.hasSuffix("summary") ? "--dsh-mobile-test-change-summary" : "--dsh-mobile-test-change-diff"
+            let index = try XCTUnwrap(app.launchArguments.firstIndex(of: flag))
+            app.launchArguments[index + 1] = invalidMetadata.hasPrefix("expired-") ? "__expired__" : invalidMetadata == "summary"
+                ? "{\"turn\":1,\"files\":[],\"total\":1,\"added\":-1,\"deleted\":0}"
+                : "{\"kind\":\"text\",\"path\":\"demo.txt\",\"display\":\"demo.txt\",\"before\":true,\"after\":true,\"coarse\":false,\"hunks\":[{\"oldStart\":1,\"oldLines\":1,\"newStart\":1,\"newLines\":1,\"lines\":[\"unprefixed\"]}]}"
+        }
+        if accessibility {
+            app.launchArguments += ["-AppleInterfaceStyle", "Dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        app.buttons["回复操作"].tap()
+        if invalidMetadata == "expired-summary" {
+            XCTAssertTrue(app.staticTexts["这次文件变更的预览已不可用"].waitForExistence(timeout: 5))
+        } else if invalidMetadata == "summary" {
+            XCTAssertTrue(app.staticTexts["返回内容无法读取，请重试"].waitForExistence(timeout: 5))
+        } else { XCTAssertTrue(app.buttons["replyFileChanges"].waitForExistence(timeout: 5), app.debugDescription) }
+        XCTAssertTrue(app.buttons["赞这条回复"].isEnabled)
+        return app
     }
 
     func testFixturePairingDoesNotRemainActive() {
@@ -602,6 +766,64 @@ final class MobileConnectionUITests: XCTestCase {
             if !text.hasSuffix("第三段") { app.buttons["追加测试回复"].tap() }
         }
         keepScreenshot(app, name: "assistant-reply-growing-before-completion")
+    }
+
+    func testStreamSettlementKeepsMessagesOrderedWithoutRepeatingPreamble() throws {
+        let app = XCUIApplication()
+        func frame(_ value: [String: Any]) -> [String: Any] { ["stream": value] }
+        func event(_ value: [String: Any]) -> [String: Any] { ["event": value] }
+        let preamble = "先检查第一步，再执行工具。"
+        let batches: [[[String: Any]]] = [
+            [frame(["type": "start", "attemptId": "a", "revision": 1, "turn": 1, "step": 1, "startedAfterSeq": 1]),
+             frame(["type": "chunk", "attemptId": "a", "revision": 2, "index": 0,
+                    "chunk": ["type": "text-delta", "index": 0, "text": "先检查第一步，"]])],
+            [frame(["type": "chunk", "attemptId": "a", "revision": 3, "index": 1,
+                    "chunk": ["type": "text-delta", "index": 0, "text": "再执行工具。"]]),
+             event(["seq": 2, "type": "assistant/message", "surfaceOp": "append", "data": ["turn": 1, "step": 1,
+                    "message": ["id": "preamble", "content": [["type": "text", "text": preamble]]]]])],
+            [frame(["type": "end", "attemptId": "a", "revision": 4, "index": 2,
+                    "outcome": ["kind": "committed", "seq": 2, "eventType": "assistant/message"]]),
+             event(["seq": 3, "type": "tool/call", "data": ["turn": 1, "step": 1, "callId": "call", "name": "bash", "arguments": "{\"command\":\"echo ok\"}"]]),
+             event(["seq": 4, "type": "tool/result", "data": ["message": ["source": ["callId": "call"], "content": [["type": "text", "text": "ok"]]]]])],
+            [frame(["type": "start", "attemptId": "b", "revision": 5, "turn": 1, "step": 2, "startedAfterSeq": 4]),
+             frame(["type": "chunk", "attemptId": "b", "revision": 6, "index": 0,
+                    "chunk": ["type": "text-delta", "index": 0, "text": "最终答复第一段。"]])],
+            [frame(["type": "chunk", "attemptId": "b", "revision": 7, "index": 1,
+                    "chunk": ["type": "text-delta", "index": 0, "text": "\n\n第二段增量。"]]),
+             event(["seq": 5, "type": "assistant/message", "surfaceOp": "append", "data": ["turn": 1, "step": 2,
+                    "message": ["id": "final", "content": [["type": "text", "text": "最终答复第一段。\n\n第二段权威完整内容。"]]]]]),
+             frame(["type": "end", "attemptId": "b", "revision": 8, "index": 2,
+                    "outcome": ["kind": "committed", "seq": 5, "eventType": "assistant/message"]]),
+             event(["seq": 6, "type": "turn/end", "data": ["turn": 1, "reason": ["kind": "completed"]]])]
+        ]
+        app.launchArguments = ["--dsh-mobile-test-url", "https://settlement.example/?token=fixture&name=Studio%20Mac",
+            "--dsh-mobile-test-sessions", "[{\"sessionId\":\"settlement\",\"cwd\":\"/work\",\"running\":true,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"流式衔接\"}}}]",
+            "--dsh-mobile-test-events", "[{\"seq\":1,\"type\":\"turn/start\",\"data\":{\"turn\":1}}]",
+            "--dsh-mobile-test-balance", "23.51", "--dsh-mobile-test-reply-actions",
+            "--dsh-mobile-test-assistant-batches", String(decoding: try JSONSerialization.data(withJSONObject: batches), as: UTF8.self)]
+        app.launch()
+        app.buttons["流式衔接"].tap()
+        let advance = app.buttons["追加回复事件"]
+        XCTAssertTrue(app.staticTexts["先检查第一步，"].waitForExistence(timeout: 5))
+        advance.tap()
+        XCTAssertTrue(app.staticTexts[preamble].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts.matching(identifier: preamble).count, 1)
+        XCTAssertTrue(app.descendants(matching: .any)["assistantReplyStreaming"].exists)
+        advance.tap()
+        XCTAssertTrue(app.staticTexts["过程 · 1 项操作"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["复制回复"].exists)
+        advance.tap()
+        let first = app.staticTexts["最终答复第一段。"]
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        let originalY = first.frame.minY
+        keepScreenshot(app, name: "interleaved-live-message")
+        advance.tap()
+        XCTAssertTrue(app.staticTexts["第二段权威完整内容。"].waitForExistence(timeout: 5))
+        XCTAssertEqual(first.frame.minY, originalY, accuracy: 3)
+        XCTAssertEqual(app.staticTexts.matching(identifier: preamble).count, 1)
+        XCTAssertEqual(app.buttons.matching(identifier: "复制回复").count, 1)
+        XCTAssertFalse(app.descendants(matching: .any)["assistantReplyStreaming"].exists)
+        keepScreenshot(app, name: "interleaved-settled-messages")
     }
 
     func testNumberedReplyKeepsMultiDigitMarkersOnOneLine() throws {
