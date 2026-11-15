@@ -1100,6 +1100,63 @@ final class MobileConnectionUITests: XCTestCase {
         app.buttons["关闭过程详情"].tap()
     }
 
+    func testLiveOutputStaysBoundedAndDoesNotReopenCollapsedDetails() throws {
+        try checkLiveOutput(largeText: false)
+    }
+
+    func testLiveOutputWithDarkAppearanceAndAccessibilityText() throws {
+        try checkLiveOutput(largeText: true)
+    }
+
+    private func checkLiveOutput(largeText: Bool) throws {
+        let app = XCUIApplication()
+        let events: [[String: Any]] = [
+            ["seq": 1, "type": "turn/start", "data": ["turn": 1]],
+            ["seq": 2, "type": "tool/call", "data": ["callId": "shell", "name": "bash", "arguments": "{\"command\":\"python3 progress.py\",\"description\":\"Streaming command\"}"]],
+            ["seq": 3, "type": "job/registered", "data": ["jobId": "job", "owner": "live-output", "toolCall": ["callId": "shell", "rootCallId": "shell"]]]
+        ]
+        let batches: [[[String: Any]]] = [
+            [["jobId": "job", "frame": ["type": "opened", "from": 0, "job": ["id": "job", "owner": "live-output"]]],
+             ["jobId": "job", "frame": ["type": "output", "chunks": [["at": 0, "text": "line one\n"]], "next": 9]]],
+            [["jobId": "job", "frame": ["type": "output", "chunks": [["at": 9, "text": "line two\n"]], "next": 18]]],
+            [["jobId": "job", "frame": ["type": "output", "chunks": [["at": 18, "text": "line three\n"]], "next": 29]]],
+            [["jobId": "job", "frame": ["type": "status", "job": ["id": "job", "status": "killed"]]]]
+        ]
+        app.launchArguments = ["--dsh-mobile-test-url", "https://live.example/?token=fixture&name=Studio",
+            "--dsh-mobile-test-sessions", "[{\"sessionId\":\"live-output\",\"cwd\":\"/work/TapgoAICoding\",\"running\":true,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"实时输出验收\"}}}]",
+            "--dsh-mobile-test-events", String(decoding: try JSONSerialization.data(withJSONObject: events), as: UTF8.self),
+            "--dsh-mobile-test-tool-output", String(decoding: try JSONSerialization.data(withJSONObject: batches), as: UTF8.self),
+            "--dsh-mobile-test-balance", "23.51"]
+        if largeText { app.launchArguments += ["-AppleInterfaceStyle", "Dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+        app.launch()
+        app.buttons["实时输出验收"].tap()
+        app.staticTexts["过程 · 1 项操作"].tap()
+        XCTAssertTrue(app.staticTexts["liveToolPreview"].waitForExistence(timeout: 3))
+        app.buttons["查看完整过程"].tap()
+        let output = app.staticTexts["liveToolOutputText"]
+        XCTAssertTrue(output.waitForExistence(timeout: 3))
+        XCTAssertEqual(output.label, "line one\n")
+        app.buttons["暂停跟随"].tap()
+        app.buttons["advanceDetailOutput"].tap()
+        XCTAssertTrue(output.label.contains("line two"))
+        XCTAssertTrue(app.buttons["回到最新"].exists)
+        app.buttons["全部收起"].tap()
+        app.buttons["advanceDetailOutput"].tap()
+        XCTAssertFalse(output.exists)
+        app.staticTexts["toolDetailTitle-shell"].tap()
+        XCTAssertTrue(output.waitForExistence(timeout: 3))
+        XCTAssertTrue(output.label.contains("line three"))
+        app.buttons["advanceDetailOutput"].tap()
+        XCTAssertTrue(app.staticTexts["已停止 · 保留部分输出"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["关闭过程详情"].isHittable)
+        XCTAssertTrue(app.buttons["全部收起"].isHittable)
+        keepScreenshot(app, name: largeText ? "live-output-dark-large" : "live-output-stopped-partial")
+        app.buttons["关闭过程详情"].tap()
+        app.buttons["收起过程"].tap()
+        XCTAssertFalse(app.staticTexts["liveToolPreview"].exists)
+        XCTAssertTrue(app.buttons["停止运行"].exists)
+    }
+
     private func launchInteractionChat(messages: [[String: Any]] = [], append: String? = nil,
                                        send: String? = nil) throws -> XCUIApplication {
         let app = XCUIApplication()

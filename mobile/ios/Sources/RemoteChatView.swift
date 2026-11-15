@@ -40,6 +40,12 @@ private final class RemoteChat: ObservableObject {
     private let connectionLog = Logger(subsystem: "com.devtools.terminalSimple", category: "remote-chat")
     @Published var lines: [ChatLine] = []
     @Published var nextPrompts = MobileNextPrompts()
+    @Published var toolOutputs: [String: MobileToolOutput] = [:]
+    @Published var toolOutputUnavailable = false
+    private var jobStreams: [String: String] = [:]
+    private var issuedJobStreams: Set<String> = []
+    private var visibleJobs: [String: String] = [:]
+    private var toolOutputOrder: [String] = []
     @Published var loading = true
     @Published var sending = false
     #if DEBUG
@@ -47,6 +53,23 @@ private final class RemoteChat: ObservableObject {
     private var testSendCompletion: CheckedContinuation<Bool, Never>?
     @Published var testModelPending = false
     private var testModelCompletion: CheckedContinuation<Bool, Never>?
+
+    private var testOutputBatch = 0
+
+    func appendTestToolOutput() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "--dsh-mobile-test-tool-output"), arguments.indices.contains(index + 1),
+              let data = arguments[index + 1].data(using: .utf8),
+              let batches = try? JSONSerialization.jsonObject(with: data) as? [[[String: Any]]],
+              batches.indices.contains(testOutputBatch), let owner = sessionId else { return }
+        let bindings = Set(lines.flatMap { $0.activities.flatMap(\.jobIDs) })
+        for item in batches[testOutputBatch] {
+            guard let id = item["jobId"] as? String, bindings.contains(id), let frame = item["frame"] as? [String: Any] else { continue }
+            if toolOutputs[id] == nil { toolOutputs[id] = MobileToolOutput(id: id, owner: owner) }
+            toolOutputs[id]?.receive(frame)
+        }
+        testOutputBatch += 1
+    }
 
     func completeTestModelSelection() {
         let success = ProcessInfo.processInfo.arguments.contains("model-success")
@@ -144,10 +167,11 @@ private final class RemoteChat: ObservableObject {
            let fixture = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             var projected: [ChatLine] = []
             for event in fixture {
-                Self.consume(event, into: &projected)
+                Self.consume(event, into: &projected, owner: sessionId)
                 nextPrompts.consume(event)
             }
             lines = projected
+            appendTestToolOutput()
             if let streamIndex = arguments.firstIndex(of: "--dsh-mobile-test-stream"),
                arguments.indices.contains(streamIndex + 1),
                let streamData = arguments[streamIndex + 1].data(using: .utf8),
@@ -166,6 +190,9 @@ private final class RemoteChat: ObservableObject {
         reconnecting = reconnect
         if !reconnect {
             lines = []
+            toolOutputs = [:]
+            toolOutputOrder = []
+            toolOutputUnavailable = false
             liveActive = false
             liveText = ""
             liveReasoning = ""
@@ -224,6 +251,10 @@ private final class RemoteChat: ObservableObject {
             composerStatusError = nil
             try await socket.send(.string(projectionText))
             try await socket.send(.string(text))
+            let jobsOpening: [String: Any] = ["type": "open", "streamId": streamId + "-jobs", "endpoint": "job/list",
+                "payload": ["args": ["request": ["sessionId": sessionId]]]]
+            let jobsData = try JSONSerialization.data(withJSONObject: jobsOpening)
+            try await socket.send(.string(String(decoding: jobsData, as: UTF8.self)))
             heartbeat.start(socket: socket) { [weak self, weak socket] in
                 guard let self, let socket, self.generation == current,
                       self.socket === socket else { return }
@@ -261,6 +292,37 @@ private final class RemoteChat: ObservableObject {
                 }
                 guard let frame = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let frameStream = frame["streamId"] as? String else { continue }
+                if frameStream == streamId + "-jobs" {
+                    if frame["type"] as? String == "error" { toolOutputUnavailable = true }
+                    if let value = frame["value"] as? [String: Any], value["type"] as? String == "rows",
+                       let jobs = value["jobs"] as? [[String: Any]] {
+                        visibleJobs = jobs.reduce(into: [:]) { result, job in
+                            if job["owner"] as? String == self.sessionId, let id = job["id"] as? String,
+                               let status = job["status"] as? String { result[id] = status }
+                        }
+                        toolOutputUnavailable = false
+                        issuedJobStreams.formIntersection(visibleJobs.keys)
+                        for id in toolOutputs.keys where toolOutputs[id]?.phase == .disconnected && visibleJobs[id] == nil {
+                            toolOutputs[id]?.unavailable()
+                        }
+                        try await openToolOutputs(socket: socket, generation: current)
+                        guard current == generation, self.socket === socket else { return }
+                    }
+                    continue
+                }
+                if let jobID = jobStreams[frameStream] {
+                    if let value = frame["value"] as? [String: Any] { toolOutputs[jobID]?.receive(value) }
+                    if frame["type"] as? String == "error" {
+                        toolOutputs[jobID]?.unavailable()
+                        jobStreams.removeValue(forKey: frameStream)
+                    }
+                    if frame["type"] as? String == "end" {
+                        if toolOutputs[jobID]?.active == true { toolOutputs[jobID]?.unavailable() }
+                        jobStreams.removeValue(forKey: frameStream)
+                    }
+                    trimToolOutputs()
+                    continue
+                }
                 if frameStream == streamId + "-composer" {
                     if frame["type"] as? String == "error" {
                         composerState = MobileComposerState()
@@ -293,11 +355,13 @@ private final class RemoteChat: ObservableObject {
                     nextPrompts = MobileNextPrompts()
                     for record in records {
                         if let event = record["event"] as? [String: Any] {
-                            Self.consume(event, into: &projected)
+                            Self.consume(event, into: &projected, owner: sessionId)
                             nextPrompts.consume(event)
                         }
                     }
                     lines = projected
+                    try await openToolOutputs(socket: socket, generation: current)
+                    guard current == generation, self.socket === socket else { return }
                     let activeAttempt = (value["assistantStream"] as? [String: Any])?["activeAttempt"] as? [String: Any]
                     liveActive = activeAttempt != nil
                     liveText = ""
@@ -345,9 +409,11 @@ private final class RemoteChat: ObservableObject {
                     receiveStream(stream)
                 } else if let event = value["event"] as? [String: Any] {
                     var projected = lines
-                    Self.consume(event, into: &projected)
+                    Self.consume(event, into: &projected, owner: sessionId)
                     nextPrompts.consume(event)
                     lines = projected
+                    try await openToolOutputs(socket: socket, generation: current)
+                    guard current == generation, self.socket === socket else { return }
                     if event["type"] as? String == "model/selection",
                        let data = event["data"] as? [String: Any],
                        let provider = data["provider"] as? String, let model = data["model"] as? String {
@@ -378,9 +444,47 @@ private final class RemoteChat: ObservableObject {
         }
     }
 
+    private func disconnectToolOutputs() {
+        for id in toolOutputs.keys { toolOutputs[id]?.disconnect() }
+        jobStreams = [:]
+        issuedJobStreams = []
+        visibleJobs = [:]
+    }
+
+    private func openToolOutputs(socket: URLSessionWebSocketTask, generation current: UUID) async throws {
+        guard generation == current, self.socket === socket, let sessionId else { return }
+        let bindings = Set(lines.flatMap { $0.activities.flatMap(\.jobIDs) })
+        for id in bindings.sorted() {
+            guard let status = visibleJobs[id], !issuedJobStreams.contains(id),
+                  status == "running" || status == "stopping" || toolOutputs[id]?.active == true else { continue }
+            if toolOutputs[id] == nil { toolOutputOrder.append(id) }
+            var output = toolOutputs[id] ?? MobileToolOutput(id: id, owner: sessionId)
+            output.begin()
+            toolOutputs[id] = output
+            issuedJobStreams.insert(id)
+            let streamID = "tool-output-" + UUID().uuidString
+            jobStreams[streamID] = id
+            let opening: [String: Any] = ["type": "open", "streamId": streamID, "endpoint": "job/follow",
+                "payload": ["args": ["request": ["sessionId": sessionId, "jobId": id, "from": output.nextOffset]]]]
+            let data = try JSONSerialization.data(withJSONObject: opening)
+            try await socket.send(.string(String(decoding: data, as: UTF8.self)))
+            guard generation == current, self.socket === socket else { return }
+        }
+        trimToolOutputs()
+    }
+
+    private func trimToolOutputs() {
+        let inactive = toolOutputOrder.filter { toolOutputs[$0]?.active == false }
+        if inactive.count > 32 {
+            for id in inactive.prefix(inactive.count - 32) { toolOutputs.removeValue(forKey: id) }
+            toolOutputOrder.removeAll { toolOutputs[$0] == nil }
+        }
+    }
+
     private func scheduleRetry(computer: SavedComputer, generation current: UUID) {
         guard current == generation else { return }
         heartbeat.stop()
+        disconnectToolOutputs()
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
         session?.invalidateAndCancel()
@@ -429,7 +533,7 @@ private final class RemoteChat: ObservableObject {
         }
     }
 
-    private static func consume(_ event: [String: Any], into lines: inout [ChatLine]) {
+    private static func consume(_ event: [String: Any], into lines: inout [ChatLine], owner: String?) {
         guard let type = event["type"] as? String,
               let seq = event["seq"] as? Int,
               let data = event["data"] as? [String: Any] else { return }
@@ -455,6 +559,19 @@ private final class RemoteChat: ObservableObject {
                 if !reasoning.isEmpty {
                     let previous = lines[index].reasoning ?? ""
                     lines[index].reasoning = previous.isEmpty ? reasoning : previous + "\n\n" + reasoning
+                }
+            }
+            return
+        }
+        if type == "job/registered", data["owner"] as? String == owner,
+           let jobID = data["jobId"] as? String,
+           let call = data["toolCall"] as? [String: Any], let callID = call["rootCallId"] as? String {
+            for index in lines.indices.reversed() {
+                if let activity = lines[index].activities.firstIndex(where: { $0.id == callID }) {
+                    if !lines[index].activities[activity].jobIDs.contains(jobID) {
+                        lines[index].activities[activity].jobIDs.append(jobID)
+                    }
+                    break
                 }
             }
             return
@@ -810,6 +927,7 @@ private final class RemoteChat: ObservableObject {
         testModelPending = false
         #endif
         generation = UUID()
+        disconnectToolOutputs()
         heartbeat.stop()
         retryTask?.cancel()
         retryTask = nil
@@ -1027,6 +1145,14 @@ struct RemoteChatView: View {
                         .font(.caption).frame(minHeight: 44)
                     }
                 }
+                if chat.toolOutputUnavailable && chat.running {
+                    HStack {
+                        Text("实时输出服务暂不可用，工具最终结果仍会显示")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("重新连接") { Task { await chat.retry(computer: computer, sessionId: sessionId) } }
+                            .font(.caption).frame(minHeight: 44)
+                    }
+                }
                 MobileComposerAttachmentStrip(additions: additions)
                 VStack(alignment: .leading, spacing: 12) {
                     if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
@@ -1086,12 +1212,16 @@ struct RemoteChatView: View {
                 if chat.testSendPending {
                     Button("完成测试发送") { chat.completeTestSend() }
                 }
+                if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-tool-output") {
+                    Button("追加测试输出") { chat.appendTestToolOutput() }.accessibilityIdentifier("advanceInlineOutput")
+                }
                 if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-append") {
                     Button("追加测试回复") { chat.appendTestReply() }
                 }
             }
             .font(.caption).padding(.top, 66)
         }
+        .environment(\.advanceToolOutputFixture, toolOutputFixtureAction)
         #endif
         .sheet(isPresented: $showingWorkspace) {
             if let url = URL(string: computer.url) {
@@ -1101,45 +1231,7 @@ struct RemoteChatView: View {
         .mobileComposerActions(additions, computer: computer, planActive: chat.planActive) {
             Task { await chat.composerCommand("/plan off", computer: computer, sessionId: sessionId) }
         }
-        .sheet(isPresented: $showingModels) {
-            NavigationStack {
-                List {
-                    #if DEBUG
-                    if chat.testModelPending {
-                        Button("完成测试模型切换") { chat.completeTestModelSelection() }
-                    }
-                    #endif
-                    if chat.settingsLoading && chat.models.isEmpty {
-                        ProgressView().accessibilityLabel("正在读取模型")
-                    } else if chat.models.isEmpty {
-                        Text("暂无可选模型").foregroundStyle(.secondary)
-                        Button("重试读取模型") { Task { await chat.loadSettings(computer: computer) } }
-                    }
-                    if let error = chat.modelSelectionError { Text(error).foregroundStyle(.orange) }
-                    if chat.running { Text("选择将用于后续请求，当前请求继续使用原模型").font(.caption).foregroundStyle(.secondary) }
-                    ForEach(Array(Set(chat.models.map(\.provider))).sorted(), id: \.self) { provider in
-                        Section(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)") {
-                            ForEach(chat.models.filter { $0.provider == provider }) { model in
-                                Button {
-                                    Task {
-                                        if await chat.selectModel(model, computer: computer, sessionId: sessionId) {
-                                            showingModels = false
-                                        }
-                                    }
-                                } label: { modelSelectionRow(model) }
-                                .disabled(chat.selectingModelID != nil || !chat.connected)
-                                .accessibilityLabel(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
-                                .accessibilityValue(chat.selectingModelID == model.id ? "正在切换" : chat.selectedModel == model.id ? "当前模型" : "")
-                                .accessibilityHint("\(model.provider)/\(model.model)")
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("选择模型")
-                .toolbar { Button("完成") { showingModels = false } }
-            }
-            .presentationDetents([.medium, .large], selection: $modelPickerDetent)
-        }
+        .sheet(isPresented: $showingModels) { modelPicker }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 Form {
@@ -1209,6 +1301,53 @@ struct RemoteChatView: View {
         }
     }
 
+    private var modelPicker: some View {
+            NavigationStack {
+                List {
+                    #if DEBUG
+                    if chat.testModelPending {
+                        Button("完成测试模型切换") { chat.completeTestModelSelection() }
+                    }
+                    #endif
+                    if chat.settingsLoading && chat.models.isEmpty {
+                        ProgressView().accessibilityLabel("正在读取模型")
+                    } else if chat.models.isEmpty {
+                        Text("暂无可选模型").foregroundStyle(.secondary)
+                        Button("重试读取模型") { Task { await chat.loadSettings(computer: computer) } }
+                    }
+                    if let error = chat.modelSelectionError { Text(error).foregroundStyle(.orange) }
+                    if chat.running { Text("选择将用于后续请求，当前请求继续使用原模型").font(.caption).foregroundStyle(.secondary) }
+                    ForEach(Array(Set(chat.models.map(\.provider))).sorted(), id: \.self) { provider in
+                        Section(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)") {
+                            ForEach(chat.models.filter { $0.provider == provider }) { model in
+                                Button {
+                                    Task {
+                                        if await chat.selectModel(model, computer: computer, sessionId: sessionId) {
+                                            showingModels = false
+                                        }
+                                    }
+                                } label: { modelSelectionRow(model) }
+                                .disabled(chat.selectingModelID != nil || !chat.connected)
+                                .accessibilityLabel(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
+                                .accessibilityValue(chat.selectingModelID == model.id ? "正在切换" : chat.selectedModel == model.id ? "当前模型" : "")
+                                .accessibilityHint("\(model.provider)/\(model.model)")
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("选择模型")
+                .toolbar { Button("完成") { showingModels = false } }
+            }
+            .presentationDetents([.medium, .large], selection: $modelPickerDetent)
+    }
+
+    #if DEBUG
+    private var toolOutputFixtureAction: (() -> Void)? {
+        guard ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-tool-output") else { return nil }
+        return { chat.appendTestToolOutput() }
+    }
+    #endif
+
     private func modelSelectionRow(_ model: RemoteModel) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -1228,7 +1367,7 @@ struct RemoteChatView: View {
 
     private var composerInput: some View {
         TextField("在 \(computer.name) 上工作", text: $draft, axis: .vertical)
-            .font(.body)
+            .font(.subheadline)
             .lineLimit(1...5)
             .focused($composerFocused)
             .accessibilityIdentifier("chatComposerInput")
@@ -1407,12 +1546,12 @@ struct RemoteChatView: View {
         HStack(alignment: .top) {
             if line.role == "user" { Spacer(minLength: 45) }
             if line.role == "activity" {
-                ActivityGroupView(activities: line.activities, onInspect: inspectProcess)
+                ActivityGroupView(activities: line.activities, toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "turn" {
                 TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
                                 activities: line.activities, reasoning: line.reasoning,
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
-                                    ? chat.liveReasoning : "", onInspect: inspectProcess)
+                                    ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "assistant" {
                 AssistantMessageView(text: line.text, reasoning: line.reasoning,
                     showCopy: isLastAssistantInTurn(line.id))
@@ -1442,6 +1581,7 @@ struct RemoteChatView: View {
 
 private struct ActivityGroupView: View {
     let activities: [MobileChatActivity]
+    let toolOutputs: [String: MobileToolOutput]
 
     private var title: String {
         if let running = activities.last(where: { !$0.finished }) {
@@ -1470,7 +1610,7 @@ private struct ActivityGroupView: View {
     let onInspect: () -> Void
 
     var body: some View {
-        ProcessDisclosureView(summary: title, reasoning: "", activities: activities, onInspect: onInspect)
+        ProcessDisclosureView(summary: title, reasoning: "", activities: activities, toolOutputs: toolOutputs, onInspect: onInspect)
     }
 }
 
@@ -1481,6 +1621,7 @@ private struct TurnProcessView: View {
     let activities: [MobileChatActivity]
     let reasoning: String?
     let liveReasoning: String
+    let toolOutputs: [String: MobileToolOutput]
     let onInspect: () -> Void
 
     private var processSummary: String {
@@ -1512,7 +1653,7 @@ private struct TurnProcessView: View {
             ProcessDisclosureView(summary: processSummary,
                 reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
                     .compactMap { $0 }.joined(separator: "\n\n"),
-                activities: activities, onInspect: onInspect)
+                activities: activities, toolOutputs: toolOutputs, onInspect: onInspect)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1520,13 +1661,20 @@ private struct TurnProcessView: View {
 
 /// Keeps the transcript preview bounded while full live details remain independently dismissible.
 private struct ProcessDisclosureView: View {
+    #if DEBUG
+    @Environment(\.advanceToolOutputFixture) private var advanceFixture
+    #endif
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let summary: String
     let reasoning: String
     let activities: [MobileChatActivity]
+    let toolOutputs: [String: MobileToolOutput]
     let onInspect: () -> Void
+    @State private var collapseVersion = 0
+    @State private var reasoningExpanded = false
     @State private var expanded = false
     @State private var showingDetails = false
+    @State private var detailDetent: PresentationDetent = .large
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1550,7 +1698,14 @@ private struct ProcessDisclosureView: View {
                     Text(reasoning).font(.system(size: 13)).lineLimit(4)
                 }
                 ForEach(Array(activities.suffix(3))) { activity in
-                    activityRow(activity, preview: true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        activityRow(activity, preview: true)
+                        if let output = activity.jobIDs.compactMap({ toolOutputs[$0] }).last, !output.text.isEmpty {
+                            Text(output.text.split(separator: "\n").suffix(2).joined(separator: "\n"))
+                                .font(.system(.caption, design: .monospaced)).lineLimit(2)
+                                .accessibilityIdentifier("liveToolPreview")
+                        }
+                    }
                 }
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 4) { detailButton; collapseButton }
@@ -1561,14 +1716,17 @@ private struct ProcessDisclosureView: View {
         }
         .foregroundStyle(.secondary)
         .sheet(isPresented: $showingDetails) {
-            NavigationStack {
+            VStack(spacing: 0) {
+                processHeader.padding(.horizontal, 16).padding(.vertical, 8)
+                Divider()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         ForEach(activities) { activity in
-                            ProcessActivityDetail(activity: activity, initiallyExpanded: activities.count <= 3)
+                            ProcessActivityDetail(activity: activity, liveJobs: activity.jobIDs.compactMap { toolOutputs[$0] },
+                                collapseVersion: collapseVersion, initiallyExpanded: activities.count <= 3 && collapseVersion == 0)
                         }
                         if !reasoning.isEmpty {
-                            DisclosureGroup("思考过程") {
+                            DisclosureGroup("思考过程", isExpanded: $reasoningExpanded) {
                                 Text(reasoning).font(.body).textSelection(.enabled).padding(.top, 8)
                                     .accessibilityIdentifier("processFullReasoning")
                             }
@@ -1576,21 +1734,49 @@ private struct ProcessDisclosureView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding()
                 }
-                .navigationTitle("执行过程")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("关闭过程详情") { showingDetails = false }
-                    }
+                .accessibilityIdentifier("processDetailScroll")
+                #if DEBUG
+                if let advanceFixture {
+                    Button("追加测试输出", action: advanceFixture).accessibilityIdentifier("advanceDetailOutput")
+                        .frame(minHeight: 44).padding(.horizontal)
                 }
+                #endif
             }
-            .presentationDetents([.medium, .large])
+            .background(Color(uiColor: .systemBackground))
+            .presentationDetents([.medium, .large], selection: $detailDetent)
             .presentationDragIndicator(.visible)
         }
     }
 
+    private var processHeader: some View {
+        VStack(spacing: 4) {
+            if dynamicTypeSize.isAccessibilitySize {
+                Text("执行过程").font(.headline).foregroundStyle(.primary).accessibilityAddTraits(.isHeader)
+                HStack { collapseAllButton; Spacer(); closeDetailsButton }
+            } else {
+                HStack {
+                    collapseAllButton
+                    Spacer(minLength: 8)
+                    Text("执行过程").font(.headline).foregroundStyle(.primary).accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 8)
+                    closeDetailsButton
+                }
+            }
+        }
+    }
+
+    private var collapseAllButton: some View {
+        Button("全部收起") { collapseVersion += 1; reasoningExpanded = false }
+            .frame(minHeight: 44).foregroundStyle(Color.accentColor)
+    }
+
+    private var closeDetailsButton: some View {
+        Button("完成") { showingDetails = false }
+            .frame(minHeight: 44).foregroundStyle(Color.accentColor).accessibilityLabel("关闭过程详情")
+    }
+
     private var detailButton: some View {
-        Button("查看完整过程") { showingDetails = true }
+        Button("查看完整过程") { detailDetent = .large; showingDetails = true }
             .font(.caption).foregroundStyle(Color.accentColor).frame(minHeight: 44)
     }
 
@@ -1613,18 +1799,53 @@ private struct ProcessDisclosureView: View {
 
 /// Full call arguments and returned output stay outside the bounded transcript preview.
 private struct ProcessActivityDetail: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let activity: MobileChatActivity
+    let liveJobs: [MobileToolOutput]
+    let collapseVersion: Int
     @State private var expanded: Bool
     @State private var outputLimit = 12000
 
-    init(activity: MobileChatActivity, initiallyExpanded: Bool) {
+    init(activity: MobileChatActivity, liveJobs: [MobileToolOutput], collapseVersion: Int, initiallyExpanded: Bool) {
         self.activity = activity
+        self.liveJobs = liveJobs
+        self.collapseVersion = collapseVersion
         _expanded = State(initialValue: initiallyExpanded)
+    }
+
+    private var activityStatus: String {
+        if !activity.finished, !liveJobs.isEmpty, liveJobs.allSatisfy({ !$0.active && $0.phase != .unavailable }) {
+            return "等待工具返回"
+        }
+        return activity.status
+    }
+
+    private var activitySummary: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if dynamicTypeSize.isAccessibilitySize {
+                Text("\(activity.category) · \(activity.name)").font(.subheadline)
+                statusLabel
+            } else {
+                HStack {
+                    Text("\(activity.category) · \(activity.name)").font(.subheadline)
+                    Spacer()
+                    statusLabel
+                }
+            }
+            Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                .accessibilityIdentifier("toolDetailTitle-\(activity.id)")
+        }
+        .frame(minHeight: 44)
+    }
+
+    private var statusLabel: some View {
+        Text(activityStatus).font(.caption).foregroundStyle(activity.failed ? Color.orange : Color.secondary)
     }
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: 12) {
+                ForEach(liveJobs) { output in LiveToolOutputView(output: output) }
                 if !activity.invocation.isEmpty {
                     Text(activity.invocation == activity.parameters ? "调用参数" : "命令")
                         .font(.caption).foregroundStyle(.secondary)
@@ -1648,24 +1869,14 @@ private struct ProcessActivityDetail: View {
                         Button("显示更多输出") { outputLimit += 12000 }.frame(minHeight: 44)
                     }
                 } else {
-                    Text(activity.finished ? "工具未返回文字输出" : "等待工具返回输出")
+                    Text(activity.finished ? "工具未返回文字输出" : liveJobs.isEmpty ? "此工具尚未提供实时输出，等待工具返回" : "最终结果将在工具返回后显示")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("\(activity.category) · \(activity.name)").font(.subheadline)
-                    Spacer()
-                    Text(activity.status).font(.caption)
-                        .foregroundStyle(activity.failed ? Color.orange : Color.secondary)
-                }
-                Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-            }
-            .frame(minHeight: 44)
-        }
+        } label: { activitySummary }
         .tint(.accentColor)
+        .onChange(of: collapseVersion) { _ in expanded = false }
     }
 }
 

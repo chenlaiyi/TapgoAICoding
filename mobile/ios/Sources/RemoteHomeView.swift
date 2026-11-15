@@ -1305,7 +1305,7 @@ private struct RemoteNewConversationView: View {
             }
             TextField("向点点够提问", text: $draft, axis: .vertical)
                 .lineLimit(1...4)
-                .font(.body)
+                .font(.subheadline)
                 .focused($inputFocused)
                 .submitLabel(.send)
                 .onSubmit { startDraft() }

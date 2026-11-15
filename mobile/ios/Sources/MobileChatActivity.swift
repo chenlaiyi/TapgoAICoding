@@ -12,6 +12,7 @@ struct MobileChatActivity: Identifiable, Equatable {
     var failed = false
     var cancelled = false
     var output: String?
+    var jobIDs: [String] = []
     private(set) var exitCode: Int?
     private(set) var signal: String?
 
