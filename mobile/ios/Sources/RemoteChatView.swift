@@ -993,25 +993,29 @@ struct RemoteChatView: View {
                         .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("返回")
+                .mobileGlass(in: Circle(), interactive: true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(chat.sessionTitle ?? title).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                     Text("\(project) · \(computer.name)")
                         .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                Button { dismiss() } label: {
-                    Image(systemName: "square.and.pencil").font(.system(size: 19))
-                        .frame(width: 44, height: 44)
+                HStack(spacing: 0) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "square.and.pencil").font(.system(size: 19))
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("新建对话")
+                    Menu {
+                        Button("模型、权限与额度") { showingSettings = true }
+                        Button("完整工作区") { showingWorkspace = true }
+                    } label: {
+                        Image(systemName: "ellipsis").font(.system(size: 20, weight: .medium))
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("更多")
                 }
-                .accessibilityLabel("新建对话")
-                Menu {
-                    Button("模型、权限与额度") { showingSettings = true }
-                    Button("完整工作区") { showingWorkspace = true }
-                } label: {
-                    Image(systemName: "ellipsis").font(.system(size: 20, weight: .medium))
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("更多")
+                .mobileGlass(in: Capsule(), interactive: true)
             }
             .foregroundStyle(.primary)
             .padding(.horizontal, 16)
@@ -1175,19 +1179,11 @@ struct RemoteChatView: View {
                             balanceBadge.layoutPriority(1)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Button { composerFocused = false } label: {
-                            Image(systemName: "keyboard.chevron.compact.down")
-                                .font(.system(size: 17))
-                                .frame(width: 44, height: 44)
-                        }
-                        .accessibilityLabel("收起键盘")
                         primaryButton
                     }
                 }
                 .padding(.horizontal, 13).padding(.vertical, 9)
-                .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 24))
-                .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color(uiColor: .separator).opacity(0.3)))
-                .shadow(color: .black.opacity(0.07), radius: 14, y: 5)
+                .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
             .padding(.horizontal, 15).padding(.bottom, 10)
         }

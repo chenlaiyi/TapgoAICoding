@@ -212,9 +212,7 @@ private struct MobileComposerActions: ViewModifier {
                                 .padding(.vertical, 8)
                             }
                             .frame(width: width, height: min(available, sizeCategory.isAccessibilityCategory ? 440 : 304))
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
-                            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.primary.opacity(0.08)))
-                            .shadow(color: .black.opacity(0.16), radius: 16, y: 6)
+                            .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                             .offset(x: max(16, min(button.minX, geometry.size.width - width - 16)),
                                     y: max(8, button.minY - min(available, sizeCategory.isAccessibilityCategory ? 440 : 304) - 8))
                             .accessibilityIdentifier("composerQuickMenu")

@@ -590,7 +590,7 @@ struct RemoteHomeView: View {
                         Image(systemName: "line.3.horizontal")
                             .font(.system(size: 17, weight: .medium))
                             .frame(width: 38, height: 38)
-                            .background(Color(uiColor: .secondarySystemBackground), in: Circle())
+                            .mobileGlass(in: Circle(), interactive: true)
                     }
                     .accessibilityLabel("打开顶部菜单")
                     Spacer()
@@ -614,7 +614,7 @@ struct RemoteHomeView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 17, weight: .medium))
                             .frame(width: 38, height: 38)
-                            .background(Color(uiColor: .secondarySystemBackground), in: Circle())
+                            .mobileGlass(in: Circle(), interactive: true)
                     }
                     .accessibilityLabel("搜索")
                 }
@@ -813,9 +813,7 @@ struct RemoteHomeView: View {
                 .padding(.leading, 39).frame(height: 37)
         }
         .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 23))
-        .overlay(RoundedRectangle(cornerRadius: 23).stroke(Color.primary.opacity(0.08)))
-        .shadow(color: .black.opacity(0.18), radius: 22, y: 12)
+        .mobileGlass(in: RoundedRectangle(cornerRadius: 23, style: .continuous))
     }
 
     private func topMenuRow(_ title: String, symbol: String, selected: Bool = false,
@@ -886,7 +884,7 @@ struct RemoteHomeView: View {
             .accessibilityLabel("打开新对话")
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Color(uiColor: .secondarySystemBackground), in: Capsule())
+        .mobileGlass(in: Capsule())
         .padding(.horizontal, 16).padding(.bottom, 10)
     }
 
@@ -1259,9 +1257,7 @@ private struct RemoteNewConversationView: View {
         }
         .buttonStyle(.plain)
         .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 23))
-        .overlay(RoundedRectangle(cornerRadius: 23).stroke(Color.primary.opacity(0.08)))
-        .shadow(color: .black.opacity(0.18), radius: 22, y: 12)
+        .mobileGlass(in: RoundedRectangle(cornerRadius: 23, style: .continuous))
     }
 
     private func projectMenuRow(_ title: String, symbol: String, selected: Bool) -> some View {
@@ -1314,9 +1310,7 @@ private struct RemoteNewConversationView: View {
             composerToolbar
         }
         .padding(.horizontal, 17).padding(.vertical, 14)
-        .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.primary.opacity(0.08)))
-        .shadow(color: .black.opacity(0.08), radius: 16, y: 6)
+        .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .padding(.horizontal, 14).padding(.bottom, 9)
     }
 
@@ -1373,15 +1367,6 @@ private struct RemoteNewConversationView: View {
             .disabled(submitting)
             .accessibilityLabel("访问权限")
             composerMetadata.frame(maxWidth: .infinity, alignment: .leading)
-            Group {
-                Button { inputFocused = false } label: {
-                    Image(systemName: "keyboard.chevron.compact.down")
-                        .font(.system(size: 17))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("收起键盘")
-            }
             Button { startDraft() } label: {
                 ZStack {
                     Circle().fill(.blue).frame(width: 34, height: 34)

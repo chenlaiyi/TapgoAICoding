@@ -31,6 +31,23 @@ final class MobileConnectionUITests: XCTestCase {
         }
     }
 
+    func testReducedTransparencyKeepsFloatingControlsUsable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://glass.example/?token=fixture&name=Studio%20Mac",
+                               "--dsh-mobile-test-sessions", "[{\"sessionId\":\"glass\",\"cwd\":\"/work\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"Glass chat\"}}}]",
+                               "--dsh-mobile-test-messages", "[]", "--dsh-mobile-test-balance", "23.51",
+                               "--dsh-mobile-test-reduce-transparency", "-AppleInterfaceStyle", "Dark"]
+        app.launch()
+        app.buttons["新对话输入框"].tap()
+        inspectQuickMenu(app, name: "new-menu-reduced-transparency")
+        app.otherElements["composerMenuDismiss"].tap()
+        app.buttons["返回远程首页"].tap()
+        app.buttons["Glass chat"].tap()
+        XCTAssertTrue(app.buttons["更多"].isHittable)
+        XCTAssertTrue(app.buttons["返回"].isHittable)
+        inspectQuickMenu(app, name: "chat-menu-reduced-transparency")
+    }
+
     func testNewComposerRetainsFileAndModeAfterFailure() {
         let app = XCUIApplication()
         app.launchArguments = ["--dsh-mobile-test-url", "https://menu.example/?token=fixture&name=Studio%20Mac",
@@ -357,7 +374,7 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.buttons["完全权限"].waitForExistence(timeout: 3))
         app.buttons["完全权限"].tap()
         XCTAssertFalse(app.buttons["选择模型"].exists)
-        app.buttons["收起键盘"].tap()
+        dismissKeyboard(app)
         XCTAssertFalse(app.keyboards.firstMatch.exists)
     }
 
@@ -385,7 +402,7 @@ final class MobileConnectionUITests: XCTestCase {
         let balance = app.staticTexts[balanceID]
         XCTAssertTrue(balance.waitForExistence(timeout: 5))
         for focused in [false, true, false] {
-            if focused { input.tap() } else { app.buttons["收起键盘"].tap() }
+            if focused { input.tap() } else { dismissKeyboard(app) }
             XCTAssertGreaterThanOrEqual(model.frame.minY, input.frame.maxY)
             XCTAssertGreaterThan(balance.frame.minY, input.frame.maxY)
             XCTAssertLessThan(abs(model.frame.midY - balance.frame.midY), 10)
@@ -394,6 +411,14 @@ final class MobileConnectionUITests: XCTestCase {
             XCTAssertTrue(model.isHittable)
             XCTAssertTrue(app.buttons["访问权限"].isHittable)
         }
+    }
+
+    private func dismissKeyboard(_ app: XCUIApplication) {
+        guard app.keyboards.firstMatch.exists else { return }
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.65))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
     }
 
     func testChatKeyboardCanDismiss() {
@@ -408,9 +433,10 @@ final class MobileConnectionUITests: XCTestCase {
         app.buttons["键盘测试"].tap()
         let composer = app.descendants(matching: .any)["chatComposerInput"]
         XCTAssertTrue(composer.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["收起键盘"].exists)
         composer.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
-        app.buttons["收起键盘"].tap()
+        dismissKeyboard(app)
         XCTAssertFalse(app.keyboards.firstMatch.exists)
     }
 
@@ -772,7 +798,7 @@ final class MobileConnectionUITests: XCTestCase {
         let keyboardScreenshot = XCTAttachment(screenshot: app.screenshot())
         keyboardScreenshot.lifetime = .keepAlways
         add(keyboardScreenshot)
-        app.buttons["收起键盘"].tap()
+        dismissKeyboard(app)
         XCTAssertFalse(app.keyboards.firstMatch.exists)
     }
 
@@ -955,7 +981,7 @@ final class MobileConnectionUITests: XCTestCase {
         composer.typeText("send while reading")
         app.buttons["发送"].tap()
         XCTAssertTrue(app.buttons["完成测试发送"].waitForExistence(timeout: 5))
-        app.buttons["收起键盘"].tap()
+        dismissKeyboard(app)
         let transcript = app.scrollViews["chatTranscript"]
         transcript.swipeDown()
         let history = try XCTUnwrap(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "历史消息 "))
