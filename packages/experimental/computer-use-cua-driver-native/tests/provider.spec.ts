@@ -134,6 +134,24 @@ describe('Cua Driver native provider', () => {
     expect(text).toContain('"driver_pid":123')
   })
 
+  it.skipIf(process.platform === 'win32')('quarantines SDK admission after an uncertain protected drag result', async () => {
+    const helper = await createInteractionFixture(); helperRoots.push(helper.root)
+    fixture.call = async (name) => {
+      if (name === 'check_permissions') return { content: [], structuredContent: { source: { pid: 123 } } }
+      throw new Error('lost drag result')
+    }
+    await ctx.plugin(NativeProvider, { worker: {
+      binaryPath: '/signed/cua-driver', hostBundleId: 'com.example.desktop', restoration: helper.config,
+    } })
+    expect((await execute('drag', { scope: 'desktop', delivery_mode: 'foreground' })).isError).toBe(true)
+    expect(fixture.shutdowns).toBe(1)
+    const calls = fixture.calls.length
+    const next = await execute('click', { pid: 9, window_id: 7 })
+    expect(next.isError).toBe(true)
+    expect(JSON.stringify(next.content)).toContain('Restart the Host')
+    expect(fixture.calls).toHaveLength(calls)
+  })
+
   it('preserves explicit foreground trusted browser input without substituting a synthetic route', async () => {
     await ctx.plugin(NativeProvider)
     const args = { target_id: 'browser-1', tab_id: 'tab-1', ref: 'p1:0', input_route: 'trusted', delivery_mode: 'foreground' }

@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import { NativeWorkerError } from './errors.ts'
 import type { InteractionConfig } from './interaction.ts'
 import { restoringDrag, restoringDragSchema } from './restoring-drag.ts'
+import { nativeBringToFront } from './native-focus.ts'
 
 /** Optional supervised native process for hosts without an AppKit main loop. */
 export interface Config {
@@ -176,6 +177,12 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     lifetime.signal.throwIfAborted()
     const restoration = worker && worker.restoration
     let queue = Promise.resolve()
+    let quarantined = false
+    const quiesce = async () => {
+      quarantined = true
+      try { await activeDriver.shutdown() }
+      catch (error) { throw new NativeWorkerError('shutdown', error) }
+    }
     const names = new Set<string>()
     for (const tool of catalog.tools) {
       const publicName = `cua_driver_native__${tool.name}`
@@ -207,9 +214,10 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
           }
           const run = async (): Promise<unknown> => {
             combined.throwIfAborted()
-            return restoration && tool.name === 'drag'
-              ? restoringDrag(args, restoration, invoke, combined)
-              : invoke(tool.name, args, combined)
+            if (quarantined) throw new NativeWorkerError('quarantined')
+            if (restoration && tool.name === 'drag') return restoringDrag(args, restoration, invoke, combined, quiesce)
+            if (restoration && tool.name === 'bring_to_front') return nativeBringToFront(args, restoration, invoke, combined)
+            return invoke(tool.name, args, combined)
           }
           if (!restoration) return run()
           // The provider owns the desktop lease; SDK calls cannot interleave with its restore.

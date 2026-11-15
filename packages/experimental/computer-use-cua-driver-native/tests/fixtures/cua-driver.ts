@@ -19,6 +19,11 @@ export const catalog = {
       outputSchema: { type: 'object', properties: { window_id: { type: 'integer' }, clicked: { type: 'boolean' } }, required: ['window_id', 'clicked'] },
     },
     {
+      name: 'bring_to_front',
+      description: 'Activate an exact native window.',
+      inputSchema: { type: 'object', properties: { pid: { type: 'integer' }, window_id: { type: 'integer' } }, required: ['pid'] },
+    },
+    {
       name: 'click',
       description: 'Click the selected Cua Driver window.',
       inputSchema: { type: 'object', properties: { pid: { type: 'integer' }, window_id: { type: 'integer' }, delivery_mode: { type: 'string', enum: ['background', 'foreground'] } }, required: ['pid', 'window_id'] },
@@ -114,6 +119,7 @@ export class CuaDriver {
       }) }
     }
     if (name === 'check_permissions') return { rawJson: JSON.stringify({ content: [{ type: 'text', text: 'Desktop permissions granted.' }], structuredContent: { source: { pid: 123 } } }) }
+    if (name === 'bring_to_front') return { rawJson: JSON.stringify({ content: [{ type: 'text', text: 'Exact window foreground state unverified.' }], isError: true, structuredContent: { code: 'bring_to_front_exact_window_unverified', pid: 123, window_id: 7, request_accepted: true, process_activated: true, exact_window_effect: { focused: true, front_in_process_on_display: false } } }) }
     if (name === 'drag') return { rawJson: JSON.stringify({ content: [{ type: 'text', text: 'Native drag posted; verify the drop.' }], structuredContent: { effect: 'unverifiable' } }) }
     if (name === 'click') fixture.clicked = true
     return { rawJson: JSON.stringify({ content: [{ type: 'text', text: name === 'click' ? 'Cua Driver fixture clicked.' : 'Desktop permissions granted.' }] }) }

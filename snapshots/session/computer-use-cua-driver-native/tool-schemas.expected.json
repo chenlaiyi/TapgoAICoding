@@ -94,6 +94,24 @@
       }
     },
     {
+      "name": "cua_driver_native__bring_to_front",
+      "description": "Activate an exact native window.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pid": {
+            "type": "integer"
+          },
+          "window_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pid"
+        ]
+      }
+    },
+    {
       "name": "cua_driver_native__browser_click",
       "description": "Click an exactly-bound browser tab.",
       "parameters": {
@@ -200,7 +218,11 @@
           },
           "restore_user_state": {
             "type": "boolean",
-            "description": "For macOS desktop-scope foreground drags, defaults to true: restore the original application focus and physical pointer only after the gesture ends and no outside input or unexpected activation was observed. Fails before input if observation is unavailable. False keeps the upstream behavior. Restoration is reported separately from whether the drop landed. Other drag modes do not use this option."
+            "description": "For macOS desktop-scope foreground drags, defaults to true: restore the original application focus and physical pointer after an uninterrupted gesture. Restoration does not verify the drop. Other drag modes do not use this option."
+          },
+          "interrupt_on_user_input": {
+            "type": "boolean",
+            "description": "For macOS desktop-scope foreground drags, defaults to true: stop subsequent driver input and cancel the source gesture when outside input or caller cancellation is observed. External input is never blocked. The SDK call may remain busy while its input is fenced. Requires no modifier keys; set false to keep upstream delivery. If safe observation is unavailable, no drag is sent."
           }
         },
         "required": [

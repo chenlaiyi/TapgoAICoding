@@ -6,6 +6,7 @@ const failures = {
   startup: ['NATIVE_WORKER_STARTUP_FAILED', 'Native computer-use worker startup failed. Check its executable and host identity.'],
   call: ['NATIVE_WORKER_CALL_FAILED', 'Native computer-use worker call failed; input may already have been delivered. Inspect fresh desktop state before retrying.'],
   shutdown: ['NATIVE_WORKER_SHUTDOWN_FAILED', 'Native computer-use worker shutdown failed. Restart the Host before mounting another runtime.'],
+  quarantined: ['NATIVE_WORKER_QUARANTINED', 'Native computer-use worker was stopped after an uncertain gesture failure. Restart the Host before further computer input.'],
 } as const
 
 /** Failure with an operation-specific code and retained native cause. */

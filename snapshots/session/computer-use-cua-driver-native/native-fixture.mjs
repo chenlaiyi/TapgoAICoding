@@ -19,7 +19,7 @@ export async function apply(ctx) {
   }, 'computer-use-native-fixture.module')
   const provider = await import('@deepseek-ai/dsh-experimental-computer-use-cua-driver-native')
   const { createInteractionFixture } = await import(new URL('../../../packages/experimental/computer-use-cua-driver-native/tests/fixtures/interaction-helper.ts', import.meta.url))
-  const helper = await createInteractionFixture()
+  const helper = await createInteractionFixture('sequence')
   let fiber
   ctx.effect(() => async () => { await fiber?.dispose(); await rm(helper.root, { recursive: true, force: true }) }, 'computer-use-native-fixture.observer')
   fiber = ctx.plugin(provider, { worker: { binaryPath: '/fixture/native-worker', hostBundleId: 'com.example.desktop', restoration: helper.config } })
