@@ -1324,10 +1324,16 @@ private struct RemoteNewConversationView: View {
         HStack(spacing: 8) {
             Menu {
                 ForEach(sessions.models) { model in
-                    Button(model.shortName) {
+                    Button {
                         selectedModelID = model.id
                         MobileModelPreference.save(model.id, computerID: computer.id)
                         Task { await sessions.load(computer: computer) }
+                    } label: {
+                        if currentModel?.id == model.id {
+                            Label(model.shortName, systemImage: "checkmark")
+                        } else {
+                            Text(model.shortName)
+                        }
                     }
                 }
             } label: {

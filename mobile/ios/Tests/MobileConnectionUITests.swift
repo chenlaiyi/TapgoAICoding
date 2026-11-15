@@ -255,8 +255,8 @@ final class MobileConnectionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["余额 ¥23.51"].waitForExistence(timeout: 3))
         app.buttons["更多"].tap()
         app.buttons["模型、权限与额度"].tap()
-        XCTAssertTrue(app.staticTexts["账号模型"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["API 模型"].exists)
+        XCTAssertTrue(app.buttons["V41 Flash · 账号"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["V41 Flash · API"].exists)
     }
 
     func testWelcomeBrandAndComputerConnection() {
@@ -979,6 +979,125 @@ final class MobileConnectionUITests: XCTestCase {
         app.buttons["newConversationRetry"].tap()
         XCTAssertTrue(app.staticTexts["newConversationProgress"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["newConversationError"].waitForExistence(timeout: 5))
+    }
+
+    func testToolDetailsPrioritizeCommandAndOutputOverReasoning() throws {
+        let events: [[String: Any]] = [
+            ["seq": 1, "type": "turn/start", "data": ["turn": 1]],
+            ["seq": 2, "type": "assistant/attempt", "data": ["stream": [
+                ["type": "reasoning-chunks", "texts": [String(repeating: "详细思考记录。", count: 100)]]]]],
+            ["seq": 3, "type": "tool/call", "data": ["callId": "bash", "name": "bash",
+                "arguments": "{\"command\":\"printf progress; printf DONE\",\"description\":\"检查命令输出\"}"]],
+            ["seq": 4, "type": "tool/result", "data": ["message": ["toolCallId": "bash",
+                "content": [["type": "text", "text": "progress\nDONE"]]]]],
+            ["seq": 5, "type": "turn/end", "data": ["turn": 1, "reason": ["kind": "completed"]]]
+        ]
+        let app = try launchProcessChat(events)
+        app.staticTexts["过程 · 1 项操作"].tap()
+        app.buttons["查看完整过程"].tap()
+        XCTAssertTrue(app.staticTexts["printf progress; printf DONE"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["progress\nDONE"].isHittable)
+        XCTAssertTrue(app.buttons["复制输出"].isHittable)
+        XCTAssertTrue(app.staticTexts["已完成"].exists)
+        XCTAssertFalse(app.staticTexts["processFullReasoning"].exists)
+        keepScreenshot(app, name: "native-command-and-output")
+        app.buttons["思考过程"].tap()
+        XCTAssertTrue(app.staticTexts["processFullReasoning"].waitForExistence(timeout: 3))
+        app.buttons["关闭过程详情"].tap()
+        XCTAssertTrue(app.buttons["收起过程"].isHittable)
+    }
+
+    func testStoppedTurnIsNotPresentedAsToolFailure() throws {
+        let events: [[String: Any]] = [
+            ["seq": 1, "type": "turn/start", "time": 1000, "data": ["turn": 1]],
+            ["seq": 2, "type": "tool/call", "data": ["callId": "bash", "name": "bash", "arguments": "{\"command\":\"sleep 90\"}"]],
+            ["seq": 3, "type": "tool/result", "data": ["message": ["toolCallId": "bash", "isError": true,
+                "content": [["type": "text", "text": "Error: tool call aborted"]]], "error": ["code": "ABORTED"]]],
+            ["seq": 4, "type": "turn/end", "time": 6000, "data": ["turn": 1, "reason": ["kind": "aborted"]]]
+        ]
+        let app = try launchProcessChat(events)
+        XCTAssertTrue(app.staticTexts["已停止 · 用时 5 秒"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["过程 · 1 项操作"].exists)
+        XCTAssertFalse(app.staticTexts["过程 · 1 项操作，1 项失败"].exists)
+        XCTAssertTrue(app.buttons["发送"].exists)
+        XCTAssertFalse(app.buttons["停止运行"].exists)
+        keepScreenshot(app, name: "native-stopped-turn")
+    }
+
+    func testModelSelectionWaitsForConfirmation() throws {
+        try checkModelSelection(success: true)
+    }
+
+    func testRejectedModelSelectionKeepsPickerAndCurrentModel() throws {
+        try checkModelSelection(success: false)
+    }
+
+    private func checkModelSelection(success: Bool) throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://model.example/?token=fixture&name=Studio",
+            "--dsh-mobile-test-sessions", "[{\"sessionId\":\"model\",\"cwd\":\"/work/TapgoAICoding\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"模型验收\"}}}]",
+            "--dsh-mobile-test-messages", "[]", "--dsh-mobile-test-balance", "23.51", "--dsh-mobile-test-api-balance", "86.77",
+            "--dsh-mobile-test-model-selection", success ? "model-success" : "model-failure"]
+        app.launch()
+        app.buttons["模型验收"].tap()
+        app.buttons["选择模型"].tap()
+        let api = app.buttons["V41 Flash · API"]
+        XCTAssertTrue(api.waitForExistence(timeout: 3))
+        api.tap()
+        XCTAssertTrue(app.buttons["完成测试模型切换"].waitForExistence(timeout: 3))
+        XCTAssertFalse(api.isEnabled)
+        XCTAssertFalse(app.buttons["V41 Flash · 账号"].isEnabled)
+        app.buttons["完成测试模型切换"].tap()
+        if success {
+            XCTAssertTrue(app.staticTexts["余额 ¥86.77"].waitForExistence(timeout: 3))
+            XCTAssertFalse(app.buttons["完成"].exists)
+        } else {
+            XCTAssertTrue(app.staticTexts["模型切换被拒绝，请重试"].waitForExistence(timeout: 3))
+            XCTAssertTrue(api.isEnabled)
+            keepScreenshot(app, name: "native-model-selection-rejected")
+            app.buttons["完成"].tap()
+            XCTAssertTrue(app.staticTexts["余额 ¥23.51"].exists)
+        }
+    }
+
+    private func launchProcessChat(_ events: [[String: Any]]) throws -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://process.example/?token=fixture&name=Studio",
+            "--dsh-mobile-test-sessions", "[{\"sessionId\":\"process\",\"cwd\":\"/work/TapgoAICoding\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"过程验收\"}}}]",
+            "--dsh-mobile-test-events", String(decoding: try JSONSerialization.data(withJSONObject: events), as: UTF8.self),
+            "--dsh-mobile-test-balance", "23.51"]
+        app.launch()
+        app.buttons["过程验收"].tap()
+        return app
+    }
+
+    func testHeaderUsesHostTitleProjection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--dsh-mobile-test-url", "https://title.example/?token=fixture&name=Studio",
+            "--dsh-mobile-test-sessions", "[{\"sessionId\":\"title\",\"cwd\":\"/work/TapgoAICoding\",\"running\":false,\"updatedAt\":1,\"projections\":{\"values\":{\"title\":\"列表中的旧标题\"}}}]",
+            "--dsh-mobile-test-messages", "[]", "--dsh-mobile-test-balance", "23.51",
+            "--dsh-mobile-test-composer-projections", "{\"asOfSeq\":8,\"values\":{\"title\":\"Host 更新的任务标题\"}}"]
+        app.launch()
+        app.buttons["列表中的旧标题"].tap()
+        XCTAssertTrue(app.staticTexts["Host 更新的任务标题"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["列表中的旧标题"].exists)
+    }
+
+    func testNonzeroShellExitIsVisibleInProcessDetails() throws {
+        let events: [[String: Any]] = [
+            ["seq": 1, "type": "turn/start", "data": ["turn": 1]],
+            ["seq": 2, "type": "tool/call", "data": ["callId": "bash", "name": "bash", "arguments": "{\"command\":\"python3 -c invalid\"}"]],
+            ["seq": 3, "type": "tool/result", "data": ["message": ["toolCallId": "bash", "isError": false,
+                "content": [["type": "text", "text": "SyntaxError\n[exit code: 1]"]]]]],
+            ["seq": 4, "type": "turn/end", "data": ["turn": 1, "reason": ["kind": "completed"]]]
+        ]
+        let app = try launchProcessChat(events)
+        app.staticTexts["过程 · 1 项操作，1 项失败"].tap()
+        app.buttons["查看完整过程"].tap()
+        XCTAssertTrue(app.staticTexts["退出码 1"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["SyntaxError\n[exit code: 1]"].isHittable)
+        keepScreenshot(app, name: "native-shell-nonzero-exit")
+        app.buttons["关闭过程详情"].tap()
     }
 
     private func launchInteractionChat(messages: [[String: Any]] = [], append: String? = nil,

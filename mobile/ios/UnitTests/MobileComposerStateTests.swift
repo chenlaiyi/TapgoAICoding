@@ -25,4 +25,15 @@ final class MobileComposerStateTests: XCTestCase {
         XCTAssertFalse(state.planActive)
         XCTAssertNil(state.goalPhase)
     }
+    func testTitleProjectionRejectsStaleBaselinesAndClearsRemovedTitles() {
+        var state = MobileComposerState()
+        state.restore(["asOfSeq": 5, "values": ["title": "初始标题"]])
+        XCTAssertEqual(state.sessionTitle, "初始标题")
+        state.consume(["seq": 8, "changes": [["key": "title", "val": "最新任务标题"]]])
+        state.restore(["asOfSeq": 6, "values": ["title": "旧标题"]])
+        XCTAssertEqual(state.sessionTitle, "最新任务标题")
+        state.consume(["seq": 9, "changes": [["key": "title", "val": NSNull()]]])
+        XCTAssertNil(state.sessionTitle)
+    }
+
 }

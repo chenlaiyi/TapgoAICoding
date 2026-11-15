@@ -7,10 +7,11 @@ private struct ChatLine: Identifiable, Equatable {
     let role: String
     var text: String
     var reasoning: String?
-    var activities: [ChatActivity] = []
+    var activities: [MobileChatActivity] = []
     var turn: Int?
     var startedAt: TimeInterval?
     var endedAt: TimeInterval?
+    var endReason: String?
     var mergedEventIds: Set<Int> = []
 
     init(id: Int, role: String, text: String, reasoning: String? = nil) {
@@ -19,15 +20,6 @@ private struct ChatLine: Identifiable, Equatable {
         self.text = text
         self.reasoning = reasoning
     }
-}
-
-private struct ChatActivity: Identifiable, Equatable {
-    let id: String
-    let name: String
-    let detail: String
-    let category: String
-    var finished = false
-    var failed = false
 }
 
 private struct RemoteModel: Identifiable {
@@ -53,6 +45,15 @@ private final class RemoteChat: ObservableObject {
     #if DEBUG
     @Published var testSendPending = false
     private var testSendCompletion: CheckedContinuation<Bool, Never>?
+    @Published var testModelPending = false
+    private var testModelCompletion: CheckedContinuation<Bool, Never>?
+
+    func completeTestModelSelection() {
+        let success = ProcessInfo.processInfo.arguments.contains("model-success")
+        testModelCompletion?.resume(returning: success)
+        testModelCompletion = nil
+        testModelPending = false
+    }
 
     func completeTestSend() {
         let succeeds = ProcessInfo.processInfo.arguments.contains("controlled-success")
@@ -75,6 +76,8 @@ private final class RemoteChat: ObservableObject {
     @Published var error: String?
     @Published var models: [RemoteModel] = []
     @Published var selectedModel: String?
+    @Published var selectingModelID: String?
+    @Published var modelSelectionError: String?
     @Published var permissions: [RemotePermission] = []
     @Published var selectedPermission: String?
     @Published var funds = MobileBalanceSnapshot()
@@ -100,6 +103,7 @@ private final class RemoteChat: ObservableObject {
     private var origin: URL?
     @Published private var composerState = MobileComposerState()
     @Published var composerStatusError: String?
+    var sessionTitle: String? { composerState.sessionTitle }
     var planActive: Bool { composerState.planActive }
     var goalObjective: String? { composerState.goalObjective }
     var goalPhase: String? { composerState.goalPhase }
@@ -315,6 +319,7 @@ private final class RemoteChat: ObservableObject {
                            let provider = next["provider"] as? String,
                            let model = next["model"] as? String {
                             let selection = "\(provider)/\(model)"
+                            modelSelectionError = nil
                             if selectedModel != selection {
                                 selectedModel = selection
                                 funds.providers.removeAll()
@@ -439,6 +444,7 @@ private final class RemoteChat: ObservableObject {
         if type == "turn/end", let turn = data["turn"] as? Int {
             if let index = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn }) {
                 lines[index].endedAt = event["time"] as? TimeInterval ?? 0
+                lines[index].endReason = (data["reason"] as? [String: Any])?["kind"] as? String
             }
             return
         }
@@ -460,8 +466,8 @@ private final class RemoteChat: ObservableObject {
             } ?? [:]
             let detail = ["title", "description", "command", "cmd", "file_path", "path", "query", "pattern"]
                 .compactMap { arguments[$0] as? String }.first ?? name
-            let activity = ChatActivity(id: callId, name: name, detail: String(detail.prefix(120)),
-                                        category: activityCategory(name))
+            let activity = MobileChatActivity(id: callId, name: name, detail: String(detail.prefix(120)),
+                                        category: activityCategory(name), arguments: data["arguments"] as? String ?? "")
             if let index = lines.lastIndex(where: { $0.role == "turn" }) {
                 if !lines[index].activities.contains(where: { $0.id == callId }) {
                     lines[index].activities.append(activity)
@@ -484,10 +490,7 @@ private final class RemoteChat: ObservableObject {
             guard let callId else { return }
             for index in lines.indices.reversed() {
                 guard let activity = lines[index].activities.firstIndex(where: { $0.id == callId }) else { continue }
-                lines[index].activities[activity].finished = true
-                let blocks = message["content"] as? [[String: Any]] ?? []
-                lines[index].activities[activity].failed = message["isError"] as? Bool == true
-                    || blocks.contains { $0["isError"] as? Bool == true }
+                lines[index].activities[activity].receive(data)
                 return
             }
             return
@@ -746,22 +749,43 @@ private final class RemoteChat: ObservableObject {
         return "\(symbol)\(formatter.string(from: NSDecimalNumber(decimal: value)) ?? amount)"
     }
 
-    func selectModel(_ model: RemoteModel, computer: SavedComputer, sessionId: String) async {
+    func selectModel(_ model: RemoteModel, computer: SavedComputer, sessionId: String) async -> Bool {
+        guard selectingModelID == nil else { return false }
+        if selectedModel == model.id { return true }
+        selectingModelID = model.id
+        modelSelectionError = nil
+        defer { selectingModelID = nil }
         do {
             #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-model-selection") {
+                let success = await withCheckedContinuation { continuation in
+                    testModelCompletion = continuation
+                    testModelPending = true
+                }
+                guard success else {
+                    modelSelectionError = "模型切换被拒绝，请重试"
+                    return false
+                }
+                selectedModel = model.id
+                return true
+            }
             if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-api-balance") {
                 selectedModel = model.id
-                return
+                return true
             }
             #endif
             _ = try await call("session/selectModel", arguments: ["request": ["sessionId": sessionId,
                 "provider": model.provider, "model": model.model]], computer: computer)
             selectedModel = model.id
             funds.providers.removeAll()
-            await refreshBalances(computer: computer)
+            Task { await refreshBalances(computer: computer) }
             MobileModelPreference.save(model.id, computerID: computer.id)
-            error = nil
-        } catch { self.error = "模型切换失败，请重试" }
+            return true
+        } catch {
+            modelSelectionError = "未确认模型切换结果，正在重新读取当前模型"
+            await retry(computer: computer, sessionId: sessionId)
+            return false
+        }
     }
 
     func selectPermission(_ permission: RemotePermission, computer: SavedComputer, sessionId: String) async {
@@ -781,6 +805,9 @@ private final class RemoteChat: ObservableObject {
         testSendCompletion?.resume(returning: false)
         testSendCompletion = nil
         testSendPending = false
+        testModelCompletion?.resume(returning: false)
+        testModelCompletion = nil
+        testModelPending = false
         #endif
         generation = UUID()
         heartbeat.stop()
@@ -825,6 +852,7 @@ struct RemoteChatView: View {
     @State private var showingWorkspace = false
     @State private var showingSettings = false
     @State private var showingModels = false
+    @State private var modelPickerDetent: PresentationDetent = .large
     @StateObject private var additions = MobileComposerAdditions()
     @State private var pendingPermission: RemotePermission?
     @State private var confirmingGoalClear = false
@@ -846,7 +874,7 @@ struct RemoteChatView: View {
                 }
                 .accessibilityLabel("返回")
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                    Text(chat.sessionTitle ?? title).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                     Text("\(project) · \(computer.name)")
                         .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                 }
@@ -1076,18 +1104,33 @@ struct RemoteChatView: View {
         .sheet(isPresented: $showingModels) {
             NavigationStack {
                 List {
-                    if chat.models.isEmpty {
-                        Text("暂无可选模型").foregroundStyle(.secondary)
+                    #if DEBUG
+                    if chat.testModelPending {
+                        Button("完成测试模型切换") { chat.completeTestModelSelection() }
                     }
-                    ForEach(chat.models) { model in
-                        Button {
-                            showingModels = false
-                            Task { await chat.selectModel(model, computer: computer, sessionId: sessionId) }
-                        } label: {
-                            HStack {
-                                Text(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider)).foregroundStyle(.primary)
-                                Spacer()
-                                if chat.selectedModel == model.id { Image(systemName: "checkmark") }
+                    #endif
+                    if chat.settingsLoading && chat.models.isEmpty {
+                        ProgressView().accessibilityLabel("正在读取模型")
+                    } else if chat.models.isEmpty {
+                        Text("暂无可选模型").foregroundStyle(.secondary)
+                        Button("重试读取模型") { Task { await chat.loadSettings(computer: computer) } }
+                    }
+                    if let error = chat.modelSelectionError { Text(error).foregroundStyle(.orange) }
+                    if chat.running { Text("选择将用于后续请求，当前请求继续使用原模型").font(.caption).foregroundStyle(.secondary) }
+                    ForEach(Array(Set(chat.models.map(\.provider))).sorted(), id: \.self) { provider in
+                        Section(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)") {
+                            ForEach(chat.models.filter { $0.provider == provider }) { model in
+                                Button {
+                                    Task {
+                                        if await chat.selectModel(model, computer: computer, sessionId: sessionId) {
+                                            showingModels = false
+                                        }
+                                    }
+                                } label: { modelSelectionRow(model) }
+                                .disabled(chat.selectingModelID != nil || !chat.connected)
+                                .accessibilityLabel(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
+                                .accessibilityValue(chat.selectingModelID == model.id ? "正在切换" : chat.selectedModel == model.id ? "当前模型" : "")
+                                .accessibilityHint("\(model.provider)/\(model.model)")
                             }
                         }
                     }
@@ -1095,7 +1138,7 @@ struct RemoteChatView: View {
                 .navigationTitle("选择模型")
                 .toolbar { Button("完成") { showingModels = false } }
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.medium, .large], selection: $modelPickerDetent)
         }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
@@ -1106,17 +1149,15 @@ struct RemoteChatView: View {
                             Button {
                                 Task { await chat.selectModel(model, computer: computer, sessionId: sessionId) }
                             } label: {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(model.name).foregroundStyle(.primary)
-                                        Text(model.provider == "deepseek-account" ? "账号模型" : "API 模型").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    if chat.selectedModel == model.id { Image(systemName: "checkmark") }
-                                }
+                                modelSelectionRow(model)
                             }
+                            .disabled(chat.selectingModelID != nil || !chat.connected)
+                            .accessibilityLabel(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
+                            .accessibilityValue(chat.selectingModelID == model.id ? "正在切换" : chat.selectedModel == model.id ? "当前模型" : "")
+                            .accessibilityHint("\(model.provider)/\(model.model)")
                         }
                     }
+                    if let error = chat.modelSelectionError { Text(error).foregroundStyle(.orange) }
                     Section("访问权限") {
                         if chat.permissions.isEmpty { Text("暂无权限选项").foregroundStyle(.secondary) }
                         ForEach(chat.permissions) { permission in
@@ -1168,6 +1209,23 @@ struct RemoteChatView: View {
         }
     }
 
+    private func modelSelectionRow(_ model: RemoteModel) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
+                    .foregroundStyle(.primary)
+                Text(model.model).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            if chat.selectingModelID == model.id {
+                ProgressView().accessibilityLabel("正在切换模型")
+            } else if chat.selectedModel == model.id {
+                Image(systemName: "checkmark").accessibilityLabel("当前模型")
+            }
+        }
+        .frame(minHeight: 44)
+    }
+
     private var composerInput: some View {
         TextField("在 \(computer.name) 上工作", text: $draft, axis: .vertical)
             .font(.body)
@@ -1179,6 +1237,7 @@ struct RemoteChatView: View {
     private var modelBadge: some View {
         Button {
             composerFocused = false
+            modelPickerDetent = .large
             showingModels = true
         } label: {
             HStack(spacing: 4) {
@@ -1350,7 +1409,7 @@ struct RemoteChatView: View {
             if line.role == "activity" {
                 ActivityGroupView(activities: line.activities, onInspect: inspectProcess)
             } else if line.role == "turn" {
-                TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt,
+                TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
                                 activities: line.activities, reasoning: line.reasoning,
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
                                     ? chat.liveReasoning : "", onInspect: inspectProcess)
@@ -1382,7 +1441,7 @@ struct RemoteChatView: View {
 }
 
 private struct ActivityGroupView: View {
-    let activities: [ChatActivity]
+    let activities: [MobileChatActivity]
 
     private var title: String {
         if let running = activities.last(where: { !$0.finished }) {
@@ -1418,7 +1477,8 @@ private struct ActivityGroupView: View {
 private struct TurnProcessView: View {
     let startedAt: TimeInterval?
     let endedAt: TimeInterval?
-    let activities: [ChatActivity]
+    let endReason: String?
+    let activities: [MobileChatActivity]
     let reasoning: String?
     let liveReasoning: String
     let onInspect: () -> Void
@@ -1431,29 +1491,30 @@ private struct TurnProcessView: View {
     }
 
     private func title(now: Date) -> String {
+        let outcome = mobileTurnStatus(endReason)
         guard let startedAt, startedAt > 0 else {
-            return endedAt == nil ? "正在处理" : "已完成工作"
+            return endedAt == nil ? "正在处理" : outcome ?? "已完成工作"
         }
         let end = endedAt ?? now.timeIntervalSince1970 * 1000
         let seconds = max(0, Int((end - startedAt) / 1000))
         let duration = seconds < 60 ? "\(seconds) 秒" : "\(seconds / 60) 分 \(seconds % 60) 秒"
-        return endedAt == nil ? "已运行 \(duration)" : "用时 \(duration)"
+        return endedAt == nil ? "已运行 \(duration)" : outcome.map { "\($0) · 用时 \(duration)" } ?? "用时 \(duration)"
     }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(title(now: context.date))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.primary)
-                Divider()
-                ProcessDisclosureView(summary: processSummary,
-                    reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
-                        .compactMap { $0 }.joined(separator: "\n\n"),
-                    activities: activities, onInspect: onInspect)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Divider()
+            ProcessDisclosureView(summary: processSummary,
+                reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
+                    .compactMap { $0 }.joined(separator: "\n\n"),
+                activities: activities, onInspect: onInspect)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -1462,7 +1523,7 @@ private struct ProcessDisclosureView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let summary: String
     let reasoning: String
-    let activities: [ChatActivity]
+    let activities: [MobileChatActivity]
     let onInspect: () -> Void
     @State private var expanded = false
     @State private var showingDetails = false
@@ -1502,11 +1563,16 @@ private struct ProcessDisclosureView: View {
         .sheet(isPresented: $showingDetails) {
             NavigationStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        if !reasoning.isEmpty {
-                            Text(reasoning).font(.body).textSelection(.enabled)
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        ForEach(activities) { activity in
+                            ProcessActivityDetail(activity: activity, initiallyExpanded: activities.count <= 3)
                         }
-                        ForEach(activities) { activity in activityRow(activity, preview: false) }
+                        if !reasoning.isEmpty {
+                            DisclosureGroup("思考过程") {
+                                Text(reasoning).font(.body).textSelection(.enabled).padding(.top, 8)
+                                    .accessibilityIdentifier("processFullReasoning")
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding()
                 }
@@ -1533,14 +1599,73 @@ private struct ProcessDisclosureView: View {
             .font(.caption).foregroundStyle(Color.accentColor).frame(minHeight: 44)
     }
 
-    private func activityRow(_ activity: ChatActivity, preview: Bool) -> some View {
+    private func activityRow(_ activity: MobileChatActivity, preview: Bool) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: activity.failed ? "exclamationmark.circle" :
+            Image(systemName: activity.cancelled ? "stop.circle" : activity.failed ? "exclamationmark.circle" :
                     activity.finished ? "checkmark.circle" : "circle.dotted")
             Text(activity.detail).lineLimit(preview ? 2 : nil).textSelection(.enabled)
+                .accessibilityValue(activity.status)
         }
         .font(.system(size: preview ? 12 : 14))
         .foregroundStyle(activity.failed ? Color.orange : Color(uiColor: .secondaryLabel))
+    }
+}
+
+/// Full call arguments and returned output stay outside the bounded transcript preview.
+private struct ProcessActivityDetail: View {
+    let activity: MobileChatActivity
+    @State private var expanded: Bool
+    @State private var outputLimit = 12000
+
+    init(activity: MobileChatActivity, initiallyExpanded: Bool) {
+        self.activity = activity
+        _expanded = State(initialValue: initiallyExpanded)
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            VStack(alignment: .leading, spacing: 12) {
+                if !activity.invocation.isEmpty {
+                    Text(activity.invocation == activity.parameters ? "调用参数" : "命令")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text(activity.invocation).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    if activity.invocation != activity.parameters {
+                        DisclosureGroup("全部调用参数") {
+                            Text(activity.parameters).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                        }
+                    }
+                }
+                if let output = activity.output {
+                    HStack {
+                        Text("工具输出").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("复制输出") { UIPasteboard.general.string = output }
+                            .font(.caption).frame(minHeight: 44)
+                    }
+                    Text(String(output.prefix(outputLimit)))
+                        .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    if output.count > outputLimit {
+                        Button("显示更多输出") { outputLimit += 12000 }.frame(minHeight: 44)
+                    }
+                } else {
+                    Text(activity.finished ? "工具未返回文字输出" : "等待工具返回输出")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("\(activity.category) · \(activity.name)").font(.subheadline)
+                    Spacer()
+                    Text(activity.status).font(.caption)
+                        .foregroundStyle(activity.failed ? Color.orange : Color.secondary)
+                }
+                Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+            .frame(minHeight: 44)
+        }
+        .tint(.accentColor)
     }
 }
 
