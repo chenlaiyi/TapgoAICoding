@@ -2180,67 +2180,15 @@ struct RemoteChatView: View {
                     }
                 }
                 if let objective = chat.goalObjective {
-                    let tint = goalTint
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "target")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(tint)
-                                .frame(width: 30, height: 30)
-                                .background(tint.opacity(0.12), in: Circle())
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("目标").font(.caption2).foregroundStyle(.secondary)
-                                Text(objective).font(.subheadline.weight(.medium)).lineLimit(2)
-                            }
-                            Spacer(minLength: 8)
-                            Text(goalPhaseLabel)
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(tint)
-                                .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(tint.opacity(0.12), in: Capsule())
-                        }
-                        if let started = chat.goalRoundsStarted, let max = chat.goalMaxRounds, max > 0 {
-                            HStack(spacing: 8) {
-                                ProgressView(value: Double(min(max(0, started), max)), total: Double(max))
-                                    .tint(tint)
-                                Text("\(started)/\(max) 轮")
-                                    .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
-                                if chat.sending {
-                                    Text("正在执行操作…").font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        HStack(spacing: 8) {
-                            Button(primaryGoalAction) {
-                                switch chat.goalPhase {
-                                case "active": runGoalCommand("/goal pause")
-                                case "complete": runGoalCommand("/goal \(objective)")
-                                default: runGoalCommand("/goal resume")
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(tint)
-                            Button("编辑") {
-                                goalDraft = objective
-                                editingGoal = true
-                            }
-                            .buttonStyle(.bordered)
-                            Spacer(minLength: 8)
-                            Button("结束", role: .destructive) { confirmingGoalClear = true }
-                                .buttonStyle(.borderless)
-                        }
-                        .controlSize(.small)
-                        .font(.caption)
-                        .frame(minHeight: 44)
-                    }
-                    .padding(12)
-                    .background(Color(uiColor: .secondarySystemBackground).opacity(0.7),
-                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.06))
-                    }
-                    .accessibilityElement(children: .contain)
+                    GoalCardView(objective: objective, phase: chat.goalPhase,
+                                 roundsStarted: chat.goalRoundsStarted, maxRounds: chat.goalMaxRounds,
+                                 sending: chat.sending,
+                                 onPrimary: { runPrimaryGoalAction(objective) },
+                                 onEdit: {
+                                     goalDraft = objective
+                                     editingGoal = true
+                                 },
+                                 onEnd: { confirmingGoalClear = true })
                 }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     if let seconds = chat.silentSeconds(now: context.date) {
@@ -2760,33 +2708,13 @@ struct RemoteChatView: View {
         }
     }
 
-    /// Localized phase label for the goal card.
-    private var goalPhaseLabel: String {
+    /// Runs the goal phase's primary action.
+    /// - Parameter objective: current goal objective, reused when restarting a completed goal.
+    private func runPrimaryGoalAction(_ objective: String) {
         switch chat.goalPhase {
-        case "active": return "进行中"
-        case "complete": return "已完成"
-        case "blocked": return "已阻塞"
-        case "paused": return "已暂停"
-        default: return "已暂停"
-        }
-    }
-
-    /// Accent color matching the goal phase.
-    private var goalTint: Color {
-        switch chat.goalPhase {
-        case "active": return .blue
-        case "complete": return .green
-        case "blocked": return .red
-        default: return .orange
-        }
-    }
-
-    /// Label of the phase's primary action.
-    private var primaryGoalAction: String {
-        switch chat.goalPhase {
-        case "active": return "暂停"
-        case "complete": return "重新开始"
-        default: return "继续"
+        case "active": runGoalCommand("/goal pause")
+        case "complete": runGoalCommand("/goal \(objective)")
+        default: runGoalCommand("/goal resume")
         }
     }
 
@@ -3542,5 +3470,110 @@ private struct ChatBottomPreference: PreferenceKey {
 
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
         value = nextValue()
+    }
+}
+
+/// Phase-styled goal card with round progress and explicit actions.
+private struct GoalCardView: View {
+    let objective: String
+    let phase: String?
+    let roundsStarted: Int?
+    let maxRounds: Int?
+    let sending: Bool
+    let onPrimary: () -> Void
+    let onEdit: () -> Void
+    let onEnd: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            header
+            if let started = roundsStarted, let max = maxRounds, max > 0 {
+                progress(started: started, max: max)
+            }
+            actions
+        }
+        .padding(12)
+        .background(Color(uiColor: .secondarySystemBackground).opacity(0.7),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06))
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "target")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("目标").font(.caption2).foregroundStyle(.secondary)
+                Text(objective).font(.subheadline.weight(.medium)).lineLimit(2)
+            }
+            Spacer(minLength: 8)
+            Text(phaseLabel)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(tint)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(tint.opacity(0.12), in: Capsule())
+        }
+    }
+
+    private func progress(started: Int, max: Int) -> some View {
+        HStack(spacing: 8) {
+            ProgressView(value: Double(Swift.min(Swift.max(0, started), max)), total: Double(max))
+                .tint(tint)
+            Text("\(started)/\(max) 轮")
+                .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+            if sending {
+                Text("正在执行操作…").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 8) {
+            Button(primaryLabel, action: onPrimary)
+                .buttonStyle(.borderedProminent)
+                .tint(tint)
+            Button("编辑", action: onEdit)
+                .buttonStyle(.bordered)
+            Spacer(minLength: 8)
+            Button("结束", role: .destructive, action: onEnd)
+                .buttonStyle(.borderless)
+        }
+        .controlSize(.small)
+        .font(.caption)
+        .frame(minHeight: 44)
+    }
+
+    private var phaseLabel: String {
+        switch phase {
+        case "active": return "进行中"
+        case "complete": return "已完成"
+        case "blocked": return "已阻塞"
+        case "paused": return "已暂停"
+        default: return "已暂停"
+        }
+    }
+
+    private var tint: Color {
+        switch phase {
+        case "active": return .blue
+        case "complete": return .green
+        case "blocked": return .red
+        default: return .orange
+        }
+    }
+
+    private var primaryLabel: String {
+        switch phase {
+        case "active": return "暂停"
+        case "complete": return "重新开始"
+        default: return "继续"
+        }
     }
 }
