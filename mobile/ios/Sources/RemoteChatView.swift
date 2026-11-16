@@ -2973,29 +2973,9 @@ struct RemoteChatView: View {
     }
 }
 
-/// Category counts shared by the compact process strip and the running turn header.
+/// DSH-compatible summary for a range of tool activity.
 private func mobileActivitySummary(_ activities: [MobileChatActivity]) -> String {
-    if let running = activities.last(where: { !$0.finished }) {
-        return "正在\(running.category)"
-    }
-    let categories = Array(Set(activities.map(\.category))).sorted { first, second in
-        let left = activities.firstIndex(where: { $0.category == first }) ?? 0
-        let right = activities.firstIndex(where: { $0.category == second }) ?? 0
-        return left < right
-    }
-    let labels = categories.prefix(2).map { category in
-        let count = activities.filter { $0.category == category }.count
-        switch category {
-        case "读取文件": return "已读取 \(count) 个文件"
-        case "搜索代码": return "已搜索 \(count) 次"
-        case "修改文件": return "已修改 \(count) 个文件"
-        case "运行命令": return "已运行 \(count) 条命令"
-        case "运行代码": return "已运行 \(count) 次代码"
-        case "访问网页": return "已访问 \(count) 个网页"
-        default: return "已调用 \(count) 次工具"
-        }
-    }
-    return labels.joined(separator: "，")
+    MobileProcessLabel.title(activities: activities, hasReasoning: false)
 }
 
 private struct ActivityGroupView: View {
@@ -3032,8 +3012,10 @@ private struct TurnProcessView: View {
     private var processSummary: String {
         let count = activities.count
         let failed = activities.filter(\.failed).count
-        if count == 0 { return endedAt == nil ? "正在思考" : "查看过程" }
-        let summary = mobileActivitySummary(activities)
+        let summary = MobileProcessLabel.title(
+            activities: activities,
+            hasReasoning: !(reasoning ?? "").isEmpty || !liveReasoning.isEmpty)
+        if count == 0 { return summary }
         return failed == 0 ? summary : "\(summary)，\(failed) 项失败"
     }
 

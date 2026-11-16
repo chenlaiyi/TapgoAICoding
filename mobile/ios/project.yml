@@ -75,6 +75,7 @@ targets:
       - path: Sources/MobileStreamPreview.swift
       - path: Sources/MobileCodePreview.swift
       - path: Sources/MobileExpansionStore.swift
+      - path: Sources/MobileProcessLabel.swift
       - path: Sources/MobileCodeExpansionStore.swift
       - path: Sources/MobileFileBrowser.swift
       - path: Sources/MobileComposerState.swift
