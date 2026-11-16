@@ -208,6 +208,8 @@ private final class RemoteChat: ObservableObject {
     @Published var queueRunning = false
     @Published var queueCursor: Int?
     @Published var queueUnavailable = false
+    @Published var queueBusyItemID: String?
+    @Published var queueError: String?
     var imageLimits: MobileImageLimits { composerState.imageLimits }
     var sessionTitle: String? { composerState.sessionTitle }
     var planActive: Bool { composerState.planActive }
@@ -313,6 +315,8 @@ private final class RemoteChat: ObservableObject {
             queueRunning = false
             queueCursor = nil
             queueUnavailable = false
+            queueBusyItemID = nil
+            queueError = nil
             lastFrameAt = nil
             pendingSubmission = nil
             attachmentImages = [:]
@@ -685,6 +689,30 @@ private final class RemoteChat: ObservableObject {
         }
     }
 
+    /// Applies one edit, removal, or steering promotion to a queued prompt.
+    /// - Parameters:
+    ///   - item: queued prompt the user acted on.
+    ///   - action: mutation the Host applies.
+    ///   - computer: pairing used for the authenticated request.
+    ///   - sessionId: Session owning the queue.
+    func updateQueue(_ item: MobileQueuedItem, action: MobileQueueAction,
+                     computer: SavedComputer, sessionId: String) async {
+        guard queueBusyItemID == nil else { return }
+        queueBusyItemID = item.id
+        queueError = nil
+        defer { queueBusyItemID = nil }
+        do {
+            _ = try await call("session/updateQueue", arguments: ["request": ["sessionId": sessionId,
+                "itemId": item.id, "action": action.wire]], computer: computer)
+            await refreshQueue(computer: computer)
+        } catch ChatFailure.rejected(let code, _) {
+            queueError = MobileQueueFailure.message(for: code)
+            await refreshQueue(computer: computer)
+        } catch {
+            queueError = MobileQueueFailure.message(for: "")
+        }
+    }
+
     /// A decoded transcript thumbnail for one durable image, when it has already loaded.
     /// - Parameter reference: image block reference from the transcript.
     /// - Returns: the cached thumbnail, or nil while loading or after a failure.
@@ -1020,8 +1048,17 @@ private final class RemoteChat: ObservableObject {
         return "调用工具"
     }
 
+    /// Delivers one composer submission.
+    /// - Parameters:
+    ///   - text: message text to send.
+    ///   - attachments: draft attachments submitted with it.
+    ///   - mode: composer mode that selects the command path.
+    ///   - steer: whether a running turn receives this message immediately.
+    ///   - computer: pairing used for the authenticated request.
+    ///   - sessionId: Session receiving the message.
+    /// - Returns: `true` when the Host accepted the message.
     func send(_ text: String, attachments: [MobileDraftAttachment], mode: MobileComposerMode,
-              computer: SavedComputer, sessionId: String) async -> Bool {
+              steer: Bool = false, computer: SavedComputer, sessionId: String) async -> Bool {
         guard !sending, connected, !text.isEmpty || !attachments.isEmpty else { return false }
         sending = true
         defer { sending = false }
@@ -1045,11 +1082,14 @@ private final class RemoteChat: ObservableObject {
         do {
             try await MobileComposerTransport(session: session, origin: origin)
                 .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId,
-                        requestId: submission.requestId)
+                        requestId: submission.requestId, delivery: steer ? .steer : .queue)
             pendingSubmission = nil
             error = nil
             if queueUnavailable { await refreshQueue(computer: computer) }
             return true
+        } catch ChatFailure.rejected(let code, _) where code == "session/steer-unavailable" {
+            self.error = "当前回合已结束，未插话；可重新发送"
+            return false
         } catch {
             if (error as? URLError)?.code == .timedOut {
                 self.error = "请求超时，未确认是否送达；再次发送不会重复"
@@ -1106,9 +1146,13 @@ private final class RemoteChat: ObservableObject {
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               let body = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let result = body["result"] as? [String: Any], result["ok"] as? Bool == true,
-              let value = result["value"] else { throw ChatFailure.unavailable }
-        return value
+              let result = body["result"] as? [String: Any] else { throw ChatFailure.unavailable }
+        guard result["ok"] as? Bool == true else {
+            let error = result["error"] as? [String: Any]
+            throw ChatFailure.rejected(code: error?["code"] as? String ?? "gateway/internal",
+                                       message: error?["message"] as? String)
+        }
+        return result["value"] ?? NSNull()
     }
 
     private func decodeReplyValue<Value: Decodable>(_ value: Any, as type: Value.Type) throws -> Value {
@@ -1523,10 +1567,13 @@ private final class RemoteChat: ObservableObject {
     private enum ChatFailure: LocalizedError, Equatable {
         case unavailable
         case pairingExpired
+        /// One typed Host refusal carrying its machine code.
+        case rejected(code: String, message: String?)
         var errorDescription: String? {
             switch self {
             case .unavailable: "连接已失效或服务器不可用"
             case .pairingExpired: "配对已过期，请从这台 Mac 重新扫码连接"
+            case .rejected(_, let message): message ?? "此电脑拒绝了这次操作"
             }
         }
     }
@@ -1550,6 +1597,11 @@ struct RemoteChatView: View {
     @State private var showingSettings = false
     @State private var showingModels = false
     @State private var modelPickerDetent: PresentationDetent = .large
+    @State private var editingQueueItem: MobileQueuedItem?
+    @State private var removingQueueItem: MobileQueuedItem?
+    @State private var queueDraft = ""
+    /// Whether a message sent while a turn runs waits in the queue or steers that turn.
+    @AppStorage("mobile.followUp.delivery") private var followUpDelivery = MobilePromptDelivery.queue.rawValue
     @State private var effortTarget: MobileModel?
     @State private var effortDismissPicker = false
     @StateObject private var additions = MobileComposerAdditions()
@@ -1758,6 +1810,7 @@ struct RemoteChatView: View {
                             .font(.caption).frame(minHeight: 44)
                     }
                 }
+                queueStrip
                 MobileComposerAttachmentStrip(additions: additions)
                 composerCard
             }
@@ -1819,6 +1872,48 @@ struct RemoteChatView: View {
         .mobileComposerActions(additions, computer: computer, planActive: chat.planActive) {
             Task { await chat.composerCommand("/plan off", computer: computer, sessionId: sessionId) }
         }
+        .sheet(item: $editingQueueItem) { item in
+            NavigationStack {
+                Form {
+                    Section("排队消息") {
+                        TextField("消息内容", text: $queueDraft, axis: .vertical).lineLimit(1...8)
+                    }
+                }
+                .navigationTitle("编辑排队消息")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") { editingQueueItem = nil }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("保存") {
+                            let text = queueDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !text.isEmpty else { return }
+                            editingQueueItem = nil
+                            Task {
+                                await chat.updateQueue(item, action: .edit(text), computer: computer,
+                                                       sessionId: sessionId)
+                            }
+                        }
+                        .disabled(queueDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+        }
+        .confirmationDialog("删除这条排队消息？", isPresented: Binding(
+            get: { removingQueueItem != nil },
+            set: { if !$0 { removingQueueItem = nil } }
+        ), titleVisibility: .visible) {
+            if let item = removingQueueItem {
+                Button("删除", role: .destructive) {
+                    removingQueueItem = nil
+                    Task {
+                        await chat.updateQueue(item, action: .remove, computer: computer,
+                                               sessionId: sessionId)
+                    }
+                }
+            }
+            Button("取消", role: .cancel) { removingQueueItem = nil }
+        }
         .sheet(isPresented: $showingModels) { modelPicker }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
@@ -1838,6 +1933,12 @@ struct RemoteChatView: View {
                         }
                     }
                     if let error = chat.modelSelectionError { Text(error).foregroundStyle(.orange) }
+                    Section("运行中发送") {
+                        Picker("运行中发送", selection: $followUpDelivery) {
+                            Text("排队发送").tag(MobilePromptDelivery.queue.rawValue)
+                            Text("插话发送").tag(MobilePromptDelivery.steer.rawValue)
+                        }
+                    }
                     Section("访问权限") {
                         if chat.permissions.isEmpty { Text("暂无权限选项").foregroundStyle(.secondary) }
                         ForEach(chat.permissions) { permission in
@@ -2183,8 +2284,9 @@ struct RemoteChatView: View {
             let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
             scrollRequestCount += 1
             Task {
+                let steer = chat.queueRunning && followUpDelivery == MobilePromptDelivery.steer.rawValue
                 if await chat.send(text, attachments: submittedAttachments, mode: submittedMode,
-                                   computer: computer, sessionId: sessionId) {
+                                   steer: steer, computer: computer, sessionId: sessionId) {
                     if draft == submittedDraft { draft = "" }
                     let delivered = Set(submittedAttachments.map(\.id))
                     additions.attachments.removeAll { delivered.contains($0.id) }
@@ -2251,6 +2353,23 @@ struct RemoteChatView: View {
     private func inspectProcess() {
         followingLatest = false
         composerFocused = false
+    }
+
+    /// The waiting prompts and their per-row actions.
+    private var queueStrip: some View {
+        MobileQueueStrip(items: chat.queuedItems, running: chat.queueRunning || chat.running,
+                         busyItemID: chat.queueBusyItemID, error: chat.queueError,
+                         onEdit: { item in
+                             queueDraft = item.text
+                             editingQueueItem = item
+                         },
+                         onRemove: { item in removingQueueItem = item },
+                         onSteer: { item in
+                             Task {
+                                 await chat.updateQueue(item, action: .steer, computer: computer,
+                                                        sessionId: sessionId)
+                             }
+                         })
     }
 
     /// Bridges the chat's thumbnail cache into the attachment summary view.

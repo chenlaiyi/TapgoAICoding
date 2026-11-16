@@ -19,6 +19,14 @@ enum MobileComposerMode: String, CaseIterable {
     }
 }
 
+/// How a prompt enters a Session that is already running a turn.
+enum MobilePromptDelivery: String {
+    /// Wait until the running turn finishes.
+    case queue
+    /// Hand the message to the running turn as steering.
+    case steer
+}
+
 struct MobileDraftAttachment: Identifiable, Equatable {
     let id = UUID()
     let name: String
@@ -135,8 +143,10 @@ struct MobileComposerTransport {
     ///   - mode: Composer mode that selects the command path.
     ///   - sessionId: Session receiving the message.
     ///   - requestId: Submission identity the Host deduplicates by.
+    ///   - delivery: whether a busy Session queues the message or steers the running turn.
     func submit(text: String, attachments: [MobileDraftAttachment], mode: MobileComposerMode,
-                sessionId: String, requestId: String) async throws {
+                sessionId: String, requestId: String,
+                delivery: MobilePromptDelivery = .queue) async throws {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if mode == .goal {
             let control = trimmed.lowercased()
@@ -154,7 +164,7 @@ struct MobileComposerTransport {
                               attachments: content.filter { $0["type"] as? String != "text" }, sessionId: sessionId)
         } else {
             _ = try await call("session/prompt", args: ["request": ["requestId": requestId,
-                "sessionId": sessionId, "mode": "queue", "content": content,
+                "sessionId": sessionId, "mode": delivery.rawValue, "content": content,
                 "clientTimeZone": TimeZone.current.identifier]], timeout: Self.promptTimeout)
         }
     }

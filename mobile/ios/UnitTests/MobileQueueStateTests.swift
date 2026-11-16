@@ -63,6 +63,29 @@ final class MobileQueueStateTests: XCTestCase {
         XCTAssertEqual(item?.preview ?? "", "附件")
     }
 
+    func testEditActionCarriesTextOnlyContent() {
+        let wire = MobileQueueAction.edit("改一下").wire
+        XCTAssertEqual(wire["kind"] as? String, "edit")
+        let content = wire["content"] as? [[String: Any]]
+        XCTAssertEqual(content?.count ?? -1, 1)
+        XCTAssertEqual(content?.first?["type"] as? String, "text")
+        XCTAssertEqual(content?.first?["text"] as? String, "改一下")
+    }
+
+    func testRemoveAndSteerActionsCarryOnlyTheirKind() {
+        XCTAssertEqual(MobileQueueAction.remove.wire["kind"] as? String, "remove")
+        XCTAssertNil(MobileQueueAction.remove.wire["content"] as? [[String: Any]])
+        XCTAssertEqual(MobileQueueAction.steer.wire["kind"] as? String, "steer")
+        XCTAssertNil(MobileQueueAction.steer.wire["content"] as? [[String: Any]])
+    }
+
+    func testHostRefusalCodesMapToReadableMessages() {
+        XCTAssertEqual(MobileQueueFailure.message(for: "session/queue-item-not-found"), "这条消息已被处理")
+        XCTAssertEqual(MobileQueueFailure.message(for: "session/steer-unavailable"), "当前回合已结束，消息仍在队列")
+        XCTAssertEqual(MobileQueueFailure.message(for: "session/attachment-invalid"), "含附件的排队消息请在电脑上编辑")
+        XCTAssertEqual(MobileQueueFailure.message(for: "gateway/internal"), "队列操作失败，请重试")
+    }
+
     func testMalformedStateIsRejectedInsteadOfInventingAnEmptyQueue() {
         XCTAssertNil(MobileQueueState.decode(["queue": []]))
         XCTAssertNil(MobileQueueState.decode(["running": "yes", "queue": []]))

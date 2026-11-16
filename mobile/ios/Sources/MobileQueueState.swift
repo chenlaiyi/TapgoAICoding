@@ -1,7 +1,7 @@
 import Foundation
 
 /// One prompt waiting in the live Agent inbox.
-struct MobileQueuedItem: Equatable {
+struct MobileQueuedItem: Identifiable, Equatable {
     let id: String
     let placement: String
     let text: String
@@ -19,6 +19,38 @@ struct MobileQueuedItem: Equatable {
     var preview: String {
         let line = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
         return line.isEmpty ? (attachments.isEmpty ? "排队消息" : "附件") : line
+    }
+}
+
+/// One mutation of a still-pending queue item.
+enum MobileQueueAction: Equatable {
+    case edit(String)
+    case remove
+    case steer
+
+    /// The `session/updateQueue` action object this mutation sends.
+    var wire: [String: Any] {
+        switch self {
+        case .edit(let text):
+            return ["kind": "edit", "content": [["type": "text", "text": text]]]
+        case .remove: return ["kind": "remove"]
+        case .steer: return ["kind": "steer"]
+        }
+    }
+}
+
+/// User-facing messages for Host queue refusals.
+enum MobileQueueFailure {
+    /// Maps one Host error code to the sentence shown under the queue strip.
+    /// - Parameter code: machine code from the Host refusal.
+    /// - Returns: the localized explanation for that refusal.
+    static func message(for code: String) -> String {
+        switch code {
+        case "session/queue-item-not-found": return "这条消息已被处理"
+        case "session/steer-unavailable": return "当前回合已结束，消息仍在队列"
+        case "session/attachment-invalid": return "含附件的排队消息请在电脑上编辑"
+        default: return "队列操作失败，请重试"
+        }
     }
 }
 
