@@ -71,6 +71,7 @@ targets:
       - path: Sources/MobileReadingPosition.swift
       - path: Sources/MobileMultipart.swift
       - path: Sources/MobileTranscriptOrder.swift
+      - path: Sources/MobileChangesFilter.swift
       - path: Sources/MobileComposerState.swift
       - path: Sources/MobileChatAttachment.swift
       - path: Sources/MobileQueueState.swift

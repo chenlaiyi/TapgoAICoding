@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// One listed change with the index its diff endpoint expects.
+private struct MobileChangedFile: Identifiable {
+    let index: Int
+    let file: MobileChangesSummary.File
+    var id: Int { index }
+}
+
 /// One tapped file awaiting native preview.
 private struct MobileFilePreviewRequest: Identifiable {
     let id = UUID()
@@ -9,6 +16,7 @@ private struct MobileFilePreviewRequest: Identifiable {
 /// A summary chip opens retained, turn-scoped file comparisons without reading current workspace state.
 struct MobileChangesView: View {
     let sequence: Int
+    let deliverables: [String]
     let loadSummary: (Int) async throws -> MobileChangesSummary
     let loadDiff: (Int, Int) async throws -> MobileFileDiff
     let loadFile: (String) async throws -> MobileWorkspaceFile
@@ -19,6 +27,20 @@ struct MobileChangesView: View {
     @State private var showing = false
     @State private var revision = 0
     @State private var previewRequest: MobileFilePreviewRequest?
+    @State private var category: MobileChangesCategory = .all
+    @State private var search = ""
+
+    /// Files surviving the category and path filter, keeping their diff indices.
+    private var filteredFiles: [MobileChangedFile] {
+        guard let summary else { return [] }
+        let presented = Set(deliverables)
+        return summary.files.indices.compactMap { index in
+            let file = summary.files[index]
+            return MobileChangesFilter.fileMatches(file, category: category, search: search,
+                                                   deliverables: presented)
+                ? MobileChangedFile(index: index, file: file) : nil
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -67,41 +89,52 @@ struct MobileChangesView: View {
                 NavigationStack {
                     List {
                         Section {
-                            ForEach(Array(summary.files.enumerated()), id: \.offset) { index, file in
+                            if filteredFiles.isEmpty {
+                                Text(category == .deliverables && deliverables.isEmpty
+                                     ? "本轮没有标记为交付物的文件"
+                                     : "没有匹配的文件")
+                                    .foregroundStyle(.secondary)
+                            }
+                            ForEach(filteredFiles) { entry in
                                 HStack(spacing: 6) {
                                     NavigationLink {
-                                        MobileFileDiffView(file: file) { try await loadDiff(sequence, index) }
+                                        MobileFileDiffView(file: entry.file) {
+                                            try await loadDiff(sequence, entry.index)
+                                        }
                                     } label: {
                                         VStack(alignment: .leading, spacing: 6) {
-                                            Text(file.display).font(.subheadline).lineLimit(3)
+                                            Text(entry.file.display).font(.subheadline).lineLimit(3)
                                             HStack(spacing: 10) {
-                                                if file.binary == true { Text("二进制文件") }
-                                                else if file.oversized == true { Text("文件过大，无法预览") }
+                                                if entry.file.binary == true { Text("二进制文件") }
+                                                else if entry.file.oversized == true { Text("文件过大，无法预览") }
                                                 else {
-                                                    Text("+\(file.added)").foregroundStyle(.green)
-                                                    Text("−\(file.deleted)").foregroundStyle(.red)
+                                                    Text("+\(entry.file.added)").foregroundStyle(.green)
+                                                    Text("−\(entry.file.deleted)").foregroundStyle(.red)
                                                 }
                                             }.font(.caption).foregroundStyle(.secondary)
                                         }
                                         .padding(.vertical, 4)
                                     }
-                                    .accessibilityIdentifier("changedFile-\(index)")
+                                    .accessibilityIdentifier("changedFile-\(entry.index)")
                                     Button {
-                                        previewRequest = MobileFilePreviewRequest(path: file.path)
+                                        previewRequest = MobileFilePreviewRequest(path: entry.file.path)
                                     } label: {
                                         Image(systemName: "doc.text.magnifyingglass")
                                             .frame(width: 44, height: 44)
                                     }
                                     .buttonStyle(.borderless)
-                                    .accessibilityLabel("预览 \(file.display)")
-                                    .accessibilityIdentifier("previewFile-\(index)")
+                                    .accessibilityLabel("预览 \(entry.file.display)")
+                                    .accessibilityIdentifier("previewFile-\(entry.index)")
                                 }
                             }
                         } header: {
                             Text("\(summary.total) 个文件 · +\(summary.added) −\(summary.deleted)")
                         } footer: {
-                            if summary.total > summary.files.count {
-                                Text("Host 仅保留前 \(summary.files.count) 个文件的预览，总计包含其余文件")
+                            VStack(alignment: .leading, spacing: 4) {
+                                if summary.total > summary.files.count {
+                                    Text("Host 仅保留前 \(summary.files.count) 个文件的预览，总计包含其余文件")
+                                }
+                                Text("未暂存变更：Host 未提供 git 状态，无法区分")
                             }
                         }
                     }
@@ -109,7 +142,22 @@ struct MobileChangesView: View {
                         MobileFilePreviewSheet(path: request.path) { try await loadFile(request.path) }
                     }
                     .navigationTitle("文件变更").navigationBarTitleDisplayMode(.inline)
+                    .searchable(text: $search, prompt: "按路径筛选")
                     .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Menu {
+                                Picker("筛选", selection: $category) {
+                                    ForEach(MobileChangesCategory.allCases) { item in
+                                        Text(item.rawValue).tag(item)
+                                    }
+                                }
+                                Divider()
+                                Text("未暂存变更：Host 未提供 git 状态")
+                            } label: {
+                                Label(category.rawValue, systemImage: "line.3.horizontal.decrease.circle")
+                            }
+                            .accessibilityLabel("筛选文件，当前\(category.rawValue)")
+                        }
                         ToolbarItem(placement: .confirmationAction) {
                             Button("完成") { showing = false }.accessibilityLabel("关闭文件变更")
                         }

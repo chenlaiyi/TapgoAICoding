@@ -21,6 +21,8 @@ private struct ChatLine: Identifiable, Equatable {
     var endSequence: Int?
     var step: Int?
     var lastActivityAt: TimeInterval?
+    /// Paths this turn declared as final deliverables.
+    var deliverables: [String] = []
     var live = false
     var interrupted = false
     var presentationID: String {
@@ -1083,6 +1085,16 @@ private final class RemoteChat: ObservableObject {
                 lines[index].activities[activity].receive(data)
                 return
             }
+            return
+        }
+        if type == "deliverables/presented",
+           let turn = data["turn"] as? Int,
+           let files = data["files"] as? [[String: Any]] {
+            Self.ensureTurn(turn: turn, seq: seq, time: event["time"] as? TimeInterval, into: &lines)
+            guard let index = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn }) else { return }
+            var merged = Set(lines[index].deliverables)
+            merged.formUnion(files.compactMap { $0["path"] as? String })
+            lines[index].deliverables = merged.sorted()
             return
         }
         guard type == "user/message" || type == "assistant/message" else { return }
@@ -2827,6 +2839,7 @@ struct RemoteChatView: View {
                 }, retryFeedback: { Task { await chat.loadFeedback(computer: computer) } })
             if let sequence = replyTurn(line)?.changesSequence {
                 MobileChangesView(sequence: sequence,
+                    deliverables: replyTurn(line)?.deliverables ?? [],
                     loadSummary: { try await chat.changesSummary($0, computer: computer) },
                     loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
                     loadFile: { try await chat.loadWorkspaceFile(path: $0) })
