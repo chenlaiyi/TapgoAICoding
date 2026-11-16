@@ -1523,15 +1523,19 @@ private final class RemoteChat: ObservableObject {
     /// - Returns: the listing the Host served.
     func loadWorkspaceDirectory(path: String, computer: SavedComputer) async throws -> MobileDirectoryListing {
         guard let sessionId else { throw ChatFailure.unavailable }
-        let value = try await call("workspaceFiles/list",
-                                   arguments: ["workspaceFileScopeId": sessionId, "path": path],
-                                   computer: computer)
-        guard let data = try? JSONSerialization.data(withJSONObject: value),
-              let listing = try? JSONDecoder().decode(MobileDirectoryListing.self, from: data),
-              listing.entries.allSatisfy({ !$0.name.isEmpty }) else {
-            throw ChatFailure.invalidData
+        do {
+            let value = try await call("workspaceFiles/list",
+                                       arguments: ["workspaceFileScopeId": sessionId, "path": path],
+                                       computer: computer)
+            guard let data = try? JSONSerialization.data(withJSONObject: value),
+                  let listing = try? JSONDecoder().decode(MobileDirectoryListing.self, from: data),
+                  listing.entries.allSatisfy({ !$0.name.isEmpty }) else {
+                throw ChatFailure.invalidData
+            }
+            return listing
+        } catch ChatFailure.rejected(let code, let message) {
+            throw MobileWorkspaceError.refused(MobileWorkspaceError.message(code: code, fallback: message))
         }
-        return listing
     }
 
     /// Loads one workspace file's bytes for native preview.
@@ -1562,8 +1566,9 @@ private final class RemoteChat: ObservableObject {
                 throw MobileFilePreviewError.unavailable
             }
             if result["ok"] as? Bool != true {
-                let message = (result["error"] as? [String: Any])?["message"] as? String
-                throw MobileFilePreviewError.refused(message ?? "Host 拒绝读取该文件")
+                let error = result["error"] as? [String: Any]
+                throw MobileFilePreviewError.refused(MobileWorkspaceError.message(
+                    code: error?["code"] as? String, fallback: error?["message"] as? String))
             }
             guard let attachments = body["attachments"] as? [[String: Any]],
                   let part = attachments.first?["part"] as? String,
@@ -1573,9 +1578,10 @@ private final class RemoteChat: ObservableObject {
         }
         if let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let result = body["result"] as? [String: Any],
-           result["ok"] as? Bool != true,
-           let message = (result["error"] as? [String: Any])?["message"] as? String {
-            throw MobileFilePreviewError.refused(message)
+           result["ok"] as? Bool != true {
+            let error = result["error"] as? [String: Any]
+            throw MobileFilePreviewError.refused(MobileWorkspaceError.message(
+                code: error?["code"] as? String, fallback: error?["message"] as? String))
         }
         throw MobileFilePreviewError.unavailable
     }

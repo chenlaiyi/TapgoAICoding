@@ -23,6 +23,18 @@ final class MobileFileBrowserTests: XCTestCase {
                        ["Alpha", "beta", "beta.txt", "zeta.txt"])
     }
 
+    func testFiltersByNameAndMapsHostCodes() {
+        let entries = [
+            MobileDirectoryEntry(name: "Sources", type: "directory", size: nil),
+            MobileDirectoryEntry(name: "README.md", type: "file", size: 10),
+        ]
+        XCTAssertEqual(MobileFileBrowser.filtered(entries, search: " read ").map(\.name), ["README.md"])
+        XCTAssertEqual(MobileFileBrowser.filtered(entries, search: "").count, 2)
+        XCTAssertEqual(MobileWorkspaceError.message(code: "workspace-file/not-found", fallback: "x"), "文件或目录不存在")
+        XCTAssertEqual(MobileWorkspaceError.message(code: "unknown/code", fallback: "Host 消息"), "Host 消息")
+        XCTAssertEqual(MobileWorkspaceError.message(code: nil, fallback: nil), "读取失败，请重试")
+    }
+
     func testDecodesTheHostListing() throws {
         let json = #"{"path":"src","entries":[{"name":"main.swift","type":"file","size":42},{"name":"sub","type":"directory"}],"truncated":false}"#
         let listing = try JSONDecoder().decode(MobileDirectoryListing.self, from: Data(json.utf8))

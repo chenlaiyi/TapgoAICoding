@@ -5,12 +5,15 @@ struct MobileFileBrowserView: View {
     let loadDirectory: (String) async throws -> MobileDirectoryListing
     let loadFile: (String) async throws -> MobileWorkspaceFile
     @Environment(\.dismiss) private var dismiss
+    @State private var pathStack: [MobileBrowserRoute] = []
 
     var body: some View {
-        NavigationStack {
-            MobileDirectoryView(path: "", loadDirectory: loadDirectory, loadFile: loadFile)
+        NavigationStack(path: $pathStack) {
+            MobileDirectoryView(path: "", loadDirectory: loadDirectory, loadFile: loadFile,
+                                goToRoot: { pathStack.removeAll() })
                 .navigationDestination(for: MobileBrowserRoute.self) { route in
-                    MobileDirectoryView(path: route.path, loadDirectory: loadDirectory, loadFile: loadFile)
+                    MobileDirectoryView(path: route.path, loadDirectory: loadDirectory, loadFile: loadFile,
+                                        goToRoot: { pathStack.removeAll() })
                 }
                 .navigationTitle("文件")
                 .navigationBarTitleDisplayMode(.inline)
@@ -36,11 +39,13 @@ private struct MobileDirectoryView: View {
     let path: String
     let loadDirectory: (String) async throws -> MobileDirectoryListing
     let loadFile: (String) async throws -> MobileWorkspaceFile
+    let goToRoot: () -> Void
     @State private var listing: MobileDirectoryListing?
     @State private var error: String?
     @State private var loading = true
     @State private var revision = 0
     @State private var preview: MobileBrowserPreview?
+    @State private var search = ""
 
     var body: some View {
         List {
@@ -54,8 +59,10 @@ private struct MobileDirectoryView: View {
             } else if let listing {
                 if listing.entries.isEmpty {
                     Text("空目录").foregroundStyle(.secondary)
+                } else if filteredEntries.isEmpty {
+                    Text("没有匹配的文件").foregroundStyle(.secondary)
                 }
-                ForEach(MobileFileBrowser.sorted(listing.entries)) { entry in
+                ForEach(MobileFileBrowser.sorted(filteredEntries)) { entry in
                     if entry.isDirectory {
                         NavigationLink(value: MobileBrowserRoute(path: MobileFileBrowser.child(entry.name, of: path))) {
                             row(entry, symbol: "folder")
@@ -79,10 +86,23 @@ private struct MobileDirectoryView: View {
         }
         .navigationTitle(MobileFileBrowser.display(path))
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $search, prompt: "筛选当前目录")
+        .toolbar {
+            if !path.isEmpty {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("根目录") { goToRoot() }.accessibilityLabel("回到工作区根目录")
+                }
+            }
+        }
         .task(id: revision) { await load() }
         .sheet(item: $preview) { request in
             MobileFilePreviewSheet(path: request.path) { try await loadFile(request.path) }
         }
+    }
+
+    /// Entries matching the current search text.
+    private var filteredEntries: [MobileDirectoryEntry] {
+        MobileFileBrowser.filtered(listing?.entries ?? [], search: search)
     }
 
     private func row(_ entry: MobileDirectoryEntry, symbol: String) -> some View {
