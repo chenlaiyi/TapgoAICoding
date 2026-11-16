@@ -2241,7 +2241,7 @@ struct RemoteChatView: View {
                             Text("插话发送").tag(MobilePromptDelivery.steer.rawValue)
                         }
                     }
-                    Section("访问权限") {
+                    Section {
                         if chat.permissions.isEmpty { Text("暂无权限选项").foregroundStyle(.secondary) }
                         ForEach(chat.permissions) { permission in
                             Button {
@@ -2259,6 +2259,10 @@ struct RemoteChatView: View {
                                 }
                             }
                         }
+                    } header: {
+                        Text("访问权限")
+                    } footer: {
+                        Text("选项来自这台 Mac 的权限目录；切换只影响当前会话。")
                     }
                     Section("模型额度") {
                         Text("账号余额 \(chat.funds.account ?? "暂不可用")")
@@ -2557,13 +2561,17 @@ struct RemoteChatView: View {
                     }
                 }
             )) {
-                ForEach(Array(chat.permissions.filter {
-                    ["read-only", "workspace-write", "danger-full-access"].contains($0.id)
-                }.reversed())) { permission in
-                    Label(permission.name, systemImage: permissionSymbol(permission.id))
-                        .tag(permission.id)
+                if chat.permissions.isEmpty {
+                    Text("暂无权限选项")
+                } else {
+                    ForEach(chat.permissions) { permission in
+                        Label(permission.name, systemImage: permissionSymbol(permission.id))
+                            .tag(permission.id)
+                    }
                 }
             }
+            Divider()
+            Text("作用范围：当前会话；选项来自这台 Mac 的权限目录")
         } label: {
             Image(systemName: "shield.lefthalf.filled")
                 .font(.system(size: 17))
@@ -2579,7 +2587,8 @@ struct RemoteChatView: View {
         switch id {
         case "read-only": "eye"
         case "workspace-write": "pencil.line"
-        default: "shield.lefthalf.filled"
+        case "danger-full-access": "exclamationmark.shield"
+        default: "lock.shield"
         }
     }
 
