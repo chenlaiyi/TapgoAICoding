@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WebKit
 
 private struct RemoteSession: Decodable, Identifiable {
@@ -260,6 +261,100 @@ private final class RemoteSessions: ObservableObject {
                 self.error = "无法读取这台 Mac 的对话：\(error.localizedDescription)"
             }
             return false
+        }
+    }
+
+    /// Runs one Remote action against the paired Host with the stored pairing cookie.
+    /// - Parameters:
+    ///   - method: Remote endpoint, such as `session/rename`.
+    ///   - arguments: endpoint arguments.
+    ///   - computer: paired computer whose active route is dialed.
+    /// - Returns: the endpoint value.
+    private func perform(_ method: String, arguments: [String: Any], computer: SavedComputer) async throws -> Any {
+        guard let origin = URL(string: computer.origin), let pairing = URL(string: computer.connectionURL) else {
+            throw RemoteError.unavailable
+        }
+        let configuration = URLSessionConfiguration.default
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.httpShouldSetCookies = true
+        let cookies = await withCheckedContinuation { continuation in
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies {
+                continuation.resume(returning: $0)
+            }
+        }
+        for cookie in cookies where cookie.domain.trimmingCharacters(in: CharacterSet(charactersIn: ".")) == origin.host {
+            configuration.httpCookieStorage?.setCookie(cookie)
+        }
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        do {
+            return try await rpcValue(session: session, origin: origin, method: method, args: arguments)
+        } catch {
+            // The pairing cookie may have expired; renew it once and replay the action.
+            var pairingRequest = URLRequest(url: pairing)
+            pairingRequest.timeoutInterval = 8
+            let (_, authentication) = try await session.data(for: pairingRequest)
+            guard (authentication as? HTTPURLResponse)?.statusCode == 200 else { throw error }
+            return try await rpcValue(session: session, origin: origin, method: method, args: arguments)
+        }
+    }
+
+    /// Renames one conversation and refreshes the list.
+    /// - Parameters:
+    ///   - item: conversation to rename.
+    ///   - title: new title; surrounding whitespace is ignored.
+    ///   - computer: paired computer.
+    /// - Returns: an error message, or nil when the Host accepted the title.
+    func rename(_ item: RemoteSession, to title: String, computer: SavedComputer) async -> String? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 120 else { return "对话名称需为 1–120 个字符" }
+        do {
+            _ = try await perform("session/rename", arguments: ["request": [
+                "sessionId": item.sessionId, "title": trimmed,
+            ]], computer: computer)
+            await load(computer: computer)
+            return nil
+        } catch {
+            return "重命名失败，请重试"
+        }
+    }
+
+    /// Pins or unpins one conversation and adopts the Host's pinned order.
+    /// - Parameters:
+    ///   - item: conversation to change.
+    ///   - pinned: whether it should be pinned.
+    ///   - computer: paired computer.
+    /// - Returns: an error message, or nil on success.
+    func setPinned(_ item: RemoteSession, pinned: Bool, computer: SavedComputer) async -> String? {
+        do {
+            let value = try await perform(pinned ? "workspace/pinSession" : "workspace/unpinSession",
+                                          arguments: ["request": ["sessionId": item.sessionId]], computer: computer)
+            if let value = value as? [String: Any], let ids = value["pinnedSessionIds"] as? [String] {
+                pinnedSessionIds = ids
+            } else {
+                await load(computer: computer)
+            }
+            return nil
+        } catch {
+            return pinned ? "置顶失败，请重试" : "取消置顶失败，请重试"
+        }
+    }
+
+    /// Archives one conversation, optionally stopping its running turn first.
+    /// - Parameters:
+    ///   - item: conversation to archive.
+    ///   - stopActivity: whether the Host should stop a running turn.
+    ///   - computer: paired computer.
+    /// - Returns: an error message, or nil on success.
+    func archive(_ item: RemoteSession, stopActivity: Bool, computer: SavedComputer) async -> String? {
+        do {
+            var request: [String: Any] = ["sessionId": item.sessionId]
+            if stopActivity { request["stopActivity"] = true }
+            _ = try await perform("workspace/archiveSession", arguments: ["request": request], computer: computer)
+            await load(computer: computer)
+            return nil
+        } catch {
+            return "归档失败，请重试"
         }
     }
 
@@ -567,6 +662,10 @@ struct RemoteHomeView: View {
     @State private var showingWorkspace = false
     /// Set when the conversation's new-draft button asks for a fresh composer after it closes.
     @State private var pendingNewConversation = false
+    @State private var renamingSession: RemoteSession?
+    @State private var renameDraft = ""
+    @State private var archivingSession: RemoteSession?
+    @State private var sessionActionMessage: String?
     @State private var showingNewConversation = false
     @State private var showingFullWorkspace = false
     @State private var showingTopMenu = false
@@ -755,6 +854,61 @@ struct RemoteHomeView: View {
             .sheet(isPresented: $showingComputers) { computerSheet }
             .sheet(isPresented: $showingSettings) { settingsSheet }
             .sheet(isPresented: $showingConnect) { ConnectView(connection: connection) }
+            .sheet(item: $renamingSession) { target in
+                NavigationStack {
+                    Form {
+                        TextField("对话名称", text: $renameDraft)
+                    }
+                    .navigationTitle("重命名对话")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("取消") { renamingSession = nil }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("保存") {
+                                let title = renameDraft
+                                renamingSession = nil
+                                Task {
+                                    if let message = await sessions.rename(target, to: title, computer: computer) {
+                                        sessionActionMessage = message
+                                    }
+                                }
+                            }
+                            .disabled(renameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                }
+            }
+            .confirmationDialog("归档这个对话？", isPresented: Binding(
+                get: { archivingSession != nil },
+                set: { if !$0 { archivingSession = nil } }
+            ), titleVisibility: .visible) {
+                if let target = archivingSession {
+                    if target.running {
+                        // The Host refuses to archive active work unless the stop is requested with it.
+                        Button("归档并停止运行中的任务", role: .destructive) {
+                            archivingSession = nil
+                            archiveSession(target, stopActivity: true)
+                        }
+                    } else {
+                        Button("归档", role: .destructive) {
+                            archivingSession = nil
+                            archiveSession(target, stopActivity: false)
+                        }
+                    }
+                }
+                Button("取消", role: .cancel) { archivingSession = nil }
+            } message: {
+                Text("归档后从 iPhone 列表隐藏，可在电脑端恢复；不会删除历史。")
+            }
+            .alert("提示", isPresented: Binding(
+                get: { sessionActionMessage != nil },
+                set: { if !$0 { sessionActionMessage = nil } }
+            )) {
+                Button("好", role: .cancel) {}
+            } message: {
+                Text(sessionActionMessage ?? "")
+            }
             .sheet(isPresented: $showingFullWorkspace) {
                 if let url = URL(string: computer.connectionURL) {
                     DshWebView(url: url, onUnauthorized: connection.expireActive)
@@ -915,6 +1069,59 @@ struct RemoteHomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("重命名") { beginRename(item) }
+            Button(isPinned(item) ? "取消置顶" : "置顶") {
+                Task { await togglePinned(item) }
+            }
+            Button("复制会话 ID") {
+                UIPasteboard.general.string = item.sessionId
+                sessionActionMessage = "已复制会话 ID"
+            }
+            Button("归档…", role: .destructive) { archivingSession = item }
+        }
+        .accessibilityAction(named: "重命名对话") { beginRename(item) }
+        .accessibilityAction(named: isPinned(item) ? "取消置顶" : "置顶") {
+            Task { await togglePinned(item) }
+        }
+        .accessibilityAction(named: "复制会话 ID") {
+            UIPasteboard.general.string = item.sessionId
+        }
+        .accessibilityAction(named: "归档对话") { archivingSession = item }
+    }
+
+    /// Whether this conversation is currently pinned on the Host.
+    /// - Parameter item: listed conversation.
+    /// - Returns: true when the Host pinned it.
+    private func isPinned(_ item: RemoteSession) -> Bool {
+        sessions.pinnedSessionIds.contains(item.sessionId)
+    }
+
+    /// Opens the rename sheet with the current title filled in.
+    /// - Parameter item: conversation to rename.
+    private func beginRename(_ item: RemoteSession) {
+        renameDraft = item.title
+        renamingSession = item
+    }
+
+    /// Pins or unpins one conversation and reports a Host refusal.
+    /// - Parameter item: conversation to change.
+    private func togglePinned(_ item: RemoteSession) async {
+        if let message = await sessions.setPinned(item, pinned: !isPinned(item), computer: computer) {
+            sessionActionMessage = message
+        }
+    }
+
+    /// Archives one conversation, reporting a Host refusal.
+    /// - Parameters:
+    ///   - item: conversation to archive.
+    ///   - stopActivity: whether to stop a running turn first.
+    private func archiveSession(_ item: RemoteSession, stopActivity: Bool) {
+        Task {
+            if let message = await sessions.archive(item, stopActivity: stopActivity, computer: computer) {
+                sessionActionMessage = message
+            }
+        }
     }
 
     private var homeComposer: some View {
