@@ -1391,6 +1391,7 @@ private struct RemoteNewConversationView: View {
     @State private var showingDirectoryBrowser = false
     @State private var createdSession: RemoteSession?
     @State private var showingCreatedSession = false
+    @State private var pendingNewConversation = false
     @State private var submitting = false
 
     /// Loads the session list, switching to the fallback route when the preferred route is unreachable.
@@ -1503,6 +1504,17 @@ private struct RemoteNewConversationView: View {
             if phase != .active { saveDraftNow() }
         }
         .onDisappear { saveDraftNow() }
+        .onChange(of: showingCreatedSession) { visible in
+            guard !visible, pendingNewConversation else { return }
+            pendingNewConversation = false
+            draft = ""
+            MobileDraftStore.clear(key: newDraftKey)
+            additions.mode = .message
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(350))
+                inputFocused = true
+            }
+        }
         .onChange(of: selectedWorkspace) { _ in createdDraftID = nil }
         .onChange(of: sessions.workspaces.count) { _ in
             if selectedWorkspace == nil { selectedWorkspace = availableWorkspaces.first?.path }
