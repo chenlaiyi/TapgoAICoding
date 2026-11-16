@@ -184,7 +184,7 @@ private final class RemoteChat: ObservableObject {
     var displayLines: [ChatLine] {
         var visible = lines
         if liveActive, !liveText.isEmpty {
-            var line = ChatLine(id: -1, role: "assistant", text: MobileStreamPreview.bounded(liveText))
+            var line = ChatLine(id: -1, role: "assistant", text: MobileStreamPreview.stableTail(liveText))
             line.turn = assistantStream.turn
             line.step = assistantStream.step
             line.live = true

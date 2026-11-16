@@ -21,3 +21,37 @@ final class MobileStreamPreviewTests: XCTestCase {
         XCTAssertFalse(MobileStreamPreview.isTruncated("abc", limit: 0))
     }
 }
+
+final class MobileStreamTableHoldbackTests: XCTestCase {
+    func testHoldsBackAnUnfinishedTrailingTable() {
+        let text = "先说明一下：\n\n| a | b |\n| --- | --- |\n| 1 | 2 |"
+        XCTAssertEqual(MobileStreamPreview.stableTail(text), "先说明一下：\n")
+    }
+
+    func testShowsACompletedTableAfterABlankLine() {
+        let text = "| a | b |\n| --- | --- |\n| 1 | 2 |\n\n后文"
+        XCTAssertEqual(MobileStreamPreview.stableTail(text), text)
+    }
+
+    func testSingleTrailingNewlineKeepsTheTableHeld() {
+        let text = "| a | b |\n| --- | --- |\n| 1 | 2 |\n"
+        XCTAssertEqual(MobileStreamPreview.stableTail(text), "")
+    }
+
+    func testWholeTableWaitsForItsBlock() {
+        XCTAssertEqual(MobileStreamPreview.stableTail("| a |\n| --- |\n| 1 |"), "")
+        XCTAssertEqual(MobileStreamPreview.stableTail("普通正文"), "普通正文")
+    }
+}
+
+final class MobileStreamFenceTests: XCTestCase {
+    func testPipesInsideAnOpenCodeFenceAreNotHeld() {
+        let text = "```\n| not a table |\nmore code |"
+        XCTAssertEqual(MobileStreamPreview.stableTail(text), text)
+    }
+
+    func testClosedFenceThenTableStillHolds() {
+        let text = "```\ncode\n```\n\n| a |\n| --- |\n| 1 |"
+        XCTAssertEqual(MobileStreamPreview.stableTail(text), "```\ncode\n```\n")
+    }
+}
