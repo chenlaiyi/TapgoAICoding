@@ -26,6 +26,18 @@ final class MobileNextPromptsTests: XCTestCase {
         XCTAssertTrue(state.failed)
         XCTAssertTrue(state.prompts.isEmpty)
     }
+    func testPicksOneActionableNonQuestionPrompt() {
+        var prompts = MobileNextPrompts()
+        prompts.restore(["turn": 1, "status": "ready", "prompts": ["要不要继续？", "运行测试并修复失败"]], running: false)
+        XCTAssertEqual(prompts.bestExecutionPrompt, "运行测试并修复失败")
+        prompts.restore(["turn": 2, "status": "ready", "prompts": ["如何优化？", "检查结果"]], running: false)
+        XCTAssertEqual(prompts.bestExecutionPrompt, "检查结果")
+        prompts.restore(["turn": 3, "status": "ready", "prompts": ["如何优化？", "要不要继续"]], running: false)
+        XCTAssertNil(prompts.bestExecutionPrompt)
+        XCTAssertTrue(MobileNextPrompts.isQuestion("检查是否需要迁移？"))
+        XCTAssertFalse(MobileNextPrompts.isQuestion("运行测试"))
+    }
+
     func testPrefillOnceAndSwitchWithoutDuplicatingRecommendations() {
         var prompts = MobileNextPrompts()
         prompts.restore(["turn": 3, "status": "ready", "prompts": ["继续", "运行测试"]], running: false)

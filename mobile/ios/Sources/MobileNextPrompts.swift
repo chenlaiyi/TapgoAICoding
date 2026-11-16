@@ -30,6 +30,21 @@ struct MobileNextPrompts: Equatable {
         failed = status == "error"
     }
 
+    /// First suggestion phrased as an actionable step rather than a question.
+    var bestExecutionPrompt: String? {
+        prompts.first { !Self.isQuestion($0) }
+    }
+
+    /// Whether a suggestion asks the reader something instead of naming an action.
+    /// - Parameter prompt: generated suggestion.
+    /// - Returns: true for question-shaped prompts.
+    static func isQuestion(_ prompt: String) -> Bool {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasSuffix("?") || trimmed.hasSuffix("？") { return true }
+        let starts = ["是否", "如何", "要不要", "为什么", "怎么", "什么", "哪", "能否", "可不可以", "需要我", "要不要我"]
+        return starts.contains { trimmed.hasPrefix($0) }
+    }
+
     static func appending(_ prompt: String, to draft: String) -> String {
         draft.isEmpty ? prompt : draft + "\n\n" + prompt
     }
@@ -41,7 +56,7 @@ struct MobileRecommendationDraft {
     private var selected: String?
 
     mutating func receiving(_ recommendations: MobileNextPrompts, draft: String) -> String {
-        guard let turn = recommendations.turn, let first = recommendations.prompts.first,
+        guard let turn = recommendations.turn, let first = recommendations.bestExecutionPrompt,
               handledTurns.insert(turn).inserted else { return draft }
         guard draft.isEmpty else { selected = nil; return draft }
         selected = first
