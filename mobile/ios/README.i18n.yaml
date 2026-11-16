@@ -4,4 +4,4 @@
 #   pnpm run verify-translation-pairing --write mobile/ios/README.md
 /tapgo-ios:
   en: e59b8583996bae24
-  zh: f5106b1b2e2156f3
+  zh: c3452e7951ea2d44

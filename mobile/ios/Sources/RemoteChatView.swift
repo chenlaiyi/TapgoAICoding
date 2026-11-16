@@ -1669,7 +1669,7 @@ struct RemoteChatView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     if let seconds = chat.silentSeconds(now: context.date) {
                         HStack(spacing: 8) {
-                            Text("已 \(seconds) 秒没有收到新输出")
+                            Text(MobileSilenceLabel.text(seconds: seconds))
                                 .font(.caption).foregroundStyle(.orange)
                             Spacer(minLength: 8)
                             Button("停止") {
