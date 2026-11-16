@@ -1948,6 +1948,7 @@ struct RemoteChatView: View {
     @StateObject private var chat = RemoteChat()
     @State private var draft = ""
     @State private var recommendationDraft = MobileRecommendationDraft()
+    @State private var dismissedSuggestionTurn: Int?
     @State private var showingWorkspace = false
     @State private var showingSettings = false
     @State private var showingModels = false
@@ -2267,10 +2268,6 @@ struct RemoteChatView: View {
         .onChange(of: additions.mode) { _ in scheduleDraftSave() }
         .onChange(of: chat.running) { _ in updateLiveActivity() }
         .onChange(of: chat.liveActivityDetail) { _ in updateLiveActivity() }
-        .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
-        .onChange(of: chat.running) { running in
-            if !running { applyRecommendation() }
-        }
         .onDisappear {
             saveDraftNow()
             MobileReadingPosition.save(followingLatest ? nil : topVisibleID,
@@ -2624,7 +2621,9 @@ struct RemoteChatView: View {
             .mobileGlass(in: Capsule())
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                if !chat.running && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
+                if !chat.running
+                    && chat.nextPrompts.turn != dismissedSuggestionTurn
+                    && (!chat.nextPrompts.prompts.isEmpty || chat.nextPrompts.failed) {
                     nextPromptSuggestions
                 }
                 composerInput.padding(.horizontal, 7)
@@ -2888,15 +2887,24 @@ struct RemoteChatView: View {
                                 detail: detail.isEmpty ? "正在处理" : detail)
     }
 
-    private func applyRecommendation() {
-        guard !chat.running else { return }
-        draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft)
-    }
-
     private var nextPromptSuggestions: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(chat.nextPrompts.failed ? "暂时无法生成建议，可继续输入" : "下一步建议")
-                .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(chat.nextPrompts.failed ? "暂时无法生成建议，可继续输入" : "下一步建议")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Button {
+                    dismissedSuggestionTurn = chat.nextPrompts.turn
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption2)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("隐藏建议")
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(chat.nextPrompts.prompts, id: \.self) { prompt in
