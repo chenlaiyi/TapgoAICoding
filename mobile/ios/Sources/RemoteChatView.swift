@@ -788,7 +788,7 @@ private final class RemoteChat: ObservableObject {
     /// - Parameter activityId: activity that is no longer visible.
     func unregisterLiveActivity(activityId: String) async {
         pendingLiveActivity = nil
-        guard let session, let origin = URL(string: computer.origin),
+        guard let computer, let session, let origin = URL(string: computer.origin),
               let url = URL(string: "/live-activity/unregister", relativeTo: origin) else { return }
         await postLiveActivity(url, body: ["activityId": activityId], session: session)
     }
@@ -801,7 +801,7 @@ private final class RemoteChat: ObservableObject {
     }
 
     private func sendLiveActivityRegistration(token: String, activityId: String, project: String) async {
-        guard let sessionId, let session, let origin = URL(string: computer.origin),
+        guard let sessionId, let computer, let session, let origin = URL(string: computer.origin),
               let url = URL(string: "/live-activity/register", relativeTo: origin) else { return }
         await postLiveActivity(url, body: [
             "sessionId": sessionId, "activityId": activityId, "token": token,
@@ -870,7 +870,7 @@ private final class RemoteChat: ObservableObject {
         loadingAttachments.insert(id)
         defer { loadingAttachments.remove(id) }
         do {
-            guard let data = try await fetchAttachmentData(reference) else { throw ChatFailure.unavailable }
+            let data = try await fetchAttachmentData(reference)
             guard let thumbnail = MobileImageThumbnail.make(from: data) else { throw ChatFailure.unavailable }
             attachmentImages[id] = UIImage(cgImage: thumbnail)
             failedAttachments.remove(id)
@@ -1530,7 +1530,7 @@ private final class RemoteChat: ObservableObject {
             guard let data = try? JSONSerialization.data(withJSONObject: value),
                   let listing = try? JSONDecoder().decode(MobileDirectoryListing.self, from: data),
                   listing.entries.allSatisfy({ !$0.name.isEmpty }) else {
-                throw ChatFailure.invalidData
+                throw ChatFailure.unavailable
             }
             return listing
         } catch ChatFailure.rejected(let code, let message) {
@@ -1542,9 +1542,8 @@ private final class RemoteChat: ObservableObject {
     /// - Parameter path: workspace-relative or absolute path from the turn's change summary.
     /// - Returns: the file's name, bytes, and size.
     func loadWorkspaceFile(path: String) async throws -> MobileWorkspaceFile {
-        guard let session, let sessionId, let origin = URL(string: computer.origin) else {
-            throw MobileFilePreviewError.unavailable
-        }
+        guard let session, let sessionId, let computer,
+              let origin = URL(string: computer.origin) else { throw MobileFilePreviewError.unavailable }
         var request = URLRequest(url: origin.appendingPathComponent("api/workspaceFiles/readBytes"))
         request.httpMethod = "POST"
         request.timeoutInterval = 60
