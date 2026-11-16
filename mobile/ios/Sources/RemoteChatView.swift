@@ -184,7 +184,7 @@ private final class RemoteChat: ObservableObject {
     var displayLines: [ChatLine] {
         var visible = lines
         if liveActive, !liveText.isEmpty {
-            var line = ChatLine(id: -1, role: "assistant", text: liveText)
+            var line = ChatLine(id: -1, role: "assistant", text: MobileStreamPreview.bounded(liveText))
             line.turn = assistantStream.turn
             line.step = assistantStream.step
             line.live = true
@@ -2750,6 +2750,10 @@ struct RemoteChatView: View {
                         AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false)
                     }
                     if line.live {
+                        if MobileStreamPreview.isTruncated(chat.liveText) {
+                            Text("预览仅显示最新 \(MobileStreamPreview.maxCharacters) 个字符，完成后显示完整回复")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.mini)
                             Text(chat.reconnecting ? "正在恢复回复" : "正在回复").font(.caption).foregroundStyle(.secondary)
