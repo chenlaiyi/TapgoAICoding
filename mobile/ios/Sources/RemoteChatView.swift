@@ -183,7 +183,7 @@ private final class RemoteChat: ObservableObject {
     private var streamPublication: Task<Void, Never>?
     private var streamNeedsResync = false
     var displayLines: [ChatLine] {
-        var visible = lines.filter { $0.role != "turn" }
+        var visible = lines
         guard liveActive else { return visible }
         var liveProcessIndex: Int?
         if let turn = assistantStream.turn, let step = assistantStream.step,
@@ -2011,7 +2011,8 @@ struct RemoteChatView: View {
                                 }
                             }
                             if chat.liveActive && chat.liveText.isEmpty
-                                && !chat.displayLines.contains(where: { $0.role == "process" }) {
+                                && !chat.displayLines.contains(where: { $0.role == "process" })
+                                && !chat.displayLines.contains(where: { $0.role == "turn" }) {
                                 Label("正在思考", systemImage: "sparkle")
                                     .font(.subheadline).foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -2903,7 +2904,16 @@ struct RemoteChatView: View {
             } else if line.role == "activity" {
                 ActivityGroupView(activities: line.activities, toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "turn" {
-                EmptyView()
+                TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
+                                lastActivityAt: line.lastActivityAt,
+                                awaitingDecision: interactions.isAwaitingDecision(sessionId: sessionId),
+                                turn: line.turn,
+                                processExpanded: false,
+                                onProcessExpandedChange: { _ in },
+                                activities: line.activities, reasoning: nil,
+                                liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
+                                    ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess,
+                                showsDisclosure: false)
             } else if line.role == "assistant" {
                 VStack(alignment: .leading, spacing: 4) {
                     if !line.attachments.isEmpty {
@@ -3068,6 +3078,8 @@ private struct TurnProcessView: View {
     let liveReasoning: String
     let toolOutputs: [String: MobileToolOutput]
     let onInspect: () -> Void
+    /// Whether the row also owns the step process disclosure.
+    var showsDisclosure = true
 
     private var processSummary: String {
         let count = activities.count
@@ -3129,12 +3141,14 @@ private struct TurnProcessView: View {
                     .lineLimit(2)
                     .accessibilityIdentifier("turnLiveActivity")
             }
-            Divider()
-            ProcessDisclosureView(summary: processSummary,
-                reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
-                    .compactMap { $0 }.joined(separator: "\n\n"),
-                activities: [], toolOutputs: toolOutputs, onInspect: onInspect,
-                initialExpanded: processExpanded, onExpandedChange: onProcessExpandedChange)
+            if showsDisclosure {
+                Divider()
+                ProcessDisclosureView(summary: processSummary,
+                    reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
+                        .compactMap { $0 }.joined(separator: "\n\n"),
+                    activities: [], toolOutputs: toolOutputs, onInspect: onInspect,
+                    initialExpanded: processExpanded, onExpandedChange: onProcessExpandedChange)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
