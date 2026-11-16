@@ -25,6 +25,17 @@ enum MobileFilePreviewError: LocalizedError, Equatable {
     }
 }
 
+/// Display name derived from a workspace path.
+enum MobileFilePreviewName {
+    /// File name shown in the preview header and used as the export default.
+    /// - Parameter path: workspace-relative or absolute path.
+    /// - Returns: its last component, or `文件` when the path has none.
+    static func name(forPath path: String) -> String {
+        let name = (path as NSString).lastPathComponent
+        return name.isEmpty || name == "/" ? "文件" : name
+    }
+}
+
 /// Short human-readable byte size.
 enum MobileFileSize {
     /// Formats a byte count for captions.

@@ -1502,7 +1502,7 @@ private final class RemoteChat: ObservableObject {
                   let part = attachments.first?["part"] as? String,
                   let bytes = parts[part] else { throw MobileFilePreviewError.unavailable }
             if bytes.count > 25 * 1024 * 1024 { throw MobileFilePreviewError.tooLarge(bytes.count) }
-            return MobileWorkspaceFile(path: path, name: (path as NSString).lastPathComponent, data: bytes)
+            return MobileWorkspaceFile(path: path, name: MobileFilePreviewName.name(forPath: path), data: bytes)
         }
         if let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let result = body["result"] as? [String: Any],

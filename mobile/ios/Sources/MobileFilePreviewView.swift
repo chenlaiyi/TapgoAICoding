@@ -1,5 +1,6 @@
 import QuickLook
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Native Quick Look preview for one workspace file, with share, save, and retry.
 struct MobileFilePreviewSheet: View {
@@ -10,6 +11,8 @@ struct MobileFilePreviewSheet: View {
     @State private var previewURL: URL?
     @State private var error: String?
     @State private var revision = 0
+    @State private var previewDirectory: URL?
+    @State private var showingExporter = false
 
     var body: some View {
         NavigationStack {
@@ -41,7 +44,15 @@ struct MobileFilePreviewSheet: View {
                         ShareLink(item: previewURL) {
                             Image(systemName: "square.and.arrow.up")
                         }
-                        .accessibilityLabel("分享或保存文件")
+                        .accessibilityLabel("分享文件")
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showingExporter = true
+                        } label: {
+                            Image(systemName: "folder.badge.plus")
+                        }
+                        .accessibilityLabel("存储到文件")
                     }
                     ToolbarItem(placement: .secondaryAction) {
                         Text(MobileFileSize.format(file.byteCount))
@@ -51,10 +62,27 @@ struct MobileFilePreviewSheet: View {
             }
         }
         .task(id: revision) { await loadFile() }
+        .fileExporter(isPresented: $showingExporter,
+                      document: file.map { MobilePreviewDocument(data: $0.data) },
+                      contentType: .data,
+                      defaultFilename: MobileFilePreviewName.name(forPath: path)) { result in
+            if case .failure(let failure) = result {
+                error = "保存失败：\(failure.localizedDescription)"
+            }
+        }
+        .onDisappear {
+            guard let directory = previewDirectory else { return }
+            previewDirectory = nil
+            // A Files export may still be reading the copy; remove it once that sheet is gone.
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                try? FileManager.default.removeItem(at: directory)
+            }
+        }
     }
 
     private var title: String {
-        file?.name ?? (path as NSString).lastPathComponent
+        file?.name ?? MobileFilePreviewName.name(forPath: path)
     }
 
     private func loadFile() async {
@@ -67,6 +95,7 @@ struct MobileFilePreviewSheet: View {
             let directory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("dsh-preview-\(UUID().uuidString)", isDirectory: true)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            previewDirectory = directory
             let name = loaded.name.isEmpty ? "file" : loaded.name
             let url = directory.appendingPathComponent(name)
             guard FileManager.default.createFile(atPath: url.path, contents: loaded.data) else {
@@ -108,5 +137,22 @@ private struct QuickLookView: UIViewControllerRepresentable {
         func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
             url as NSURL
         }
+    }
+}
+
+/// Bytes exported through the Files sheet.
+private struct MobilePreviewDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.data]
+
+    var data: Data
+
+    init(data: Data) { self.data = data }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }

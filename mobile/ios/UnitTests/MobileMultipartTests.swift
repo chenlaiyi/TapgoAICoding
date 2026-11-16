@@ -35,6 +35,13 @@ final class MobileMultipartTests: XCTestCase {
                                                        contentType: "multipart/form-data; boundary=none"))
     }
 
+    func testDerivesPreviewNames() {
+        XCTAssertEqual(MobileFilePreviewName.name(forPath: "Sources/a.swift"), "a.swift")
+        XCTAssertEqual(MobileFilePreviewName.name(forPath: "nested/report.pdf"), "report.pdf")
+        XCTAssertEqual(MobileFilePreviewName.name(forPath: "/"), "文件")
+        XCTAssertEqual(MobileFilePreviewName.name(forPath: ""), "文件")
+    }
+
     func testFormatsSizes() {
         XCTAssertFalse(MobileFileSize.format(4_096).isEmpty)
         XCTAssertNotNil(MobileFilePreviewError.tooLarge(10_000_000).errorDescription)
