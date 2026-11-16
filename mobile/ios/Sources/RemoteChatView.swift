@@ -2179,17 +2179,6 @@ struct RemoteChatView: View {
                         }
                     }
                 }
-                if let objective = chat.goalObjective {
-                    GoalCardView(objective: objective, phase: chat.goalPhase,
-                                 roundsStarted: chat.goalRoundsStarted, maxRounds: chat.goalMaxRounds,
-                                 sending: chat.sending,
-                                 onPrimary: { runPrimaryGoalAction(objective) },
-                                 onEdit: {
-                                     goalDraft = objective
-                                     editingGoal = true
-                                 },
-                                 onEnd: { confirmingGoalClear = true })
-                }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     if let seconds = chat.silentSeconds(now: context.date) {
                         HStack(spacing: 8) {
@@ -2216,9 +2205,22 @@ struct RemoteChatView: View {
                             .font(.caption).frame(minHeight: 44)
                     }
                 }
-                queueStrip
-                MobileComposerAttachmentStrip(additions: additions)
-                composerCard
+                VStack(alignment: .leading, spacing: 6) {
+                    if let objective = chat.goalObjective {
+                        GoalCardView(objective: objective, phase: chat.goalPhase,
+                                     roundsStarted: chat.goalRoundsStarted, maxRounds: chat.goalMaxRounds,
+                                     sending: chat.sending,
+                                     onPrimary: { runPrimaryGoalAction(objective) },
+                                     onEdit: {
+                                         goalDraft = objective
+                                         editingGoal = true
+                                     },
+                                     onEnd: { confirmingGoalClear = true })
+                    }
+                    queueStrip
+                    MobileComposerAttachmentStrip(additions: additions)
+                    composerCard
+                }
             }
             .padding(.horizontal, 15).padding(.bottom, 10)
         }
@@ -3518,12 +3520,7 @@ private struct GoalCardView: View {
             }
         }
         .padding(12)
-        .background(Color(uiColor: .secondarySystemBackground).opacity(0.7),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.06))
-        }
+        .mobileGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 
