@@ -8,6 +8,11 @@ final class MobileTranscriptOrderTests: XCTestCase {
         XCTAssertEqual(MobileTranscriptOrder.insertionIndex(ids: ids, after: 100), 3)
     }
 
+    func testLiveTextSitsAboveTheProcessRow() {
+        XCTAssertEqual(MobileTranscriptOrder.liveTextIndex(processIndex: 4, fallback: 0), 4)
+        XCTAssertEqual(MobileTranscriptOrder.liveTextIndex(processIndex: nil, fallback: 2), 2)
+    }
+
     func testFallsBackToTheTopAndSkipsSynthesizedRows() {
         XCTAssertEqual(MobileTranscriptOrder.insertionIndex(ids: [3, 7], after: 2), 0)
         XCTAssertEqual(MobileTranscriptOrder.insertionIndex(ids: [-1_000_003, -1, 4], after: 0), 0)

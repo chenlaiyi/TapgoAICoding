@@ -206,9 +206,11 @@ private final class RemoteChat: ObservableObject {
             line.turn = assistantStream.turn
             line.step = assistantStream.step
             line.live = true
-            let index = liveProcessIndex.map { $0 + 1 }
-                ?? MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
-                                                        after: assistantStream.startedAfterSequence)
+            // While the step streams, its reply stays above the process row so the eye follows the
+            // growing text; the committed message settles below the row (DSH's final order).
+            let fallback = MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
+                                                                after: assistantStream.startedAfterSequence)
+            let index = MobileTranscriptOrder.liveTextIndex(processIndex: liveProcessIndex, fallback: fallback)
             visible.insert(line, at: min(index, visible.count))
         }
         return visible

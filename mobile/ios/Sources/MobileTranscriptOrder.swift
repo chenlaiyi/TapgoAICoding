@@ -2,6 +2,15 @@ import Foundation
 
 /// Places transcript rows by the event sequence that existed when their content started.
 enum MobileTranscriptOrder {
+    /// Placement of the live reply text: above its step process row until the step settles.
+    /// - Parameters:
+    ///   - processIndex: the running step's process row, when one exists.
+    ///   - fallback: insertion index used when the step has no process row yet.
+    /// - Returns: the index where the live text is inserted.
+    static func liveTextIndex(processIndex: Int?, fallback: Int) -> Int {
+        processIndex ?? fallback
+    }
+
     /// Index after the last row that existed at `sequence`.
     /// - Parameters:
     ///   - ids: transcript row identities in display order; synthesized rows are negative.
