@@ -2606,6 +2606,7 @@ struct RemoteChatView: View {
                         .font(.subheadline)
                         .foregroundStyle(draft.isEmpty ? Color.secondary : Color.primary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         .contentShape(Rectangle())
                 }
@@ -2642,11 +2643,21 @@ struct RemoteChatView: View {
     }
 
     private var composerInput: some View {
-        TextField("在 \(computer.name) 上工作", text: $draft, axis: .vertical)
-            .font(.subheadline)
-            .lineLimit(1...5)
-            .focused($composerFocused)
-            .accessibilityIdentifier("chatComposerInput")
+        ZStack(alignment: .leading) {
+            if draft.isEmpty {
+                Text("在 \(computer.name) 上工作")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(uiColor: .placeholderText))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .allowsHitTesting(false)
+            }
+            TextField("", text: $draft, axis: .vertical)
+                .font(.subheadline)
+                .lineLimit(1...5)
+                .focused($composerFocused)
+                .accessibilityIdentifier("chatComposerInput")
+        }
     }
 
     private var modelBadge: some View {
@@ -2891,8 +2902,10 @@ struct RemoteChatView: View {
                             draft = recommendationDraft.selecting(prompt, draft: draft)
                             composerFocused = true
                         } label: {
-                            Text(prompt).font(.caption).lineLimit(1)
-                                .frame(maxWidth: 220, minHeight: 44, alignment: .leading)
+                            Text(prompt).font(.caption)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: 260, minHeight: 44, alignment: .leading)
                                 .padding(.horizontal, 12)
                                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                         }
@@ -3484,7 +3497,7 @@ private struct GoalCardView: View {
     let onEdit: () -> Void
     let onEnd: () -> Void
 
-    @State private var expanded = true
+    @State private var expanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
