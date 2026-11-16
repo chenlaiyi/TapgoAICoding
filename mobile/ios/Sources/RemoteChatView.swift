@@ -251,7 +251,7 @@ private final class RemoteChat: ObservableObject {
     /// Last transport failure, which decides whether the fallback route may be tried.
     private var lastFailure: Error?
     /// Turn disclosures the reader left expanded, keyed by turn number.
-    private var expansion: [Int: Bool] = [:]
+    private var expansion: [String: Bool] = [:]
     /// Code blocks the reader left expanded, keyed by line identity and block index.
     private var codeExpansion: [String: Bool] = [:]
 
@@ -269,11 +269,13 @@ private final class RemoteChat: ObservableObject {
             && lines.contains(where: { $0.role == "turn" })
     }
 
-    /// Whether a turn's process disclosure was left expanded.
-    /// - Parameter turn: durable turn number.
+    /// Whether a step's process row was left expanded.
+    /// - Parameters:
+    ///   - turn: durable turn number.
+    ///   - step: step number inside the turn.
     /// - Returns: the stored flag, defaulting to collapsed.
-    func processExpanded(turn: Int) -> Bool {
-        expansion[turn] ?? false
+    func processExpanded(turn: Int, step: Int) -> Bool {
+        expansion[MobileExpansionStore.entryKey(turn: turn, step: step)] ?? false
     }
 
     /// Whether a code block was left expanded.
@@ -296,12 +298,13 @@ private final class RemoteChat: ObservableObject {
         MobileCodeExpansionStore.save(codeExpansion, computerID: computer.id, sessionID: sessionId)
     }
 
-    /// Records a turn disclosure change for the next visit.
+    /// Records a step process-row change for the next visit.
     /// - Parameters:
     ///   - turn: durable turn number.
-    ///   - expanded: whether the disclosure is open.
-    func setProcessExpanded(turn: Int, expanded: Bool) {
-        expansion[turn] = expanded
+    ///   - step: step number inside the turn.
+    ///   - expanded: whether the row is open.
+    func setProcessExpanded(turn: Int, step: Int, expanded: Bool) {
+        expansion[MobileExpansionStore.entryKey(turn: turn, step: step)] = expanded
         guard let computer, let sessionId else { return }
         MobileExpansionStore.save(expansion, computerID: computer.id, sessionID: sessionId)
     }
@@ -2890,10 +2893,12 @@ struct RemoteChatView: View {
                     activities: line.activities,
                     toolOutputs: chat.toolOutputs,
                     onInspect: inspectProcess,
-                    initialExpanded: line.turn.map { chat.processExpanded(turn: $0) } ?? false,
+                    initialExpanded: line.turn.flatMap { turn in
+                        line.step.map { chat.processExpanded(turn: turn, step: $0) }
+                    } ?? false,
                     onExpandedChange: { value in
-                        guard let turn = line.turn else { return }
-                        chat.setProcessExpanded(turn: turn, expanded: value)
+                        guard let turn = line.turn, let step = line.step else { return }
+                        chat.setProcessExpanded(turn: turn, step: step, expanded: value)
                     })
             } else if line.role == "activity" {
                 ActivityGroupView(activities: line.activities, toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
