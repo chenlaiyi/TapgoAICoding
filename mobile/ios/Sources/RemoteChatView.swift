@@ -3484,13 +3484,25 @@ private struct GoalCardView: View {
     let onEdit: () -> Void
     let onEnd: () -> Void
 
+    @State private var expanded = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            header
-            if let started = roundsStarted, let max = maxRounds, max > 0 {
-                progress(started: started, max: max)
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+            } label: {
+                header
+                    .contentShape(Rectangle())
             }
-            actions
+            .buttonStyle(.plain)
+            .accessibilityLabel(expanded ? "折叠目标卡片" : "展开目标卡片")
+            .accessibilityValue(expanded ? "已展开" : "已折叠")
+            if expanded {
+                if let started = roundsStarted, let max = maxRounds, max > 0 {
+                    progress(started: started, max: max)
+                }
+                actions
+            }
         }
         .padding(12)
         .background(Color(uiColor: .secondarySystemBackground).opacity(0.7),
@@ -3511,7 +3523,7 @@ private struct GoalCardView: View {
                 .background(tint.opacity(0.12), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text("目标").font(.caption2).foregroundStyle(.secondary)
-                Text(objective).font(.subheadline.weight(.medium)).lineLimit(2)
+                Text(objective).font(.subheadline.weight(.medium)).lineLimit(expanded ? 2 : 1)
             }
             Spacer(minLength: 8)
             Text(phaseLabel)
@@ -3519,6 +3531,11 @@ private struct GoalCardView: View {
                 .foregroundStyle(tint)
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .background(tint.opacity(0.12), in: Capsule())
+            Image(systemName: "chevron.down")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .rotationEffect(.degrees(expanded ? 0 : -90))
+                .padding(.top, 8)
         }
     }
 
