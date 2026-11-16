@@ -50,9 +50,12 @@ targets:
       - path: Sources/MobileNextPrompts.swift
       - path: Sources/MobileComposerSubmission.swift
       - path: Sources/MobileComposerState.swift
+      - path: Sources/MobileChatAttachment.swift
+      - path: Sources/MobileQueueState.swift
       - path: Sources/MobileChatActivity.swift
       - path: Sources/MobileToolOutput.swift
       - path: Sources/MobileAssistantStream.swift
+      - path: Sources/MobileModelCatalog.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: "YES"

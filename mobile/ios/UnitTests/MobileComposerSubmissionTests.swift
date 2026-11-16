@@ -55,12 +55,13 @@ final class MobileComposerSubmissionTests: XCTestCase {
             XCTAssertEqual(content[0]["receiptId"] as? String, "receipt-one")
             XCTAssertEqual(content[1]["data"] as? String, Data([1, 2, 3]).base64EncodedString())
             XCTAssertEqual(content[2]["text"] as? String, "检查附件")
+            XCTAssertEqual(prompt["requestId"] as? String, "request-one")
             return ["result": ["ok": true, "value": [:]]]
         }
         try await transport.submit(text: "检查附件", attachments: [
             MobileDraftAttachment(name: "测试 & notes.txt", data: Data("hello".utf8), image: false),
             MobileDraftAttachment(name: "photo.jpg", data: Data([1, 2, 3]), image: true)
-        ], mode: .message, sessionId: "session-one")
+        ], mode: .message, sessionId: "session-one", requestId: "request-one")
         XCTAssertEqual(paths, ["/api/session/uploadFileBinary", "/api/session/prompt"])
     }
 
@@ -79,7 +80,7 @@ final class MobileComposerSubmissionTests: XCTestCase {
         for mode in [MobileComposerMode.plan, .goal] {
             try await transport.submit(text: "检查附件", attachments: [
                 MobileDraftAttachment(name: "photo.jpg", data: Data([1]), image: true)
-            ], mode: mode, sessionId: "session-one")
+            ], mode: mode, sessionId: "session-one", requestId: UUID().uuidString)
         }
         XCTAssertEqual(lines, ["/plan 检查附件", "/goal 检查附件"])
     }
@@ -91,7 +92,7 @@ final class MobileComposerSubmissionTests: XCTestCase {
             return ["result": ["ok": true, "value": ["result": ["kind": "error", "text": "command unavailable"]]]]
         }
         do {
-            try await transport.submit(text: "检查", attachments: [], mode: .plan, sessionId: "one")
+            try await transport.submit(text: "检查", attachments: [], mode: .plan, sessionId: "one", requestId: UUID().uuidString)
             XCTFail("A rejected command must fail the submission")
         } catch { XCTAssertEqual(error.localizedDescription, "command unavailable") }
         XCTAssertEqual(calls, 1)
@@ -102,7 +103,7 @@ final class MobileComposerSubmissionTests: XCTestCase {
         do {
             try await transport.submit(text: "检查", attachments: [
                 MobileDraftAttachment(name: "a.txt", data: Data([1]), image: false)
-            ], mode: .message, sessionId: "one")
+            ], mode: .message, sessionId: "one", requestId: UUID().uuidString)
             XCTFail("A rejected upload must stop the submission")
         } catch { XCTAssertTrue(error.localizedDescription.contains("附件已保留")) }
     }
@@ -115,7 +116,8 @@ final class MobileComposerSubmissionTests: XCTestCase {
         for (mode, text) in [(MobileComposerMode.goal, "clear"), (.goal, "pause"), (.goal, "edit objective"),
                              (.goal, ""), (.plan, "off")] {
             do {
-                try await transport.submit(text: text, attachments: [], mode: mode, sessionId: "one")
+                try await transport.submit(text: text, attachments: [], mode: mode, sessionId: "one",
+                                           requestId: UUID().uuidString)
                 XCTFail("Control text must not run through the objective composer")
             } catch { XCTAssertTrue(error is MobileComposerFailure) }
         }

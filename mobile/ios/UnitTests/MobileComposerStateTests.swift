@@ -1,4 +1,5 @@
 import XCTest
+import Foundation
 
 final class MobileComposerStateTests: XCTestCase {
     func testLateBaselinePreservesNewerPerKeyChanges() {
@@ -34,6 +35,20 @@ final class MobileComposerStateTests: XCTestCase {
         XCTAssertEqual(state.sessionTitle, "最新任务标题")
         state.consume(["seq": 9, "changes": [["key": "title", "val": NSNull()]]])
         XCTAssertNil(state.sessionTitle)
+    }
+
+    func testImageLimitsProjectionReplacesTheFallback() {
+        var state = MobileComposerState()
+        XCTAssertEqual(state.imageLimits.maxImageBytes, MobileImageLimits.fallback.maxImageBytes)
+        state.restore(["asOfSeq": 2, "values": ["imageLimits": [
+            "maxImageBytes": 4_000,
+            "maxImagesPerMessage": 2,
+            "maxMessageImageBytes": 8_000,
+            "maxImagePixels": 1_000_000,
+            "maxImageDimension": 2_048,
+        ]]])
+        XCTAssertEqual(state.imageLimits.maxImageBytes, 4_000)
+        XCTAssertEqual(state.imageLimits.maxImageDimension, 2_048)
     }
 
 }

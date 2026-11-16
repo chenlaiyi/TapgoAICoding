@@ -64,6 +64,25 @@ private struct ComposerModel: Identifiable {
     let provider: String
     let model: String
     let name: String
+    let efforts: [MobileModelReasoning]
+    let defaultEffort: String?
+
+    /// Describes one route the new-conversation menu can start with.
+    /// - Parameters:
+    ///   - provider: provider id owning the route.
+    ///   - model: adapter model id.
+    ///   - name: display name reported by the Host.
+    ///   - efforts: reasoning levels; empty when the route offers none.
+    ///   - defaultEffort: level the Host applies when a selection omits one.
+    init(provider: String, model: String, name: String,
+         efforts: [MobileModelReasoning] = [], defaultEffort: String? = nil) {
+        self.provider = provider
+        self.model = model
+        self.name = name
+        self.efforts = efforts
+        self.defaultEffort = defaultEffort
+    }
+
     var id: String { "\(provider)/\(model)" }
     var shortName: String { mobileModelDisplayName(name, modelID: model, provider: provider) }
 }
@@ -93,8 +112,23 @@ enum MobileModelPreference {
         UserDefaults.standard.string(forKey: "dsh.mobile.last-model.\(computerID)")
     }
 
-    static func save(_ modelID: String, computerID: String) {
+    /// Reads the reasoning level this iPhone last used with a paired Host.
+    /// - Parameter computerID: paired Host identity.
+    /// - Returns: the effort id, or nil when the last confirmed selection had none.
+    static func readEffort(computerID: String) -> String? {
+        UserDefaults.standard.string(forKey: "dsh.mobile.last-effort.\(computerID)")
+    }
+
+    /// Stores the model route this iPhone used with a paired Host.
+    /// - Parameters:
+    ///   - modelID: `provider/model` route.
+    ///   - effort: reasoning level confirmed with it; nil clears a stored level.
+    ///   - computerID: paired Host identity.
+    static func save(_ modelID: String, effort: String? = nil, computerID: String) {
         UserDefaults.standard.set(modelID, forKey: "dsh.mobile.last-model.\(computerID)")
+        let key = "dsh.mobile.last-effort.\(computerID)"
+        if let effort { UserDefaults.standard.set(effort, forKey: key) }
+        else { UserDefaults.standard.removeObject(forKey: key) }
     }
 }
 
@@ -131,6 +165,8 @@ private final class RemoteSessions: ObservableObject {
     private var balanceRevision = UUID()
     private var loadToken: UUID?
     private var consecutiveFailures = 0
+    /// The last first message this iPhone may already have delivered, so a retry of the same draft reuses its id.
+    private var pendingStart: MobilePendingSubmission?
 
     func load(computer: SavedComputer, quietly: Bool = false) async {
         if fundsOrigin != computer.id {
@@ -254,18 +290,12 @@ private final class RemoteSessions: ObservableObject {
     }
 
     private func applyModelCatalog(_ catalog: [String: Any]) {
-        models = (catalog["groups"] as? [[String: Any]] ?? []).flatMap { group -> [ComposerModel] in
-            guard let provider = group["id"] as? String else { return [] }
-            return (group["models"] as? [[String: Any]] ?? []).compactMap { item in
-                guard let model = item["id"] as? String else { return nil }
-                return ComposerModel(provider: provider, model: model,
-                                     name: item["name"] as? String ?? model)
-            }
+        models = MobileModelCatalog.models(from: catalog).map { model in
+            ComposerModel(provider: model.provider, model: model.model, name: model.name,
+                          efforts: model.efforts, defaultEffort: model.defaultEffort)
         }
-        if let fallback = catalog["default"] as? [String: Any],
-           let provider = fallback["provider"] as? String,
-           let model = fallback["model"] as? String {
-            defaultModel = "\(provider)/\(model)"
+        if let fallback = MobileModelCatalog.defaultRoute(from: catalog) {
+            defaultModel = fallback
         }
     }
 
@@ -322,7 +352,7 @@ private final class RemoteSessions: ObservableObject {
     }
 
     func start(text: String?, computer: SavedComputer, cwd: String? = nil,
-               permission: String? = nil, model: ComposerModel? = nil,
+               permission: String? = nil, model: ComposerModel? = nil, effort: String? = nil,
                attachments: [MobileDraftAttachment] = [], mode: MobileComposerMode = .message,
                existingSessionID: String? = nil, onCreated: ((String) -> Void)? = nil) async -> RemoteSession? {
         guard !starting, let origin = URL(string: computer.id),
@@ -380,9 +410,11 @@ private final class RemoteSessions: ObservableObject {
                 onCreated?(id)
             }
             if let model {
+                var selection: [String: Any] = ["sessionId": sessionId,
+                                                "provider": model.provider, "model": model.model]
+                if let effort { selection["reasoningEffort"] = effort }
                 _ = try await rpc(session: session, origin: origin, method: "session/selectModel",
-                                  args: ["request": ["sessionId": sessionId,
-                                                     "provider": model.provider, "model": model.model]])
+                                  args: ["request": selection])
             }
             if let permission {
                 let result = try await rpc(session: session, origin: origin,
@@ -394,11 +426,19 @@ private final class RemoteSessions: ObservableObject {
                       command["kind"] as? String == "success" else { throw RemoteError.unavailable }
             }
             if let text {
+                let candidate = MobilePendingSubmission(text: text, mode: mode, attachments: attachments)
+                let submission = pendingStart?.matches(candidate) == true
+                    ? MobilePendingSubmission(text: text, mode: mode, attachments: attachments,
+                                              requestId: pendingStart?.requestId ?? candidate.requestId)
+                    : candidate
+                pendingStart = submission
                 try await MobileComposerTransport(session: session, origin: origin)
-                    .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId)
+                    .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId,
+                            requestId: submission.requestId)
+                pendingStart = nil
             }
             error = nil
-            if let model { MobileModelPreference.save(model.id, computerID: computer.id) }
+            if let model { MobileModelPreference.save(model.id, effort: effort, computerID: computer.id) }
             return RemoteSession(sessionId: sessionId, cwd: cwd,
                                  running: text != nil, updatedAt: Date().timeIntervalSince1970 * 1000,
                                  projections: nil, draftTitle: text.flatMap { $0.isEmpty ? nil : String($0.prefix(40)) } ?? "新对话")
@@ -406,6 +446,8 @@ private final class RemoteSessions: ObservableObject {
             self.error = "无法开始对话：\(error.localizedDescription)"
             if case RemoteError.pairingExpired = error {
                 startError = "配对已过期，请从电脑重新扫码连接"
+            } else if (error as? URLError)?.code == .timedOut {
+                startError = "请求超时，未确认是否已发送；再次发送不会重复"
             } else if let failure = error as? MobileComposerFailure {
                 startError = "草稿与附件已保留：\(failure.localizedDescription)"
             } else {
@@ -1112,6 +1154,27 @@ private struct RemoteNewConversationView: View {
             ?? sessions.models.first
     }
 
+    /// The level this iPhone last confirmed for the current route, or that route's default.
+    private var currentEffort: String? {
+        guard let model = currentModel, !model.efforts.isEmpty else { return nil }
+        let stored = MobileModelPreference.readEffort(computerID: computer.id)
+        return model.efforts.first(where: { $0.id == stored })?.id ?? model.defaultEffort
+    }
+
+    /// The Host's label for the level the current route uses.
+    private var currentEffortName: String? {
+        guard let model = currentModel, let effort = currentEffort else { return nil }
+        return model.efforts.first(where: { $0.id == effort })?.name ?? effort
+    }
+
+    /// Names one model the way the new-conversation menu shows it.
+    /// - Parameter model: menu row route.
+    /// - Returns: the display name, with the current level when it applies.
+    private func composerModelLabel(_ model: ComposerModel) -> String {
+        guard model.id == currentModel?.id, let name = currentEffortName else { return model.shortName }
+        return "\(model.shortName) · \(name)"
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -1320,18 +1383,21 @@ private struct RemoteNewConversationView: View {
                 ForEach(sessions.models) { model in
                     Button {
                         selectedModelID = model.id
-                        MobileModelPreference.save(model.id, computerID: computer.id)
+                        let stored = MobileModelPreference.readEffort(computerID: computer.id)
+                        let effort = model.efforts.first(where: { $0.id == stored })?.id ?? model.defaultEffort
+                        MobileModelPreference.save(model.id, effort: effort, computerID: computer.id)
                         Task { await sessions.load(computer: computer) }
                     } label: {
                         if currentModel?.id == model.id {
-                            Label(model.shortName, systemImage: "checkmark")
+                            Label(composerModelLabel(model), systemImage: "checkmark")
                         } else {
                             Text(model.shortName)
                         }
                     }
                 }
             } label: {
-                Text(currentModel?.shortName ?? (sessions.loading ? "正在读取模型…" : "模型不可用"))
+                Text(currentModel.map(composerModelLabel)
+                     ?? (sessions.loading ? "正在读取模型…" : "模型不可用"))
             }
             .accessibilityIdentifier("newConversationModel")
             if currentModel != nil {
@@ -1403,7 +1469,8 @@ private struct RemoteNewConversationView: View {
             defer { submitting = false }
             if let session = await sessions.start(text: text, computer: computer,
                                                   cwd: selectedWorkspace, permission: selectedPermission,
-                                                  model: currentModel, attachments: submittedAttachments,
+                                                  model: currentModel, effort: currentEffort,
+                                                  attachments: submittedAttachments,
                                                   mode: submittedMode, existingSessionID: createdDraftID,
                                                   onCreated: { createdDraftID = $0 }) {
                 inputFocused = false

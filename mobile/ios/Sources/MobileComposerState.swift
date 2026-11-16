@@ -7,10 +7,11 @@ struct MobileComposerState {
     private(set) var planActive = false
     private(set) var goalObjective: String?
     private(set) var goalPhase: String?
+    private(set) var imageLimits = MobileImageLimits.fallback
 
     mutating func restore(_ baseline: [String: Any]) {
         guard let seq = baseline["asOfSeq"] as? Int, let values = baseline["values"] as? [String: Any] else { return }
-        for key in ["plan", "goal", "title"] { replace(key, value: values[key], seq: seq) }
+        for key in ["plan", "goal", "title", "imageLimits"] { replace(key, value: values[key], seq: seq) }
     }
 
     mutating func consume(_ frame: [String: Any]) {
@@ -22,7 +23,7 @@ struct MobileComposerState {
     }
 
     private mutating func replace(_ key: String, value: Any?, seq: Int) {
-        guard ["plan", "goal", "title"].contains(key), seq >= (cuts[key] ?? -1) else { return }
+        guard ["plan", "goal", "title", "imageLimits"].contains(key), seq >= (cuts[key] ?? -1) else { return }
         cuts[key] = seq
         let text = value as? String
         let value = value as? [String: Any]
@@ -33,6 +34,8 @@ struct MobileComposerState {
             let goal = value?["goal"] as? [String: Any]
             goalObjective = goal?["objective"] as? String
             goalPhase = goal?["phase"] as? String
+        case "imageLimits":
+            if let value, let limits = MobileImageLimits(wire: value) { imageLimits = limits }
         default: break
         }
     }

@@ -7,6 +7,7 @@ private struct ChatLine: Identifiable, Equatable {
     let role: String
     var text: String
     var reasoning: String?
+    var attachments: [MobileMessageAttachment] = []
     var activities: [MobileChatActivity] = []
     var turn: Int?
     var startedAt: TimeInterval?
@@ -18,6 +19,7 @@ private struct ChatLine: Identifiable, Equatable {
     var changesSequence: Int?
     var endSequence: Int?
     var step: Int?
+    var lastActivityAt: TimeInterval?
     var live = false
     var interrupted = false
     var presentationID: String {
@@ -31,13 +33,6 @@ private struct ChatLine: Identifiable, Equatable {
         self.text = text
         self.reasoning = reasoning
     }
-}
-
-private struct RemoteModel: Identifiable {
-    let id: String
-    let provider: String
-    let model: String
-    let name: String
 }
 
 private struct RemotePermission: Identifiable {
@@ -150,10 +145,20 @@ private final class RemoteChat: ObservableObject {
         }
         testAssistantBatch += 1
     }
+
+    private static func debugQueueState() -> MobileQueueState? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "--dsh-mobile-test-state"),
+              arguments.indices.contains(index + 1),
+              let data = arguments[index + 1].data(using: .utf8),
+              let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return MobileQueueState.decode(value)
+    }
     #endif
     @Published var error: String?
-    @Published var models: [RemoteModel] = []
+    @Published var models: [MobileModel] = []
     @Published var selectedModel: String?
+    @Published var selectedEffort: String?
     @Published var selectingModelID: String?
     @Published var modelSelectionError: String?
     @Published var permissions: [RemotePermission] = []
@@ -187,6 +192,7 @@ private final class RemoteChat: ObservableObject {
     @Published var cancelling = false
     @Published var reconnecting = false
     @Published var connected = false
+    @Published var lastFrameAt: Date?
     private var session: URLSession?
     private var socket: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
@@ -197,11 +203,18 @@ private final class RemoteChat: ObservableObject {
     private var origin: URL?
     @Published private var composerState = MobileComposerState()
     @Published var composerStatusError: String?
+    @Published var queuedItems: [MobileQueuedItem] = []
+    @Published var queueRunning = false
+    @Published var queueCursor: Int?
+    @Published var queueUnavailable = false
+    var imageLimits: MobileImageLimits { composerState.imageLimits }
     var sessionTitle: String? { composerState.sessionTitle }
     var planActive: Bool { composerState.planActive }
     var goalObjective: String? { composerState.goalObjective }
     var goalPhase: String? { composerState.goalPhase }
     private var sessionId: String?
+    /// The submission the Host may already have accepted, so a resend of the same draft reuses its request id.
+    private var pendingSubmission: MobilePendingSubmission?
 
     var running: Bool {
         liveActive || lines.last(where: { $0.role == "turn" })?.endedAt == nil
@@ -212,6 +225,8 @@ private final class RemoteChat: ObservableObject {
         self.sessionId = sessionId
         #if DEBUG
         isFork = sessionId == "fixture-fork"
+        let queueFixture = Self.debugQueueState()
+        if let queueFixture { applyQueue(queueFixture) }
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--dsh-mobile-test-composer-projections"),
            arguments.indices.contains(index + 1), let data = arguments[index + 1].data(using: .utf8),
@@ -284,6 +299,12 @@ private final class RemoteChat: ObservableObject {
             feedbackPending = nil
             feedbackTouched = []
             forkUnknown = []
+            queuedItems = []
+            queueRunning = false
+            queueCursor = nil
+            queueUnavailable = false
+            lastFrameAt = nil
+            pendingSubmission = nil
             liveActive = false
             liveText = ""
             liveReasoning = ""
@@ -292,6 +313,9 @@ private final class RemoteChat: ObservableObject {
             loading = true
             error = nil
         }
+        #if DEBUG
+        if let queueFixture { applyQueue(queueFixture) }
+        #endif
         let current = generation
         do {
             let configuration = URLSessionConfiguration.default
@@ -329,7 +353,8 @@ private final class RemoteChat: ObservableObject {
             let opening: [String: Any] = [
                 "type": "open", "streamId": streamId, "endpoint": "session/follow",
                 "payload": ["args": ["request": ["address": ["kind": "session", "sessionId": sessionId],
-                                                   "assistantStream": true]]]
+                                                   "assistantStream": true, "maxMessages": 200,
+                                                   "turnWindow": ["minMessages": 1, "minTurns": 1]]]]
             ]
             let serialized = try JSONSerialization.data(withJSONObject: opening)
             guard let text = String(data: serialized, encoding: .utf8) else { throw ChatFailure.unavailable }
@@ -343,6 +368,11 @@ private final class RemoteChat: ObservableObject {
             composerStatusError = nil
             try await socket.send(.string(projectionText))
             try await socket.send(.string(text))
+            let stateOpening: [String: Any] = ["type": "open", "streamId": streamId + "-state",
+                "endpoint": "session/observeState",
+                "payload": ["args": ["request": ["sessionId": sessionId]]]]
+            let stateData = try JSONSerialization.data(withJSONObject: stateOpening)
+            try await socket.send(.string(String(decoding: stateData, as: UTF8.self)))
             let jobsOpening: [String: Any] = ["type": "open", "streamId": streamId + "-jobs", "endpoint": "job/list",
                 "payload": ["args": ["request": ["sessionId": sessionId]]]]
             let jobsData = try JSONSerialization.data(withJSONObject: jobsOpening)
@@ -384,6 +414,7 @@ private final class RemoteChat: ObservableObject {
                 }
                 guard let frame = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let frameStream = frame["streamId"] as? String else { continue }
+                lastFrameAt = .now
                 if frameStream == streamId + "-jobs" {
                     if frame["type"] as? String == "error" { toolOutputUnavailable = true }
                     if let value = frame["value"] as? [String: Any], value["type"] as? String == "rows",
@@ -413,6 +444,18 @@ private final class RemoteChat: ObservableObject {
                         jobStreams.removeValue(forKey: frameStream)
                     }
                     trimToolOutputs()
+                    continue
+                }
+                if frameStream == streamId + "-state" {
+                    if frame["type"] as? String == "error" {
+                        queueUnavailable = true
+                        Task { await self.refreshQueue(computer: computer) }
+                        continue
+                    }
+                    if let value = frame["value"] as? [String: Any],
+                       let state = MobileQueueState.decode(value) {
+                        applyQueue(state)
+                    }
                     continue
                 }
                 if frameStream == streamId + "-composer" {
@@ -470,6 +513,7 @@ private final class RemoteChat: ObservableObject {
                     loading = false
                     connected = true
                     reconnecting = false
+                    lastFrameAt = .now
                     error = nil
                     retryCount = 0
                     Task { await self.loadFeedback(computer: computer) }
@@ -480,10 +524,12 @@ private final class RemoteChat: ObservableObject {
                            let next = selection["next"] as? [String: Any],
                            let provider = next["provider"] as? String,
                            let model = next["model"] as? String {
-                            let selection = "\(provider)/\(model)"
+                            let route = "\(provider)/\(model)"
+                            let effort = next["reasoningEffort"] as? String
                             modelSelectionError = nil
-                            if selectedModel != selection {
-                                selectedModel = selection
+                            if selectedModel != route || selectedEffort != effort {
+                                selectedModel = route
+                                selectedEffort = effort
                                 funds.providers.removeAll()
                                 Task { await self.refreshBalances(computer: computer) }
                             }
@@ -530,6 +576,7 @@ private final class RemoteChat: ObservableObject {
                        let data = event["data"] as? [String: Any],
                        let provider = data["provider"] as? String, let model = data["model"] as? String {
                         selectedModel = "\(provider)/\(model)"
+                        selectedEffort = data["reasoningEffort"] as? String
                         funds.providers.removeAll()
                         Task { await self.refreshBalances(computer: computer) }
                     }
@@ -589,6 +636,38 @@ private final class RemoteChat: ObservableObject {
         if inactive.count > 32 {
             for id in inactive.prefix(inactive.count - 32) { toolOutputs.removeValue(forKey: id) }
             toolOutputOrder.removeAll { toolOutputs[$0] == nil }
+        }
+    }
+
+    /// Applies one complete queue state reported by the Host.
+    /// - Parameter state: queue items and the current run state.
+    private func applyQueue(_ state: MobileQueueState) {
+        queuedItems = state.items
+        queueRunning = state.running
+        queueCursor = state.cursor
+        queueUnavailable = false
+    }
+
+    /// Reports how long the socket has been silent during a running turn.
+    /// - Parameter now: current clock used by the view timeline.
+    /// - Returns: whole seconds since the last frame, or nil when connected traffic is recent.
+    func silentSeconds(now: Date = Date()) -> Int? {
+        guard connected, !reconnecting, running, let lastFrameAt else { return nil }
+        let seconds = Int(now.timeIntervalSince(lastFrameAt))
+        return seconds >= 90 ? seconds : nil
+    }
+
+    /// Reads the queue once when the state stream is unavailable on this Host.
+    /// - Parameter computer: pairing used for the authenticated request.
+    func refreshQueue(computer: SavedComputer) async {
+        guard let sessionId else { return }
+        do {
+            let value = try await call("session/state", arguments: ["request": ["sessionId": sessionId]],
+                                       computer: computer)
+            guard let value = value as? [String: Any], let state = MobileQueueState.decode(value) else { return }
+            applyQueue(state)
+        } catch {
+            queueUnavailable = true
         }
     }
 
@@ -701,10 +780,20 @@ private final class RemoteChat: ObservableObject {
               let seq = event["seq"] as? Int,
               let data = event["data"] as? [String: Any] else { return }
         if lines.contains(where: { $0.id == seq }) { return }
+        if let turn = data["turn"] as? Int, let time = event["time"] as? TimeInterval,
+           let index = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn }) {
+            lines[index].lastActivityAt = time
+        }
         if type == "turn/start", let turn = data["turn"] as? Int {
+            if let index = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn && $0.id < 0 }) {
+                lines[index].startedAt = event["time"] as? TimeInterval
+                lines[index].lastActivityAt = event["time"] as? TimeInterval
+                return
+            }
             var line = ChatLine(id: seq, role: "turn", text: "", reasoning: nil)
             line.turn = turn
             line.startedAt = event["time"] as? TimeInterval
+            line.lastActivityAt = event["time"] as? TimeInterval
             lines.append(line)
             return
         }
@@ -748,6 +837,9 @@ private final class RemoteChat: ObservableObject {
         }
         if type == "tool/call", let name = data["name"] as? String,
            let callId = data["callId"] as? String {
+            if let turn = data["turn"] as? Int {
+                Self.ensureTurn(turn: turn, seq: seq, time: event["time"] as? TimeInterval, into: &lines)
+            }
             let arguments = (data["arguments"] as? String).flatMap {
                 try? JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any]
             } ?? [:]
@@ -787,17 +879,16 @@ private final class RemoteChat: ObservableObject {
            let source = data["source"] as? [String: Any], source["kind"] as? String != "user" {
             return
         }
+        if let turn = data["turn"] as? Int {
+            Self.ensureTurn(turn: turn, seq: seq, time: event["time"] as? TimeInterval, into: &lines)
+        }
         let message: [String: Any] = type == "user/message" ? data : (data["message"] as? [String: Any] ?? [:])
         let blocks = message["content"] as? [[String: Any]] ?? []
-        let text = blocks.compactMap { block in
-            block["type"] as? String == "text" ? block["text"] as? String : nil
-        }.joined(separator: "\n\n")
-        let blockReasoning = blocks.compactMap { block in
-            block["type"] as? String == "reasoning" ? block["text"] as? String : nil
-        }.joined(separator: "\n\n")
+        let content = MobileMessageContent.parse(blocks: blocks)
+        let text = content.text
         let streamReasoning = Self.streamText(data["stream"] as? [[String: Any]] ?? [], kind: "reasoning")
-        let reasoning = streamReasoning.isEmpty ? blockReasoning : streamReasoning
-        guard !text.isEmpty || !reasoning.isEmpty else { return }
+        let reasoning = streamReasoning.isEmpty ? content.reasoning : streamReasoning
+        guard !text.isEmpty || !reasoning.isEmpty || !content.attachments.isEmpty else { return }
         if type == "assistant/message", !reasoning.isEmpty,
            let turnIndex = lines.lastIndex(where: { $0.role == "turn" }) {
             if lines[turnIndex].mergedEventIds.insert(seq).inserted {
@@ -805,9 +896,10 @@ private final class RemoteChat: ObservableObject {
                 lines[turnIndex].reasoning = previous.isEmpty ? reasoning : previous + "\n\n" + reasoning
             }
         }
-        if type == "assistant/message", text.isEmpty { return }
+        if type == "assistant/message", text.isEmpty, content.attachments.isEmpty { return }
         var line = ChatLine(id: seq, role: type == "user/message" ? "user" : "assistant",
                             text: text, reasoning: nil)
+        line.attachments = content.attachments
         line.messageID = message["id"] as? String
         line.timestamp = event["time"] as? Double
         line.turn = data["turn"] as? Int ?? lines.last(where: { $0.role == "turn" })?.turn
@@ -819,6 +911,21 @@ private final class RemoteChat: ObservableObject {
         } else {
             lines.append(line)
         }
+    }
+
+    /// Creates a turn header when a bounded snapshot starts inside a long turn.
+    /// - Parameters:
+    ///   - turn: durable turn number from the event.
+    ///   - seq: event sequence used for a stable negative identity.
+    ///   - time: event time in milliseconds.
+    ///   - lines: projected transcript to update.
+    private static func ensureTurn(turn: Int, seq: Int, time: TimeInterval?, into lines: inout [ChatLine]) {
+        guard !lines.contains(where: { $0.role == "turn" && $0.turn == turn }) else { return }
+        var line = ChatLine(id: -1_000_000 - seq, role: "turn", text: "", reasoning: nil)
+        line.turn = turn
+        line.startedAt = time
+        line.lastActivityAt = time
+        lines.append(line)
     }
 
     private static func streamText(_ stream: [[String: Any]], kind: String) -> String {
@@ -863,12 +970,25 @@ private final class RemoteChat: ObservableObject {
         }
         #endif
         guard let session, let origin = URL(string: computer.id) else { return false }
+        let candidate = MobilePendingSubmission(text: text, mode: mode, attachments: attachments)
+        let submission = pendingSubmission?.matches(candidate) == true
+            ? MobilePendingSubmission(text: text, mode: mode, attachments: attachments,
+                                      requestId: pendingSubmission?.requestId ?? candidate.requestId)
+            : candidate
+        pendingSubmission = submission
         do {
             try await MobileComposerTransport(session: session, origin: origin)
-                .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId)
+                .submit(text: text, attachments: attachments, mode: mode, sessionId: sessionId,
+                        requestId: submission.requestId)
+            pendingSubmission = nil
             error = nil
+            if queueUnavailable { await refreshQueue(computer: computer) }
             return true
         } catch {
+            if (error as? URLError)?.code == .timedOut {
+                self.error = "请求超时，未确认是否送达；再次发送不会重复"
+                return false
+            }
             self.error = "发送失败，草稿与附件已保留：\(error.localizedDescription)"
             return false
         }
@@ -895,6 +1015,7 @@ private final class RemoteChat: ObservableObject {
         do {
             _ = try await call("session/cancel", arguments: ["request": ["sessionId": sessionId]], computer: computer)
             error = nil
+            if queueUnavailable { await refreshQueue(computer: computer) }
         } catch {
             cancelling = false
             self.error = "停止失败，请重试"
@@ -1147,12 +1268,13 @@ private final class RemoteChat: ObservableObject {
             funds.account = Self.availableBalance(wallets + bonusWallets)
             funds.accountDetails = Self.balanceRows(wallets, label: "充值余额")
                 + Self.balanceRows(bonusWallets, label: "赠金余额")
-            models = [RemoteModel(id: "deepseek-account/deepseek-v41-flash", provider: "deepseek-account",
-                                  model: "deepseek-v41-flash", name: "DeepSeek V41 Flash")]
+            models = [MobileModel(provider: "deepseek-account", model: "deepseek-v41-flash",
+                                  name: "DeepSeek V41 Flash")]
             selectedModel = "deepseek-account/deepseek-v41-flash"
             if let index = arguments.firstIndex(of: "--dsh-mobile-test-api-balance"), arguments.indices.contains(index + 1) {
                 funds.providers["deepseek-official"] = "¥" + arguments[index + 1]
-                models.append(RemoteModel(id: "deepseek-official/deepseek-chat", provider: "deepseek-official", model: "deepseek-chat", name: "DeepSeek V41 Flash"))
+                models.append(MobileModel(provider: "deepseek-official", model: "deepseek-chat",
+                                          name: "DeepSeek V41 Flash"))
             }
             permissions = [
                 RemotePermission(id: "read-only", name: "仅可查看", description: "只能读取，不允许修改文件"),
@@ -1169,18 +1291,9 @@ private final class RemoteChat: ObservableObject {
             async let modelValue = call("session/modelCatalog", arguments: [:], computer: computer)
             async let permissionValue = call("permissionPresets/catalog", arguments: [:], computer: computer)
             if let catalog = try await modelValue as? [String: Any] {
-                models = (catalog["groups"] as? [[String: Any]] ?? []).flatMap { group -> [RemoteModel] in
-                    guard let provider = group["id"] as? String else { return [] }
-                    return (group["models"] as? [[String: Any]] ?? []).compactMap { item in
-                        guard let model = item["id"] as? String else { return nil }
-                        return RemoteModel(id: "\(provider)/\(model)", provider: provider,
-                                           model: model, name: item["name"] as? String ?? model)
-                    }
-                }
-                if selectedModel == nil, let fallback = catalog["default"] as? [String: Any],
-                   let provider = fallback["provider"] as? String,
-                   let model = fallback["model"] as? String {
-                    selectedModel = "\(provider)/\(model)"
+                models = MobileModelCatalog.models(from: catalog)
+                if selectedModel == nil, let fallback = MobileModelCatalog.defaultRoute(from: catalog) {
+                    selectedModel = fallback
                 }
             }
             if let catalog = try await permissionValue as? [String: Any] {
@@ -1249,9 +1362,18 @@ private final class RemoteChat: ObservableObject {
         return "\(symbol)\(formatter.string(from: NSDecimalNumber(decimal: value)) ?? amount)"
     }
 
-    func selectModel(_ model: RemoteModel, computer: SavedComputer, sessionId: String) async -> Bool {
+    /// Applies one model route and reasoning level to the current Session.
+    /// - Parameters:
+    ///   - model: route the user chose.
+    ///   - effort: reasoning level id; `nil` keeps the model's default level.
+    ///   - computer: pairing used for the authenticated request.
+    ///   - sessionId: Session receiving the selection.
+    /// - Returns: `true` when the Host confirmed the selection.
+    func selectModel(_ model: MobileModel, effort: String?, computer: SavedComputer,
+                     sessionId: String) async -> Bool {
         guard selectingModelID == nil else { return false }
-        if selectedModel == model.id { return true }
+        guard MobileModelCatalog.requiresSelection(currentModel: selectedModel, currentEffort: selectedEffort,
+                                                   model: model, effort: effort) else { return true }
         selectingModelID = model.id
         modelSelectionError = nil
         defer { selectingModelID = nil }
@@ -1267,19 +1389,23 @@ private final class RemoteChat: ObservableObject {
                     return false
                 }
                 selectedModel = model.id
+                selectedEffort = effort ?? model.defaultEffort
                 return true
             }
             if ProcessInfo.processInfo.arguments.contains("--dsh-mobile-test-api-balance") {
                 selectedModel = model.id
+                selectedEffort = effort ?? model.defaultEffort
                 return true
             }
             #endif
-            _ = try await call("session/selectModel", arguments: ["request": ["sessionId": sessionId,
-                "provider": model.provider, "model": model.model]], computer: computer)
+            var request: [String: Any] = ["sessionId": sessionId, "provider": model.provider, "model": model.model]
+            if let effort { request["reasoningEffort"] = effort }
+            _ = try await call("session/selectModel", arguments: ["request": request], computer: computer)
             selectedModel = model.id
+            selectedEffort = effort ?? model.defaultEffort
             funds.providers.removeAll()
             Task { await refreshBalances(computer: computer) }
-            MobileModelPreference.save(model.id, computerID: computer.id)
+            MobileModelPreference.save(model.id, effort: selectedEffort, computerID: computer.id)
             return true
         } catch {
             modelSelectionError = "未确认模型切换结果，正在重新读取当前模型"
@@ -1358,6 +1484,8 @@ struct RemoteChatView: View {
     @State private var showingSettings = false
     @State private var showingModels = false
     @State private var modelPickerDetent: PresentationDetent = .large
+    @State private var effortTarget: MobileModel?
+    @State private var effortDismissPicker = false
     @StateObject private var additions = MobileComposerAdditions()
     @State private var pendingPermission: RemotePermission?
     @State private var confirmingGoalClear = false
@@ -1538,6 +1666,24 @@ struct RemoteChatView: View {
                         .font(.caption).frame(minHeight: 44)
                     }
                 }
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    if let seconds = chat.silentSeconds(now: context.date) {
+                        HStack(spacing: 8) {
+                            Text("已 \(seconds) 秒没有收到新输出")
+                                .font(.caption).foregroundStyle(.orange)
+                            Spacer(minLength: 8)
+                            Button("停止") {
+                                Task { await chat.cancel(computer: computer, sessionId: sessionId) }
+                            }
+                            .font(.caption).foregroundStyle(.secondary).frame(minHeight: 44)
+                            Button("重新同步") {
+                                Task { await chat.retry(computer: computer, sessionId: sessionId) }
+                            }
+                            .font(.caption).frame(minHeight: 44)
+                            .accessibilityIdentifier("resyncSilentChat")
+                        }
+                    }
+                }
                 if chat.toolOutputUnavailable && chat.running {
                     HStack {
                         Text("实时输出服务暂不可用，工具最终结果仍会显示")
@@ -1615,7 +1761,7 @@ struct RemoteChatView: View {
                         if chat.models.isEmpty { Text("暂无可选模型").foregroundStyle(.secondary) }
                         ForEach(chat.models) { model in
                             Button {
-                                Task { await chat.selectModel(model, computer: computer, sessionId: sessionId) }
+                                chooseModel(model, dismissPicker: false)
                             } label: {
                                 modelSelectionRow(model)
                             }
@@ -1674,6 +1820,10 @@ struct RemoteChatView: View {
                 }
             }
             .task { await chat.loadSettings(computer: computer) }
+            .confirmationDialog("选择思考深度", isPresented: effortDialog, titleVisibility: .visible) {
+                effortOptions()
+                Button("取消", role: .cancel) { effortTarget = nil }
+            } message: { Text(effortDialogMessage) }
         }
     }
 
@@ -1697,11 +1847,7 @@ struct RemoteChatView: View {
                         Section(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)") {
                             ForEach(chat.models.filter { $0.provider == provider }) { model in
                                 Button {
-                                    Task {
-                                        if await chat.selectModel(model, computer: computer, sessionId: sessionId) {
-                                            showingModels = false
-                                        }
-                                    }
+                                    chooseModel(model, dismissPicker: true)
                                 } label: { modelSelectionRow(model) }
                                 .disabled(chat.selectingModelID != nil || !chat.connected)
                                 .accessibilityLabel(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
@@ -1715,6 +1861,10 @@ struct RemoteChatView: View {
                 .toolbar { Button("完成") { showingModels = false } }
             }
             .presentationDetents([.medium, .large], selection: $modelPickerDetent)
+            .confirmationDialog("选择思考深度", isPresented: effortDialog, titleVisibility: .visible) {
+                effortOptions()
+                Button("取消", role: .cancel) { effortTarget = nil }
+            } message: { Text(effortDialogMessage) }
     }
 
     #if DEBUG
@@ -1724,14 +1874,20 @@ struct RemoteChatView: View {
     }
     #endif
 
-    private func modelSelectionRow(_ model: RemoteModel) -> some View {
+    private func modelSelectionRow(_ model: MobileModel) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
                     .foregroundStyle(.primary)
                 Text(model.model).font(.caption).foregroundStyle(.secondary)
+                if let detail = model.detail, !detail.isEmpty {
+                    Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                }
             }
             Spacer(minLength: 8)
+            if let effort = effortLabel(for: model) {
+                Text(effort).font(.caption).foregroundStyle(.secondary)
+            }
             if chat.selectingModelID == model.id {
                 ProgressView().accessibilityLabel("正在切换模型")
             } else if chat.selectedModel == model.id {
@@ -1739,6 +1895,62 @@ struct RemoteChatView: View {
             }
         }
         .frame(minHeight: 44)
+    }
+
+    /// The reasoning level shown beside one model row.
+    /// - Parameter model: route listed in the picker.
+    /// - Returns: the Host's label for the level this row would apply, or nil without levels.
+    private func effortLabel(for model: MobileModel) -> String? {
+        guard !model.efforts.isEmpty else { return nil }
+        let effort = chat.selectedModel == model.id
+            ? (chat.selectedEffort ?? model.defaultEffort) : model.defaultEffort
+        return MobileModelCatalog.effortName(effort, in: model)
+    }
+
+    /// Applies a model choice, asking for a reasoning level when the route offers several.
+    /// - Parameters:
+    ///   - model: route the user tapped.
+    ///   - dismissPicker: whether a confirmed choice closes the model sheet.
+    private func chooseModel(_ model: MobileModel, dismissPicker: Bool) {
+        guard !model.efforts.isEmpty else {
+            Task {
+                if await chat.selectModel(model, effort: nil, computer: computer, sessionId: sessionId),
+                   dismissPicker { showingModels = false }
+            }
+            return
+        }
+        effortDismissPicker = dismissPicker
+        effortTarget = model
+    }
+
+    /// Applies the reasoning level the user chose for the pending model route.
+    /// - Parameter effort: level the Host declared for that route.
+    private func chooseEffort(_ effort: MobileModelReasoning) {
+        guard let model = effortTarget else { return }
+        let dismissPicker = effortDismissPicker
+        effortTarget = nil
+        Task {
+            if await chat.selectModel(model, effort: effort.id, computer: computer, sessionId: sessionId),
+               dismissPicker { showingModels = false }
+        }
+    }
+
+    /// Lists the reasoning levels of the pending route.
+    private func effortOptions() -> some View {
+        ForEach(effortTarget?.efforts ?? []) { effort in
+            Button(effort.name) { chooseEffort(effort) }
+        }
+    }
+
+    /// Drives the reasoning-level dialog from the row the user tapped.
+    private var effortDialog: Binding<Bool> {
+        Binding(get: { effortTarget != nil }, set: { if !$0 { effortTarget = nil } })
+    }
+
+    /// Explains what the pending route's reasoning levels change.
+    private var effortDialogMessage: String {
+        guard let model = effortTarget else { return "" }
+        return "\(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))：档位越高，思考越深、用时越长"
     }
 
     private var compactComposer: Bool {
@@ -1829,7 +2041,9 @@ struct RemoteChatView: View {
         let model = chat.models.first { $0.id == selectedModel }
         let modelID = model?.model ?? selectedModel.split(separator: "/").last.map(String.init) ?? selectedModel
         let provider = model?.provider ?? selectedModel.split(separator: "/").first.map(String.init) ?? ""
-        return mobileModelDisplayName(model?.name ?? modelID, modelID: modelID, provider: provider)
+        let name = mobileModelDisplayName(model?.name ?? modelID, modelID: modelID, provider: provider)
+        guard let effort = MobileModelCatalog.effortName(chat.selectedEffort, in: model) else { return name }
+        return "\(name) · \(effort)"
     }
 
     @ViewBuilder private var balanceBadge: some View {
@@ -1980,12 +2194,18 @@ struct RemoteChatView: View {
                 ActivityGroupView(activities: line.activities, toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "turn" {
                 TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
+                                lastActivityAt: line.lastActivityAt,
                                 activities: line.activities, reasoning: line.reasoning,
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
                                     ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "assistant" {
                 VStack(alignment: .leading, spacing: 4) {
-                    AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false)
+                    if !line.attachments.isEmpty {
+                        MobileMessageAttachmentSummary(attachments: line.attachments)
+                    }
+                    if !line.text.isEmpty {
+                        AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false)
+                    }
                     if line.live {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.mini)
@@ -2001,14 +2221,21 @@ struct RemoteChatView: View {
                     }
                 }
             } else {
-                Text(line.text)
-                    .font(.system(size: 16, weight: .medium)).lineSpacing(5)
-                    .foregroundStyle(colorScheme == .dark ? .white : Color(red: 0.05, green: 0.42, blue: 0.76))
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 16).padding(.vertical, 12)
-                    .background(colorScheme == .dark ? Color(red: 0.02, green: 0.29, blue: 0.53)
-                                : Color(red: 0.88, green: 0.95, blue: 1),
-                                in: RoundedRectangle(cornerRadius: 20))
+                VStack(alignment: .leading, spacing: 8) {
+                    if !line.attachments.isEmpty {
+                        MobileMessageAttachmentSummary(attachments: line.attachments)
+                    }
+                    if !line.text.isEmpty {
+                        Text(line.text)
+                            .font(.system(size: 16, weight: .medium)).lineSpacing(5)
+                            .foregroundStyle(colorScheme == .dark ? .white : Color(red: 0.05, green: 0.42, blue: 0.76))
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .background(colorScheme == .dark ? Color(red: 0.02, green: 0.29, blue: 0.53)
+                                        : Color(red: 0.88, green: 0.95, blue: 1),
+                                        in: RoundedRectangle(cornerRadius: 20))
+                    }
+                }
             }
             if line.role != "user" { Spacer(minLength: 20) }
         }
@@ -2058,32 +2285,37 @@ struct RemoteChatView: View {
     }
 }
 
+/// Category counts shared by the compact process strip and the running turn header.
+private func mobileActivitySummary(_ activities: [MobileChatActivity]) -> String {
+    if let running = activities.last(where: { !$0.finished }) {
+        return "正在\(running.category)"
+    }
+    let categories = Array(Set(activities.map(\.category))).sorted { first, second in
+        let left = activities.firstIndex(where: { $0.category == first }) ?? 0
+        let right = activities.firstIndex(where: { $0.category == second }) ?? 0
+        return left < right
+    }
+    let labels = categories.prefix(2).map { category in
+        let count = activities.filter { $0.category == category }.count
+        switch category {
+        case "读取文件": return "已读取 \(count) 个文件"
+        case "搜索代码": return "已搜索 \(count) 次"
+        case "修改文件": return "已修改 \(count) 个文件"
+        case "运行命令": return "已运行 \(count) 条命令"
+        case "运行代码": return "已运行 \(count) 次代码"
+        case "访问网页": return "已访问 \(count) 个网页"
+        default: return "已调用 \(count) 次工具"
+        }
+    }
+    return labels.joined(separator: "，")
+}
+
 private struct ActivityGroupView: View {
     let activities: [MobileChatActivity]
     let toolOutputs: [String: MobileToolOutput]
 
     private var title: String {
-        if let running = activities.last(where: { !$0.finished }) {
-            return "正在\(running.category)"
-        }
-        let categories = Array(Set(activities.map(\.category))).sorted { first, second in
-            let left = activities.firstIndex(where: { $0.category == first }) ?? 0
-            let right = activities.firstIndex(where: { $0.category == second }) ?? 0
-            return left < right
-        }
-        let labels = categories.prefix(2).map { category in
-            let count = activities.filter { $0.category == category }.count
-            switch category {
-            case "读取文件": return "已读取 \(count) 个文件"
-            case "搜索代码": return "已搜索 \(count) 次"
-            case "修改文件": return "已修改 \(count) 个文件"
-            case "运行命令": return "已运行 \(count) 条命令"
-            case "运行代码": return "已运行 \(count) 次代码"
-            case "访问网页": return "已访问 \(count) 个网页"
-            default: return "已调用 \(count) 次工具"
-            }
-        }
-        return labels.joined(separator: "，")
+        mobileActivitySummary(activities)
     }
 
     let onInspect: () -> Void
@@ -2097,6 +2329,7 @@ private struct TurnProcessView: View {
     let startedAt: TimeInterval?
     let endedAt: TimeInterval?
     let endReason: String?
+    let lastActivityAt: TimeInterval?
     let activities: [MobileChatActivity]
     let reasoning: String?
     let liveReasoning: String
@@ -2107,7 +2340,16 @@ private struct TurnProcessView: View {
         let count = activities.count
         let failed = activities.filter(\.failed).count
         if count == 0 { return endedAt == nil ? "正在思考" : "查看过程" }
-        return failed == 0 ? "过程 · \(count) 项操作" : "过程 · \(count) 项操作，\(failed) 项失败"
+        let summary = mobileActivitySummary(activities)
+        return failed == 0 ? summary : "\(summary)，\(failed) 项失败"
+    }
+
+    private func activityAge(now: Date) -> String? {
+        guard endedAt == nil, let lastActivityAt, lastActivityAt > 0 else { return nil }
+        let seconds = max(0, Int(now.timeIntervalSince1970 - lastActivityAt / 1000))
+        if seconds < 5 { return "最后活动刚刚" }
+        if seconds < 60 { return "最后活动 \(seconds) 秒前" }
+        return "最后活动 \(seconds / 60) 分 \(seconds % 60) 秒前"
     }
 
     private func title(now: Date) -> String {
@@ -2124,9 +2366,14 @@ private struct TurnProcessView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(title(now: context.date))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title(now: context.date))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
+                    if let age = activityAge(now: context.date) {
+                        Text(age).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
             Divider()
             ProcessDisclosureView(summary: processSummary,
@@ -2179,8 +2426,8 @@ private struct ProcessDisclosureView: View {
                 ForEach(Array(activities.suffix(3))) { activity in
                     VStack(alignment: .leading, spacing: 4) {
                         activityRow(activity, preview: true)
-                        if let output = activity.jobIDs.compactMap({ toolOutputs[$0] }).last, !output.text.isEmpty {
-                            Text(output.text.split(separator: "\n").suffix(2).joined(separator: "\n"))
+                        if let output = previewOutput(activity) {
+                            Text(output)
                                 .font(.system(.caption, design: .monospaced)).lineLimit(2)
                                 .accessibilityIdentifier("liveToolPreview")
                         }
@@ -2262,6 +2509,14 @@ private struct ProcessDisclosureView: View {
     private var collapseButton: some View {
         Button("收起过程") { expanded = false }
             .font(.caption).foregroundStyle(Color.accentColor).frame(minHeight: 44)
+    }
+
+    private func previewOutput(_ activity: MobileChatActivity) -> String? {
+        if let output = activity.jobIDs.compactMap({ toolOutputs[$0] }).last, !output.text.isEmpty {
+            return output.text.split(separator: "\n").suffix(2).joined(separator: "\n")
+        }
+        guard let output = activity.output, !output.isEmpty else { return nil }
+        return output.split(separator: "\n").suffix(2).joined(separator: "\n")
     }
 
     private func activityRow(_ activity: MobileChatActivity, preview: Bool) -> some View {
