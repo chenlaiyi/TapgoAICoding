@@ -663,6 +663,8 @@ struct RemoteHomeView: View {
     @State private var showingWorkspace = false
     /// Set when the conversation's new-draft button asks for a fresh composer after it closes.
     @State private var pendingNewConversation = false
+    /// Project groups the reader folded on this visit.
+    @State private var collapsedProjects: Set<String> = []
     @State private var renamingSession: RemoteSession?
     @State private var renameDraft = ""
     @State private var archivingSession: RemoteSession?
@@ -789,10 +791,31 @@ struct RemoteHomeView: View {
                         if !projects.isEmpty { sectionHeading("项目") }
                         ForEach(projects, id: \.self) { project in
                             HStack(spacing: 9) {
-                                Image(systemName: "folder").font(.system(size: 15))
-                                    .foregroundStyle(.secondary)
-                                Text(projectTitle(project)).font(.system(size: 14, weight: .semibold))
-                                Spacer()
+                                Button {
+                                    if collapsedProjects.contains(project) {
+                                        collapsedProjects.remove(project)
+                                    } else {
+                                        collapsedProjects.insert(project)
+                                    }
+                                } label: {
+                                    HStack(spacing: 9) {
+                                        Image(systemName: collapsedProjects.contains(project) ? "folder" : "folder.fill")
+                                            .font(.system(size: 15))
+                                            .foregroundStyle(.secondary)
+                                        Text(projectTitle(project)).font(.system(size: 14, weight: .semibold))
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(.secondary)
+                                            .rotationEffect(.degrees(collapsedProjects.contains(project) ? -90 : 0))
+                                        Spacer(minLength: 0)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(collapsedProjects.contains(project)
+                                    ? "展开\(projectTitle(project))"
+                                    : "折叠\(projectTitle(project))")
+                                .accessibilityValue(collapsedProjects.contains(project) ? "已折叠" : "已展开")
                                 Button {
                                     Task {
                                         if let session = await sessions.start(text: nil, computer: computer, cwd: project) {
@@ -809,8 +832,10 @@ struct RemoteHomeView: View {
                                 .accessibilityLabel("在\(projectTitle(project))新建对话")
                             }
                             .frame(minHeight: 44)
-                            ForEach(visibleSessions.filter { $0.cwd == project && !sessions.pinnedSessionIds.contains($0.id) }) { item in
-                                sessionRow(item, indent: 24)
+                            if !collapsedProjects.contains(project) {
+                                ForEach(visibleSessions.filter { $0.cwd == project && !sessions.pinnedSessionIds.contains($0.id) }) { item in
+                                    sessionRow(item, indent: 24)
+                                }
                             }
                         }
                         if sortMode != .project, !visibleSessions.isEmpty {
