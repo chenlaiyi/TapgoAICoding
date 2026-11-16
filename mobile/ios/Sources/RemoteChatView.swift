@@ -1709,6 +1709,8 @@ struct RemoteChatView: View {
     let title: String
     let project: String
     let onUnauthorized: () -> Void
+    /// Requests a fresh draft after this conversation closes.
+    let onNewConversation: () -> Void
 
     /// Creates one conversation bound to its paired computer.
     /// - Parameters:
@@ -1719,13 +1721,14 @@ struct RemoteChatView: View {
     ///   - project: project label shown under the title.
     ///   - onUnauthorized: called when the pairing no longer authenticates.
     init(connection: MobileConnection, computer: SavedComputer, sessionId: String, title: String,
-         project: String, onUnauthorized: @escaping () -> Void) {
+         project: String, onUnauthorized: @escaping () -> Void, onNewConversation: @escaping () -> Void = {}) {
         _connection = ObservedObject(wrappedValue: connection)
         _computer = State(initialValue: computer)
         self.sessionId = sessionId
         self.title = title
         self.project = project
         self.onUnauthorized = onUnauthorized
+        self.onNewConversation = onNewConversation
     }
     @StateObject private var chat = RemoteChat()
     @State private var draft = ""
@@ -1772,7 +1775,10 @@ struct RemoteChatView: View {
                 }
                 Spacer(minLength: 0)
                 HStack(spacing: 0) {
-                    Button { dismiss() } label: {
+                    Button {
+                        dismiss()
+                        onNewConversation()
+                    } label: {
                         Image(systemName: "square.and.pencil").font(.system(size: 19))
                             .frame(width: 44, height: 44)
                     }

@@ -565,6 +565,8 @@ struct RemoteHomeView: View {
     @State private var search = ""
     @State private var selectedSession: RemoteSession?
     @State private var showingWorkspace = false
+    /// Set when the conversation's new-draft button asks for a fresh composer after it closes.
+    @State private var pendingNewConversation = false
     @State private var showingNewConversation = false
     @State private var showingFullWorkspace = false
     @State private var showingTopMenu = false
@@ -762,7 +764,8 @@ struct RemoteHomeView: View {
                 if let selected = selectedSession {
                     RemoteChatView(connection: connection, computer: computer, sessionId: selected.sessionId,
                                    title: selected.title, project: selected.project,
-                                   onUnauthorized: connection.expireActive)
+                                   onUnauthorized: connection.expireActive,
+                                   onNewConversation: { pendingNewConversation = true })
                 }
             }
             .navigationDestination(isPresented: $showingNewConversation) {
@@ -770,6 +773,21 @@ struct RemoteHomeView: View {
             }
             .onChange(of: showingNewConversation) { visible in
                 if !visible { Task { await loadSessions() } }
+            }
+            // A hidden search must not keep filtering the list after its field closes.
+            .onChange(of: showingSearch) { visible in
+                if !visible { search = "" }
+            }
+            // The conversation's new-draft button closes the conversation first, then
+            // opens a fresh composer with the previous draft restored by its own store.
+            .onChange(of: showingWorkspace) { visible in
+                guard !visible, pendingNewConversation else { return }
+                pendingNewConversation = false
+                // Push the composer after the pop settles so the navigation stack keeps both requests.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(350))
+                    showingNewConversation = true
+                }
             }
         }
     }
@@ -1223,7 +1241,8 @@ private struct RemoteNewConversationView: View {
             if let createdSession {
                 RemoteChatView(connection: connection, computer: computer, sessionId: createdSession.sessionId,
                                title: createdSession.title, project: createdSession.project,
-                               onUnauthorized: connection.expireActive)
+                               onUnauthorized: connection.expireActive,
+                               onNewConversation: { pendingNewConversation = true })
             }
         }
         .task {
