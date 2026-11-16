@@ -2654,7 +2654,8 @@ struct RemoteChatView: View {
             TextField("", text: $draft, axis: .vertical)
                 .font(.subheadline)
                 // A prefilled next-step suggestion must stay fully visible after the keyboard opens.
-                .lineLimit(1...12)
+                .lineLimit(1...16)
+                .fixedSize(horizontal: false, vertical: true)
                 .focused($composerFocused)
                 .accessibilityIdentifier("chatComposerInput")
         }
