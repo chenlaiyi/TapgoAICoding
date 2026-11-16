@@ -57,6 +57,8 @@ targets:
       - path: Sources/MobileAssistantStream.swift
       - path: Sources/MobileModelCatalog.swift
       - path: Sources/MobileConnectionAddress.swift
+      - path: Sources/MobileFailover.swift
+      - path: Sources/SavedComputer.swift
       - path: Sources/MobileModelPreference.swift
       - path: Sources/MobileSilenceLabel.swift
       - path: Sources/MobileImageThumbnail.swift

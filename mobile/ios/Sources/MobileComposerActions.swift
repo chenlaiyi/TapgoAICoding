@@ -388,7 +388,7 @@ private struct MobileComposerPlugins: View {
 
 extension MobileComposerTransport {
     static func open(computer: SavedComputer) async throws -> MobileComposerTransport {
-        guard let origin = URL(string: computer.id), let pairing = URL(string: computer.url) else {
+        guard let origin = URL(string: computer.origin), let pairing = URL(string: computer.connectionURL) else {
             throw MobileComposerFailure.unavailable
         }
         let configuration = URLSessionConfiguration.default

@@ -32,8 +32,8 @@ final class MobileInteractionCenter: ObservableObject {
 
     func connect(computer: SavedComputer?, reconnect: Bool = false) async {
         disconnect(resetRetry: !reconnect)
-        guard let computer, let origin = URL(string: computer.id),
-              let pairing = URL(string: computer.url) else { return }
+        guard let computer, let origin = URL(string: computer.origin),
+              let pairing = URL(string: computer.connectionURL) else { return }
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--dsh-mobile-test-global-approval"),

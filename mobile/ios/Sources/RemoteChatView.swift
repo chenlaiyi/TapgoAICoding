@@ -220,6 +220,10 @@ private final class RemoteChat: ObservableObject {
     private var pendingSubmission: MobilePendingSubmission?
     /// Pairing needed to read attachment bytes through the Host.
     private var computer: SavedComputer?
+    /// Owner of the paired routes, consulted when the active one stops answering.
+    var connection: MobileConnection?
+    /// Last transport failure, which decides whether the fallback route may be tried.
+    private var lastFailure: Error?
     @Published private var attachmentImages: [String: UIImage] = [:]
     @Published private var failedAttachments: Set<String> = []
     private var loadingAttachments: Set<String> = []
@@ -286,7 +290,7 @@ private final class RemoteChat: ObservableObject {
             return
         }
         #endif
-        guard let origin = URL(string: computer.id), let pairing = URL(string: computer.url) else { return }
+        guard let origin = URL(string: computer.origin), let pairing = URL(string: computer.connectionURL) else { return }
         disconnect()
         pendingAssistantEvents = [:]
         streamNeedsResync = false
@@ -398,6 +402,7 @@ private final class RemoteChat: ObservableObject {
             heartbeat.start(socket: socket) { [weak self, weak socket] in
                 guard let self, let socket, self.generation == current,
                       self.socket === socket else { return }
+                self.lastFailure = URLError(.networkConnectionLost)
                 self.scheduleRetry(computer: computer, generation: current)
             }
             receiveTask = Task { [weak self] in
@@ -414,6 +419,7 @@ private final class RemoteChat: ObservableObject {
                 self.error = failure.localizedDescription
                 return
             }
+            lastFailure = error
             scheduleRetry(computer: computer, generation: current)
         }
     }
@@ -615,6 +621,7 @@ private final class RemoteChat: ObservableObject {
             if !Task.isCancelled && current == generation && self.socket === socket {
                 let failure = error as NSError
                 connectionLog.error("WebSocket receive failed: \(failure.domain, privacy: .public) \(failure.code); close code: \(socket.closeCode.rawValue)")
+                lastFailure = error
                 scheduleRetry(computer: computer, generation: current)
             }
         }
@@ -782,6 +789,29 @@ private final class RemoteChat: ObservableObject {
 
     private func scheduleRetry(computer: SavedComputer, generation current: UUID) {
         guard current == generation else { return }
+        // A route that stopped answering switches to the paired fallback before backing off.
+        let routeFailure = lastFailure.map(MobileFailover.isRouteFailure) ?? false
+        lastFailure = nil
+        if routeFailure, let connection, let alternate = connection.switchToFallback(computer) {
+            heartbeat.stop()
+            disconnectToolOutputs()
+            socket?.cancel(with: .goingAway, reason: nil)
+            socket = nil
+            session?.invalidateAndCancel()
+            session = nil
+            loading = false
+            connected = false
+            reconnecting = true
+            retryCount = 0
+            retryTask?.cancel()
+            retryTask = nil
+            error = "局域网不可用，已切换到互联网中继"
+            Task { [weak self] in
+                guard let self, self.generation == current, let sessionId = self.sessionId else { return }
+                await self.connect(computer: alternate, sessionId: sessionId, reconnect: true)
+            }
+            return
+        }
         heartbeat.stop()
         disconnectToolOutputs()
         socket?.cancel(with: .goingAway, reason: nil)
@@ -1087,7 +1117,7 @@ private final class RemoteChat: ObservableObject {
             return delivered
         }
         #endif
-        guard let session, let origin = URL(string: computer.id) else { return false }
+        guard let session, let origin = URL(string: computer.origin) else { return false }
         let candidate = MobilePendingSubmission(text: text, mode: mode, attachments: attachments)
         let submission = pendingSubmission?.matches(candidate) == true
             ? MobilePendingSubmission(text: text, mode: mode, attachments: attachments,
@@ -1117,7 +1147,7 @@ private final class RemoteChat: ObservableObject {
 
     func composerCommand(_ line: String, computer: SavedComputer, sessionId: String) async {
         guard !sending else { return }
-        guard connected, let session, let origin = URL(string: computer.id) else {
+        guard connected, let session, let origin = URL(string: computer.origin) else {
             error = "当前未连接到电脑，请重连后再操作"
             return
         }
@@ -1150,7 +1180,7 @@ private final class RemoteChat: ObservableObject {
             return try replyActionFixture(method, arguments: arguments)
         }
         #endif
-        guard let session, let origin = URL(string: computer.id) else { throw ChatFailure.unavailable }
+        guard let session, let origin = URL(string: computer.origin) else { throw ChatFailure.unavailable }
         var request = URLRequest(url: origin.appendingPathComponent("api/\(method)"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -1314,7 +1344,7 @@ private final class RemoteChat: ObservableObject {
         }
         #endif
         guard let session, let owner = sessionId,
-              var parts = URLComponents(string: computer.id) else { throw MobileReplyFailure.unavailable }
+              var parts = URLComponents(string: computer.origin) else { throw MobileReplyFailure.unavailable }
         let current = generation
         parts.path = path
         parts.queryItems = [URLQueryItem(name: "sessionId", value: owner), URLQueryItem(name: "seq", value: String(sequence))]
@@ -1606,11 +1636,30 @@ struct RemoteChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
-    let computer: SavedComputer
+    @ObservedObject var connection: MobileConnection
+    @State private var computer: SavedComputer
     let sessionId: String
     let title: String
     let project: String
     let onUnauthorized: () -> Void
+
+    /// Creates one conversation bound to its paired computer.
+    /// - Parameters:
+    ///   - connection: owner of the paired routes, used when the LAN route stops answering.
+    ///   - computer: paired computer the conversation started on.
+    ///   - sessionId: Session shown in this conversation.
+    ///   - title: initial title before the Host reports one.
+    ///   - project: project label shown under the title.
+    ///   - onUnauthorized: called when the pairing no longer authenticates.
+    init(connection: MobileConnection, computer: SavedComputer, sessionId: String, title: String,
+         project: String, onUnauthorized: @escaping () -> Void) {
+        _connection = ObservedObject(wrappedValue: connection)
+        _computer = State(initialValue: computer)
+        self.sessionId = sessionId
+        self.title = title
+        self.project = project
+        self.onUnauthorized = onUnauthorized
+    }
     @StateObject private var chat = RemoteChat()
     @State private var draft = ""
     @State private var recommendationDraft = MobileRecommendationDraft()
@@ -1841,13 +1890,14 @@ struct RemoteChatView: View {
         .background(Color(uiColor: .systemBackground))
         .toolbar(.hidden, for: .navigationBar)
         .task(id: sessionId) {
+            chat.connection = connection
             await chat.connect(computer: computer, sessionId: sessionId)
             await chat.loadSettings(computer: computer)
             await chat.loadFeedback(computer: computer)
         }
         .fullScreenCover(item: $forkTarget) { target in
-            RemoteChatView(computer: computer, sessionId: target.id, title: "分支对话", project: project,
-                           onUnauthorized: onUnauthorized)
+            RemoteChatView(connection: connection, computer: computer, sessionId: target.id,
+                           title: "分支对话", project: project, onUnauthorized: onUnauthorized)
         }
         .fullScreenCover(item: $viewerTarget) { target in
             MobileImageViewer(reference: target.reference,
@@ -1859,6 +1909,11 @@ struct RemoteChatView: View {
             if phase == .active && !chat.connected && !chat.loading {
                 Task { await chat.retry(computer: computer, sessionId: sessionId) }
             }
+        }
+        .onChange(of: connection.computers) { items in
+            guard let updated = items.first(where: { $0.id == computer.id }),
+                  updated.connectionURL != computer.connectionURL else { return }
+            computer = updated
         }
         .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
         .onChange(of: chat.running) { running in
@@ -1892,7 +1947,7 @@ struct RemoteChatView: View {
         .environment(\.advanceToolOutputFixture, toolOutputFixtureAction)
         #endif
         .sheet(isPresented: $showingWorkspace) {
-            if let url = URL(string: computer.url) {
+            if let url = URL(string: computer.connectionURL) {
                 DshWebView(url: url, sessionId: sessionId, onUnauthorized: onUnauthorized)
             }
         }

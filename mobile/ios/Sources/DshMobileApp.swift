@@ -128,13 +128,6 @@ private struct MobileLaunchView: View {
     }
 }
 
-struct SavedComputer: Codable, Equatable, Identifiable {
-    let id: String
-    var name: String
-    var url: String
-    var sourceName: String? = nil
-    var customName: String? = nil
-}
 
 private struct SavedComputers: Codable {
     var items: [SavedComputer]
@@ -261,6 +254,10 @@ final class MobileConnection: ObservableObject {
             error = "请输入 HTTPS 或局域网 HTTP 的 DSH 连接链接"
             return
         }
+        let parsed = URLComponents(url: destination, resolvingAgainstBaseURL: false)?.queryItems
+        let fallback = parsed?.first(where: { $0.name == "fallback" })?.value
+            .flatMap(URL.init(string:))
+            .flatMap { MobileConnectionAddress.isSupported($0) && $0.host != destination.host ? $0 : nil }
         let previous = computers.first(where: { $0.id == id })
         let transmittedName = URLComponents(url: destination, resolvingAgainstBaseURL: false)?
             .queryItems?.first(where: { $0.name == "name" })?.value?
@@ -271,8 +268,50 @@ final class MobileConnection: ObservableObject {
         let customName = label.isEmpty ? (previous?.customName ?? legacyName) : label
         let computer = SavedComputer(id: id, name: customName ?? sourceName,
                                      url: destination.absoluteString, sourceName: sourceName,
-                                     customName: customName)
+                                     customName: customName,
+                                     fallbackURL: fallback?.absoluteString, activeURL: nil)
         commit(computers.filter { $0.id != id } + [computer], active: id)
+    }
+
+    /// Switches one paired computer to its fallback route after the preferred route stops answering.
+    /// - Parameter computer: record whose preferred route failed.
+    /// - Returns: the record now dialing its fallback route, or nil when it has none.
+    @discardableResult
+    func switchToFallback(_ computer: SavedComputer) -> SavedComputer? {
+        guard !computer.usingFallback, let fallback = computer.fallbackURL, fallback != computer.url,
+              let index = computers.firstIndex(where: { $0.id == computer.id }) else { return nil }
+        var items = computers
+        items[index].activeURL = fallback
+        commit(items, active: activeID)
+        return items[index]
+    }
+
+    /// Returns one paired computer to its preferred route.
+    /// - Parameter computer: record currently dialing its fallback route.
+    /// - Returns: the record back on its preferred route, or nil when it was already preferred.
+    @discardableResult
+    func restorePreferredRoute(_ computer: SavedComputer) -> SavedComputer? {
+        guard computer.usingFallback,
+              let index = computers.firstIndex(where: { $0.id == computer.id }) else { return nil }
+        var items = computers
+        items[index].activeURL = nil
+        commit(items, active: activeID)
+        return items[index]
+    }
+
+    /// Probes the preferred route with a short deadline and restores it when it answers.
+    /// - Parameter computer: record currently dialing its fallback route.
+    /// - Returns: the record back on its preferred route, or nil when it stays on the fallback.
+    @discardableResult
+    func restorePreferredRouteIfReachable(_ computer: SavedComputer) async -> SavedComputer? {
+        guard computer.usingFallback, let preferred = URL(string: computer.url) else { return nil }
+        var request = URLRequest(url: preferred)
+        request.timeoutInterval = 2
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        guard let (_, response) = try? await session.data(for: request),
+              let status = (response as? HTTPURLResponse)?.statusCode, status < 400 else { return nil }
+        return restorePreferredRoute(computer)
     }
 
     func rename(_ id: String, to value: String) {

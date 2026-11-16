@@ -140,17 +140,25 @@ private final class RemoteSessions: ObservableObject {
     private var balanceRevision = UUID()
     private var loadToken: UUID?
     private var consecutiveFailures = 0
+    /// Whether the last load failed because the route itself was unreachable.
+    private(set) var transportUnreachable = false
     /// The last first message this iPhone may already have delivered, so a retry of the same draft reuses its id.
     private var pendingStart: MobilePendingSubmission?
 
-    func load(computer: SavedComputer, quietly: Bool = false) async {
+    /// Reads the session list once.
+    /// - Parameters:
+    ///   - computer: paired computer whose active route to dial.
+    ///   - quietly: suppress the loading indicator for background refreshes.
+    /// - Returns: `true` when the Host answered with a session list.
+    @discardableResult
+    func load(computer: SavedComputer, quietly: Bool = false) async -> Bool {
         if fundsOrigin != computer.id {
             funds = MobileBalanceSnapshot()
             fundsOrigin = computer.id
             balanceRevision = UUID()
             loadToken = nil
         }
-        if loadToken != nil { return }
+        if loadToken != nil { return false }
         let token = UUID()
         loadToken = token
         defer { if loadToken == token { loadToken = nil } }
@@ -181,10 +189,12 @@ private final class RemoteSessions: ObservableObject {
             }
             error = nil
             lastConnectedAt = .now
-            return
+            return true
         }
         #endif
-        guard let url = URL(string: computer.url), let origin = URL(string: computer.id) else { return }
+        guard let url = URL(string: computer.connectionURL), let origin = URL(string: computer.origin) else {
+            return false
+        }
         if !quietly { loading = true }
         defer { if !quietly { loading = false } }
         do {
@@ -228,23 +238,27 @@ private final class RemoteSessions: ObservableObject {
             guard decoded.result.ok, let value = decoded.result.value else {
                 throw RemoteError.server(decoded.result.error?.message ?? "请求失败")
             }
-            guard loadToken == token, fundsOrigin == computer.id else { return }
+            guard loadToken == token, fundsOrigin == computer.id else { return false }
             items = value.items.filter { $0.cwd != nil }
             error = nil
             consecutiveFailures = 0
+            transportUnreachable = false
             lastConnectedAt = .now
             if let baseline = try? await readWorkspaces(session: session, origin: origin) {
                 workspaces = baseline.items
                 pinnedSessionIds = baseline.pinnedSessionIds
             }
             await loadComposerSettings(session: session, origin: origin, computerID: computer.id)
+            return true
         } catch {
-            guard loadToken == token, fundsOrigin == computer.id else { return }
+            transportUnreachable = MobileFailover.isRouteFailure(error)
+            guard loadToken == token, fundsOrigin == computer.id else { return false }
             consecutiveFailures += 1
             if !quietly || consecutiveFailures >= 2 {
                 lastConnectedAt = nil
                 self.error = "无法读取这台 Mac 的对话：\(error.localizedDescription)"
             }
+            return false
         }
     }
 
@@ -330,8 +344,8 @@ private final class RemoteSessions: ObservableObject {
                permission: String? = nil, model: ComposerModel? = nil, effort: String? = nil,
                attachments: [MobileDraftAttachment] = [], mode: MobileComposerMode = .message,
                existingSessionID: String? = nil, onCreated: ((String) -> Void)? = nil) async -> RemoteSession? {
-        guard !starting, let origin = URL(string: computer.id),
-              let pairing = URL(string: computer.url) else { return nil }
+        guard !starting, let origin = URL(string: computer.origin),
+              let pairing = URL(string: computer.connectionURL) else { return nil }
         starting = true
         startError = nil
         defer { starting = false }
@@ -474,7 +488,7 @@ private final class RemoteSessions: ObservableObject {
     }
 
     private func directorySession(computer: SavedComputer) async throws -> (URLSession, URL) {
-        guard let origin = URL(string: computer.id), let pairing = URL(string: computer.url) else {
+        guard let origin = URL(string: computer.origin), let pairing = URL(string: computer.connectionURL) else {
             throw RemoteError.unavailable
         }
         let configuration = URLSessionConfiguration.default
@@ -650,7 +664,7 @@ struct RemoteHomeView: View {
                                 .frame(maxWidth: .infinity).padding(.top, 55)
                         } else if let error = sessions.error, sessions.items.isEmpty {
                             emptyState(error, symbol: "wifi.exclamationmark")
-                            Button("重试") { Task { await sessions.load(computer: computer) } }
+                            Button("重试") { Task { await loadSessions() } }
                                 .frame(maxWidth: .infinity)
                         } else if visibleSessions.isEmpty {
                             emptyState(search.isEmpty ? "暂无对话" : "没有匹配的对话",
@@ -660,7 +674,7 @@ struct RemoteHomeView: View {
                             HStack {
                                 Text(error).font(.caption).foregroundStyle(.orange)
                                 Spacer()
-                                Button("重试") { Task { await sessions.load(computer: computer) } }
+                                Button("重试") { Task { await loadSessions() } }
                             }
                         }
                         if !pinned.isEmpty {
@@ -701,7 +715,7 @@ struct RemoteHomeView: View {
                     }
                     .padding(.horizontal, 21).padding(.bottom, 25)
                 }
-                .refreshable { await sessions.load(computer: computer) }
+                .refreshable { await loadSessions() }
                 homeComposer
             }
             .background(Color(uiColor: .systemBackground))
@@ -720,25 +734,30 @@ struct RemoteHomeView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .task(id: computer.url) {
-                await sessions.load(computer: computer)
+            .task(id: computer.connectionURL) {
+                if computer.usingFallback {
+                    _ = await connection.restorePreferredRouteIfReachable(computer)
+                }
+                await loadSessions()
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(15))
                     if Task.isCancelled { break }
-                    await sessions.load(computer: computer, quietly: true)
+                    if computer.usingFallback,
+                       await connection.restorePreferredRouteIfReachable(computer) != nil { continue }
+                    await loadSessions(quietly: true)
                 }
             }
             .sheet(isPresented: $showingComputers) { computerSheet }
             .sheet(isPresented: $showingSettings) { settingsSheet }
             .sheet(isPresented: $showingConnect) { ConnectView(connection: connection) }
             .sheet(isPresented: $showingFullWorkspace) {
-                if let url = URL(string: computer.url) {
+                if let url = URL(string: computer.connectionURL) {
                     DshWebView(url: url, onUnauthorized: connection.expireActive)
                 }
             }
             .navigationDestination(isPresented: $showingWorkspace) {
                 if let selected = selectedSession {
-                    RemoteChatView(computer: computer, sessionId: selected.sessionId,
+                    RemoteChatView(connection: connection, computer: computer, sessionId: selected.sessionId,
                                    title: selected.title, project: selected.project,
                                    onUnauthorized: connection.expireActive)
                 }
@@ -747,7 +766,7 @@ struct RemoteHomeView: View {
                 RemoteNewConversationView(connection: connection, computer: computer, sessions: sessions)
             }
             .onChange(of: showingNewConversation) { visible in
-                if !visible { Task { await sessions.load(computer: computer) } }
+                if !visible { Task { await loadSessions() } }
             }
         }
     }
@@ -1037,7 +1056,7 @@ struct RemoteHomeView: View {
                             }
                             Spacer()
                             if sessions.loading { ProgressView().tint(.white) }
-                            Button("检查") { Task { await sessions.load(computer: computer) } }
+                            Button("检查") { Task { await loadSessions() } }
                                 .disabled(sessions.loading)
                         }
                         .padding(16)
@@ -1106,6 +1125,15 @@ private struct RemoteNewConversationView: View {
     @State private var createdSession: RemoteSession?
     @State private var showingCreatedSession = false
     @State private var submitting = false
+
+    /// Loads the session list, switching to the fallback route when the preferred route is unreachable.
+    /// - Parameter quietly: suppress the loading indicator for background refreshes.
+    private func loadSessions(quietly: Bool = false) async {
+        if await sessions.load(computer: computer, quietly: quietly) { return }
+        guard sessions.transportUnreachable,
+              let updated = connection.switchToFallback(computer) else { return }
+        _ = await sessions.load(computer: updated, quietly: quietly)
+    }
 
     private var availableWorkspaces: [RemoteWorkspace] {
         if !sessions.workspaces.isEmpty { return sessions.workspaces }
@@ -1184,13 +1212,13 @@ private struct RemoteNewConversationView: View {
             }
         }
         .sheet(isPresented: $showingFullWorkspace) {
-            if let url = URL(string: computer.url) {
+            if let url = URL(string: computer.connectionURL) {
                 DshWebView(url: url, onUnauthorized: connection.expireActive)
             }
         }
         .navigationDestination(isPresented: $showingCreatedSession) {
             if let createdSession {
-                RemoteChatView(computer: computer, sessionId: createdSession.sessionId,
+                RemoteChatView(connection: connection, computer: computer, sessionId: createdSession.sessionId,
                                title: createdSession.title, project: createdSession.project,
                                onUnauthorized: connection.expireActive)
             }
@@ -1361,7 +1389,7 @@ private struct RemoteNewConversationView: View {
                         let stored = MobileModelPreference.readEffort(computerID: computer.id)
                         let effort = model.efforts.first(where: { $0.id == stored })?.id ?? model.defaultEffort
                         MobileModelPreference.save(model.id, effort: effort, computerID: computer.id)
-                        Task { await sessions.load(computer: computer) }
+                        Task { await loadSessions() }
                     } label: {
                         if currentModel?.id == model.id {
                             Label(composerModelLabel(model), systemImage: "checkmark")
