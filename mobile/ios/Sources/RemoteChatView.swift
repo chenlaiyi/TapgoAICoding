@@ -3135,15 +3135,11 @@ private struct TurnProcessView: View {
         return failed == 0 ? summary : "\(summary)，\(failed) 项失败"
     }
 
-    /// The newest work, so a running turn without reply text still says what it is doing.
+    /// The newest tool work; internal reasoning never leaks into the status line.
     private var liveLine: String? {
         guard endedAt == nil else { return nil }
-        if let activity = activities.last(where: { !$0.finished }) ?? activities.last {
-            return activity.liveLine
-        }
-        let line = liveReasoning.split(whereSeparator: \.isNewline).last.map(String.init) ?? liveReasoning
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? nil : trimmed
+        guard let activity = activities.last(where: { !$0.finished }) ?? activities.last else { return nil }
+        return activity.liveLine
     }
 
     private func activityAge(now: Date) -> String? {
