@@ -1752,6 +1752,11 @@ struct RemoteChatView: View {
     @State private var confirmingGoalClear = false
     @FocusState private var composerFocused: Bool
     @State private var followingLatest = true
+    /// Transcript row currently at the top of the reading viewport.
+    @State private var topVisibleID: String?
+    /// Row to restore the next time this conversation finishes loading.
+    @State private var savedAnchorID: String?
+    @State private var restoredReadingPosition = false
     @State private var bottomVisible = true
     @State private var bottomPosition = CGFloat.infinity
     @State private var readingComposer = false
@@ -1809,6 +1814,12 @@ struct RemoteChatView: View {
                                 ForEach(chat.displayLines, id: \.presentationID) { line in
                                     chatRow(line)
                                         .id(line.presentationID)
+                                        .background {
+                                            GeometryReader { row in
+                                                Color.clear.preference(key: TranscriptRowOffsets.self,
+                                                    value: [line.presentationID: row.frame(in: .named("chatTranscript")).minY])
+                                            }
+                                        }
                                 }
                             }
                             if chat.liveActive && chat.liveText.isEmpty && !chat.lines.contains(where: { $0.role == "turn" }) {
@@ -1830,12 +1841,22 @@ struct RemoteChatView: View {
                     .coordinateSpace(name: "chatTranscript")
                     .accessibilityIdentifier("chatTranscript")
                     .scrollDismissesKeyboard(.interactively)
+                    .onPreferenceChange(TranscriptRowOffsets.self) { offsets in
+                        guard !offsets.isEmpty else { return }
+                        let ordered = offsets.sorted { $0.value < $1.value }
+                        // The first row whose top edge is still at or below the viewport's top edge.
+                        topVisibleID = (ordered.first { $0.value >= 0 } ?? ordered.last)?.key
+                    }
                     .onPreferenceChange(ChatBottomPreference.self) { frame in
                         guard !frame.isNull, !frame.isEmpty else { return }
                         let movedTowardBottom = frame.minY < bottomPosition
                         bottomPosition = frame.minY
                         bottomVisible = frame.minY <= viewport.size.height && frame.maxY >= 0
-                        if bottomVisible && movedTowardBottom && !draggingTranscript { followingLatest = true }
+                        if bottomVisible && movedTowardBottom && !draggingTranscript {
+                            followingLatest = true
+                            savedAnchorID = nil
+                            MobileReadingPosition.clear(computerID: computer.id, sessionID: sessionId)
+                        }
                         if followingLatest && !bottomVisible { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
                     .simultaneousGesture(DragGesture().onChanged { gesture in
@@ -1847,28 +1868,42 @@ struct RemoteChatView: View {
                     }.onEnded { gesture in
                         draggingTranscript = false
                         if readingComposer { composerFocused = false }
-                        if gesture.translation.height < 0 && bottomVisible { followingLatest = true }
+                        if gesture.translation.height < 0 && bottomVisible {
+                            followingLatest = true
+                            savedAnchorID = nil
+                            MobileReadingPosition.clear(computerID: computer.id, sessionID: sessionId)
+                        } else if !followingLatest, let topVisibleID {
+                            savedAnchorID = topVisibleID
+                            MobileReadingPosition.save(topVisibleID, computerID: computer.id, sessionID: sessionId)
+                        }
                     })
                     .onChange(of: chat.lines) { _ in
+                        restoreReadingPositionIfNeeded(reader: reader)
                         if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
                     .onChange(of: chat.liveText) { _ in
                         if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
                     .onChange(of: chat.loading) { loading in
-                        if !loading && followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                        guard !loading else { return }
+                        restoreReadingPositionIfNeeded(reader: reader)
+                        if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
                     .onChange(of: viewport.size.height) { _ in
                         if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
                     .onChange(of: scrollRequestCount) { _ in
                         followingLatest = true
+                        savedAnchorID = nil
+                        MobileReadingPosition.clear(computerID: computer.id, sessionID: sessionId)
                         withAnimation { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                     }
                     .overlay(alignment: .bottomTrailing) {
                         if !bottomVisible && !followingLatest && !chat.loading {
                             Button {
                                 followingLatest = true
+                                savedAnchorID = nil
+                                MobileReadingPosition.clear(computerID: computer.id, sessionID: sessionId)
                                 withAnimation { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                             } label: {
                                 Label("回到最新", systemImage: "arrow.down")
@@ -1966,6 +2001,7 @@ struct RemoteChatView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task(id: sessionId) {
             restoreDraft()
+            savedAnchorID = MobileReadingPosition.load(computerID: computer.id, sessionID: sessionId)
             chat.connection = connection
             if #available(iOS 16.1, *) {
                 MobileLiveActivity.registrar = { token, activityId in
@@ -2010,6 +2046,8 @@ struct RemoteChatView: View {
         }
         .onDisappear {
             saveDraftNow()
+            MobileReadingPosition.save(followingLatest ? nil : topVisibleID,
+                                       computerID: computer.id, sessionID: sessionId)
             chat.disconnect()
             if #available(iOS 16.1, *) { MobileLiveActivity.end() }
         }
@@ -2668,6 +2706,26 @@ struct RemoteChatView: View {
         }
     }
 
+    /// Scrolls to the stored reading row once its transcript has loaded.
+    /// - Parameter reader: transcript proxy that owns the row identities.
+    private func restoreReadingPositionIfNeeded(reader: ScrollViewProxy) {
+        guard !restoredReadingPosition, !chat.loading else { return }
+        restoredReadingPosition = true
+        guard let anchor = savedAnchorID else { return }
+        guard chat.displayLines.contains(where: { $0.presentationID == anchor }) else {
+            // The row disappeared with a branch or a rewritten transcript; follow the latest reply.
+            savedAnchorID = nil
+            MobileReadingPosition.clear(computerID: computer.id, sessionID: sessionId)
+            return
+        }
+        followingLatest = false
+        // Let the lazy stack lay the restored rows out before targeting one of them.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            reader.scrollTo(anchor, anchor: .top)
+        }
+    }
+
     private func replyTurn(_ line: ChatLine) -> ChatLine? {
         if let turn = line.turn { return chat.lines.last(where: { $0.role == "turn" && $0.turn == turn }) }
         guard let index = chat.lines.firstIndex(where: { $0.id == line.id }) else { return nil }
@@ -3059,6 +3117,14 @@ private struct ProcessActivityDetail: View {
         } label: { activitySummary }
         .tint(.accentColor)
         .onChange(of: collapseVersion) { _ in expanded = false }
+    }
+}
+
+private struct TranscriptRowOffsets: PreferenceKey {
+    static var defaultValue: [String: CGFloat] = [:]
+
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue()) { _, next in next }
     }
 }
 

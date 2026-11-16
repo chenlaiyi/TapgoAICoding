@@ -68,6 +68,7 @@ targets:
       - path: Sources/MobileNextPrompts.swift
       - path: Sources/MobileComposerSubmission.swift
       - path: Sources/MobileDraftStore.swift
+      - path: Sources/MobileReadingPosition.swift
       - path: Sources/MobileComposerState.swift
       - path: Sources/MobileChatAttachment.swift
       - path: Sources/MobileQueueState.swift
