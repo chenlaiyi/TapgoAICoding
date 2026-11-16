@@ -1188,11 +1188,16 @@ private final class RemoteChat: ObservableObject {
         let streamReasoning = Self.streamText(data["stream"] as? [[String: Any]] ?? [], kind: "reasoning")
         let reasoning = streamReasoning.isEmpty ? content.reasoning : streamReasoning
         guard !text.isEmpty || !reasoning.isEmpty || !content.attachments.isEmpty else { return }
-        if type == "assistant/message", !reasoning.isEmpty,
-           let turn = data["turn"] as? Int, let step = data["step"] as? Int {
-            let index = Self.ensureProcess(turn: turn, step: step, seq: seq, into: &lines)
-            let previous = lines[index].reasoning ?? ""
-            lines[index].reasoning = previous.isEmpty ? reasoning : previous + "\n\n" + reasoning
+        var assistantProcessIndex: Int?
+        if type == "assistant/message", let turn = data["turn"] as? Int, let step = data["step"] as? Int {
+            if !reasoning.isEmpty {
+                let index = Self.ensureProcess(turn: turn, step: step, seq: seq, into: &lines)
+                let previous = lines[index].reasoning ?? ""
+                lines[index].reasoning = previous.isEmpty ? reasoning : previous + "\n\n" + reasoning
+                assistantProcessIndex = index
+            } else {
+                assistantProcessIndex = Self.existingProcess(turn: turn, step: step, into: lines)
+            }
         }
         if type == "assistant/message", text.isEmpty, content.attachments.isEmpty { return }
         var line = ChatLine(id: seq, role: type == "user/message" ? "user" : "assistant",
@@ -1206,10 +1211,7 @@ private final class RemoteChat: ObservableObject {
         if type == "assistant/message" { line.mergedEventIds.insert(seq) }
         if type == "user/message", lines.last?.role == "turn" {
             lines.insert(line, at: lines.count - 1)
-        } else if type == "assistant/message", let turn = data["turn"] as? Int, let step = data["step"] as? Int,
-                  let processIndex = lines.lastIndex(where: {
-                      $0.role == "process" && $0.turn == turn && $0.step == step
-                  }) {
+        } else if type == "assistant/message", let processIndex = assistantProcessIndex {
             lines.insert(line, at: min(processIndex + 1, lines.count))
         } else if let insertAfter {
             let index = MobileTranscriptOrder.insertionIndex(ids: lines.map(\.id), after: insertAfter)
@@ -1217,6 +1219,24 @@ private final class RemoteChat: ObservableObject {
         } else {
             lines.append(line)
         }
+    }
+
+    /// Finds the process row a step's reply should follow, including a merged adjacent row.
+    /// - Parameters:
+    ///   - turn: durable turn number.
+    ///   - step: step number inside the turn.
+    ///   - lines: projected transcript.
+    /// - Returns: the row index, or nil when no process row belongs to this step.
+    private static func existingProcess(turn: Int, step: Int, into lines: [ChatLine]) -> Int? {
+        if let index = lines.lastIndex(where: {
+            $0.role == "process" && $0.turn == turn && $0.step == step
+        }) { return index }
+        if let last = lines.indices.last,
+           MobileTranscriptOrder.canMergeProcess(lastRole: lines[last].role,
+                                                lastTurn: lines[last].turn, turn: turn) {
+            return last
+        }
+        return nil
     }
 
     /// Finds or appends the process row for one step.
@@ -1231,6 +1251,12 @@ private final class RemoteChat: ObservableObject {
         if let index = lines.lastIndex(where: {
             $0.role == "process" && $0.turn == turn && $0.step == step
         }) { return index }
+        // Consecutive tool steps with no reply text between them share one process row.
+        if let last = lines.indices.last,
+           MobileTranscriptOrder.canMergeProcess(lastRole: lines[last].role,
+                                                lastTurn: lines[last].turn, turn: turn) {
+            return last
+        }
         var line = ChatLine(id: seq, role: "process", text: "", reasoning: nil)
         line.turn = turn
         line.step = step

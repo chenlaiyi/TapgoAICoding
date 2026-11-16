@@ -2,6 +2,16 @@ import Foundation
 
 /// Places transcript rows by the event sequence that existed when their content started.
 enum MobileTranscriptOrder {
+    /// Whether a new step process row may extend the preceding one.
+    /// - Parameters:
+    ///   - lastRole: role of the last transcript row.
+    ///   - lastTurn: turn of that row, when it has one.
+    ///   - turn: turn of the step being appended.
+    /// - Returns: true when no reply text separates the two steps.
+    static func canMergeProcess(lastRole: String?, lastTurn: Int?, turn: Int) -> Bool {
+        lastRole == "process" && lastTurn == turn
+    }
+
     /// Placement of the live reply text: above its step process row until the step settles.
     /// - Parameters:
     ///   - processIndex: the running step's process row, when one exists.
