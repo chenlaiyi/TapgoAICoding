@@ -17,6 +17,8 @@ import { installDesktopUpdateTaskControl } from './update-tasks.ts'
 import { installDesktopQuitInspection } from './quit-inspection.ts'
 import { installPlatformSessionPublisher } from './platform-session.ts'
 import { resolveMobileOrigin } from './mobile-origin.ts'
+import { resolveLanAccess } from './lan-access.ts'
+import { startLanProxy, type LanProxy } from './lan-proxy.ts'
 import { relayDeviceId, remoteRelayOrigin, resolveRemoteRelay, startRemoteRelay } from './remote-relay.ts'
 import { installOperationDiagnostics } from './operation-diagnostics.ts'
 
@@ -36,12 +38,17 @@ async function main(): Promise<void> {
   const mobile = resolveMobileOrigin(relay === undefined
     ? process.env.TAPGO_MOBILE_HTTPS_ORIGIN
     : remoteRelayOrigin(relay, relayId ?? relayDeviceId(relay.stateDirectory)))
+  const lan = resolveLanAccess(process.env)
+  const mobileAccess = mobile !== undefined || lan !== undefined
+  const trustedHosts = [...new Set([mobile?.authority, lan?.authority]
+    .filter((authority): authority is string => authority !== undefined))]
   const application = runProfile({
     environment,
     profile: 'desktop',
     resolvedProfile: { profile, installAnchor },
-    patchFiles: mobile === undefined ? [] : [fileURLToPath(new URL('../mobile-picker.overlay.yml', import.meta.url))],
-    args: ['--no-open', '--host', '127.0.0.1', '--port', mobile !== undefined && relay === undefined ? '19388' : '0', ...(mobile === undefined ? [] : ['--trusted-host', mobile.authority])],
+    patchFiles: mobileAccess ? [fileURLToPath(new URL('../mobile-picker.overlay.yml', import.meta.url))] : [],
+    args: ['--no-open', '--host', '127.0.0.1', '--port', mobile !== undefined && relay === undefined ? '19388' : '0',
+      ...trustedHosts.flatMap(authority => ['--trusted-host', authority])],
     ...(process.argv[5] === undefined ? {} : {
       packageManager: {
         command: process.execPath,
@@ -56,6 +63,7 @@ async function main(): Promise<void> {
   })
   let stopping: Promise<void> | undefined
   let closeRelay: (() => Promise<void>) | undefined
+  let lanEntry: LanProxy | undefined
   const dragReads = new Map<number, AbortController>()
   const dragTasks = new Set<Promise<void>>()
   const control: {
@@ -71,6 +79,7 @@ async function main(): Promise<void> {
     await Promise.allSettled(dragTasks)
     // Startup failure is reported by main; shutdown only owns a tree that booted.
     await closeRelay?.()
+    await lanEntry?.close().catch(() => undefined)
     const running = await application.catch(() => undefined)
     await running?.shutdown.shutdown(0)
     await send({ type: 'shutdown-complete' })
@@ -128,10 +137,13 @@ async function main(): Promise<void> {
         || !('action' in message) || !['create', 'list', 'revoke'].includes(String(message.action))) return
       void (async () => {
         try {
-          if (stopping !== undefined || mobile === undefined) throw new Error('mobile pairing is unavailable')
+          if (stopping !== undefined || (mobile === undefined && lan === undefined)) throw new Error('mobile pairing is unavailable')
           if (message.action === 'create') {
             if (!('name' in message) || typeof message.name !== 'string' || ctx.connection.createMobilePairing === undefined) return
-            const created = await ctx.connection.createMobilePairing(mobile.origin, message.name)
+            const primaryOrigin = lanEntry === undefined ? mobile?.origin : lan?.origin
+            if (primaryOrigin === undefined) throw new Error('mobile pairing is unavailable')
+            const created = await ctx.connection.createMobilePairing(primaryOrigin, message.name,
+              fallback === undefined ? undefined : fallback.origin)
             await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'create', ...created })
           } else if (message.action === 'list') {
             await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'list',
@@ -166,6 +178,15 @@ async function main(): Promise<void> {
   const port = ctx.webServer.port
   if (port === undefined) throw new Error('desktop Host listener has no bound TCP port')
   if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId, port)
+  if (lan !== undefined) {
+    try {
+      lanEntry = await startLanProxy({ address: lan.address, port: lan.port, targetPort: port, authority: lan.authority })
+    } catch (error) {
+      console.error('desktop Host: LAN entry unavailable, falling back to the relay', error)
+    }
+  }
+  const primary = lanEntry === undefined ? mobile : lan
+  const fallback = lanEntry !== undefined && mobile !== undefined && mobile.origin !== lan?.origin ? mobile : undefined
   installOperationDiagnostics(ctx, record => send({ type: 'plugin-operation', record }), 32, runId)
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   control.quitInspection = installDesktopQuitInspection(ctx)
@@ -173,8 +194,11 @@ async function main(): Promise<void> {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })
   const url = ctx.connection.authenticatedUrl(`${ctx.webServer.protocol}//127.0.0.1:${String(port)}`)
-  const mobileUrl = mobile === undefined ? undefined : ctx.connection.authenticatedUrl(mobile.origin)
-  if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, mobileOrigin: mobile?.origin,
+  const mobileUrl = primary === undefined ? undefined : ctx.connection.authenticatedUrl(primary.origin)
+  const mobileFallbackUrl = fallback === undefined ? undefined : ctx.connection.authenticatedUrl(fallback.origin)
+  if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, mobileOrigin: primary?.origin,
+    ...(mobileFallbackUrl === undefined ? {} : { mobileFallbackUrl }),
+    ...(fallback === undefined ? {} : { mobileFallbackOrigin: fallback.origin }),
     injections: ctx.webServer.collectIndexInjections(ctx.connection.browserPeer) }, (error) => { if (error !== null) console.error(error) })
 }
 

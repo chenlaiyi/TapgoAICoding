@@ -200,8 +200,16 @@ export class HostConnectionService extends Service implements HostConnectionHand
   }
 
   /** Issue one independently revocable mobile pairing URL. */
-  createMobilePairing(baseUrl: string, name: string): Promise<{ url: string; pairing: MobilePairing }> {
-    return this.browserAuth.createMobilePairing(baseUrl, name)
+  /**
+   * Issue one mobile pairing URL for a phone.
+   * @param baseUrl - Primary origin the phone dials.
+   * @param name - Phone label shown in the pairing list.
+   * @param alternateBaseUrl - Optional fallback origin the same token also authenticates.
+   * @returns the primary link, optional fallback link, and pairing metadata.
+   */
+  createMobilePairing(baseUrl: string, name: string, alternateBaseUrl?: string):
+  Promise<{ url: string; fallbackUrl?: string; pairing: MobilePairing }> {
+    return this.browserAuth.createMobilePairing(baseUrl, name, alternateBaseUrl)
   }
 
   /** List active mobile pairing metadata. */

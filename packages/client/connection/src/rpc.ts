@@ -272,14 +272,16 @@ export interface HostConnectionHandle {
    */
   authenticatedUrl(baseUrl: string): string
 
-  /** Create one durable mobile pairing URL for an HTTPS Host origin.
-   * @param baseUrl - Clean HTTPS origin for this Mac.
+  /** Create one durable mobile pairing URL for a Host origin.
+   * @param baseUrl - Clean HTTPS origin, or a local-network HTTP origin for direct LAN access.
    * @param name - Local label for the pairing link.
-   * @returns Authenticated URL and revocable pairing metadata.
+   * @param alternateBaseUrl - Optional fallback origin the same token also authenticates.
+   * @returns Authenticated URLs and revocable pairing metadata.
    */
-  createMobilePairing?(baseUrl: string, name: string): Promise<{
+  createMobilePairing?(baseUrl: string, name: string, alternateBaseUrl?: string): Promise<{
     url: string
-    pairing: { id: string; name: string; authority: string; createdAt: number }
+    fallbackUrl?: string
+    pairing: { id: string; name: string; authority: string; authorities?: readonly string[]; createdAt: number }
   }>
 
   /** List active pairing identities without their bearer tokens.

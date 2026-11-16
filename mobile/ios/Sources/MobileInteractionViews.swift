@@ -92,7 +92,7 @@ final class MobileInteractionCenter: ObservableObject {
             }
             guard current == generation,
                   var components = URLComponents(url: origin, resolvingAgainstBaseURL: false) else { return }
-            components.scheme = "wss"
+            components.scheme = MobileConnectionAddress.webSocketScheme(for: origin)
             components.path = "/api/remote.mux"
             guard let url = components.url else { return }
             var request = URLRequest(url: url)

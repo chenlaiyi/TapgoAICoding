@@ -356,7 +356,7 @@ private final class RemoteChat: ObservableObject {
             guard var components = URLComponents(url: origin, resolvingAgainstBaseURL: false) else {
                 throw ChatFailure.unavailable
             }
-            components.scheme = "wss"
+            components.scheme = MobileConnectionAddress.webSocketScheme(for: origin)
             components.path = "/api/remote.mux"
             guard let socketURL = components.url else { throw ChatFailure.unavailable }
             var request = URLRequest(url: socketURL)

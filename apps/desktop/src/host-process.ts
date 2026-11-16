@@ -12,7 +12,36 @@ interface ReadyEvent {
   readonly url: string
   readonly mobileUrl?: string
   readonly mobileOrigin?: string
+  readonly mobileFallbackUrl?: string
+  readonly mobileFallbackOrigin?: string
   readonly injections?: readonly unknown[] | undefined
+}
+
+const PRIVATE_IPV4 = /^(?:10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)/u
+
+/** Whether a hostname is reachable without the public internet. */
+function isLocalNetworkHost(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  return host === 'localhost' || host === '[::1]' || host.endsWith('.local') || PRIVATE_IPV4.test(host)
+}
+
+/** Whether a reported mobile origin is one the phone may dial. */
+function isMobileOrigin(value: string): boolean {
+  try {
+    const url = new URL(value)
+    if (url.pathname !== '/' || url.username !== '' || url.password !== '' || url.search !== '' || url.hash !== '') return false
+    return url.protocol === 'https:' || (url.protocol === 'http:' && isLocalNetworkHost(url.hostname))
+  } catch { return false }
+}
+
+/** Whether a reported tokenized URL is one the phone may dial. */
+function isMobileUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    if (url.pathname !== '/' || url.username !== '' || url.password !== ''
+      || url.searchParams.getAll('token').length !== 1) return false
+    return url.protocol === 'https:' || (url.protocol === 'http:' && isLocalNetworkHost(url.hostname))
+  } catch { return false }
 }
 
 /** Public metadata for a phone's revocable pairing credential. */
@@ -20,6 +49,8 @@ export interface DesktopMobilePairing {
   readonly id: string
   readonly name: string
   readonly authority: string
+  /** Every authority the one token authenticates; absent for a single-origin pairing. */
+  readonly authorities?: readonly string[]
   readonly createdAt: number
 }
 
@@ -28,6 +59,7 @@ interface MobilePairingEvent {
   readonly requestId: number
   readonly action: 'create' | 'list' | 'revoke'
   readonly url?: string
+  readonly fallbackUrl?: string
   readonly pairing?: DesktopMobilePairing
   readonly pairings?: readonly DesktopMobilePairing[]
   readonly error?: string
@@ -99,20 +131,13 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
       return true
     case 'ready':
       if (typeof candidate.url !== 'string') return false
-      if (candidate.mobileOrigin !== undefined) {
-        if (typeof candidate.mobileOrigin !== 'string') return false
-        try {
-          const origin = new URL(candidate.mobileOrigin)
-          if (origin.protocol !== 'https:' || origin.href !== `${origin.origin}/`) return false
-        } catch { return false }
+      for (const value of [candidate.mobileOrigin, candidate.mobileFallbackOrigin]) {
+        if (value !== undefined && (typeof value !== 'string' || !isMobileOrigin(value))) return false
       }
-      if (candidate.mobileUrl === undefined) return true
-      if (typeof candidate.mobileUrl !== 'string') return false
-      try {
-        const mobile = new URL(candidate.mobileUrl)
-        return mobile.protocol === 'https:' && mobile.pathname === '/' && mobile.username === ''
-          && mobile.password === '' && mobile.searchParams.getAll('token').length === 1
-      } catch { return false }
+      for (const value of [candidate.mobileUrl, candidate.mobileFallbackUrl]) {
+        if (value !== undefined && (typeof value !== 'string' || !isMobileUrl(value))) return false
+      }
+      return true
     case 'platform-session': {
       const session = candidate.session
       if (session === null) return true
@@ -141,9 +166,12 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
       if (candidate.error !== undefined) return true
       if (candidate.action === 'create') {
         if (!isMobilePairing(candidate.pairing) || typeof candidate.url !== 'string') return false
+        if (candidate.fallbackUrl !== undefined
+          && (typeof candidate.fallbackUrl !== 'string' || !isMobileUrl(candidate.fallbackUrl))) return false
         try {
           const url = new URL(candidate.url)
-          return url.protocol === 'https:' && url.pathname === '/' && url.host === candidate.pairing.authority
+          return (url.protocol === 'https:' || (url.protocol === 'http:' && isLocalNetworkHost(url.hostname)))
+            && url.pathname === '/' && url.host === candidate.pairing.authority
             && url.searchParams.getAll('token').length === 1
         } catch { return false }
       }
@@ -186,6 +214,8 @@ export interface DesktopHostReady {
   readonly url: string
   readonly mobileUrl?: string | undefined
   readonly mobileOrigin?: string | undefined
+  readonly mobileFallbackUrl?: string | undefined
+  readonly mobileFallbackOrigin?: string | undefined
   readonly injections?: readonly unknown[] | undefined
 }
 
@@ -308,7 +338,8 @@ export class DesktopHostProcess {
       }
       if (message.type === 'starting') this.runId = message.runId
       else if (message.type === 'ready') this.readyResolve({ url: message.url, mobileUrl: message.mobileUrl,
-        mobileOrigin: message.mobileOrigin, injections: message.injections })
+        mobileOrigin: message.mobileOrigin, mobileFallbackUrl: message.mobileFallbackUrl,
+        mobileFallbackOrigin: message.mobileFallbackOrigin, injections: message.injections })
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
       else if (message.type === 'shutdown-complete') {
         if (this.stopping) this.shutdownCompleted = true
@@ -357,11 +388,16 @@ export class DesktopHostProcess {
   }
 
   /** Create one independently revocable phone link. */
-  async createMobilePairing(name: string): Promise<{ url: string; pairing: DesktopMobilePairing }> {
+  async createMobilePairing(name: string):
+  Promise<{ url: string; fallbackUrl?: string; pairing: DesktopMobilePairing }> {
     const response = await this.control({ type: 'mobile-pairing', action: 'create', name }, 10_000, 'mobile pairing timed out', 'mobile pairing')
     if (response.type !== 'mobile-pairing' || response.action !== 'create'
       || response.url === undefined || response.pairing === undefined) throw new Error('invalid mobile pairing response')
-    return { url: response.url, pairing: response.pairing }
+    return {
+      url: response.url,
+      ...(response.fallbackUrl === undefined ? {} : { fallbackUrl: response.fallbackUrl }),
+      pairing: response.pairing,
+    }
   }
 
   /** Read active phone pairing metadata. */

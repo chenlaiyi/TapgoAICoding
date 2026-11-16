@@ -53,8 +53,16 @@ function transportFailure(error: unknown): MobileConnectionState {
   return 'relay'
 }
 
-/** Probe public routing, token exchange, and authenticated WebSocket upgrade.
- * @param pairingUrl - Host-issued HTTPS pairing URL, kept only in memory.
+const PRIVATE_IPV4 = /^(?:10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)/u
+
+/** Whether a hostname is reachable without the public internet. */
+function isLocalNetworkHost(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  return host === 'localhost' || host === '[::1]' || host.endsWith('.local') || PRIVATE_IPV4.test(host)
+}
+
+/** Probe routing, token exchange, and authenticated WebSocket upgrade.
+ * @param pairingUrl - Host-issued pairing URL (HTTPS or local-network HTTP), kept only in memory.
  * @param send - exchange transport for isolated tests.
  * @param connect - WebSocket transport for isolated tests.
  * @returns the first failed stage, or connected after all three stages succeed.
@@ -65,7 +73,9 @@ export async function probeMobileConnection(
   connect: Upgrade = upgrade,
 ): Promise<MobileConnectionDiagnostic> {
   const origin = new URL(pairingUrl)
-  if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.searchParams.getAll('token').length !== 1) {
+  const localHttp = origin.protocol === 'http:' && isLocalNetworkHost(origin.hostname)
+  if (!(origin.protocol === 'https:' || localHttp) || origin.pathname !== '/'
+    || origin.searchParams.getAll('token').length !== 1) {
     throw new Error('Invalid mobile pairing URL')
   }
   const checkedAt = Date.now()
@@ -81,7 +91,7 @@ export async function probeMobileConnection(
     const cookie = response.cookie.split(';', 1)[0]
     if (cookie === undefined || cookie.length === 0) return { state: 'authentication', checkedAt }
     const socketUrl = new URL(origin)
-    socketUrl.protocol = 'wss:'
+    socketUrl.protocol = origin.protocol === 'https:' ? 'wss:' : 'ws:'
     socketUrl.pathname = '/api/remote.mux'
     socketUrl.search = ''
     try { await connect(socketUrl.href, cookie, controller.signal) }

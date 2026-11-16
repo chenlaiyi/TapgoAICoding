@@ -248,10 +248,8 @@ final class MobileConnection: ObservableObject {
         } else {
             destination = candidate
         }
-        guard destination.scheme == "https", let host = destination.host,
-              destination.user == nil, destination.password == nil,
-              destination.path.isEmpty || destination.path == "/" else {
-            error = "请输入 HTTPS DSH 连接链接"
+        guard MobileConnectionAddress.isSupported(destination), let host = destination.host else {
+            error = "请输入 HTTPS 或局域网 HTTP 的 DSH 连接链接"
             return
         }
         guard URLComponents(url: destination, resolvingAgainstBaseURL: false)?
@@ -259,7 +257,10 @@ final class MobileConnection: ObservableObject {
             error = "连接链接缺少认证令牌"
             return
         }
-        let id = "https://\(host)\(destination.port.map { ":\($0)" } ?? "")"
+        guard let id = MobileConnectionAddress.identity(for: destination) else {
+            error = "请输入 HTTPS 或局域网 HTTP 的 DSH 连接链接"
+            return
+        }
         let previous = computers.first(where: { $0.id == id })
         let transmittedName = URLComponents(url: destination, resolvingAgainstBaseURL: false)?
             .queryItems?.first(where: { $0.name == "name" })?.value?
@@ -399,7 +400,7 @@ struct ConnectView: View {
                 Section("连接 Mac") {
                     Text("从电脑扫码或粘贴连接链接，电脑名称会自动识别。连接后可在手机上改名。")
                     Button("扫描二维码") { scanning = true }
-                    TextField("https://…?token=…", text: $text)
+                    TextField("https://… 或 http://192.168.x.x:19389/?token=…", text: $text)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)

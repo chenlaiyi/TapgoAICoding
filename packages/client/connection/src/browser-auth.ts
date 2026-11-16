@@ -2,6 +2,7 @@
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { PeerId } from '@deepseek-ai/dsh-typert-protocol'
+import { isLocalNetworkHostname } from './local-network-host.ts'
 import { CONNECT_PATH, type ConnectionInteractions } from './connect-protocol.ts'
 import { credentialKey } from '@deepseek-ai/dsh-credentials'
 import type { CredentialProvider, CredentialRecord } from '@deepseek-ai/dsh-credentials'
@@ -38,7 +39,10 @@ interface BrowserCookiePayload {
 interface MobilePairingRecord {
   readonly id: string
   readonly name: string
+  /** Primary authority, retained so builds without multi-origin pairing can still read the record. */
   readonly authority: string
+  /** Every authority this one token authenticates; absent on legacy single-origin records. */
+  readonly authorities?: readonly string[]
   readonly tokenHash: string
   readonly createdAt: number
 }
@@ -50,6 +54,29 @@ interface StoredMobilePairings {
 
 /** Public metadata for one independently revocable mobile pairing. */
 export type MobilePairing = Omit<MobilePairingRecord, 'tokenHash'>
+
+/** Every authority one pairing token authenticates. */
+function pairingAuthorities(entry: MobilePairingRecord): readonly string[] {
+  return entry.authorities ?? [entry.authority]
+}
+
+/** Parse one mobile origin: HTTPS anywhere, HTTP only for a local-network address.
+ * @param value - Origin text supplied for a phone link.
+ * @param label - Which argument this value came from, for the error message.
+ * @returns the parsed origin.
+ */
+function parseMobileOrigin(value: string, label: string): URL {
+  const message = `client-connection: ${label} must be a clean HTTPS or local-network HTTP origin`
+  let url: URL
+  try { url = new URL(value) } catch { throw new Error(message) }
+  if (url.username !== '' || url.password !== '' || url.pathname !== '/' || url.search !== '' || url.hash !== '') {
+    throw new Error(message)
+  }
+  const secure = url.protocol === 'https:'
+  const localHttp = url.protocol === 'http:' && isLocalNetworkHostname(url.hostname)
+  if (!secure && !localHttp) throw new Error(message)
+  return url
+}
 
 interface ApiCookiePayload extends Omit<BrowserCookiePayload, 'version'> {
   readonly version: 2
@@ -210,6 +237,11 @@ function mobilePairings(record: CredentialRecord | undefined): readonly MobilePa
       || !/^[A-Za-z0-9_-]{22}$/u.test(item.id)
       || typeof item.name !== 'string' || item.name.length === 0 || item.name.length > 80
       || typeof item.authority !== 'string' || !/^[a-z0-9.-]+(?::[0-9]+)?$/u.test(item.authority)
+      || (item.authorities !== undefined && (!Array.isArray(item.authorities)
+        || item.authorities.length === 0 || item.authorities.length > 2
+        || !item.authorities.includes(item.authority)
+        || item.authorities.some((authority: unknown) => typeof authority !== 'string'
+          || !/^[a-z0-9.-]+(?::[0-9]+)?$/u.test(authority))))
       || typeof item.tokenHash !== 'string' || !/^[a-f0-9]{64}$/u.test(item.tokenHash)
       || !Number.isSafeInteger(item.createdAt))) {
     throw new Error('client-connection: mobile-pairings credential record has an unsupported format')
@@ -281,21 +313,23 @@ export class BrowserAuth {
   }
 
   /** Create one durable, separately revocable public pairing link.
-   * @param baseUrl - HTTPS origin assigned to this Host.
+   * @param baseUrl - Primary origin the phone should dial: HTTPS, or local-network HTTP.
    * @param name - Name shown in the Mac connection list.
-   * @returns one-time visible link and public pairing metadata.
+   * @param alternateBaseUrl - Optional fallback origin the same token also authenticates.
+   * @returns one-time visible link, optional fallback link, and public pairing metadata.
    */
-  async createMobilePairing(baseUrl: string, name: string): Promise<{ url: string; pairing: MobilePairing }> {
-    const url = new URL(baseUrl)
-    if (url.protocol !== 'https:' || url.pathname !== '/' || url.search !== '' || url.hash !== '') {
-      throw new Error('client-connection: mobile pairing requires a clean HTTPS origin')
-    }
+  async createMobilePairing(baseUrl: string, name: string, alternateBaseUrl?: string):
+  Promise<{ url: string; fallbackUrl?: string; pairing: MobilePairing }> {
+    const url = parseMobileOrigin(baseUrl, 'mobile pairing origin')
+    const fallback = alternateBaseUrl === undefined ? undefined : parseMobileOrigin(alternateBaseUrl, 'mobile fallback origin')
+    const authorities = [...new Set([url.host, ...fallback === undefined ? [] : [fallback.host]])]
     const label = name.trim()
     if (label.length === 0 || label.length > 80) throw new Error('client-connection: invalid mobile pairing name')
     if (this.pairings.size >= 100) throw new Error('client-connection: mobile pairing limit reached; revoke an unused link')
     const token = encodeBase64Url(randomBytes(SECRET_BYTES))
     const entry: MobilePairingRecord = {
       id: encodeBase64Url(randomBytes(16)), name: label, authority: url.host,
+      ...authorities.length === 1 ? {} : { authorities },
       tokenHash: createHash('sha256').update(token).digest('hex'), createdAt: Date.now(),
     }
     const record = await this.credentials.modifyRecord(MOBILE_RECORD_KEY, current =>
@@ -306,14 +340,22 @@ export class BrowserAuth {
     this.pairings.clear()
     for (const stored of committed) this.pairings.set(stored.id, stored)
     url.searchParams.set(TOKEN_QUERY, token)
-    return { url: url.href, pairing: { id: entry.id, name: entry.name, authority: entry.authority, createdAt: entry.createdAt } }
+    if (fallback !== undefined) fallback.searchParams.set(TOKEN_QUERY, token)
+    return {
+      url: url.href,
+      ...(fallback === undefined ? {} : { fallbackUrl: fallback.href }),
+      pairing: { id: entry.id, name: entry.name, authority: entry.authority,
+        ...(entry.authorities === undefined ? {} : { authorities: entry.authorities }), createdAt: entry.createdAt },
+    }
   }
 
   /** List active mobile pairings without exposing bearer tokens.
    * @returns Public pairing metadata.
    */
   listMobilePairings(): readonly MobilePairing[] {
-    return [...this.pairings.values()].map(({ id, name, authority, createdAt }) => ({ id, name, authority, createdAt }))
+    return [...this.pairings.values()].map(({ id, name, authority, authorities, createdAt }) => ({
+      id, name, authority, ...(authorities === undefined ? {} : { authorities }), createdAt,
+    }))
   }
 
   /** Revoke one pairing's token and every cookie issued from it.
@@ -362,7 +404,9 @@ export class BrowserAuth {
     if (tokens.length > 0) {
       const authority = requestAudience(req.headers, secure)
       const token = tokens.join('')
-      const pairing = [...this.pairings.values()].find(entry => entry.authority === requestAudience(req.headers, false)
+      const audience = requestAudience(req.headers, false)
+      const pairing = [...this.pairings.values()].find(entry => audience !== undefined
+        && pairingAuthorities(entry).includes(audience)
         && tokenMatches(entry.tokenHash, createHash('sha256').update(token).digest('hex')))
       if (req.method === 'GET' && url.pathname === '/' && tokens.length === 1
         && authority !== undefined && (tokenMatches(token, this.launchToken) || pairing !== undefined)) {
@@ -475,8 +519,11 @@ export class BrowserAuth {
     if (value === undefined) return undefined
     const payload = decodeCookie(value, this.secret)
     if (payload === undefined || payload.authority !== authority) return undefined
-    if (payload.version === COOKIE_PAYLOAD_VERSION && payload.pairingId !== undefined
-      && this.pairings.get(payload.pairingId)?.authority !== requestAudience(request.headers, false)) return undefined
+    if (payload.version === COOKIE_PAYLOAD_VERSION && payload.pairingId !== undefined) {
+      const pairing = this.pairings.get(payload.pairingId)
+      const audience = requestAudience(request.headers, false)
+      if (pairing === undefined || audience === undefined || !pairingAuthorities(pairing).includes(audience)) return undefined
+    }
     const now = Date.now()
     if (payload.issuedAt > now || payload.expiresAt <= now || payload.expiresAt <= payload.issuedAt
       || payload.expiresAt - payload.issuedAt > this.maxAgeMilliseconds) return undefined

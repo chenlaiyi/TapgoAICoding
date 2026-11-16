@@ -515,6 +515,7 @@ async function main(): Promise<void> {
   let hostUrl: string | undefined
   let mobileUrl: string | undefined
   let mobileOrigin: string | undefined
+  let mobileFallbackUrl: string | undefined
   let mobileHost: DesktopHostProcess | undefined
   let hostCookie: string | undefined
   const browserGuests = new DesktopBrowserGuests(() => hostUrl)
@@ -578,6 +579,7 @@ async function main(): Promise<void> {
         hostUrl = ready.url
         mobileUrl = ready.mobileUrl
         mobileOrigin = ready.mobileOrigin
+        mobileFallbackUrl = ready.mobileFallbackUrl
         mobileHost = host
         refreshApplicationMenu()
         void removeLegacyHostCookies(session.defaultSession.cookies, ready.url)
@@ -644,6 +646,7 @@ async function main(): Promise<void> {
     if (state.phase !== 'ready' && (mobileUrl !== undefined || mobileOrigin !== undefined)) {
       mobileUrl = undefined
       mobileOrigin = undefined
+      mobileFallbackUrl = undefined
       mobileHost = undefined
       refreshApplicationMenu()
     }
@@ -1280,12 +1283,13 @@ async function main(): Promise<void> {
           const initialUrl = created?.url ?? mobileUrl
           if (initialUrl === undefined) throw new Error('mobile pairing URL is unavailable')
           let url: string = initialUrl
+          let fallbackUrl: string | undefined = created?.fallbackUrl ?? mobileFallbackUrl
           let currentPairingId = created?.pairing.id
           let pairings: readonly DesktopMobilePairing[] = host === undefined ? [] : await host.listMobilePairings()
           const render = async (window: BrowserWindow): Promise<void> => {
             const name = readComputerName(namePath, systemComputerName())
             const page = await mobilePairingPage(namedMobileUrl(url, name), name, currentDesktopLocale().messages,
-              app.getVersion(), pairings)
+              app.getVersion(), pairings, fallbackUrl === undefined ? undefined : namedMobileUrl(fallbackUrl, name))
             await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(page)}`)
           }
           const parent = currentMainWindow()
@@ -1322,6 +1326,7 @@ async function main(): Promise<void> {
               void (async () => {
                 const next = await host.createMobilePairing(name)
                 url = next.url
+                fallbackUrl = next.fallbackUrl ?? mobileFallbackUrl
                 currentPairingId = next.pairing.id
                 pairings = await host.listMobilePairings()
                 if (!window.isDestroyed()) await render(window)
@@ -1345,6 +1350,7 @@ async function main(): Promise<void> {
                 if (id === currentPairingId) {
                   const next = await host.createMobilePairing(currentDesktopLocale().messages.mobilePairingName)
                   url = next.url
+                  fallbackUrl = next.fallbackUrl ?? mobileFallbackUrl
                   currentPairingId = next.pairing.id
                   pairings = await host.listMobilePairings()
                 }

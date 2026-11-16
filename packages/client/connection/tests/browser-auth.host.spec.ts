@@ -391,10 +391,37 @@ describe('BrowserAuth', () => {
     expect(auth.listMobilePairings()).toHaveLength(1)
   })
 
+  it('pairs one token for a local-network HTTP Host and its HTTPS fallback', async () => {
+    const auth = await createAuth(new RecordCredentials())
+    const created = await auth.createMobilePairing('http://192.168.1.20:19389/', 'Phone', 'https://mac.remote.example/')
+    const token = new URL(created.url).searchParams.get('token')
+    expect(token).toBeTruthy()
+    expect(created.fallbackUrl).toBe(`https://mac.remote.example/?token=${token!}`)
+    for (const [url, authority] of [[created.url, '192.168.1.20:19389'], [created.fallbackUrl!, 'mac.remote.example']] as const) {
+      const target = new URL(url)
+      const result = response()
+      expect(auth.authorizeIndex(request(`${target.pathname}${target.search}`, target.host), result.value, false)).toBe(false)
+      expect(result.state.status).toBe(303)
+      const cookie = result.state.headers!['set-cookie']!.split(';')[0]!
+      expect(auth.isAuthenticated(request('/', authority, { cookie }))).toBe(true)
+    }
+    expect(auth.listMobilePairings()).toEqual([{ ...created.pairing, authorities: ['192.168.1.20:19389', 'mac.remote.example'] }])
+  })
+
+  it('accepts local-network HTTP origins and refuses public ones', async () => {
+    const auth = await createAuth(new RecordCredentials())
+    for (const origin of ['http://192.168.1.20:19389/', 'http://10.0.0.7:19389/', 'http://mac-mini.local:19389/']) {
+      await expect(auth.createMobilePairing(origin, 'Phone')).resolves.toMatchObject({ pairing: { authority: new URL(origin).host } })
+    }
+    for (const origin of ['http://phone.example/', 'http://8.8.8.8/', 'ftp://192.168.1.20/']) {
+      await expect(auth.createMobilePairing(origin, 'Phone')).rejects.toThrow('local-network HTTP origin')
+    }
+  })
+
   it('rejects invalid mobile origins, names, and missing pairing identifiers', async () => {
     const auth = await createAuth(new RecordCredentials())
     for (const origin of ['http://phone.example/', 'https://phone.example/path', 'https://phone.example/?x=1', 'https://phone.example/#x']) {
-      await expect(auth.createMobilePairing(origin, 'Phone')).rejects.toThrow('clean HTTPS origin')
+      await expect(auth.createMobilePairing(origin, 'Phone')).rejects.toThrow('local-network HTTP origin')
     }
     for (const name of [' ', 'x'.repeat(81)]) {
       await expect(auth.createMobilePairing('https://phone.example/', name)).rejects.toThrow('invalid mobile pairing name')
@@ -420,7 +447,9 @@ describe('BrowserAuth', () => {
       { version: 1, entries: Array.from({ length: 101 }, () => entry) },
       ...[null, {}, { ...entry, id: 'short' }, { ...entry, name: '' }, { ...entry, name: 'x'.repeat(81) },
         { ...entry, authority: 'https://phone.example/' }, { ...entry, tokenHash: 'invalid' },
-        { ...entry, createdAt: 0.5 }].map(item => ({ version: 1, entries: [item] }))]
+        { ...entry, createdAt: 0.5 }, { ...entry, authorities: [] },
+        { ...entry, authorities: ['other.example'] }, { ...entry, authorities: ['phone.example', 'https://bad/'] }]
+        .map(item => ({ version: 1, entries: [item] }))]
     for (const payload of payloads) {
       const store = new RecordCredentials()
       store.mobileRecord = { kind: 'grant', payload }

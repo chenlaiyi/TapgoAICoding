@@ -287,7 +287,7 @@ private final class RemoteSessions: ObservableObject {
         guard var components = URLComponents(url: origin, resolvingAgainstBaseURL: false) else {
             throw RemoteError.unavailable
         }
-        components.scheme = "wss"
+        components.scheme = MobileConnectionAddress.webSocketScheme(for: origin)
         components.path = "/api/remote.mux"
         guard let socketURL = components.url else { throw RemoteError.unavailable }
         var request = URLRequest(url: socketURL)

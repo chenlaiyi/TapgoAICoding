@@ -811,10 +811,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'tokenized URL for initial login; a mount proxy strips its prefix before {@link authorizeIndex}.',
       },
       {
-        signature: 'createMobilePairing?(baseUrl: string, name: string): Promise<{ url: string pairing: { id: string; name: string; authority: string; createdAt: number } }>',
-        description: 'Create one durable mobile pairing URL for an HTTPS Host origin.',
-        parameters: [{ name: 'baseUrl', description: 'Clean HTTPS origin for this Mac.' }, { name: 'name', description: 'Local label for the pairing link.' }],
-        returns: 'Authenticated URL and revocable pairing metadata.',
+        signature: 'createMobilePairing?(baseUrl: string, name: string, alternateBaseUrl?: string): Promise<{ url: string fallbackUrl?: string pairing: { id: string; name: string; authority: string; authorities?: readonly string[]; createdAt: number } }>',
+        description: 'Create one durable mobile pairing URL for a Host origin.',
+        parameters: [{ name: 'baseUrl', description: 'Clean HTTPS origin, or a local-network HTTP origin for direct LAN access.' }, { name: 'name', description: 'Local label for the pairing link.' }, { name: 'alternateBaseUrl', description: 'Optional fallback origin the same token also authenticates.' }],
+        returns: 'Authenticated URLs and revocable pairing metadata.',
       },
       {
         signature: 'listMobilePairings?(): readonly { id: string; name: string; authority: string; createdAt: number }[]',
