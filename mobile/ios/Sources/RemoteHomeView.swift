@@ -653,6 +653,7 @@ struct RemoteHomeView: View {
 
     @ObservedObject var connection: MobileConnection
     let computer: SavedComputer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var sessions = RemoteSessions()
     @State private var showingComputers = false
     @State private var showingSettings = false
@@ -1058,17 +1059,27 @@ struct RemoteHomeView: View {
     private func sessionRow(_ item: RemoteSession, indent: CGFloat) -> some View {
         Button { open(item) } label: {
             HStack(spacing: 7) {
-                Text(item.title).lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.title)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    if showsProjectContext(item) {
+                        Text("\(item.project) · \(computer.name)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
                 Spacer(minLength: 4)
                 if item.running { ProgressView().controlSize(.mini) }
             }
-            .font(.system(size: 13, weight: .medium))
+            .font(.subheadline.weight(.medium))
             .foregroundStyle(.primary)
             .padding(.leading, indent)
-            .frame(height: 36)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(item.title)，项目 \(item.project)\(item.running ? "，正在运行" : "")")
         .contextMenu {
             Button("重命名") { beginRename(item) }
             Button(isPinned(item) ? "取消置顶" : "置顶") {
@@ -1088,6 +1099,13 @@ struct RemoteHomeView: View {
             UIPasteboard.general.string = item.sessionId
         }
         .accessibilityAction(named: "归档对话") { archivingSession = item }
+    }
+
+    /// Whether another visible conversation shares this title, making its project worth showing.
+    /// - Parameter item: listed conversation.
+    /// - Returns: true when the title alone is ambiguous.
+    private func showsProjectContext(_ item: RemoteSession) -> Bool {
+        visibleSessions.filter { $0.title == item.title }.count > 1
     }
 
     /// Whether this conversation is currently pinned on the Host.
