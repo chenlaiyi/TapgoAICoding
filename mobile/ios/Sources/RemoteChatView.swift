@@ -1516,6 +1516,24 @@ private final class RemoteChat: ObservableObject {
         return value
     }
 
+    /// Loads one workspace directory's direct children.
+    /// - Parameters:
+    ///   - path: workspace-relative directory path; empty for the workspace root.
+    ///   - computer: paired computer that owns the workspace.
+    /// - Returns: the listing the Host served.
+    func loadWorkspaceDirectory(path: String, computer: SavedComputer) async throws -> MobileDirectoryListing {
+        guard let sessionId else { throw ChatFailure.unavailable }
+        let value = try await call("workspaceFiles/list",
+                                   arguments: ["workspaceFileScopeId": sessionId, "path": path],
+                                   computer: computer)
+        guard let data = try? JSONSerialization.data(withJSONObject: value),
+              let listing = try? JSONDecoder().decode(MobileDirectoryListing.self, from: data),
+              listing.entries.allSatisfy({ !$0.name.isEmpty }) else {
+            throw ChatFailure.invalidData
+        }
+        return listing
+    }
+
     /// Loads one workspace file's bytes for native preview.
     /// - Parameter path: workspace-relative or absolute path from the turn's change summary.
     /// - Returns: the file's name, bytes, and size.
@@ -1876,6 +1894,7 @@ struct RemoteChatView: View {
     @State private var bottomPosition = CGFloat.infinity
     @State private var readingComposer = false
     @State private var forkTarget: MobileForkTarget?
+    @State private var showingFiles = false
     @State private var draggingTranscript = false
     @State private var scrollRequestCount = 0
     private let bottomAnchor = "chat-bottom"
@@ -1907,6 +1926,7 @@ struct RemoteChatView: View {
                     .accessibilityLabel("新建对话")
                     Menu {
                         Button("模型、权限与额度") { showingSettings = true }
+                        Button("浏览文件") { showingFiles = true }
                         Button("完整工作区") { showingWorkspace = true }
                     } label: {
                         Image(systemName: "ellipsis").font(.system(size: 20, weight: .medium))
@@ -2252,6 +2272,11 @@ struct RemoteChatView: View {
             Button("取消", role: .cancel) { removingQueueItem = nil }
         }
         .sheet(isPresented: $showingModels) { modelPicker }
+        .sheet(isPresented: $showingFiles) {
+            MobileFileBrowserView(
+                loadDirectory: { try await chat.loadWorkspaceDirectory(path: $0, computer: computer) },
+                loadFile: { try await chat.loadWorkspaceFile(path: $0) })
+        }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 Form {

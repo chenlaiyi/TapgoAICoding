@@ -76,6 +76,7 @@ targets:
       - path: Sources/MobileCodePreview.swift
       - path: Sources/MobileExpansionStore.swift
       - path: Sources/MobileCodeExpansionStore.swift
+      - path: Sources/MobileFileBrowser.swift
       - path: Sources/MobileComposerState.swift
       - path: Sources/MobileChatAttachment.swift
       - path: Sources/MobileQueueState.swift
