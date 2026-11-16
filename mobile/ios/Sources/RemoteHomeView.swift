@@ -1297,7 +1297,6 @@ private struct RemoteNewConversationView: View {
                 .accessibilityLabel("选择项目目录")
                 .disabled(submitting)
                 selectionRow("laptopcomputer", "在这台 Mac 工作", selectable: false)
-                selectionRow("point.3.connected.trianglepath.dotted", "当前分支", selectable: false)
             }
             .padding(.horizontal, 26)
             Spacer(minLength: 35)
