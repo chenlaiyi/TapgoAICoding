@@ -28,6 +28,10 @@ final class MobileProcessLabelTests: XCTestCase {
                        "已读取文件，已搜索代码，已写入文件等")
     }
 
+    func testRunningReasoningUsesTheDSHRunningLabel() {
+        XCTAssertEqual(MobileProcessLabel.title(activities: [], hasReasoning: true, running: true), "正在分析请求")
+    }
+
     func testRunningTitleCarriesTheCommandDetail() {
         XCTAssertEqual(MobileProcessLabel.title(activities: [activity("bash", finished: false, detail: "git status")],
                                                 hasReasoning: true),

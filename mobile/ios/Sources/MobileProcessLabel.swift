@@ -51,8 +51,10 @@ enum MobileProcessLabel {
     /// - Parameters:
     ///   - activities: activities in first-appearance order.
     ///   - hasReasoning: whether the range also contains reasoning text.
-    /// - Returns: a DSH-style closed title such as `执行了命令` or `已读取文件，搜索代码`.
-    static func title(activities: [MobileChatActivity], hasReasoning: Bool) -> String {
+    ///   - running: whether the range is still streaming.
+    /// - Returns: a DSH-style title such as `执行了命令`, `已读取文件，搜索代码`, or `正在分析请求`.
+    static func title(activities: [MobileChatActivity], hasReasoning: Bool, running: Bool = false) -> String {
+        if running, activities.isEmpty { return "正在分析请求" }
         if let running = activities.last(where: { !$0.finished }) {
             let category = category(for: running.name)
             let label = runningLabels[category] ?? "正在调用工具"

@@ -27,6 +27,7 @@ private struct ChatLine: Identifiable, Equatable {
     var interrupted = false
     var presentationID: String {
         if role == "assistant", let turn, let step { return "assistant-\(turn)-\(step)" }
+        if role == "process", let turn, let step { return "process-\(turn)-\(step)" }
         return "event-\(id)"
     }
 
@@ -182,17 +183,33 @@ private final class RemoteChat: ObservableObject {
     private var streamPublication: Task<Void, Never>?
     private var streamNeedsResync = false
     var displayLines: [ChatLine] {
-        var visible = lines
-        if liveActive, !liveText.isEmpty {
+        var visible = lines.filter { $0.role != "turn" }
+        guard liveActive else { return visible }
+        var liveProcessIndex: Int?
+        if let turn = assistantStream.turn, let step = assistantStream.step,
+           let index = visible.lastIndex(where: { $0.role == "process" && $0.turn == turn && $0.step == step }) {
+            visible[index].live = true
+            if !liveReasoning.isEmpty { visible[index].reasoning = liveReasoning }
+            liveProcessIndex = index
+        } else if !liveReasoning.isEmpty, let turn = assistantStream.turn, let step = assistantStream.step {
+            var line = ChatLine(id: -1, role: "process", text: "", reasoning: liveReasoning)
+            line.turn = turn
+            line.step = step
+            line.live = true
+            let index = MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
+                                                             after: assistantStream.startedAfterSequence)
+            visible.insert(line, at: min(index, visible.count))
+            liveProcessIndex = index
+        }
+        if !liveText.isEmpty {
             var line = ChatLine(id: -1, role: "assistant", text: MobileStreamPreview.stableTail(liveText))
             line.turn = assistantStream.turn
             line.step = assistantStream.step
             line.live = true
-            if !visible.contains(where: { $0.presentationID == line.presentationID }) {
-                let index = MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
-                                                                 after: assistantStream.startedAfterSequence)
-                visible.insert(line, at: min(index, visible.count))
-            }
+            let index = liveProcessIndex.map { $0 + 1 }
+                ?? MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
+                                                        after: assistantStream.startedAfterSequence)
+            visible.insert(line, at: min(index, visible.count))
         }
         return visible
     }
@@ -1110,17 +1127,22 @@ private final class RemoteChat: ObservableObject {
                 .compactMap { arguments[$0] as? String }.first ?? name
             let activity = MobileChatActivity(id: callId, name: name, detail: String(detail.prefix(120)),
                                         category: activityCategory(name), arguments: data["arguments"] as? String ?? "")
+            if let turn = data["turn"] as? Int, let step = data["step"] as? Int {
+                let index = Self.ensureProcess(turn: turn, step: step, seq: seq, into: &lines)
+                if !lines[index].activities.contains(where: { $0.id == callId }) {
+                    lines[index].activities.append(activity)
+                    lines[index].lastActivityAt = event["time"] as? TimeInterval
+                }
+                if let turnIndex = lines.lastIndex(where: { $0.role == "turn" && $0.turn == turn }),
+                   !lines[turnIndex].activities.contains(where: { $0.id == callId }) {
+                    lines[turnIndex].activities.append(activity)
+                    lines[turnIndex].lastActivityAt = event["time"] as? TimeInterval
+                }
+                return
+            }
             if let index = lines.lastIndex(where: { $0.role == "turn" }),
                !lines[index].activities.contains(where: { $0.id == callId }) {
                 lines[index].activities.append(activity)
-            }
-            if let index = lines.indices.last, lines[index].role == "activity",
-               !lines[index].activities.contains(where: { $0.id == callId }) {
-                lines[index].activities.append(activity)
-            } else {
-                var line = ChatLine(id: seq, role: "activity", text: "", reasoning: nil)
-                line.activities = [activity]
-                lines.append(line)
             }
             return
         }
@@ -1162,11 +1184,10 @@ private final class RemoteChat: ObservableObject {
         let reasoning = streamReasoning.isEmpty ? content.reasoning : streamReasoning
         guard !text.isEmpty || !reasoning.isEmpty || !content.attachments.isEmpty else { return }
         if type == "assistant/message", !reasoning.isEmpty,
-           let turnIndex = lines.lastIndex(where: { $0.role == "turn" }) {
-            if lines[turnIndex].mergedEventIds.insert(seq).inserted {
-                let previous = lines[turnIndex].reasoning ?? ""
-                lines[turnIndex].reasoning = previous.isEmpty ? reasoning : previous + "\n\n" + reasoning
-            }
+           let turn = data["turn"] as? Int, let step = data["step"] as? Int {
+            let index = Self.ensureProcess(turn: turn, step: step, seq: seq, into: &lines)
+            let previous = lines[index].reasoning ?? ""
+            lines[index].reasoning = previous.isEmpty ? reasoning : previous + "\n\n" + reasoning
         }
         if type == "assistant/message", text.isEmpty, content.attachments.isEmpty { return }
         var line = ChatLine(id: seq, role: type == "user/message" ? "user" : "assistant",
@@ -1180,12 +1201,36 @@ private final class RemoteChat: ObservableObject {
         if type == "assistant/message" { line.mergedEventIds.insert(seq) }
         if type == "user/message", lines.last?.role == "turn" {
             lines.insert(line, at: lines.count - 1)
+        } else if type == "assistant/message", let turn = data["turn"] as? Int, let step = data["step"] as? Int,
+                  let processIndex = lines.lastIndex(where: {
+                      $0.role == "process" && $0.turn == turn && $0.step == step
+                  }) {
+            lines.insert(line, at: min(processIndex + 1, lines.count))
         } else if let insertAfter {
             let index = MobileTranscriptOrder.insertionIndex(ids: lines.map(\.id), after: insertAfter)
             lines.insert(line, at: min(index, lines.count))
         } else {
             lines.append(line)
         }
+    }
+
+    /// Finds or appends the process row for one step.
+    /// - Parameters:
+    ///   - turn: durable turn number.
+    ///   - step: step number inside the turn.
+    ///   - seq: event sequence used as a stable identity when the row is created.
+    ///   - lines: projected transcript to update.
+    /// - Returns: the process row's index.
+    @discardableResult
+    private static func ensureProcess(turn: Int, step: Int, seq: Int, into lines: inout [ChatLine]) -> Int {
+        if let index = lines.lastIndex(where: {
+            $0.role == "process" && $0.turn == turn && $0.step == step
+        }) { return index }
+        var line = ChatLine(id: seq, role: "process", text: "", reasoning: nil)
+        line.turn = turn
+        line.step = step
+        lines.append(line)
+        return lines.count - 1
     }
 
     /// Creates a turn header when a bounded snapshot starts inside a long turn.
@@ -1962,10 +2007,17 @@ struct RemoteChatView: View {
                                         }
                                 }
                             }
-                            if chat.liveActive && chat.liveText.isEmpty && !chat.lines.contains(where: { $0.role == "turn" }) {
+                            if chat.liveActive && chat.liveText.isEmpty
+                                && !chat.displayLines.contains(where: { $0.role == "process" }) {
                                 Label("正在思考", systemImage: "sparkle")
                                     .font(.subheadline).foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            if interactions.isAwaitingDecision(sessionId: sessionId) {
+                                Label("等待你的确认", systemImage: "hand.raised")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityIdentifier("awaitingDecisionBanner")
                             }
                             Color.clear.frame(height: 1)
                                 .id(bottomAnchor)
@@ -2829,21 +2881,24 @@ struct RemoteChatView: View {
     private func chatRow(_ line: ChatLine) -> some View {
         HStack(alignment: .top) {
             if line.role == "user" { Spacer(minLength: 45) }
-            if line.role == "activity" {
+            if line.role == "process" {
+                ProcessDisclosureView(
+                    summary: MobileProcessLabel.title(activities: line.activities,
+                                                      hasReasoning: !(line.reasoning ?? "").isEmpty,
+                                                      running: line.live),
+                    reasoning: line.reasoning ?? "",
+                    activities: line.activities,
+                    toolOutputs: chat.toolOutputs,
+                    onInspect: inspectProcess,
+                    initialExpanded: line.turn.map { chat.processExpanded(turn: $0) } ?? false,
+                    onExpandedChange: { value in
+                        guard let turn = line.turn else { return }
+                        chat.setProcessExpanded(turn: turn, expanded: value)
+                    })
+            } else if line.role == "activity" {
                 ActivityGroupView(activities: line.activities, toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
             } else if line.role == "turn" {
-                TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
-                                lastActivityAt: line.lastActivityAt,
-                                awaitingDecision: interactions.isAwaitingDecision(sessionId: sessionId),
-                                turn: line.turn,
-                                processExpanded: line.turn.map { chat.processExpanded(turn: $0) } ?? false,
-                                onProcessExpandedChange: { value in
-                                    guard let turn = line.turn else { return }
-                                    chat.setProcessExpanded(turn: turn, expanded: value)
-                                },
-                                activities: line.activities, reasoning: line.reasoning,
-                                liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
-                                    ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
+                EmptyView()
             } else if line.role == "assistant" {
                 VStack(alignment: .leading, spacing: 4) {
                     if !line.attachments.isEmpty {
