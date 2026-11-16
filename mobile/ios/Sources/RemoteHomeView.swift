@@ -213,6 +213,7 @@ private final class RemoteSessions: ObservableObject {
             defer { session.invalidateAndCancel() }
             var request = URLRequest(url: origin.appendingPathComponent("api/session/list"))
             request.httpMethod = "POST"
+            request.timeoutInterval = 8
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: [
                 "type": "client-request",
@@ -382,7 +383,9 @@ private final class RemoteSessions: ObservableObject {
             }
             let session = URLSession(configuration: configuration)
             defer { session.invalidateAndCancel() }
-            let (_, response) = try await session.data(from: pairing)
+            var pairingRequest = URLRequest(url: pairing)
+            pairingRequest.timeoutInterval = 8
+            let (_, response) = try await session.data(for: pairingRequest)
             if (response as? HTTPURLResponse)?.statusCode == 401 { throw RemoteError.pairingExpired }
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw RemoteError.unavailable }
             let workspaceId = workspaces.first(where: { $0.path == cwd })?.workspaceId

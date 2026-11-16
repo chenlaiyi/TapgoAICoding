@@ -80,7 +80,9 @@ final class MobileInteractionCenter: ObservableObject {
         self.session = session
         self.origin = origin
         do {
-            let (_, response) = try await session.data(from: pairing)
+            var pairingRequest = URLRequest(url: pairing)
+            pairingRequest.timeoutInterval = 8
+            let (_, response) = try await session.data(for: pairingRequest)
             if (response as? HTTPURLResponse)?.statusCode == 401 {
                 error = "配对已过期，请从这台 Mac 重新扫码连接"
                 session.invalidateAndCancel()

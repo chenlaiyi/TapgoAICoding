@@ -354,7 +354,11 @@ private final class RemoteChat: ObservableObject {
             }
             let session = URLSession(configuration: configuration)
             self.session = session
-            let (_, response) = try await session.data(from: pairing)
+            var pairingRequest = URLRequest(url: pairing)
+            // The pairing exchange decides whether this route answers at all, so a dead
+            // route must fail in seconds or the fallback switch waits for the default timeout.
+            pairingRequest.timeoutInterval = 8
+            let (_, response) = try await session.data(for: pairingRequest)
             if (response as? HTTPURLResponse)?.statusCode == 401 { throw ChatFailure.pairingExpired }
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw ChatFailure.unavailable }
             guard var components = URLComponents(url: origin, resolvingAgainstBaseURL: false) else {
