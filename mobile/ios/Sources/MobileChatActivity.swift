@@ -54,6 +54,12 @@ struct MobileChatActivity: Identifiable, Equatable {
         }
     }
 
+    /// One-line description of this work, shown while a running turn has no reply yet.
+    var liveLine: String {
+        let trimmed = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "正在\(category)" : "正在\(category) · \(trimmed)"
+    }
+
     private func trailingMarker(_ text: String, pattern: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),

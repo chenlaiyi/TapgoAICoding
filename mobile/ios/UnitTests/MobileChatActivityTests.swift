@@ -1,4 +1,5 @@
 import XCTest
+import Foundation
 
 final class MobileChatActivityTests: XCTestCase {
     func testCallKeepsCompleteCommandAndReturnedText() {
@@ -32,6 +33,13 @@ final class MobileChatActivityTests: XCTestCase {
         XCTAssertEqual(mobileTurnStatus("extension/result"), "任务已结束")
         XCTAssertNil(mobileTurnStatus("completed"))
     }
+    func testLiveLineNamesTheRunningCommand() {
+        let running = MobileChatActivity(id: "shell", name: "bash", detail: "git status", category: "运行命令")
+        XCTAssertEqual(running.liveLine, "正在运行命令 · git status")
+        let blank = MobileChatActivity(id: "read", name: "read", detail: "  ", category: "读取文件")
+        XCTAssertEqual(blank.liveLine, "正在读取文件")
+    }
+
     func testShellNonzeroExitIsNotPresentedAsSuccess() {
         var shell = MobileChatActivity(id: "shell", name: "bash", detail: "测试", category: "运行命令")
         shell.receive(["message": ["isError": false, "content": [["type": "text", "text": "SyntaxError\n[exit code: 1]"]]]])

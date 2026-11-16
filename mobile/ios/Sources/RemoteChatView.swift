@@ -2627,6 +2627,17 @@ private struct TurnProcessView: View {
         return failed == 0 ? summary : "\(summary)，\(failed) 项失败"
     }
 
+    /// The newest work, so a running turn without reply text still says what it is doing.
+    private var liveLine: String? {
+        guard endedAt == nil else { return nil }
+        if let activity = activities.last(where: { !$0.finished }) ?? activities.last {
+            return activity.liveLine
+        }
+        let line = liveReasoning.split(whereSeparator: \.isNewline).last.map(String.init) ?? liveReasoning
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private func activityAge(now: Date) -> String? {
         guard endedAt == nil, let lastActivityAt, lastActivityAt > 0 else { return nil }
         let seconds = max(0, Int(now.timeIntervalSince1970 - lastActivityAt / 1000))
@@ -2657,6 +2668,13 @@ private struct TurnProcessView: View {
                         Text(age).font(.caption).foregroundStyle(.secondary)
                     }
                 }
+            }
+            if let liveLine {
+                Text(liveLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .accessibilityIdentifier("turnLiveActivity")
             }
             Divider()
             ProcessDisclosureView(summary: processSummary,
