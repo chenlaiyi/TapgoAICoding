@@ -72,6 +72,22 @@ enum MobileFileBrowser {
         path.isEmpty ? "/" : path
     }
 
+    /// VoiceOver label for one directory entry.
+    /// - Parameter entry: entry from a listing.
+    /// - Returns: name, kind, and size when the Host reports one.
+    static func accessibilityLabel(for entry: MobileDirectoryEntry) -> String {
+        var parts = [entry.name]
+        if entry.isDirectory {
+            parts.append("文件夹")
+        } else if entry.isFile {
+            parts.append("文件")
+        } else {
+            parts.append("其他条目")
+        }
+        if let size = entry.size { parts.append(MobileFileSize.format(size)) }
+        return parts.joined(separator: "，")
+    }
+
     /// Filters one listing by a case-insensitive name substring.
     /// - Parameters:
     ///   - entries: entries from one listing.

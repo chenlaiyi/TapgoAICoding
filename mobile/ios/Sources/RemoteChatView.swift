@@ -2574,7 +2574,7 @@ struct RemoteChatView: View {
         .foregroundStyle(.secondary)
         .frame(minWidth: 44, minHeight: 44)
         .contentShape(Rectangle())
-        .accessibilityLabel("选择模型")
+        .accessibilityLabel("选择模型，当前 \(selectedModelName)")
     }
 
     /// Keeps the model and balance visible when the composer collapses to one row.
@@ -2646,7 +2646,7 @@ struct RemoteChatView: View {
                 .contentShape(Rectangle())
         }
         .tint(Color(uiColor: .secondaryLabel))
-        .accessibilityLabel("访问权限")
+        .accessibilityLabel("访问权限，当前 \(chat.permissions.first { $0.id == chat.selectedPermission }?.name ?? "未知")")
     }
 
     private func permissionSymbol(_ id: String) -> String {

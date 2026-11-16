@@ -67,6 +67,8 @@ private struct MobileDirectoryView: View {
                         NavigationLink(value: MobileBrowserRoute(path: MobileFileBrowser.child(entry.name, of: path))) {
                             row(entry, symbol: "folder")
                         }
+                        .accessibilityLabel(MobileFileBrowser.accessibilityLabel(for: entry))
+                        .accessibilityHint("进入文件夹")
                     } else if entry.isFile {
                         Button {
                             preview = MobileBrowserPreview(path: MobileFileBrowser.child(entry.name, of: path))
@@ -74,8 +76,11 @@ private struct MobileDirectoryView: View {
                             row(entry, symbol: "doc.text")
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(MobileFileBrowser.accessibilityLabel(for: entry))
+                        .accessibilityHint("打开文件预览")
                     } else {
                         row(entry, symbol: "questionmark.square.dashed")
+                            .accessibilityLabel(MobileFileBrowser.accessibilityLabel(for: entry))
                     }
                 }
                 if listing.truncated {

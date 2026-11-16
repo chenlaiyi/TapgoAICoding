@@ -347,6 +347,7 @@ private struct AssistantCodeBlock: View {
                 .frame(minHeight: 44)
                 .padding(.horizontal, 12)
                 .accessibilityLabel(expanded ? "收起代码" : "展开全部 \(MobileCodePreview.lineCount(value)) 行代码")
+                .accessibilityValue(expanded ? "已展开" : "已收起")
             }
         }
         .background(Color(uiColor: .secondarySystemBackground),

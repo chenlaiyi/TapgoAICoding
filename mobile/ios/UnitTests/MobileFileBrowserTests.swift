@@ -23,6 +23,15 @@ final class MobileFileBrowserTests: XCTestCase {
                        ["Alpha", "beta", "beta.txt", "zeta.txt"])
     }
 
+    func testBuildsReadableEntryLabels() {
+        XCTAssertEqual(MobileFileBrowser.accessibilityLabel(for: MobileDirectoryEntry(name: "src", type: "directory", size: nil)),
+                       "src，文件夹")
+        XCTAssertEqual(MobileFileBrowser.accessibilityLabel(for: MobileDirectoryEntry(name: "a.txt", type: "file", size: 4_096)),
+                       "a.txt，文件，\(MobileFileSize.format(4_096))")
+        XCTAssertEqual(MobileFileBrowser.accessibilityLabel(for: MobileDirectoryEntry(name: "link", type: "other", size: nil)),
+                       "link，其他条目")
+    }
+
     func testFiltersByNameAndMapsHostCodes() {
         let entries = [
             MobileDirectoryEntry(name: "Sources", type: "directory", size: nil),
