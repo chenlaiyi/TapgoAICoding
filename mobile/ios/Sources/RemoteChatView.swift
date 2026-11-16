@@ -235,6 +235,8 @@ private final class RemoteChat: ObservableObject {
     private var lastFailure: Error?
     /// Turn disclosures the reader left expanded, keyed by turn number.
     private var expansion: [Int: Bool] = [:]
+    /// Code blocks the reader left expanded, keyed by line identity and block index.
+    private var codeExpansion: [String: Bool] = [:]
 
     /// The Live Activity registration to resend after a reconnect.
     private var pendingLiveActivity: (token: String, activityId: String, project: String)?
@@ -255,6 +257,26 @@ private final class RemoteChat: ObservableObject {
     /// - Returns: the stored flag, defaulting to collapsed.
     func processExpanded(turn: Int) -> Bool {
         expansion[turn] ?? false
+    }
+
+    /// Whether a code block was left expanded.
+    /// - Parameters:
+    ///   - lineID: transcript row's presentation identity.
+    ///   - block: Markdown block index within that row.
+    /// - Returns: the stored flag, defaulting to collapsed.
+    func codeBlockExpanded(lineID: String, block: Int) -> Bool {
+        codeExpansion["\(lineID):\(block)"] ?? false
+    }
+
+    /// Records a code block's expand or collapse for the next visit.
+    /// - Parameters:
+    ///   - lineID: transcript row's presentation identity.
+    ///   - block: Markdown block index within that row.
+    ///   - expanded: whether the block is open.
+    func setCodeBlockExpanded(lineID: String, block: Int, expanded: Bool) {
+        codeExpansion["\(lineID):\(block)"] = expanded
+        guard let computer, let sessionId else { return }
+        MobileCodeExpansionStore.save(codeExpansion, computerID: computer.id, sessionID: sessionId)
     }
 
     /// Records a turn disclosure change for the next visit.
@@ -288,6 +310,7 @@ private final class RemoteChat: ObservableObject {
         self.computer = computer
         if !reconnect {
             expansion = MobileExpansionStore.load(computerID: computer.id, sessionID: sessionId)
+            codeExpansion = MobileCodeExpansionStore.load(computerID: computer.id, sessionID: sessionId)
         }
         #if DEBUG
         isFork = sessionId == "fixture-fork"
@@ -2797,7 +2820,15 @@ struct RemoteChatView: View {
                         MobileMessageAttachmentSummary(attachments: line.attachments, preview: attachmentPreview)
                     }
                     if !line.text.isEmpty {
-                        AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false)
+                        AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false,
+                            expandedCodeBlocks: { block in
+                                guard !line.live else { return false }
+                                return chat.codeBlockExpanded(lineID: line.presentationID, block: block)
+                            },
+                            onCodeExpansionChange: { block, expanded in
+                                guard !line.live else { return }
+                                chat.setCodeBlockExpanded(lineID: line.presentationID, block: block, expanded: expanded)
+                            })
                     }
                     if line.live {
                         if MobileStreamPreview.isTruncated(chat.liveText) {

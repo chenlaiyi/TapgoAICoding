@@ -165,6 +165,10 @@ struct AssistantMessageView: View {
     let text: String
     let reasoning: String?
     var showCopy = true
+    /// Whether a code block at this Markdown block index was left expanded.
+    var expandedCodeBlocks: (Int) -> Bool = { _ in false }
+    /// Records a code block's expand or collapse.
+    var onCodeExpansionChange: ((Int, Bool) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -194,8 +198,8 @@ struct AssistantMessageView: View {
 
     private func markdown(_ source: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(MessageMarkdown.parse(source).enumerated()), id: \.offset) { _, block in
-                blockView(block)
+            ForEach(Array(MessageMarkdown.parse(source).enumerated()), id: \.offset) { index, block in
+                blockView(block, index: index)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,7 +207,7 @@ struct AssistantMessageView: View {
     }
 
     @ViewBuilder
-    private func blockView(_ block: MessageBlock) -> some View {
+    private func blockView(_ block: MessageBlock, index: Int) -> some View {
         switch block {
         case .paragraph(let value):
             inline(value).font(.system(size: 15)).lineSpacing(4)
@@ -212,7 +216,11 @@ struct AssistantMessageView: View {
                 .font(.system(size: level == 1 ? 19 : level == 2 ? 17 : 15, weight: .semibold))
                 .lineSpacing(3)
         case .code(let language, let value):
-            AssistantCodeBlock(language: language, value: value)
+            AssistantCodeBlock(language: language, value: value,
+                               initialExpanded: expandedCodeBlocks(index),
+                               onExpandedChange: onCodeExpansionChange.map { callback in
+                                   { expanded in callback(index, expanded) }
+                               })
         case .list(let items):
             let markerWidth = max(18, items.map {
                 ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15)]).width)
@@ -289,7 +297,16 @@ struct AssistantMessageView: View {
 private struct AssistantCodeBlock: View {
     let language: String
     let value: String
-    @State private var expanded = false
+    let onExpandedChange: ((Bool) -> Void)?
+    @State private var expanded: Bool
+
+    init(language: String, value: String, initialExpanded: Bool = false,
+         onExpandedChange: ((Bool) -> Void)? = nil) {
+        self.language = language
+        self.value = value
+        self.onExpandedChange = onExpandedChange
+        _expanded = State(initialValue: initialExpanded)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -324,6 +341,7 @@ private struct AssistantCodeBlock: View {
                 Divider()
                 Button(expanded ? "收起代码" : "展开全部（\(MobileCodePreview.lineCount(value)) 行）") {
                     expanded.toggle()
+                    onExpandedChange?(expanded)
                 }
                 .font(.caption)
                 .frame(minHeight: 44)
