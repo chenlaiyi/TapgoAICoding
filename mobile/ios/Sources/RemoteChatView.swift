@@ -2180,38 +2180,38 @@ struct RemoteChatView: View {
                     }
                 }
                 if let objective = chat.goalObjective {
-                    Menu {
-                        if chat.goalPhase == "active" {
-                            Button("暂停目标") { runGoalCommand("/goal pause") }
-                        } else if chat.goalPhase != "complete" {
-                            Button("继续目标") { runGoalCommand("/goal resume") }
-                        }
-                        Button("编辑目标…") {
-                            goalDraft = objective
-                            editingGoal = true
-                        }
-                        Button(chat.goalPhase == "complete" ? "清除目标…" : "结束并清除目标…", role: .destructive) {
-                            confirmingGoalClear = true
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("目标：\(objective)").font(.caption).lineLimit(2)
-                            HStack(spacing: 8) {
-                                Text(chat.goalPhase == "active" ? "进行中"
-                                     : chat.goalPhase == "complete" ? "已完成" : "已暂停或阻塞")
-                                if let started = chat.goalRoundsStarted, let max = chat.goalMaxRounds {
-                                    Text("第 \(started)/\(max) 轮")
-                                }
-                                Spacer(minLength: 8)
-                                if chat.sending { Text("正在执行操作…") }
-                                Image(systemName: "chevron.up.chevron.down")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("目标：\(objective)").font(.caption).lineLimit(2)
+                        HStack(spacing: 8) {
+                            Text(chat.goalPhase == "active" ? "进行中"
+                                 : chat.goalPhase == "complete" ? "已完成" : "已暂停或阻塞")
+                            if let started = chat.goalRoundsStarted, let max = chat.goalMaxRounds {
+                                Text("第 \(started)/\(max) 轮")
                             }
-                            .font(.caption2).foregroundStyle(.secondary)
+                            Spacer(minLength: 8)
+                            if chat.sending { Text("正在执行操作…") }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
+                        .font(.caption2).foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            if chat.goalPhase == "active" {
+                                Button("暂停") { runGoalCommand("/goal pause") }
+                            } else if chat.goalPhase == "complete" {
+                                Button("重新开始") { runGoalCommand("/goal \(objective)") }
+                            } else {
+                                Button("继续") { runGoalCommand("/goal resume") }
+                            }
+                            Button("编辑") {
+                                goalDraft = objective
+                                editingGoal = true
+                            }
+                            Button("结束", role: .destructive) { confirmingGoalClear = true }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .font(.caption)
+                        .frame(minHeight: 44)
                     }
-                    .accessibilityLabel("目标：\(objective)，点按管理目标")
+                    .accessibilityElement(children: .contain)
                 }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     if let seconds = chat.silentSeconds(now: context.date) {
