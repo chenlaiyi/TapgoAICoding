@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WebKit
 import os
 
@@ -215,6 +216,14 @@ private final class RemoteChat: ObservableObject {
     private var sessionId: String?
     /// The submission the Host may already have accepted, so a resend of the same draft reuses its request id.
     private var pendingSubmission: MobilePendingSubmission?
+    /// Pairing needed to read attachment bytes through the Host.
+    private var computer: SavedComputer?
+    @Published private var attachmentImages: [String: UIImage] = [:]
+    @Published private var failedAttachments: Set<String> = []
+    private var loadingAttachments: Set<String> = []
+    private var attachmentOrder: [String] = []
+    /// Transcript thumbnails kept in memory; older ones are dropped first.
+    private static let attachmentImageLimit = 24
 
     var running: Bool {
         liveActive || lines.last(where: { $0.role == "turn" })?.endedAt == nil
@@ -223,6 +232,7 @@ private final class RemoteChat: ObservableObject {
 
     func connect(computer: SavedComputer, sessionId: String, reconnect: Bool = false) async {
         self.sessionId = sessionId
+        self.computer = computer
         #if DEBUG
         isFork = sessionId == "fixture-fork"
         let queueFixture = Self.debugQueueState()
@@ -305,6 +315,10 @@ private final class RemoteChat: ObservableObject {
             queueUnavailable = false
             lastFrameAt = nil
             pendingSubmission = nil
+            attachmentImages = [:]
+            failedAttachments = []
+            loadingAttachments = []
+            attachmentOrder = []
             liveActive = false
             liveText = ""
             liveReasoning = ""
@@ -668,6 +682,58 @@ private final class RemoteChat: ObservableObject {
             applyQueue(state)
         } catch {
             queueUnavailable = true
+        }
+    }
+
+    /// A decoded transcript thumbnail for one durable image, when it has already loaded.
+    /// - Parameter reference: image block reference from the transcript.
+    /// - Returns: the cached thumbnail, or nil while loading or after a failure.
+    func attachmentImage(_ reference: MobileImageRef) -> UIImage? {
+        attachmentImages[reference.attachmentID]
+    }
+
+    /// Whether the last thumbnail fetch for one image failed.
+    /// - Parameter reference: image block reference from the transcript.
+    /// - Returns: `true` when the tile must offer a retry.
+    func attachmentFailed(_ reference: MobileImageRef) -> Bool {
+        failedAttachments.contains(reference.attachmentID)
+    }
+
+    /// Clears one failed fetch so its tile can try again.
+    /// - Parameter reference: image block reference from the transcript.
+    func retryAttachment(_ reference: MobileImageRef) {
+        failedAttachments.remove(reference.attachmentID)
+    }
+
+    /// Reads one durable image through the Host and keeps only a small transcript thumbnail.
+    /// - Parameter reference: image block reference from the transcript.
+    func loadAttachmentImage(_ reference: MobileImageRef) async {
+        let id = reference.attachmentID
+        guard attachmentImages[id] == nil, !loadingAttachments.contains(id),
+              let computer, let sessionId else { return }
+        loadingAttachments.insert(id)
+        defer { loadingAttachments.remove(id) }
+        do {
+            let value = try await call("session/attachment", arguments: ["request": [
+                "sessionId": sessionId, "attachment": reference.wire]], computer: computer)
+            guard let value = value as? [String: Any], let encoded = value["data"] as? String,
+                  let data = Data(base64Encoded: encoded),
+                  let thumbnail = MobileImageThumbnail.make(from: data) else { throw ChatFailure.unavailable }
+            attachmentImages[id] = UIImage(cgImage: thumbnail)
+            failedAttachments.remove(id)
+            rememberAttachment(id)
+        } catch {
+            failedAttachments.insert(id)
+        }
+    }
+
+    /// Tracks insertion order so the in-memory thumbnail cache stays bounded.
+    /// - Parameter id: attachment identity that just loaded.
+    private func rememberAttachment(_ id: String) {
+        attachmentOrder.removeAll { $0 == id }
+        attachmentOrder.append(id)
+        while attachmentOrder.count > Self.attachmentImageLimit {
+            attachmentImages.removeValue(forKey: attachmentOrder.removeFirst())
         }
     }
 
@@ -2187,6 +2253,15 @@ struct RemoteChatView: View {
         composerFocused = false
     }
 
+    /// Bridges the chat's thumbnail cache into the attachment summary view.
+    private var attachmentPreview: MobileAttachmentPreviewSource {
+        MobileAttachmentPreviewSource(
+            image: { chat.attachmentImage($0) },
+            failed: { chat.attachmentFailed($0) },
+            load: { await chat.loadAttachmentImage($0) },
+            retry: { chat.retryAttachment($0) })
+    }
+
     private func chatRow(_ line: ChatLine) -> some View {
         HStack(alignment: .top) {
             if line.role == "user" { Spacer(minLength: 45) }
@@ -2201,7 +2276,7 @@ struct RemoteChatView: View {
             } else if line.role == "assistant" {
                 VStack(alignment: .leading, spacing: 4) {
                     if !line.attachments.isEmpty {
-                        MobileMessageAttachmentSummary(attachments: line.attachments)
+                        MobileMessageAttachmentSummary(attachments: line.attachments, preview: attachmentPreview)
                     }
                     if !line.text.isEmpty {
                         AssistantMessageView(text: line.text, reasoning: line.reasoning, showCopy: false)
@@ -2223,7 +2298,7 @@ struct RemoteChatView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     if !line.attachments.isEmpty {
-                        MobileMessageAttachmentSummary(attachments: line.attachments)
+                        MobileMessageAttachmentSummary(attachments: line.attachments, preview: attachmentPreview)
                     }
                     if !line.text.isEmpty {
                         Text(line.text)

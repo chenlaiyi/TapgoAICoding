@@ -126,6 +126,19 @@ struct MobileFileRef: Equatable {
     }
 }
 
+/// Formats durable attachment metadata for transcript chips.
+enum MobileAttachmentFormat {
+    /// Describes an attachment's byte length with the largest useful unit.
+    /// - Parameter bytes: exact byte length, or 0 when the Host omitted it.
+    /// - Returns: a short size such as `0 B`, `1.5 KB`, or `3.4 MB`.
+    static func byteText(_ bytes: Int) -> String {
+        let value = max(0, bytes)
+        if value < 1_024 { return "\(value) B" }
+        if value < 1_024 * 1_024 { return String(format: "%.1f KB", Double(value) / 1_024) }
+        return String(format: "%.1f MB", Double(value) / (1_024 * 1_024))
+    }
+}
+
 /// One attachment rendered inside a transcript message.
 enum MobileMessageAttachment: Equatable {
     case image(MobileImageRef)
