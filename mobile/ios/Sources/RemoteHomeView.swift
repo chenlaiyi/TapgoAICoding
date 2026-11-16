@@ -797,6 +797,7 @@ struct RemoteHomeView: View {
                                     } else {
                                         collapsedProjects.insert(project)
                                     }
+                                    MobileProjectCollapseStore.save(collapsedProjects, computerID: computer.id)
                                 } label: {
                                     HStack(spacing: 9) {
                                         Image(systemName: collapsedProjects.contains(project) ? "folder" : "folder.fill")
@@ -867,6 +868,7 @@ struct RemoteHomeView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .task(id: computer.connectionURL) {
+                collapsedProjects = MobileProjectCollapseStore.load(computerID: computer.id)
                 if computer.usingFallback {
                     _ = await connection.restorePreferredRouteIfReachable(computer)
                 }
