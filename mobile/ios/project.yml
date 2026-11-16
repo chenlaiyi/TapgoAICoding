@@ -70,6 +70,7 @@ targets:
       - path: Sources/MobileDraftStore.swift
       - path: Sources/MobileReadingPosition.swift
       - path: Sources/MobileMultipart.swift
+      - path: Sources/MobileTranscriptOrder.swift
       - path: Sources/MobileComposerState.swift
       - path: Sources/MobileChatAttachment.swift
       - path: Sources/MobileQueueState.swift

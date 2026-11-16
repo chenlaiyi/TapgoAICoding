@@ -186,7 +186,11 @@ private final class RemoteChat: ObservableObject {
             line.turn = assistantStream.turn
             line.step = assistantStream.step
             line.live = true
-            if !visible.contains(where: { $0.presentationID == line.presentationID }) { visible.append(line) }
+            if !visible.contains(where: { $0.presentationID == line.presentationID }) {
+                let index = MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
+                                                                 after: assistantStream.startedAfterSequence)
+                visible.insert(line, at: min(index, visible.count))
+            }
         }
         return visible
     }
@@ -966,8 +970,9 @@ private final class RemoteChat: ObservableObject {
             streamNeedsResync = true
         case .committed(let sequence, let eventType):
             if let event = pendingAssistantEvents.removeValue(forKey: sequence), event["type"] as? String == eventType {
+                let startedAfter = assistantStream.startedAfterSequence
                 var projected = lines
-                Self.consume(event, into: &projected, owner: sessionId)
+                Self.consume(event, into: &projected, owner: sessionId, insertAfter: startedAfter)
                 lines = projected
                 seenAssistantSettlements.insert(sequence)
             } else if !seenAssistantSettlements.contains(sequence) {
@@ -981,7 +986,8 @@ private final class RemoteChat: ObservableObject {
         }
     }
 
-    private static func consume(_ event: [String: Any], into lines: inout [ChatLine], owner: String?) {
+    private static func consume(_ event: [String: Any], into lines: inout [ChatLine], owner: String?,
+                                insertAfter: Int? = nil) {
         guard let type = event["type"] as? String,
               let seq = event["seq"] as? Int,
               let data = event["data"] as? [String: Any] else { return }
@@ -1053,13 +1059,12 @@ private final class RemoteChat: ObservableObject {
                 .compactMap { arguments[$0] as? String }.first ?? name
             let activity = MobileChatActivity(id: callId, name: name, detail: String(detail.prefix(120)),
                                         category: activityCategory(name), arguments: data["arguments"] as? String ?? "")
-            if let index = lines.lastIndex(where: { $0.role == "turn" }) {
-                if !lines[index].activities.contains(where: { $0.id == callId }) {
-                    lines[index].activities.append(activity)
-                }
-                return
+            if let index = lines.lastIndex(where: { $0.role == "turn" }),
+               !lines[index].activities.contains(where: { $0.id == callId }) {
+                lines[index].activities.append(activity)
             }
-            if let index = lines.indices.last, lines[index].role == "activity" {
+            if let index = lines.indices.last, lines[index].role == "activity",
+               !lines[index].activities.contains(where: { $0.id == callId }) {
                 lines[index].activities.append(activity)
             } else {
                 var line = ChatLine(id: seq, role: "activity", text: "", reasoning: nil)
@@ -1114,6 +1119,9 @@ private final class RemoteChat: ObservableObject {
         if type == "assistant/message" { line.mergedEventIds.insert(seq) }
         if type == "user/message", lines.last?.role == "turn" {
             lines.insert(line, at: lines.count - 1)
+        } else if let insertAfter {
+            let index = MobileTranscriptOrder.insertionIndex(ids: lines.map(\.id), after: insertAfter)
+            lines.insert(line, at: min(index, lines.count))
         } else {
             lines.append(line)
         }
@@ -2932,7 +2940,7 @@ private struct TurnProcessView: View {
             ProcessDisclosureView(summary: processSummary,
                 reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
                     .compactMap { $0 }.joined(separator: "\n\n"),
-                activities: activities, toolOutputs: toolOutputs, onInspect: onInspect)
+                activities: [], toolOutputs: toolOutputs, onInspect: onInspect)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
