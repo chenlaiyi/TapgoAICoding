@@ -15,6 +15,7 @@
   </array>
   <key>UILaunchStoryboardName</key><string>LaunchScreen</string>
   <key>NSCameraUsageDescription</key><string>拍摄对话附件或扫描 DSH 连接链接的二维码。</string>
+  <key>NSPhotoLibraryAddUsageDescription</key><string>把对话中的图片存储到你的相册。</string>
   <key>CFBundleURLTypes</key><array><dict>
     <key>CFBundleTypeRole</key><string>Viewer</string>
     <key>CFBundleURLSchemes</key><array><string>dsh-mobile</string></array>

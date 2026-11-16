@@ -11,6 +11,8 @@ struct MobileAttachmentPreviewSource {
     var load: (MobileImageRef) async -> Void = { _ in }
     /// Clears a failed fetch so the tile can try again.
     var retry: (MobileImageRef) -> Void = { _ in }
+    /// Opens one image in the full-screen viewer.
+    var open: (MobileImageRef) -> Void = { _ in }
 }
 
 /// Compact attachment chips: an image thumbnail plus its name, or a file name plus its size.
@@ -70,12 +72,17 @@ struct MobileMessageAttachmentSummary: View {
     @ViewBuilder
     private func thumbnail(_ reference: MobileImageRef) -> some View {
         if let image = preview.image(reference) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .accessibilityLabel(reference.name ?? "图片")
+            Button {
+                preview.open(reference)
+            } label: {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("查看\(reference.name ?? "图片")")
         } else if preview.failed(reference) {
             Button {
                 preview.retry(reference)

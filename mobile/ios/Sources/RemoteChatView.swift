@@ -737,22 +737,37 @@ private final class RemoteChat: ObservableObject {
     /// - Parameter reference: image block reference from the transcript.
     func loadAttachmentImage(_ reference: MobileImageRef) async {
         let id = reference.attachmentID
-        guard attachmentImages[id] == nil, !loadingAttachments.contains(id),
-              let computer, let sessionId else { return }
+        guard attachmentImages[id] == nil, !loadingAttachments.contains(id) else { return }
         loadingAttachments.insert(id)
         defer { loadingAttachments.remove(id) }
         do {
-            let value = try await call("session/attachment", arguments: ["request": [
-                "sessionId": sessionId, "attachment": reference.wire]], computer: computer)
-            guard let value = value as? [String: Any], let encoded = value["data"] as? String,
-                  let data = Data(base64Encoded: encoded),
-                  let thumbnail = MobileImageThumbnail.make(from: data) else { throw ChatFailure.unavailable }
+            guard let data = try await fetchAttachmentData(reference) else { throw ChatFailure.unavailable }
+            guard let thumbnail = MobileImageThumbnail.make(from: data) else { throw ChatFailure.unavailable }
             attachmentImages[id] = UIImage(cgImage: thumbnail)
             failedAttachments.remove(id)
             rememberAttachment(id)
         } catch {
             failedAttachments.insert(id)
         }
+    }
+
+    /// Reads the original bytes of one durable image for the full-screen viewer.
+    /// - Parameter reference: image block reference from the transcript.
+    /// - Returns: the encoded image bytes, or nil when the Host refused or the connection is gone.
+    func attachmentData(_ reference: MobileImageRef) async -> Data? {
+        try? await fetchAttachmentData(reference)
+    }
+
+    /// Performs the `session/attachment` read shared by thumbnails and the viewer.
+    /// - Parameter reference: image block reference from the transcript.
+    /// - Returns: the encoded image bytes reported by the Host.
+    private func fetchAttachmentData(_ reference: MobileImageRef) async throws -> Data {
+        guard let computer, let sessionId else { throw ChatFailure.unavailable }
+        let value = try await call("session/attachment", arguments: ["request": [
+            "sessionId": sessionId, "attachment": reference.wire]], computer: computer)
+        guard let value = value as? [String: Any], let encoded = value["data"] as? String,
+              let data = Data(base64Encoded: encoded) else { throw ChatFailure.unavailable }
+        return data
     }
 
     /// Tracks insertion order so the in-memory thumbnail cache stays bounded.
@@ -1581,6 +1596,12 @@ private final class RemoteChat: ObservableObject {
 
 private struct MobileForkTarget: Identifiable { let id: String }
 
+/// One image the full-screen viewer was opened for.
+private struct MobileImageViewerTarget: Identifiable {
+    let id: String
+    let reference: MobileImageRef
+}
+
 struct RemoteChatView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -1597,6 +1618,7 @@ struct RemoteChatView: View {
     @State private var showingSettings = false
     @State private var showingModels = false
     @State private var modelPickerDetent: PresentationDetent = .large
+    @State private var viewerTarget: MobileImageViewerTarget?
     @State private var editingQueueItem: MobileQueuedItem?
     @State private var removingQueueItem: MobileQueuedItem?
     @State private var queueDraft = ""
@@ -1826,6 +1848,11 @@ struct RemoteChatView: View {
         .fullScreenCover(item: $forkTarget) { target in
             RemoteChatView(computer: computer, sessionId: target.id, title: "分支对话", project: project,
                            onUnauthorized: onUnauthorized)
+        }
+        .fullScreenCover(item: $viewerTarget) { target in
+            MobileImageViewer(reference: target.reference,
+                              thumbnail: chat.attachmentImage(target.reference),
+                              loader: { await chat.attachmentData(target.reference) })
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await chat.loadSettings(computer: computer) } }
@@ -2378,7 +2405,10 @@ struct RemoteChatView: View {
             image: { chat.attachmentImage($0) },
             failed: { chat.attachmentFailed($0) },
             load: { await chat.loadAttachmentImage($0) },
-            retry: { chat.retryAttachment($0) })
+            retry: { chat.retryAttachment($0) },
+            open: { reference in
+                viewerTarget = MobileImageViewerTarget(id: reference.attachmentID, reference: reference)
+            })
     }
 
     private func chatRow(_ line: ChatLine) -> some View {

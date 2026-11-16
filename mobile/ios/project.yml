@@ -59,6 +59,7 @@ targets:
       - path: Sources/MobileModelPreference.swift
       - path: Sources/MobileSilenceLabel.swift
       - path: Sources/MobileImageThumbnail.swift
+      - path: Sources/MobileImageExport.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: "YES"
