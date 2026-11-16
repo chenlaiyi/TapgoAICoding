@@ -15,6 +15,20 @@ final class MobileComposerStateTests: XCTestCase {
         XCTAssertTrue(state.planActive)
     }
 
+    func testPlanPendingAndGoalRoundsAreProjected() {
+        var state = MobileComposerState()
+        state.restore(["asOfSeq": 3, "values": [
+            "plan": ["active": true, "pending": true],
+            "goal": ["goal": ["objective": "对齐", "phase": "active", "maxGoalRounds": 12], "roundsStarted": 3],
+        ]])
+        XCTAssertTrue(state.planPending)
+        XCTAssertEqual(state.goalRoundsStarted, 3)
+        XCTAssertEqual(state.goalMaxRounds, 12)
+        state.restore(["asOfSeq": 4, "values": ["plan": ["active": true]]])
+        XCTAssertFalse(state.planPending)
+        XCTAssertNil(state.goalRoundsStarted)
+    }
+
     func testReplacementClearsAbsentCapabilitiesAndKeepsUnchangedKeys() {
         var state = MobileComposerState()
         state.restore(["asOfSeq": 3, "values": ["plan": ["active": true],

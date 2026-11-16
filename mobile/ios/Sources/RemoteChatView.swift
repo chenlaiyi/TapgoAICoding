@@ -219,8 +219,11 @@ private final class RemoteChat: ObservableObject {
     var imageLimits: MobileImageLimits { composerState.imageLimits }
     var sessionTitle: String? { composerState.sessionTitle }
     var planActive: Bool { composerState.planActive }
+    var planPending: Bool { composerState.planPending }
     var goalObjective: String? { composerState.goalObjective }
     var goalPhase: String? { composerState.goalPhase }
+    var goalRoundsStarted: Int? { composerState.goalRoundsStarted }
+    var goalMaxRounds: Int? { composerState.goalMaxRounds }
     private var sessionId: String?
     /// The submission the Host may already have accepted, so a resend of the same draft reuses its request id.
     private var pendingSubmission: MobilePendingSubmission?
@@ -2026,21 +2029,30 @@ struct RemoteChatView: View {
                     Text(statusError).font(.caption).foregroundStyle(.orange)
                 }
                 if chat.planActive && additions.mode != .plan {
-                    HStack {
-                        Label("方案模式", systemImage: "list.bullet")
-                        Spacer()
-                        Button("退出方案模式") {
-                            Task { await chat.composerCommand("/plan off", computer: computer, sessionId: sessionId) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Label("方案模式", systemImage: "list.bullet")
+                            Spacer()
+                            Button("退出方案模式") {
+                                Task { await chat.composerCommand("/plan off", computer: computer, sessionId: sessionId) }
+                            }
+                            .disabled(chat.sending)
                         }
-                        .disabled(chat.sending)
+                        .font(.caption).frame(minHeight: 44)
+                        if chat.planPending {
+                            Text("方案模式切换将在下一条消息生效")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
                     }
-                    .font(.caption).frame(minHeight: 44)
                 }
                 if let objective = chat.goalObjective {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("目标：\(objective)").font(.caption).lineLimit(2)
                         HStack {
                             Text(chat.goalPhase == "active" ? "进行中" : chat.goalPhase == "complete" ? "已完成" : "已暂停或阻塞")
+                            if let started = chat.goalRoundsStarted, let max = chat.goalMaxRounds {
+                                Text("第 \(started)/\(max) 轮").foregroundStyle(.secondary)
+                            }
                             Spacer()
                             if chat.goalPhase != "complete" {
                                 Button(chat.goalPhase == "active" ? "暂停目标" : "继续目标") {

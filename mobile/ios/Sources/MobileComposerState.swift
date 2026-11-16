@@ -5,8 +5,11 @@ struct MobileComposerState {
     private var cuts: [String: Int] = [:]
     private(set) var sessionTitle: String?
     private(set) var planActive = false
+    private(set) var planPending = false
     private(set) var goalObjective: String?
     private(set) var goalPhase: String?
+    private(set) var goalRoundsStarted: Int?
+    private(set) var goalMaxRounds: Int?
     private(set) var imageLimits = MobileImageLimits.fallback
 
     mutating func restore(_ baseline: [String: Any]) {
@@ -29,11 +32,15 @@ struct MobileComposerState {
         let value = value as? [String: Any]
         switch key {
         case "title": sessionTitle = text.flatMap { $0.isEmpty ? nil : $0 }
-        case "plan": planActive = value?["active"] as? Bool ?? false
+        case "plan":
+            planActive = value?["active"] as? Bool ?? false
+            planPending = value?["pending"] as? Bool ?? false
         case "goal":
             let goal = value?["goal"] as? [String: Any]
             goalObjective = goal?["objective"] as? String
             goalPhase = goal?["phase"] as? String
+            goalRoundsStarted = value?["roundsStarted"] as? Int
+            goalMaxRounds = goal?["maxGoalRounds"] as? Int
         case "imageLimits":
             if let value, let limits = MobileImageLimits(wire: value) { imageLimits = limits }
         default: break
