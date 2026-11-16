@@ -1741,6 +1741,7 @@ struct RemoteChatView: View {
     @State private var editingQueueItem: MobileQueuedItem?
     @State private var removingQueueItem: MobileQueuedItem?
     @State private var queueDraft = ""
+    @State private var draftSaveTask: Task<Void, Never>?
     /// Whether a message sent while a turn runs waits in the queue or steers that turn.
     @AppStorage("mobile.followUp.delivery") private var followUpDelivery = MobilePromptDelivery.queue.rawValue
     @State private var effortTarget: MobileModel?
@@ -1963,6 +1964,7 @@ struct RemoteChatView: View {
         .background(Color(uiColor: .systemBackground))
         .toolbar(.hidden, for: .navigationBar)
         .task(id: sessionId) {
+            restoreDraft()
             chat.connection = connection
             if #available(iOS 16.1, *) {
                 MobileLiveActivity.registrar = { token, activityId in
@@ -1986,6 +1988,7 @@ struct RemoteChatView: View {
                               loader: { await chat.attachmentData(target.reference) })
         }
         .onChange(of: scenePhase) { phase in
+            if phase != .active { saveDraftNow() }
             if phase == .active { Task { await chat.loadSettings(computer: computer) } }
             if phase == .active && !chat.connected && !chat.loading {
                 Task { await chat.retry(computer: computer, sessionId: sessionId) }
@@ -1996,6 +1999,8 @@ struct RemoteChatView: View {
                   updated.connectionURL != computer.connectionURL else { return }
             computer = updated
         }
+        .onChange(of: draft) { _ in scheduleDraftSave() }
+        .onChange(of: additions.mode) { _ in scheduleDraftSave() }
         .onChange(of: chat.running) { _ in updateLiveActivity() }
         .onChange(of: chat.liveActivityDetail) { _ in updateLiveActivity() }
         .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
@@ -2003,6 +2008,7 @@ struct RemoteChatView: View {
             if !running { applyRecommendation() }
         }
         .onDisappear {
+            saveDraftNow()
             chat.disconnect()
             if #available(iOS 16.1, *) { MobileLiveActivity.end() }
         }
@@ -2455,7 +2461,10 @@ struct RemoteChatView: View {
                 let steer = chat.queueRunning && followUpDelivery == MobilePromptDelivery.steer.rawValue
                 if await chat.send(text, attachments: submittedAttachments, mode: submittedMode,
                                    steer: steer, computer: computer, sessionId: sessionId) {
-                    if draft == submittedDraft { draft = "" }
+                    if draft == submittedDraft {
+                        draft = ""
+                        MobileDraftStore.clear(key: draftKey)
+                    }
                     let delivered = Set(submittedAttachments.map(\.id))
                     additions.attachments.removeAll { delivered.contains($0.id) }
                     if additions.mode == submittedMode { additions.mode = .message }
@@ -2486,6 +2495,36 @@ struct RemoteChatView: View {
                 .disabled(busy || !chat.connected)
             }
         }
+    }
+
+    /// Storage key for this conversation's unsent draft.
+    private var draftKey: String {
+        MobileDraftStore.sessionKey(computerID: computer.id, sessionID: sessionId)
+    }
+
+    /// Restores an unsent draft once, without overwriting newer typing.
+    private func restoreDraft() {
+        guard draft.isEmpty, additions.mode == .message,
+              let stored = MobileDraftStore.load(key: draftKey) else { return }
+        draft = stored.text
+        additions.mode = stored.mode
+    }
+
+    /// Debounces one draft write so typing does not touch defaults on every key.
+    private func scheduleDraftSave() {
+        draftSaveTask?.cancel()
+        draftSaveTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            saveDraftNow()
+        }
+    }
+
+    /// Writes the current draft, clearing the key when the composer is empty.
+    private func saveDraftNow() {
+        draftSaveTask?.cancel()
+        draftSaveTask = nil
+        MobileDraftStore.save(MobileDraft(text: draft, mode: additions.mode), key: draftKey)
     }
 
     /// Mirrors the running turn into the Dynamic Island and the Lock Screen.

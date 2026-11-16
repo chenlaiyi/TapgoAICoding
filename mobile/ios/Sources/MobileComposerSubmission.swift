@@ -1,7 +1,7 @@
 import Foundation
 
 /// The next submission uses the Host's command handlers, never a prompt-only imitation.
-enum MobileComposerMode: String, CaseIterable {
+enum MobileComposerMode: String, CaseIterable, Codable {
     case message, plan, goal
     var title: String {
         switch self {

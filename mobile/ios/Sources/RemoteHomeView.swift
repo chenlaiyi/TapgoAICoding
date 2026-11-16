@@ -1133,8 +1133,10 @@ private struct RemoteNewConversationView: View {
     let computer: SavedComputer
     @ObservedObject var sessions: RemoteSessions
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @FocusState private var inputFocused: Bool
     @State private var draft = ""
+    @State private var draftSaveTask: Task<Void, Never>?
     @StateObject private var additions = MobileComposerAdditions()
     @State private var createdDraftID: String?
     @State private var selectedWorkspace: String?
@@ -1248,8 +1250,15 @@ private struct RemoteNewConversationView: View {
         .task {
             sessions.startError = nil
             selectedWorkspace = availableWorkspaces.first?.path
+            restoreDraft()
             inputFocused = true
         }
+        .onChange(of: draft) { _ in scheduleDraftSave() }
+        .onChange(of: additions.mode) { _ in scheduleDraftSave() }
+        .onChange(of: scenePhase) { phase in
+            if phase != .active { saveDraftNow() }
+        }
+        .onDisappear { saveDraftNow() }
         .onChange(of: selectedWorkspace) { _ in createdDraftID = nil }
         .onChange(of: sessions.workspaces.count) { _ in
             if selectedWorkspace == nil { selectedWorkspace = availableWorkspaces.first?.path }
@@ -1480,6 +1489,36 @@ private struct RemoteNewConversationView: View {
         }
     }
 
+    /// Storage key for this computer's new-conversation draft.
+    private var newDraftKey: String {
+        MobileDraftStore.newConversationKey(computerID: computer.id)
+    }
+
+    /// Restores an unsent new-conversation draft once, without overwriting newer typing.
+    private func restoreDraft() {
+        guard draft.isEmpty, additions.mode == .message,
+              let stored = MobileDraftStore.load(key: newDraftKey) else { return }
+        draft = stored.text
+        additions.mode = stored.mode
+    }
+
+    /// Debounces one draft write so typing does not touch defaults on every key.
+    private func scheduleDraftSave() {
+        draftSaveTask?.cancel()
+        draftSaveTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            saveDraftNow()
+        }
+    }
+
+    /// Writes the current draft, clearing the key when the composer is empty.
+    private func saveDraftNow() {
+        draftSaveTask?.cancel()
+        draftSaveTask = nil
+        MobileDraftStore.save(MobileDraft(text: draft, mode: additions.mode), key: newDraftKey)
+    }
+
     private func startDraft() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard (!text.isEmpty || additions.hasAttachments), !submitting, !sessions.starting,
@@ -1499,7 +1538,10 @@ private struct RemoteNewConversationView: View {
                                                   mode: submittedMode, existingSessionID: createdDraftID,
                                                   onCreated: { createdDraftID = $0 }) {
                 inputFocused = false
-                if draft == submittedDraft { draft = "" }
+                if draft == submittedDraft {
+                    draft = ""
+                    MobileDraftStore.clear(key: newDraftKey)
+                }
                 let delivered = Set(submittedAttachments.map(\.id))
                 additions.attachments.removeAll { delivered.contains($0.id) }
                 if additions.mode == submittedMode { additions.mode = .message }
