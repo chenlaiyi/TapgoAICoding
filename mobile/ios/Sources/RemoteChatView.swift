@@ -224,6 +224,8 @@ private final class RemoteChat: ObservableObject {
     var connection: MobileConnection?
     /// Last transport failure, which decides whether the fallback route may be tried.
     private var lastFailure: Error?
+    /// The Live Activity registration to resend after a reconnect.
+    private var pendingLiveActivity: (token: String, activityId: String, project: String)?
     @Published private var attachmentImages: [String: UIImage] = [:]
     @Published private var failedAttachments: Set<String> = []
     private var loadingAttachments: Set<String> = []
@@ -558,6 +560,7 @@ private final class RemoteChat: ObservableObject {
                     connected = true
                     reconnecting = false
                     lastFrameAt = .now
+                    Task { await self.retryLiveActivityRegistration() }
                     error = nil
                     retryCount = 0
                     Task { await self.loadFeedback(computer: computer) }
@@ -714,6 +717,50 @@ private final class RemoteChat: ObservableObject {
         } catch {
             queueUnavailable = true
         }
+    }
+
+    /// Sends one Live Activity push token so the Host keeps updating the activity in the background.
+    /// - Parameters:
+    ///   - token: hex per-activity push token reported by ActivityKit.
+    ///   - activityId: activity the token belongs to.
+    ///   - project: project label shown on the Lock Screen.
+    func registerLiveActivity(token: String, activityId: String, project: String) async {
+        pendingLiveActivity = (token, activityId, project)
+        await sendLiveActivityRegistration(token: token, activityId: activityId, project: project)
+    }
+
+    /// Drops one Live Activity registration after the activity ends.
+    /// - Parameter activityId: activity that is no longer visible.
+    func unregisterLiveActivity(activityId: String) async {
+        pendingLiveActivity = nil
+        guard let session, let origin = URL(string: computer.origin),
+              let url = URL(string: "/live-activity/unregister", relativeTo: origin) else { return }
+        await postLiveActivity(url, body: ["activityId": activityId], session: session)
+    }
+
+    /// Resends a registration that failed while the connection was down.
+    private func retryLiveActivityRegistration() async {
+        guard let pending = pendingLiveActivity else { return }
+        await sendLiveActivityRegistration(token: pending.token, activityId: pending.activityId,
+                                           project: pending.project)
+    }
+
+    private func sendLiveActivityRegistration(token: String, activityId: String, project: String) async {
+        guard let sessionId, let session, let origin = URL(string: computer.origin),
+              let url = URL(string: "/live-activity/register", relativeTo: origin) else { return }
+        await postLiveActivity(url, body: [
+            "sessionId": sessionId, "activityId": activityId, "token": token,
+            "title": sessionTitle ?? "点点够", "project": project,
+        ], session: session)
+    }
+
+    private func postLiveActivity(_ url: URL, body: [String: Any], session: URLSession) async {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 8
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        _ = try? await session.data(for: request)
     }
 
     /// Applies one edit, removal, or steering promotion to a queued prompt.
@@ -1911,6 +1958,14 @@ struct RemoteChatView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task(id: sessionId) {
             chat.connection = connection
+            if #available(iOS 16.1, *) {
+                MobileLiveActivity.registrar = { token, activityId in
+                    await chat.registerLiveActivity(token: token, activityId: activityId, project: project)
+                }
+                MobileLiveActivity.unregisterer = { activityId in
+                    await chat.unregisterLiveActivity(activityId: activityId)
+                }
+            }
             await chat.connect(computer: computer, sessionId: sessionId)
             await chat.loadSettings(computer: computer)
             await chat.loadFeedback(computer: computer)

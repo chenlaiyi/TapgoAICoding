@@ -24,7 +24,7 @@ struct DshTaskLiveActivityWidget: Widget {
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Elapsed(startedAt: context.state.startedAt)
+                    Elapsed(startedAt: Date(timeIntervalSince1970: context.state.startedAt))
                         .font(.caption2.monospacedDigit())
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -38,7 +38,7 @@ struct DshTaskLiveActivityWidget: Widget {
             } compactLeading: {
                 Image(systemName: "terminal")
             } compactTrailing: {
-                Elapsed(startedAt: context.state.startedAt)
+                Elapsed(startedAt: Date(timeIntervalSince1970: context.state.startedAt))
                     .font(.caption2.monospacedDigit())
                     .frame(maxWidth: 54)
             } minimal: {
@@ -60,7 +60,7 @@ private struct LockScreenTaskView: View {
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
-            Elapsed(startedAt: context.state.startedAt).font(.caption.monospacedDigit())
+            Elapsed(startedAt: Date(timeIntervalSince1970: context.state.startedAt)).font(.caption.monospacedDigit())
         }
         .padding(12)
     }

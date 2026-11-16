@@ -6,8 +6,8 @@ import Foundation
 struct DshTaskActivityAttributes: ActivityAttributes {
     /// Snapshot rendered on the Lock Screen and in the Dynamic Island.
     struct ContentState: Codable, Hashable {
-        /// When the running turn started; the widget renders it as a system timer.
-        var startedAt: Date
+        /// Turn start in epoch seconds, shared with the Host's pushed state.
+        var startedAt: Double
         /// Current work, such as `正在运行命令 · git status`.
         var detail: String
         /// Whether the turn is still running.

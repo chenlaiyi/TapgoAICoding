@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/host/live-activity/README.md
+/:
+  en: 501b589ddd0522a7
+  zh: 38d8db46bf949eaf
+/deepseek-ai-dsh-host-live-activity:
+  en: 90fc13e187645762
+  zh: de6aa118e5ff84df
+/deepseek-ai-dsh-host-live-activity/summary:
+  en: 1e33cfc37ed00c8b
+  zh: 478e9d251202e28c
+/deepseek-ai-dsh-host-live-activity/table-of-contents:
+  en: 2820c9a805d92a8e
+  zh: f942c0fe4d7a20be
+/deepseek-ai-dsh-host-live-activity/use-this-package:
+  en: 5c944165e3ab382f
+  zh: 25c72fc4179f0804
+/deepseek-ai-dsh-host-live-activity/use-this-package/what-the-app-sends:
+  en: 7393ed3e5503a95b
+  zh: 45d9d86ade603a92
+/deepseek-ai-dsh-host-live-activity/use-this-package/delivery-policy:
+  en: 2422278e97923e56
+  zh: be24c98beadcab1c
+/deepseek-ai-dsh-host-live-activity/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: e791e8efc34ec4f1
+/deepseek-ai-dsh-host-live-activity/understand-the-implementation/event-fold:
+  en: 20a352a2a9879346
+  zh: 33f93fb8f7901ed6
+/deepseek-ai-dsh-host-live-activity/understand-the-implementation/provider-token-and-transport:
+  en: 024a37e536edbd61
+  zh: 6630874b069091a7
+/deepseek-ai-dsh-host-live-activity/understand-the-implementation/lifecycle:
+  en: 1acfe9f3b272579a
+  zh: b9a7ae1e6b58556e
+/deepseek-ai-dsh-host-live-activity/further-exploration:
+  en: 1e0eea1bc38acb66
+  zh: de4c7a20d3d21686
+/deepseek-ai-dsh-host-live-activity/model-experience:
+  en: 5db6489bcdfe4e29
+  zh: 862259a189a03a5c
+/deepseek-ai-dsh-host-live-activity/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: 617803c558367430
+/deepseek-ai-dsh-host-live-activity/known-limitations-and-deferred-work:
+  en: bf02d2748bdd0c6f
+  zh: e9797d1b3c66d911

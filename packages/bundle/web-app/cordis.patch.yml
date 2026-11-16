@@ -113,6 +113,12 @@
     - id: plugin-inventory
       name: '@deepseek-ai/dsh-host-plugin-inventory'
 
+    # APNs delivery for the iOS Live Activity: the phone registers one
+    # per-activity push token and the Host pushes turn progress from Session
+    # events. Disabled unless TAPGO_APNS_* names a key.
+    - id: live-activity
+      name: '@deepseek-ai/dsh-host-live-activity'
+
     # Session commands, cold reads, and live control over Typert Remote.
     - id: session-controller
       name: '@deepseek-ai/dsh-api-session-controller'
