@@ -1704,6 +1704,7 @@ struct RemoteChatView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject var connection: MobileConnection
+    @EnvironmentObject private var interactions: MobileInteractionCenter
     @State private var computer: SavedComputer
     let sessionId: String
     let title: String
@@ -2612,6 +2613,7 @@ struct RemoteChatView: View {
             } else if line.role == "turn" {
                 TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
                                 lastActivityAt: line.lastActivityAt,
+                                awaitingDecision: interactions.isAwaitingDecision(sessionId: sessionId),
                                 activities: line.activities, reasoning: line.reasoning,
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
                                     ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
@@ -2652,6 +2654,14 @@ struct RemoteChatView: View {
                                         : Color(red: 0.88, green: 0.95, blue: 1),
                                         in: RoundedRectangle(cornerRadius: 20))
                     }
+                }
+                .contextMenu {
+                    if !line.text.isEmpty {
+                        Button("复制这条消息") { UIPasteboard.general.string = line.text }
+                    }
+                }
+                .accessibilityAction(named: "复制这条消息") {
+                    if !line.text.isEmpty { UIPasteboard.general.string = line.text }
                 }
             }
             if line.role != "user" { Spacer(minLength: 20) }
@@ -2747,6 +2757,8 @@ private struct TurnProcessView: View {
     let endedAt: TimeInterval?
     let endReason: String?
     let lastActivityAt: TimeInterval?
+    /// Whether the Host is waiting on an approval or answer from this person.
+    let awaitingDecision: Bool
     let activities: [MobileChatActivity]
     let reasoning: String?
     let liveReasoning: String
@@ -2788,6 +2800,7 @@ private struct TurnProcessView: View {
         let end = endedAt ?? now.timeIntervalSince1970 * 1000
         let seconds = max(0, Int((end - startedAt) / 1000))
         let duration = seconds < 60 ? "\(seconds) 秒" : "\(seconds / 60) 分 \(seconds % 60) 秒"
+        if endedAt == nil && awaitingDecision { return "等待你的确认 · 已运行 \(duration)" }
         return endedAt == nil ? "已运行 \(duration)" : outcome.map { "\($0) · 用时 \(duration)" } ?? "用时 \(duration)"
     }
 

@@ -30,6 +30,13 @@ final class MobileInteractionCenter: ObservableObject {
     private var fixture = false
     #endif
 
+    /// Whether this Session has a pending approval or question the person must answer.
+    /// - Parameter sessionId: Session shown in the conversation.
+    /// - Returns: true while the Host waits for that decision.
+    func isAwaitingDecision(sessionId: String) -> Bool {
+        approvals.contains { $0.agentId == sessionId } || questions.contains { $0.agentId == sessionId }
+    }
+
     func connect(computer: SavedComputer?, reconnect: Bool = false) async {
         disconnect(resetRetry: !reconnect)
         guard let computer, let origin = URL(string: computer.origin),

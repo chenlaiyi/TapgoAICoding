@@ -24,6 +24,7 @@ struct DshMobileApp: App {
                 .overlay {
                     MobileInteractionOverlay(center: interactions, computer: connection.activeComputer)
                 }
+                .environmentObject(interactions)
 
                 if showingLaunch {
                     MobileLaunchView()
