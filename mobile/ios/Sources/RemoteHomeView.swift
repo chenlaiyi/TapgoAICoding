@@ -802,11 +802,13 @@ struct RemoteHomeView: View {
                                 } label: {
                                     Image(systemName: "square.and.pencil")
                                         .font(.system(size: 13)).foregroundStyle(.secondary)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
                                 .disabled(sessions.starting)
                                 .accessibilityLabel("在\(projectTitle(project))新建对话")
                             }
-                            .frame(height: 36)
+                            .frame(minHeight: 44)
                             ForEach(visibleSessions.filter { $0.cwd == project && !sessions.pinnedSessionIds.contains($0.id) }) { item in
                                 sessionRow(item, indent: 24)
                             }
@@ -1070,7 +1072,13 @@ struct RemoteHomeView: View {
                     }
                 }
                 Spacer(minLength: 4)
-                if item.running { ProgressView().controlSize(.mini) }
+                if item.running {
+                    HStack(spacing: 4) {
+                        ProgressView().controlSize(.mini)
+                        Text("运行中").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .accessibilityLabel("正在运行")
+                }
             }
             .font(.subheadline.weight(.medium))
             .foregroundStyle(.primary)
@@ -1101,11 +1109,13 @@ struct RemoteHomeView: View {
         .accessibilityAction(named: "归档对话") { archivingSession = item }
     }
 
-    /// Whether another visible conversation shares this title, making its project worth showing.
+    /// Whether this row needs its project and Mac shown as context.
     /// - Parameter item: listed conversation.
-    /// - Returns: true when the title alone is ambiguous.
+    /// - Returns: true for pinned rows and for titles shared by more than one conversation outside project groups.
     private func showsProjectContext(_ item: RemoteSession) -> Bool {
-        visibleSessions.filter { $0.title == item.title }.count > 1
+        if isPinned(item) { return true }
+        guard sortMode != .project else { return false }
+        return visibleSessions.filter { $0.title == item.title }.count > 1
     }
 
     /// Whether this conversation is currently pinned on the Host.
