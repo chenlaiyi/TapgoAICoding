@@ -35,6 +35,8 @@ struct DshMobileApp: App {
             .preferredColorScheme(fixtureColorScheme)
             #endif
             .task {
+                // A Live Activity outlives its process; clear one left by the previous launch.
+                if #available(iOS 16.1, *) { MobileLiveActivity.end() }
                 try? await Task.sleep(for: .milliseconds(1100))
                 withAnimation(.easeOut(duration: 0.2)) { showingLaunch = false }
             }

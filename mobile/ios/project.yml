@@ -30,6 +30,23 @@ targets:
         SUPPORTS_MACCATALYST: "NO"
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+    dependencies:
+      - target: DshMobileWidgets
+  DshMobileWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Sources/DshTaskActivityAttributes.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: "com.devtools.terminalSimple.widgets"
+        INFOPLIST_FILE: "Widgets/Info.plist"
+        GENERATE_INFOPLIST_FILE: "NO"
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.1"
+        SKIP_INSTALL: "YES"
+        PRODUCT_NAME: "点点够终端小组件"
   DshMobileUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -236,6 +236,22 @@ private final class RemoteChat: ObservableObject {
             && lines.contains(where: { $0.role == "turn" })
     }
 
+    /// Current work summary for the Live Activity and any other surface showing progress.
+    var liveActivityDetail: String {
+        guard let turn = lines.last(where: { $0.role == "turn" }) else { return "" }
+        if let activity = turn.activities.last(where: { !$0.finished }) ?? turn.activities.last {
+            return activity.liveLine
+        }
+        let line = liveReasoning.split(whereSeparator: \.isNewline).last.map(String.init) ?? liveReasoning
+        return line.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// When the running turn started, as reported by the Host.
+    var runningStartedAt: Date? {
+        guard let started = lines.last(where: { $0.role == "turn" })?.startedAt else { return nil }
+        return Date(timeIntervalSince1970: started / 1000)
+    }
+
     func connect(computer: SavedComputer, sessionId: String, reconnect: Bool = false) async {
         self.sessionId = sessionId
         self.computer = computer
@@ -1919,11 +1935,16 @@ struct RemoteChatView: View {
                   updated.connectionURL != computer.connectionURL else { return }
             computer = updated
         }
+        .onChange(of: chat.running) { _ in updateLiveActivity() }
+        .onChange(of: chat.liveActivityDetail) { _ in updateLiveActivity() }
         .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
         .onChange(of: chat.running) { running in
             if !running { applyRecommendation() }
         }
-        .onDisappear { chat.disconnect() }
+        .onDisappear {
+            chat.disconnect()
+            if #available(iOS 16.1, *) { MobileLiveActivity.end() }
+        }
         .alert("清除当前目标？", isPresented: $confirmingGoalClear) {
             Button("取消", role: .cancel) {}
             Button("清除", role: .destructive) {
@@ -2404,6 +2425,19 @@ struct RemoteChatView: View {
                 .disabled(busy || !chat.connected)
             }
         }
+    }
+
+    /// Mirrors the running turn into the Dynamic Island and the Lock Screen.
+    private func updateLiveActivity() {
+        guard #available(iOS 16.1, *) else { return }
+        guard chat.running else {
+            MobileLiveActivity.end()
+            return
+        }
+        let detail = chat.liveActivityDetail
+        MobileLiveActivity.show(sessionTitle: chat.sessionTitle ?? title, project: project,
+                                startedAt: chat.runningStartedAt ?? Date(),
+                                detail: detail.isEmpty ? "正在处理" : detail)
     }
 
     private func applyRecommendation() {
