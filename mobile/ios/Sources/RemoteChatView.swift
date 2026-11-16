@@ -230,6 +230,9 @@ private final class RemoteChat: ObservableObject {
     var connection: MobileConnection?
     /// Last transport failure, which decides whether the fallback route may be tried.
     private var lastFailure: Error?
+    /// Turn disclosures the reader left expanded, keyed by turn number.
+    private var expansion: [Int: Bool] = [:]
+
     /// The Live Activity registration to resend after a reconnect.
     private var pendingLiveActivity: (token: String, activityId: String, project: String)?
     @Published private var attachmentImages: [String: UIImage] = [:]
@@ -242,6 +245,23 @@ private final class RemoteChat: ObservableObject {
     var running: Bool {
         liveActive || lines.last(where: { $0.role == "turn" })?.endedAt == nil
             && lines.contains(where: { $0.role == "turn" })
+    }
+
+    /// Whether a turn's process disclosure was left expanded.
+    /// - Parameter turn: durable turn number.
+    /// - Returns: the stored flag, defaulting to collapsed.
+    func processExpanded(turn: Int) -> Bool {
+        expansion[turn] ?? false
+    }
+
+    /// Records a turn disclosure change for the next visit.
+    /// - Parameters:
+    ///   - turn: durable turn number.
+    ///   - expanded: whether the disclosure is open.
+    func setProcessExpanded(turn: Int, expanded: Bool) {
+        expansion[turn] = expanded
+        guard let computer, let sessionId else { return }
+        MobileExpansionStore.save(expansion, computerID: computer.id, sessionID: sessionId)
     }
 
     /// Current work summary for the Live Activity and any other surface showing progress.
@@ -263,6 +283,9 @@ private final class RemoteChat: ObservableObject {
     func connect(computer: SavedComputer, sessionId: String, reconnect: Bool = false) async {
         self.sessionId = sessionId
         self.computer = computer
+        if !reconnect {
+            expansion = MobileExpansionStore.load(computerID: computer.id, sessionID: sessionId)
+        }
         #if DEBUG
         isFork = sessionId == "fixture-fork"
         let queueFixture = Self.debugQueueState()
@@ -2738,6 +2761,12 @@ struct RemoteChatView: View {
                 TurnProcessView(startedAt: line.startedAt, endedAt: line.endedAt, endReason: line.endReason,
                                 lastActivityAt: line.lastActivityAt,
                                 awaitingDecision: interactions.isAwaitingDecision(sessionId: sessionId),
+                                turn: line.turn,
+                                processExpanded: line.turn.map { chat.processExpanded(turn: $0) } ?? false,
+                                onProcessExpandedChange: { value in
+                                    guard let turn = line.turn else { return }
+                                    chat.setProcessExpanded(turn: turn, expanded: value)
+                                },
                                 activities: line.activities, reasoning: line.reasoning,
                                 liveReasoning: chat.lines.last(where: { $0.role == "turn" })?.id == line.id
                                     ? chat.liveReasoning : "", toolOutputs: chat.toolOutputs, onInspect: inspectProcess)
@@ -2909,6 +2938,9 @@ private struct TurnProcessView: View {
     let lastActivityAt: TimeInterval?
     /// Whether the Host is waiting on an approval or answer from this person.
     let awaitingDecision: Bool
+    let turn: Int?
+    let processExpanded: Bool
+    let onProcessExpandedChange: (Bool) -> Void
     let activities: [MobileChatActivity]
     let reasoning: String?
     let liveReasoning: String
@@ -2977,7 +3009,8 @@ private struct TurnProcessView: View {
             ProcessDisclosureView(summary: processSummary,
                 reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
                     .compactMap { $0 }.joined(separator: "\n\n"),
-                activities: [], toolOutputs: toolOutputs, onInspect: onInspect)
+                activities: [], toolOutputs: toolOutputs, onInspect: onInspect,
+                initialExpanded: processExpanded, onExpandedChange: onProcessExpandedChange)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2994,9 +3027,22 @@ private struct ProcessDisclosureView: View {
     let activities: [MobileChatActivity]
     let toolOutputs: [String: MobileToolOutput]
     let onInspect: () -> Void
+    let onExpandedChange: ((Bool) -> Void)?
     @State private var collapseVersion = 0
     @State private var reasoningExpanded = false
-    @State private var expanded = false
+    @State private var expanded: Bool
+
+    init(summary: String, reasoning: String, activities: [MobileChatActivity],
+         toolOutputs: [String: MobileToolOutput], onInspect: @escaping () -> Void,
+         initialExpanded: Bool = false, onExpandedChange: ((Bool) -> Void)? = nil) {
+        self.summary = summary
+        self.reasoning = reasoning
+        self.activities = activities
+        self.toolOutputs = toolOutputs
+        self.onInspect = onInspect
+        self.onExpandedChange = onExpandedChange
+        _expanded = State(initialValue: initialExpanded)
+    }
     @State private var showingDetails = false
     @State private var detailDetent: PresentationDetent = .large
 
@@ -3005,6 +3051,7 @@ private struct ProcessDisclosureView: View {
             Button {
                 onInspect()
                 expanded.toggle()
+                onExpandedChange?(expanded)
             } label: {
                 HStack {
                     Label(summary, systemImage: "list.bullet.clipboard")
@@ -3105,7 +3152,10 @@ private struct ProcessDisclosureView: View {
     }
 
     private var collapseButton: some View {
-        Button("收起过程") { expanded = false }
+        Button("收起过程") {
+            expanded = false
+            onExpandedChange?(false)
+        }
             .font(.caption).foregroundStyle(Color.accentColor).frame(minHeight: 44)
     }
 
