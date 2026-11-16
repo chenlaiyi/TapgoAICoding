@@ -1,16 +1,24 @@
 import SwiftUI
 
+/// One tapped file awaiting native preview.
+private struct MobileFilePreviewRequest: Identifiable {
+    let id = UUID()
+    let path: String
+}
+
 /// A summary chip opens retained, turn-scoped file comparisons without reading current workspace state.
 struct MobileChangesView: View {
     let sequence: Int
     let loadSummary: (Int) async throws -> MobileChangesSummary
     let loadDiff: (Int, Int) async throws -> MobileFileDiff
+    let loadFile: (String) async throws -> MobileWorkspaceFile
     @State private var summary: MobileChangesSummary?
     @State private var error: String?
     @State private var expired = false
     @State private var loading = false
     @State private var showing = false
     @State private var revision = 0
+    @State private var previewRequest: MobileFilePreviewRequest?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -60,23 +68,34 @@ struct MobileChangesView: View {
                     List {
                         Section {
                             ForEach(Array(summary.files.enumerated()), id: \.offset) { index, file in
-                                NavigationLink {
-                                    MobileFileDiffView(file: file) { try await loadDiff(sequence, index) }
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text(file.display).font(.subheadline).lineLimit(3)
-                                        HStack(spacing: 10) {
-                                            if file.binary == true { Text("二进制文件") }
-                                            else if file.oversized == true { Text("文件过大，无法预览") }
-                                            else {
-                                                Text("+\(file.added)").foregroundStyle(.green)
-                                                Text("−\(file.deleted)").foregroundStyle(.red)
-                                            }
-                                        }.font(.caption).foregroundStyle(.secondary)
+                                HStack(spacing: 6) {
+                                    NavigationLink {
+                                        MobileFileDiffView(file: file) { try await loadDiff(sequence, index) }
+                                    } label: {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text(file.display).font(.subheadline).lineLimit(3)
+                                            HStack(spacing: 10) {
+                                                if file.binary == true { Text("二进制文件") }
+                                                else if file.oversized == true { Text("文件过大，无法预览") }
+                                                else {
+                                                    Text("+\(file.added)").foregroundStyle(.green)
+                                                    Text("−\(file.deleted)").foregroundStyle(.red)
+                                                }
+                                            }.font(.caption).foregroundStyle(.secondary)
+                                        }
+                                        .padding(.vertical, 4)
                                     }
-                                    .padding(.vertical, 4)
+                                    .accessibilityIdentifier("changedFile-\(index)")
+                                    Button {
+                                        previewRequest = MobileFilePreviewRequest(path: file.path)
+                                    } label: {
+                                        Image(systemName: "doc.text.magnifyingglass")
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityLabel("预览 \(file.display)")
+                                    .accessibilityIdentifier("previewFile-\(index)")
                                 }
-                                .accessibilityIdentifier("changedFile-\(index)")
                             }
                         } header: {
                             Text("\(summary.total) 个文件 · +\(summary.added) −\(summary.deleted)")
@@ -85,6 +104,9 @@ struct MobileChangesView: View {
                                 Text("Host 仅保留前 \(summary.files.count) 个文件的预览，总计包含其余文件")
                             }
                         }
+                    }
+                    .sheet(item: $previewRequest) { request in
+                        MobileFilePreviewSheet(path: request.path) { try await loadFile(request.path) }
                     }
                     .navigationTitle("文件变更").navigationBarTitleDisplayMode(.inline)
                     .toolbar {

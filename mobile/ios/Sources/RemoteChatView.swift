@@ -1447,6 +1447,52 @@ private final class RemoteChat: ObservableObject {
         return value
     }
 
+    /// Loads one workspace file's bytes for native preview.
+    /// - Parameter path: workspace-relative or absolute path from the turn's change summary.
+    /// - Returns: the file's name, bytes, and size.
+    func loadWorkspaceFile(path: String) async throws -> MobileWorkspaceFile {
+        guard let session, let sessionId, let origin = URL(string: computer.origin) else {
+            throw MobileFilePreviewError.unavailable
+        }
+        var request = URLRequest(url: origin.appendingPathComponent("api/workspaceFiles/readBytes"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "type": "client-request", "rpcId": UUID().uuidString, "method": "workspaceFiles/readBytes",
+            "payload": ["args": [
+                "workspaceFileScopeId": sessionId, "path": path, "options": [String: Any](),
+            ]],
+        ])
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw MobileFilePreviewError.unavailable }
+        let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? ""
+        if contentType.hasPrefix("multipart/form-data") {
+            let parts = try MobileMultipart.parse(data: data, contentType: contentType)
+            guard let metadata = parts["metadata"],
+                  let body = try? JSONSerialization.jsonObject(with: metadata) as? [String: Any],
+                  let result = body["result"] as? [String: Any] else {
+                throw MobileFilePreviewError.unavailable
+            }
+            if result["ok"] as? Bool != true {
+                let message = (result["error"] as? [String: Any])?["message"] as? String
+                throw MobileFilePreviewError.refused(message ?? "Host 拒绝读取该文件")
+            }
+            guard let attachments = body["attachments"] as? [[String: Any]],
+                  let part = attachments.first?["part"] as? String,
+                  let bytes = parts[part] else { throw MobileFilePreviewError.unavailable }
+            if bytes.count > 25 * 1024 * 1024 { throw MobileFilePreviewError.tooLarge(bytes.count) }
+            return MobileWorkspaceFile(path: path, name: (path as NSString).lastPathComponent, data: bytes)
+        }
+        if let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let result = body["result"] as? [String: Any],
+           result["ok"] as? Bool != true,
+           let message = (result["error"] as? [String: Any])?["message"] as? String {
+            throw MobileFilePreviewError.refused(message)
+        }
+        throw MobileFilePreviewError.unavailable
+    }
+
     #if DEBUG
     private func replyActionFixture(_ method: String, arguments: [String: Any]) throws -> Any {
         if method == "session/fork" {
@@ -2754,7 +2800,8 @@ struct RemoteChatView: View {
             if let sequence = replyTurn(line)?.changesSequence {
                 MobileChangesView(sequence: sequence,
                     loadSummary: { try await chat.changesSummary($0, computer: computer) },
-                    loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) })
+                    loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
+                    loadFile: { try await chat.loadWorkspaceFile(path: $0) })
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
