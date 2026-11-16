@@ -199,6 +199,7 @@ struct AssistantMessageView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .textSelection(.enabled)
     }
 
     @ViewBuilder
@@ -211,25 +212,7 @@ struct AssistantMessageView: View {
                 .font(.system(size: level == 1 ? 19 : level == 2 ? 17 : 15, weight: .semibold))
                 .lineSpacing(3)
         case .code(let language, let value):
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text(language.isEmpty ? "代码" : language)
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("复制") { UIPasteboard.general.string = value }
-                        .font(.system(size: 11))
-                }
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                Divider()
-                Text(value)
-                    .font(.system(size: 12, design: .monospaced))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-            }
-            .background(Color(uiColor: .secondarySystemBackground),
-                        in: RoundedRectangle(cornerRadius: 10))
+            AssistantCodeBlock(language: language, value: value)
         case .list(let items):
             let markerWidth = max(18, items.map {
                 ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15)]).width)
@@ -299,5 +282,56 @@ struct AssistantMessageView: View {
             options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         ) else { return Text(source) }
         return Text(content)
+    }
+}
+
+/// One fenced code block: horizontal scrolling, bounded height, copy, and partial selection.
+private struct AssistantCodeBlock: View {
+    let language: String
+    let value: String
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text(language.isEmpty ? "代码" : language)
+                    .font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    UIPasteboard.general.string = value
+                } label: {
+                    Label("复制", systemImage: "square.on.square")
+                        .font(.caption2)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("复制代码")
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            Divider()
+            ScrollView(.horizontal, showsIndicators: true) {
+                Text(MobileCodePreview.visible(value, expanded: expanded))
+                    .font(.system(size: 12, design: .monospaced))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(12)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if MobileCodePreview.isCollapsible(value) {
+                Divider()
+                Button(expanded ? "收起代码" : "展开全部（\(MobileCodePreview.lineCount(value)) 行）") {
+                    expanded.toggle()
+                }
+                .font(.caption)
+                .frame(minHeight: 44)
+                .padding(.horizontal, 12)
+                .accessibilityLabel(expanded ? "收起代码" : "展开全部 \(MobileCodePreview.lineCount(value)) 行代码")
+            }
+        }
+        .background(Color(uiColor: .secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 10))
     }
 }
