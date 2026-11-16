@@ -172,9 +172,10 @@ struct MobileComposerTransport {
     /// A message carrying a photo may need longer than the session's default before the Host answers.
     static let promptTimeout: TimeInterval = 120
 
-    func execute(line: String, attachments: [[String: Any]] = [], sessionId: String) async throws {
+    func execute(line: String, attachments: [[String: Any]] = [], sessionId: String,
+                 timeout: TimeInterval? = nil) async throws {
         let value = try await call("commands/execute", args: ["agentId": sessionId, "line": line,
-                                                             "submittedAttachments": attachments])
+                                                             "submittedAttachments": attachments], timeout: timeout)
         guard let execution = value as? [String: Any], let result = execution["result"] as? [String: Any] else {
             throw MobileComposerFailure.unavailable
         }

@@ -1341,7 +1341,7 @@ private final class RemoteChat: ObservableObject {
         defer { sending = false }
         do {
             try await MobileComposerTransport(session: session, origin: origin)
-                .execute(line: line, sessionId: sessionId)
+                .execute(line: line, sessionId: sessionId, timeout: 15)
             error = nil
         } catch { self.error = "操作失败：\(error.localizedDescription)" }
     }
@@ -1938,6 +1938,8 @@ struct RemoteChatView: View {
     @StateObject private var additions = MobileComposerAdditions()
     @State private var pendingPermission: RemotePermission?
     @State private var confirmingGoalClear = false
+    @State private var editingGoal = false
+    @State private var goalDraft = ""
     @FocusState private var composerFocused: Bool
     @State private var followingLatest = true
     /// Transcript row currently at the top of the reading viewport.
@@ -2152,25 +2154,38 @@ struct RemoteChatView: View {
                     }
                 }
                 if let objective = chat.goalObjective {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("目标：\(objective)").font(.caption).lineLimit(2)
-                        HStack {
-                            Text(chat.goalPhase == "active" ? "进行中" : chat.goalPhase == "complete" ? "已完成" : "已暂停或阻塞")
-                            if let started = chat.goalRoundsStarted, let max = chat.goalMaxRounds {
-                                Text("第 \(started)/\(max) 轮").foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if chat.goalPhase != "complete" {
-                                Button(chat.goalPhase == "active" ? "暂停目标" : "继续目标") {
-                                    let line = chat.goalPhase == "active" ? "/goal pause" : "/goal resume"
-                                    Task { await chat.composerCommand(line, computer: computer, sessionId: sessionId) }
-                                }
-                                .disabled(chat.sending)
-                            }
-                            Button("清除目标") { confirmingGoalClear = true }.disabled(chat.sending)
+                    Menu {
+                        if chat.goalPhase == "active" {
+                            Button("暂停目标") { runGoalCommand("/goal pause") }
+                        } else if chat.goalPhase != "complete" {
+                            Button("继续目标") { runGoalCommand("/goal resume") }
                         }
-                        .font(.caption).frame(minHeight: 44)
+                        Button("编辑目标…") {
+                            goalDraft = objective
+                            editingGoal = true
+                        }
+                        Button(chat.goalPhase == "complete" ? "清除目标…" : "结束并清除目标…", role: .destructive) {
+                            confirmingGoalClear = true
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("目标：\(objective)").font(.caption).lineLimit(2)
+                            HStack(spacing: 8) {
+                                Text(chat.goalPhase == "active" ? "进行中"
+                                     : chat.goalPhase == "complete" ? "已完成" : "已暂停或阻塞")
+                                if let started = chat.goalRoundsStarted, let max = chat.goalMaxRounds {
+                                    Text("第 \(started)/\(max) 轮")
+                                }
+                                Spacer(minLength: 8)
+                                if chat.sending { Text("正在执行操作…") }
+                                Image(systemName: "chevron.up.chevron.down")
+                            }
+                            .font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("目标：\(objective)，点按管理目标")
                 }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     if let seconds = chat.silentSeconds(now: context.date) {
@@ -2318,6 +2333,23 @@ struct RemoteChatView: View {
                     }
                 }
             }
+        }
+        .confirmationDialog("结束并清除目标？", isPresented: $confirmingGoalClear, titleVisibility: .visible) {
+            Button("结束并清除", role: .destructive) { runGoalCommand("/goal clear") }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("目标会停止推进并从会话中移除；已完成的聊天记录不受影响。")
+        }
+        .alert("编辑目标", isPresented: $editingGoal) {
+            TextField("目标", text: $goalDraft)
+            Button("取消", role: .cancel) {}
+            Button("保存") {
+                let objective = goalDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !objective.isEmpty else { return }
+                runGoalCommand("/goal edit \(objective)")
+            }
+        } message: {
+            Text("新描述会用于下一次目标轮次。")
         }
         .confirmationDialog("删除这条排队消息？", isPresented: Binding(
             get: { removingQueueItem != nil },
@@ -2671,6 +2703,16 @@ struct RemoteChatView: View {
                 .minimumScaleFactor(0.8)
                 .accessibilityIdentifier("availableBalance")
         }
+    }
+
+    /// Runs one goal command, refusing to queue it on top of another composer action.
+    /// - Parameter line: slash command sent to the Host.
+    private func runGoalCommand(_ line: String) {
+        guard !chat.sending else {
+            chat.error = "正在执行其他操作，请稍候再试"
+            return
+        }
+        Task { await chat.composerCommand(line, computer: computer, sessionId: sessionId) }
     }
 
     private var permissionButton: some View {
