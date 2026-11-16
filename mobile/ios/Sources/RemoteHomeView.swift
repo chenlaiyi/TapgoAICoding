@@ -1152,6 +1152,15 @@ struct RemoteHomeView: View {
         }
     }
 
+    /// Loads the session list, switching to the fallback route when the preferred route is unreachable.
+    /// - Parameter quietly: suppress the loading indicator for background refreshes.
+    private func loadSessions(quietly: Bool = false) async {
+        if await sessions.load(computer: computer, quietly: quietly) { return }
+        guard sessions.transportUnreachable,
+              let updated = connection.switchToFallback(computer) else { return }
+        _ = await sessions.load(computer: updated, quietly: quietly)
+    }
+
     private var homeComposer: some View {
         HStack(spacing: 9) {
             Button { showingNewConversation = true } label: {
