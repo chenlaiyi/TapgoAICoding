@@ -2250,6 +2250,7 @@ struct RemoteChatView: View {
                         }
                     })
                     .onChange(of: chat.lines) { _ in
+                        reconcileDraftWithHistory()
                         restoreReadingPositionIfNeeded(reader: reader)
                         scrollToNewest(reader: reader)
                     }
@@ -3176,6 +3177,17 @@ struct RemoteChatView: View {
             MobileDraftStore.clear(key: draftKey)
         }
         draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft, lastUserText: lastUser)
+    }
+
+    /// Drops a restored draft that is exactly the last sent user message.
+    private func reconcileDraftWithHistory() {
+        guard !draft.isEmpty,
+              let lastUser = chat.lines.last(where: { $0.role == "user" })?.text else { return }
+        let current = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let previous = lastUser.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard current == previous else { return }
+        draft = ""
+        MobileDraftStore.clear(key: draftKey)
     }
 
     private func inspectProcess() {
