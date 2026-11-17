@@ -3354,14 +3354,13 @@ struct RemoteChatView: View {
                         loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
                         loadFile: { try await chat.loadWorkspaceFile(path: $0) },
                         fillWidth: true)
-                        .frame(maxWidth: .infinity)
-                    if !chat.subagents.isEmpty { subagentChip.frame(maxWidth: .infinity) }
+                        .frame(width: 160, height: 44)
+                    if !chat.subagents.isEmpty { subagentChip.frame(width: 160, height: 44) }
                 }
-                .frame(maxWidth: 360)
                 .frame(maxWidth: .infinity, alignment: .center)
             } else if !chat.subagents.isEmpty {
                 subagentChip
-                    .frame(width: 176)
+                    .frame(width: 160, height: 44)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
@@ -3372,7 +3371,9 @@ struct RemoteChatView: View {
         Button { showingSubagents = true } label: {
             Label("\(chat.subagents.count) 个智能体", systemImage: "person.2")
                 .font(.caption)
-                .padding(.horizontal, 12)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 8)
                 .frame(minHeight: 44)
                 .frame(maxWidth: .infinity)
         }
