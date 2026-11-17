@@ -5,7 +5,7 @@ enum MobileProcessLabel {
     /// Category order used when counts tie: the first appearance wins.
     private static let categoryOrder = [
         "read", "readImage", "search", "write", "edit", "commands", "code",
-        "webSearch", "webFetch", "subagents", "plan", "questions", "tools",
+        "webSearch", "webFetch", "computer", "subagents", "plan", "questions", "tools",
     ]
 
     /// Closed-state label for one category.
@@ -13,6 +13,7 @@ enum MobileProcessLabel {
         "read": "已读取文件", "readImage": "已读取图片", "search": "已搜索代码",
         "write": "已写入文件", "edit": "修改了文件", "commands": "执行了命令",
         "code": "运行了代码", "webSearch": "已搜索网页", "webFetch": "已访问网页",
+        "computer": "已操作电脑",
         "subagents": "已协调子智能体", "plan": "更新了计划", "questions": "向用户提出了问题",
         "tools": "已调用工具", "context": "已注入上下文",
     ]
@@ -22,6 +23,7 @@ enum MobileProcessLabel {
         "read": "正在读取文件", "readImage": "正在读取图片", "search": "正在搜索代码",
         "write": "正在写入文件", "edit": "正在修改文件", "commands": "正在运行命令",
         "code": "正在运行代码", "webSearch": "正在搜索网页", "webFetch": "正在访问网页",
+        "computer": "正在操作电脑",
         "subagents": "正在协调子智能体", "plan": "正在更新计划", "questions": "正在提问",
         "tools": "正在调用工具", "context": "正在注入上下文",
     ]
@@ -41,6 +43,7 @@ enum MobileProcessLabel {
         if name == "run_code" { return "code" }
         if name == "web_search" { return "webSearch" }
         if name == "web_fetch" { return "webFetch" }
+        if name.hasPrefix("cua_") || name.hasPrefix("computer_") { return "computer" }
         if name == "subagent" || name.hasPrefix("subagent_") { return "subagents" }
         if ["todo_write", "create_goal", "update_goal", "get_goal"].contains(name) { return "plan" }
         if name == "ask_user_question" || name == "request_user_input" { return "questions" }
@@ -81,6 +84,7 @@ enum MobileProcessLabel {
         case "code": return "chevron.left.forwardslash.chevron.right"
         case "write", "edit": return "pencil"
         case "webSearch", "webFetch": return "globe"
+        case "computer": return "macwindow"
         case "subagents": return "person.2"
         case "plan": return "list.bullet"
         default: return "wrench.and.screwdriver"
@@ -98,8 +102,8 @@ enum MobileProcessLabel {
         var parts = countedParts(activities.filter(\.finished))
         if let runningActivity = activities.last(where: { !$0.finished }) {
             let category = category(for: runningActivity.name)
-            let label = runningLabels[category] ?? "正在调用工具"
-            let detail = runningActivity.detail.trimmingCharacters(in: .whitespacesAndNewlines)
+            let label = runningLabel(for: runningActivity.name, category: category)
+            let detail = category == "computer" ? "" : runningActivity.detail.trimmingCharacters(in: .whitespacesAndNewlines)
             parts.append(detail.isEmpty ? label : "\(label) · \(detail)")
         }
         guard !parts.isEmpty else { return hasReasoning ? "已完成分析" : "已完成分析" }
@@ -141,12 +145,31 @@ enum MobileProcessLabel {
         case "code": return "已运行 \(count) 段代码"
         case "webSearch": return "已搜索 \(count) 次网页"
         case "webFetch": return "已访问 \(count) 个网页"
+        case "computer": return "已执行 \(count) 次电脑操作"
         case "subagents": return "已协调 \(count) 个子智能体"
         case "plan": return "已更新 \(count) 次计划"
         case "questions": return "已提出 \(count) 个问题"
         case "tools": return "已调用 \(count) 次工具"
         default: return nil
         }
+    }
+
+    /// Human-readable running label, with specific verbs for computer-use tools.
+    /// - Parameters:
+    ///   - name: tool name.
+    ///   - category: mapped category.
+    /// - Returns: the running label.
+    private static func runningLabel(for name: String, category: String) -> String {
+        guard category == "computer" else { return runningLabels[category] ?? "正在调用工具" }
+        if name.contains("desktop_state") || name.contains("window_state") || name.contains("screenshot") {
+            return "正在查看屏幕"
+        }
+        if name.contains("browser") { return "正在操作浏览器" }
+        if name.contains("click") || name.contains("type") || name.contains("press")
+            || name.contains("drag") || name.contains("scroll") || name.contains("launch") {
+            return "正在操作电脑"
+        }
+        return "正在操作电脑"
     }
 
     /// Summary title for one range of activity.
@@ -159,8 +182,9 @@ enum MobileProcessLabel {
         if running, activities.isEmpty { return "正在分析请求" }
         if let running = activities.last(where: { !$0.finished }) {
             let category = category(for: running.name)
-            let label = runningLabels[category] ?? "正在调用工具"
-            return running.detail.isEmpty ? label : "\(label) · \(running.detail)"
+            let label = runningLabel(for: running.name, category: category)
+            let detail = category == "computer" ? "" : running.detail
+            return detail.isEmpty ? label : "\(label) · \(detail)"
         }
         var counts: [String: Int] = [:]
         var order: [String] = []

@@ -28,6 +28,16 @@ final class MobileProcessLabelTests: XCTestCase {
                        "已读取文件，已搜索代码，已写入文件等")
     }
 
+    func testComputerUseToolsUseHumanLabels() {
+        XCTAssertEqual(MobileProcessLabel.category(for: "cua_driver_native__get_desktop_state"), "computer")
+        XCTAssertEqual(MobileProcessLabel.countedTitle(
+            activities: [activity("cua_driver_native__click")], hasReasoning: false),
+                       "已执行 1 次电脑操作")
+        XCTAssertEqual(MobileProcessLabel.title(
+            activities: [activity("cua_driver_native__get_desktop_state", finished: false)], hasReasoning: false),
+                       "正在查看屏幕")
+    }
+
     func testCountedTitleAggregatesSearchesAndCommands() {
         XCTAssertEqual(MobileProcessLabel.countedTitle(
             activities: [activity("grep"), activity("bash"), activity("bash")], hasReasoning: false),

@@ -202,6 +202,10 @@ let cases: [(String, () -> (XCTestCase, () throws -> Void))] = [
         let t = MobileProcessLabelTests()
         return (t, { t.testSymbolUsesTheDominantCategory() })
     }),
+    ("process/computer", {
+        let t = MobileProcessLabelTests()
+        return (t, { t.testComputerUseToolsUseHumanLabels() })
+    }),
     ("process/counted", {
         let t = MobileProcessLabelTests()
         return (t, { t.testCountedTitleAggregatesSearchesAndCommands() })

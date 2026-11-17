@@ -3369,13 +3369,18 @@ struct RemoteChatView: View {
     /// Glass capsule beside the file-change chip.
     private var subagentChip: some View {
         Button { showingSubagents = true } label: {
-            Label("\(chat.subagents.count) 个智能体", systemImage: "person.2")
-                .font(.caption)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .padding(.horizontal, 8)
-                .frame(minHeight: 44)
-                .frame(maxWidth: .infinity)
+            HStack(spacing: 6) {
+                Image(systemName: "person.2")
+                Text("\(chat.subagents.count) 个智能体")
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.system(size: 9))
+            }
+            .font(.caption)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
         .mobileGlass(in: Capsule(), interactive: true)
