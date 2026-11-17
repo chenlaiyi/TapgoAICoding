@@ -226,6 +226,10 @@ let cases: [(String, () -> (XCTestCase, () throws -> Void))] = [
         let t = MobileNextPromptsTests()
         return (t, { t.testPicksOneActionableNonQuestionPrompt() })
     }),
+    ("draft/clear-all", {
+        let t = MobileDraftStoreTests()
+        return (t, { t.testClearAllRemovesOnlyDraftKeys() })
+    }),
     ("next-prompts/echo", {
         let t = MobileNextPromptsTests()
         return (t, { t.testEchoedUserMessageIsNotPrefilled() })

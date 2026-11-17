@@ -50,6 +50,18 @@ final class MobileDraftStoreTests: XCTestCase {
         XCTAssertNil(MobileDraftStore.load(key: newConversation, defaults: defaults))
     }
 
+    func testClearAllRemovesOnlyDraftKeys() {
+        let first = MobileDraftStore.sessionKey(computerID: "mac-a", sessionID: "s-1")
+        let second = MobileDraftStore.newConversationKey(computerID: "mac-b")
+        defaults.set("keep", forKey: "mobile.other")
+        MobileDraftStore.save(MobileDraft(text: "A", mode: .message), key: first, defaults: defaults)
+        MobileDraftStore.save(MobileDraft(text: "B", mode: .message), key: second, defaults: defaults)
+        MobileDraftStore.clearAll(defaults: defaults)
+        XCTAssertNil(MobileDraftStore.load(key: first, defaults: defaults))
+        XCTAssertNil(MobileDraftStore.load(key: second, defaults: defaults))
+        XCTAssertEqual(defaults.string(forKey: "mobile.other"), "keep")
+    }
+
     func testModeWithoutTextSurvivesAndClearingRemovesIt() {
         let key = MobileDraftStore.newConversationKey(computerID: "mac")
         MobileDraftStore.save(MobileDraft(text: "", mode: .goal), key: key, defaults: defaults)

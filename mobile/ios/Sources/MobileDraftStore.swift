@@ -62,4 +62,12 @@ enum MobileDraftStore {
     static func clear(key: String, defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: key)
     }
+
+    /// Removes every stored conversation and new-conversation draft.
+    /// - Parameter defaults: defaults database; tests pass an isolated suite.
+    static func clearAll(defaults: UserDefaults = .standard) {
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("mobile.draft.") {
+            defaults.removeObject(forKey: key)
+        }
+    }
 }

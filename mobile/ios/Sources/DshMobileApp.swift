@@ -10,6 +10,15 @@ struct DshMobileApp: App {
     @StateObject private var interactions = MobileInteractionCenter()
     @State private var showingLaunch = true
 
+    init() {
+        // Clear drafts written before echo suppression so stale sent text cannot return.
+        let defaults = UserDefaults.standard
+        if defaults.integer(forKey: "mobile.draftMigration") < 1 {
+            MobileDraftStore.clearAll(defaults: defaults)
+            defaults.set(1, forKey: "mobile.draftMigration")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
