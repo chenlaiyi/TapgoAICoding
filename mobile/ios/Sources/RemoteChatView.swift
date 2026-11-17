@@ -825,7 +825,7 @@ private final class RemoteChat: ObservableObject {
             }.min() ?? before
             hasOlderHistory = page["hasMore"] as? Bool == true
         } catch {
-            error = "加载更早消息失败：\(error.localizedDescription)"
+            self.error = "加载更早消息失败：\(error.localizedDescription)"
         }
     }
 
