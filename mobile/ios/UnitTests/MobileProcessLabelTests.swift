@@ -31,13 +31,21 @@ final class MobileProcessLabelTests: XCTestCase {
     func testCountedTitleAggregatesSearchesAndCommands() {
         XCTAssertEqual(MobileProcessLabel.countedTitle(
             activities: [activity("grep"), activity("bash"), activity("bash")], hasReasoning: false),
-                       "已执行 1 次搜索 · 已运行 2 条命令")
+                       "执行了 1 次搜索 · 已运行 2 条命令")
     }
 
     func testCountedTitleKeepsCountsAndAppendsRunningCommand() {
         let activities = [activity("grep"), activity("bash", finished: false, detail: "npm test")]
         XCTAssertEqual(MobileProcessLabel.countedTitle(activities: activities, hasReasoning: true),
-                       "已执行 1 次搜索 · 正在运行命令 · npm test")
+                       "执行了 1 次搜索 · 正在运行命令 · npm test")
+    }
+
+    func testSymbolUsesTheDominantCategory() {
+        XCTAssertEqual(MobileProcessLabel.symbol(activities: [activity("grep"), activity("grep"), activity("bash")]),
+                       "magnifyingglass")
+        XCTAssertEqual(MobileProcessLabel.symbol(activities: [activity("bash")]), "terminal")
+        XCTAssertEqual(MobileProcessLabel.symbol(activities: [activity("read")]), "book")
+        XCTAssertEqual(MobileProcessLabel.symbol(activities: [activity("bash", finished: false, detail: "ls")]), "terminal")
     }
 
     func testCountedTitleFallsBackWhenNothingRan() {

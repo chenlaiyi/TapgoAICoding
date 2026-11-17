@@ -47,6 +47,46 @@ enum MobileProcessLabel {
         return "tools"
     }
 
+    /// Leading symbol for the activity mix, matching the DSH process-row icons.
+    /// - Parameter activities: activities in first-appearance order.
+    /// - Returns: an SF Symbol name.
+    static func symbol(activities: [MobileChatActivity]) -> String {
+        if let running = activities.last(where: { !$0.finished }) {
+            return symbol(for: category(for: running.name))
+        }
+        var counts: [String: Int] = [:]
+        var order: [String] = []
+        for activity in activities {
+            let category = category(for: activity.name)
+            if counts[category] == nil { order.append(category) }
+            counts[category, default: 0] += 1
+        }
+        let ranked = categoryOrder.filter { counts[$0] != nil }
+            + order.filter { !categoryOrder.contains($0) }
+        guard let dominant = ranked.max(by: { counts[$0, default: 0] < counts[$1, default: 0] }) else {
+            return "list.bullet.clipboard"
+        }
+        return symbol(for: dominant)
+    }
+
+    /// SF Symbol for one category.
+    /// - Parameter category: DSH category key.
+    /// - Returns: the process-row icon.
+    private static func symbol(for category: String) -> String {
+        switch category {
+        case "search": return "magnifyingglass"
+        case "read": return "book"
+        case "readImage": return "photo"
+        case "commands": return "terminal"
+        case "code": return "chevron.left.forwardslash.chevron.right"
+        case "write", "edit": return "pencil"
+        case "webSearch", "webFetch": return "globe"
+        case "subagents": return "person.2"
+        case "plan": return "list.bullet"
+        default: return "wrench.and.screwdriver"
+        }
+    }
+
     /// Collapsed-row title with per-category counts and the current action last.
     /// - Parameters:
     ///   - activities: activities in first-appearance order.
@@ -92,9 +132,9 @@ enum MobileProcessLabel {
     /// - Returns: the phrase, or nil for a category without a counted label.
     private static func countedLabel(_ category: String, count: Int) -> String? {
         switch category {
-        case "read": return "已读取 \(count) 个文件"
+        case "read": return "已浏览 \(count) 个文件"
         case "readImage": return "已查看 \(count) 张图片"
-        case "search": return "已执行 \(count) 次搜索"
+        case "search": return "执行了 \(count) 次搜索"
         case "write": return "已写入 \(count) 个文件"
         case "edit": return "已编辑 \(count) 个文件"
         case "commands": return "已运行 \(count) 条命令"

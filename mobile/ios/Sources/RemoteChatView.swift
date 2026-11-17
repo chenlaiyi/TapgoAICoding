@@ -3046,6 +3046,7 @@ struct RemoteChatView: View {
                     summary: MobileProcessLabel.countedTitle(activities: line.activities,
                                                              hasReasoning: !(line.reasoning ?? "").isEmpty,
                                                              running: line.live),
+                    symbol: MobileProcessLabel.symbol(activities: line.activities),
                     reasoning: line.reasoning ?? "",
                     activities: line.activities,
                     toolOutputs: chat.toolOutputs,
@@ -3207,7 +3208,7 @@ struct RemoteChatView: View {
 
 /// DSH-compatible summary for a range of tool activity.
 private func mobileActivitySummary(_ activities: [MobileChatActivity]) -> String {
-    MobileProcessLabel.title(activities: activities, hasReasoning: false)
+    MobileProcessLabel.countedTitle(activities: activities, hasReasoning: false)
 }
 
 private struct ActivityGroupView: View {
@@ -3221,7 +3222,8 @@ private struct ActivityGroupView: View {
     let onInspect: () -> Void
 
     var body: some View {
-        ProcessDisclosureView(summary: title, reasoning: "", activities: activities, toolOutputs: toolOutputs, onInspect: onInspect)
+        ProcessDisclosureView(summary: title, symbol: MobileProcessLabel.symbol(activities: activities),
+                              reasoning: "", activities: activities, toolOutputs: toolOutputs, onInspect: onInspect)
     }
 }
 
@@ -3246,7 +3248,7 @@ private struct TurnProcessView: View {
     private var processSummary: String {
         let count = activities.count
         let failed = activities.filter(\.failed).count
-        let summary = MobileProcessLabel.title(
+        let summary = MobileProcessLabel.countedTitle(
             activities: activities,
             hasReasoning: !(reasoning ?? "").isEmpty || !liveReasoning.isEmpty)
         if count == 0 { return summary }
@@ -3302,6 +3304,7 @@ private struct TurnProcessView: View {
             if showsDisclosure {
                 Divider()
                 ProcessDisclosureView(summary: processSummary,
+                    symbol: MobileProcessLabel.symbol(activities: activities),
                     reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
                         .compactMap { $0 }.joined(separator: "\n\n"),
                     activities: [], toolOutputs: toolOutputs, onInspect: onInspect,
@@ -3319,6 +3322,7 @@ private struct ProcessDisclosureView: View {
     #endif
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let summary: String
+    let symbol: String
     let reasoning: String
     let activities: [MobileChatActivity]
     let toolOutputs: [String: MobileToolOutput]
@@ -3328,10 +3332,12 @@ private struct ProcessDisclosureView: View {
     @State private var reasoningExpanded = false
     @State private var expanded: Bool
 
-    init(summary: String, reasoning: String, activities: [MobileChatActivity],
+    init(summary: String, symbol: String = "list.bullet.clipboard", reasoning: String,
+         activities: [MobileChatActivity],
          toolOutputs: [String: MobileToolOutput], onInspect: @escaping () -> Void,
          initialExpanded: Bool = false, onExpandedChange: ((Bool) -> Void)? = nil) {
         self.summary = summary
+        self.symbol = symbol
         self.reasoning = reasoning
         self.activities = activities
         self.toolOutputs = toolOutputs
@@ -3350,13 +3356,14 @@ private struct ProcessDisclosureView: View {
                 onExpandedChange?(expanded)
             } label: {
                 HStack {
-                    Label(summary, systemImage: "list.bullet.clipboard")
+                    Label(summary, systemImage: symbol)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer(minLength: 8)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
                 }
-                .font(.system(size: 13))
+                .font(.subheadline)
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }

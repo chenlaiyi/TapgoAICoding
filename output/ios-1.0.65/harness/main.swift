@@ -174,6 +174,10 @@ let cases: [(String, () -> (XCTestCase, () throws -> Void))] = [
         let t = MobileDeliverablesTests()
         return (t, { t.testMergesDeliverablesWithLinksAndSkipsNonFiles() })
     }),
+    ("process/symbol", {
+        let t = MobileProcessLabelTests()
+        return (t, { t.testSymbolUsesTheDominantCategory() })
+    }),
     ("process/counted", {
         let t = MobileProcessLabelTests()
         return (t, { t.testCountedTitleAggregatesSearchesAndCommands() })
