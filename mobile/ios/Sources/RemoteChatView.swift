@@ -1432,6 +1432,25 @@ private final class RemoteChat: ObservableObject {
         }
     }
 
+    /// Posts a completion or failure alert when the app is not in front.
+    /// - Parameter event: the committed `turn/end` event.
+    private func notifyTurnEnd(_ event: [String: Any]) {
+        guard let data = event["data"] as? [String: Any],
+              let sessionId, let kind = (data["reason"] as? [String: Any])?["kind"] as? String else { return }
+        let sessionTitle = self.sessionTitle ?? "点点够"
+        let reply = lines.last(where: { $0.role == "assistant" })?.text ?? ""
+        Task {
+            guard kind == "completed" || kind == "error" || kind == "aborted" else { return }
+            let isFailure = kind != "completed"
+            await MobileNotifications.shared.post(
+                title: isFailure ? "运行出错" : "回合完成",
+                body: isFailure
+                    ? MobileNotificationText.failed(sessionTitle: sessionTitle, reason: kind)
+                    : MobileNotificationText.completed(sessionTitle: sessionTitle, reply: reply),
+                sessionId: sessionId)
+        }
+    }
+
     func composerCommand(_ line: String, computer: SavedComputer, sessionId: String) async {
         guard !sending else { return }
         guard connected, let session, let origin = URL(string: computer.origin) else {
@@ -3058,25 +3077,6 @@ struct RemoteChatView: View {
         draftSaveTask?.cancel()
         draftSaveTask = nil
         MobileDraftStore.save(MobileDraft(text: draft, mode: additions.mode), key: draftKey)
-    }
-
-    /// Posts a completion or failure alert when the app is not in front.
-    /// - Parameter event: the committed `turn/end` event.
-    private func notifyTurnEnd(_ event: [String: Any]) {
-        guard let data = event["data"] as? [String: Any],
-              let sessionId, let kind = (data["reason"] as? [String: Any])?["kind"] as? String else { return }
-        let sessionTitle = self.sessionTitle ?? "点点够"
-        let reply = lines.last(where: { $0.role == "assistant" })?.text ?? ""
-        Task {
-            guard kind == "completed" || kind == "error" || kind == "aborted" else { return }
-            let isFailure = kind != "completed"
-            await MobileNotifications.shared.post(
-                title: isFailure ? "运行出错" : "回合完成",
-                body: isFailure
-                    ? MobileNotificationText.failed(sessionTitle: sessionTitle, reason: kind)
-                    : MobileNotificationText.completed(sessionTitle: sessionTitle, reply: reply),
-                sessionId: sessionId)
-        }
     }
 
     /// Mirrors the running turn into the Dynamic Island and the Lock Screen.
