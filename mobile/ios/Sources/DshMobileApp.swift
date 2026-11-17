@@ -13,9 +13,9 @@ struct DshMobileApp: App {
     init() {
         // Clear drafts written before echo suppression so stale sent text cannot return.
         let defaults = UserDefaults.standard
-        if defaults.integer(forKey: "mobile.draftMigration") < 1 {
+        if defaults.integer(forKey: "mobile.draftMigration") < 2 {
             MobileDraftStore.clearAll(defaults: defaults)
-            defaults.set(1, forKey: "mobile.draftMigration")
+            defaults.set(2, forKey: "mobile.draftMigration")
         }
     }
 

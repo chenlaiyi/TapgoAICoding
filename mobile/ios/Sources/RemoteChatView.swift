@@ -2062,6 +2062,8 @@ struct RemoteChatView: View {
     @StateObject private var chat = RemoteChat()
     @StateObject private var voice = MobileVoiceInput()
     @State private var voiceBaseDraft = ""
+    @State private var recommendationPrefill: String?
+    @State private var draftFromRecommendation = false
     @State private var draft = ""
     @State private var recommendationDraft = MobileRecommendationDraft()
     @State private var showingWorkspace = false
@@ -2438,7 +2440,10 @@ struct RemoteChatView: View {
                   updated.connectionURL != computer.connectionURL else { return }
             computer = updated
         }
-        .onChange(of: draft) { _ in scheduleDraftSave() }
+        .onChange(of: draft) { value in
+            if value != recommendationPrefill { draftFromRecommendation = false }
+            scheduleDraftSave()
+        }
         .onChange(of: additions.mode) { _ in scheduleDraftSave() }
         .onChange(of: chat.running) { _ in updateLiveActivity() }
         .onChange(of: chat.liveActivityDetail) { _ in updateLiveActivity() }
@@ -3141,6 +3146,10 @@ struct RemoteChatView: View {
     /// Debounces one draft write so typing does not touch defaults on every key.
     private func scheduleDraftSave() {
         draftSaveTask?.cancel()
+        guard !draftFromRecommendation else {
+            MobileDraftStore.clear(key: draftKey)
+            return
+        }
         draftSaveTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
@@ -3152,6 +3161,10 @@ struct RemoteChatView: View {
     private func saveDraftNow() {
         draftSaveTask?.cancel()
         draftSaveTask = nil
+        guard !draftFromRecommendation else {
+            MobileDraftStore.clear(key: draftKey)
+            return
+        }
         MobileDraftStore.save(MobileDraft(text: draft, mode: additions.mode), key: draftKey)
     }
 
@@ -3174,9 +3187,16 @@ struct RemoteChatView: View {
         let lastUser = chat.lines.last(where: { $0.role == "user" })?.text
         if let lastUser, MobileNextPrompts.isEcho(draft, of: lastUser), !draft.isEmpty {
             draft = ""
+            draftFromRecommendation = false
+            recommendationPrefill = nil
             MobileDraftStore.clear(key: draftKey)
         }
+        let before = draft
         draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft, lastUserText: lastUser)
+        if draft != before {
+            recommendationPrefill = draft
+            draftFromRecommendation = true
+        }
     }
 
     /// Drops a restored draft that is exactly the last sent user message.
