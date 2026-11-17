@@ -3043,9 +3043,9 @@ struct RemoteChatView: View {
             if line.role == "user" { Spacer(minLength: 45) }
             if line.role == "process" {
                 ProcessDisclosureView(
-                    summary: MobileProcessLabel.title(activities: line.activities,
-                                                      hasReasoning: !(line.reasoning ?? "").isEmpty,
-                                                      running: line.live),
+                    summary: MobileProcessLabel.countedTitle(activities: line.activities,
+                                                             hasReasoning: !(line.reasoning ?? "").isEmpty,
+                                                             running: line.live),
                     reasoning: line.reasoning ?? "",
                     activities: line.activities,
                     toolOutputs: chat.toolOutputs,
@@ -3351,8 +3351,10 @@ private struct ProcessDisclosureView: View {
             } label: {
                 HStack {
                     Label(summary, systemImage: "list.bullet.clipboard")
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     Spacer(minLength: 8)
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
                 }
                 .font(.system(size: 13))
                 .frame(minHeight: 44)

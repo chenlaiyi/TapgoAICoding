@@ -47,6 +47,68 @@ enum MobileProcessLabel {
         return "tools"
     }
 
+    /// Collapsed-row title with per-category counts and the current action last.
+    /// - Parameters:
+    ///   - activities: activities in first-appearance order.
+    ///   - hasReasoning: whether the range also contains reasoning text.
+    ///   - running: whether the range is still streaming.
+    /// - Returns: a one-line title such as `已执行 1 次搜索 · 已运行 5 条命令`.
+    static func countedTitle(activities: [MobileChatActivity], hasReasoning: Bool,
+                             running: Bool = false) -> String {
+        var parts = countedParts(activities.filter(\.finished))
+        if let runningActivity = activities.last(where: { !$0.finished }) {
+            let category = category(for: runningActivity.name)
+            let label = runningLabels[category] ?? "正在调用工具"
+            let detail = runningActivity.detail.trimmingCharacters(in: .whitespacesAndNewlines)
+            parts.append(detail.isEmpty ? label : "\(label) · \(detail)")
+        }
+        guard !parts.isEmpty else { return hasReasoning ? "已完成分析" : "已完成分析" }
+        return parts.joined(separator: " · ")
+    }
+
+    /// Counted phrases for finished activities, ranked by the DSH category order.
+    /// - Parameter activities: finished activities.
+    /// - Returns: up to three phrases such as `已运行 2 条命令`.
+    private static func countedParts(_ activities: [MobileChatActivity]) -> [String] {
+        var counts: [String: Int] = [:]
+        var order: [String] = []
+        for activity in activities {
+            let category = category(for: activity.name)
+            if counts[category] == nil { order.append(category) }
+            counts[category, default: 0] += 1
+        }
+        let ranked = categoryOrder.filter { counts[$0] != nil }
+            + order.filter { !categoryOrder.contains($0) }
+        return ranked.compactMap { category in
+            guard let count = counts[category] else { return nil }
+            return countedLabel(category, count: count)
+        }
+    }
+
+    /// One counted phrase for a category.
+    /// - Parameters:
+    ///   - category: DSH category key.
+    ///   - count: number of activities in that category.
+    /// - Returns: the phrase, or nil for a category without a counted label.
+    private static func countedLabel(_ category: String, count: Int) -> String? {
+        switch category {
+        case "read": return "已读取 \(count) 个文件"
+        case "readImage": return "已查看 \(count) 张图片"
+        case "search": return "已执行 \(count) 次搜索"
+        case "write": return "已写入 \(count) 个文件"
+        case "edit": return "已编辑 \(count) 个文件"
+        case "commands": return "已运行 \(count) 条命令"
+        case "code": return "已运行 \(count) 段代码"
+        case "webSearch": return "已搜索 \(count) 次网页"
+        case "webFetch": return "已访问 \(count) 个网页"
+        case "subagents": return "已协调 \(count) 个子智能体"
+        case "plan": return "已更新 \(count) 次计划"
+        case "questions": return "已提出 \(count) 个问题"
+        case "tools": return "已调用 \(count) 次工具"
+        default: return nil
+        }
+    }
+
     /// Summary title for one range of activity.
     /// - Parameters:
     ///   - activities: activities in first-appearance order.

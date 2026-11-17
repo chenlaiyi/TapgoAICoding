@@ -174,6 +174,18 @@ let cases: [(String, () -> (XCTestCase, () throws -> Void))] = [
         let t = MobileDeliverablesTests()
         return (t, { t.testMergesDeliverablesWithLinksAndSkipsNonFiles() })
     }),
+    ("process/counted", {
+        let t = MobileProcessLabelTests()
+        return (t, { t.testCountedTitleAggregatesSearchesAndCommands() })
+    }),
+    ("process/counted-running", {
+        let t = MobileProcessLabelTests()
+        return (t, { t.testCountedTitleKeepsCountsAndAppendsRunningCommand() })
+    }),
+    ("process/counted-fallback", {
+        let t = MobileProcessLabelTests()
+        return (t, { t.testCountedTitleFallsBackWhenNothingRan() })
+    }),
     ("next-prompts/actionable", {
         let t = MobileNextPromptsTests()
         return (t, { t.testPicksOneActionableNonQuestionPrompt() })

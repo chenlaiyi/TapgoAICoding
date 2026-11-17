@@ -28,6 +28,22 @@ final class MobileProcessLabelTests: XCTestCase {
                        "已读取文件，已搜索代码，已写入文件等")
     }
 
+    func testCountedTitleAggregatesSearchesAndCommands() {
+        XCTAssertEqual(MobileProcessLabel.countedTitle(
+            activities: [activity("grep"), activity("bash"), activity("bash")], hasReasoning: false),
+                       "已执行 1 次搜索 · 已运行 2 条命令")
+    }
+
+    func testCountedTitleKeepsCountsAndAppendsRunningCommand() {
+        let activities = [activity("grep"), activity("bash", finished: false, detail: "npm test")]
+        XCTAssertEqual(MobileProcessLabel.countedTitle(activities: activities, hasReasoning: true),
+                       "已执行 1 次搜索 · 正在运行命令 · npm test")
+    }
+
+    func testCountedTitleFallsBackWhenNothingRan() {
+        XCTAssertEqual(MobileProcessLabel.countedTitle(activities: [], hasReasoning: true), "已完成分析")
+    }
+
     func testRunningReasoningUsesTheDSHRunningLabel() {
         XCTAssertEqual(MobileProcessLabel.title(activities: [], hasReasoning: true, running: true), "正在分析请求")
     }
