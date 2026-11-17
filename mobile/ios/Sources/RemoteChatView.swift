@@ -2144,8 +2144,8 @@ struct RemoteChatView: View {
             ScrollViewReader { reader in
                 GeometryReader { viewport in
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            LazyVStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            LazyVStack(alignment: .leading, spacing: 10) {
                                 if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
                                 if chat.hasOlderHistory {
                                     Button {
@@ -3405,6 +3405,16 @@ struct RemoteChatView: View {
                     .frame(width: 160, height: 32)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
+            if let turn = replyTurn(line), turn.endedAt != nil, let startedAt = turn.startedAt {
+                let seconds = max(0, Int((turn.endedAt! - startedAt) / 1000))
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle").font(.caption2)
+                    Text("回合结束 · 用时 \(MobileDuration.text(seconds))").font(.caption2)
+                }
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("turnTail")
+            }
         }
     }
 
@@ -3588,8 +3598,9 @@ private struct ProcessDisclosureView: View {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .font(.footnote)
-                .frame(minHeight: 40)
+                .font(.system(size: 12))
+                .imageScale(.small)
+                .frame(minHeight: 32)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

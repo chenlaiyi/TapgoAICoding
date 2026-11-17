@@ -197,7 +197,7 @@ struct AssistantMessageView: View {
     }
 
     private func markdown(_ source: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(MessageMarkdown.parse(source).enumerated()), id: \.offset) { index, block in
                 blockView(block, index: index)
             }
@@ -210,7 +210,8 @@ struct AssistantMessageView: View {
     private func blockView(_ block: MessageBlock, index: Int) -> some View {
         switch block {
         case .paragraph(let value):
-            inline(value).font(.system(size: 14)).lineSpacing(3)
+            inline(value).font(.system(size: 13.5)).lineSpacing(2)
+                .foregroundStyle(Color.primary.opacity(0.9))
         case .heading(let level, let value):
             inline(value)
                 .font(.system(size: level == 1 ? 18 : level == 2 ? 16 : 14, weight: .semibold))
@@ -223,7 +224,7 @@ struct AssistantMessageView: View {
                                })
         case .list(let items):
             let markerWidth = max(18, items.map {
-                ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width)
+                ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 13.5)]).width)
             }.max() ?? 18)
             VStack(alignment: .leading, spacing: 5) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
@@ -239,7 +240,7 @@ struct AssistantMessageView: View {
                         }
                         inline(item.text).frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .font(.system(size: 14)).lineSpacing(3)
+                    .font(.system(size: 13.5)).lineSpacing(2)
                     .padding(.leading, CGFloat(item.depth) * 14)
                 }
             }
