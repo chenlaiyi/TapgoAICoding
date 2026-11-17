@@ -3341,32 +3341,39 @@ struct RemoteChatView: View {
                         if let id = await chat.forkReply(at: cut, computer: computer) { forkTarget = MobileForkTarget(id: id) }
                     }
                 }, retryFeedback: { Task { await chat.loadFeedback(computer: computer) } })
-            if !chat.subagents.isEmpty {
-                Button { showingSubagents = true } label: {
-                    Label("\(chat.subagents.count) 个智能体", systemImage: "person.2")
-                        .font(.caption)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 36)
-                        .background(Color(uiColor: .secondarySystemBackground), in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .accessibilityIdentifier("subagentChip")
-            }
             if !delivered.isEmpty {
                 MobileDeliverablesView(files: delivered,
                                        loadFile: { try await chat.loadWorkspaceFile(path: $0) })
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let sequence = replyTurn(line)?.changesSequence {
-                MobileChangesView(sequence: sequence,
-                    deliverables: replyTurn(line)?.deliverables ?? [],
-                    loadSummary: { try await chat.changesSummary($0, computer: computer) },
-                    loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
-                    loadFile: { try await chat.loadWorkspaceFile(path: $0) })
+                HStack(spacing: 8) {
+                    MobileChangesView(sequence: sequence,
+                        deliverables: replyTurn(line)?.deliverables ?? [],
+                        loadSummary: { try await chat.changesSummary($0, computer: computer) },
+                        loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
+                        loadFile: { try await chat.loadWorkspaceFile(path: $0) })
+                    if !chat.subagents.isEmpty { subagentChip }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            } else if !chat.subagents.isEmpty {
+                subagentChip
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+    }
+
+    /// Glass capsule beside the file-change chip.
+    private var subagentChip: some View {
+        Button { showingSubagents = true } label: {
+            Label("\(chat.subagents.count) 个智能体", systemImage: "person.2")
+                .font(.caption)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 36)
+        }
+        .buttonStyle(.plain)
+        .mobileGlass(in: Capsule(), interactive: true)
+        .accessibilityIdentifier("subagentChip")
     }
 
     private func isLastAssistantInTurn(_ id: Int) -> Bool {
