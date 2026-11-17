@@ -210,10 +210,10 @@ struct AssistantMessageView: View {
     private func blockView(_ block: MessageBlock, index: Int) -> some View {
         switch block {
         case .paragraph(let value):
-            inline(value).font(.system(size: 15)).lineSpacing(4)
+            inline(value).font(.system(size: 14)).lineSpacing(3)
         case .heading(let level, let value):
             inline(value)
-                .font(.system(size: level == 1 ? 19 : level == 2 ? 17 : 15, weight: .semibold))
+                .font(.system(size: level == 1 ? 18 : level == 2 ? 16 : 14, weight: .semibold))
                 .lineSpacing(3)
         case .code(let language, let value):
             AssistantCodeBlock(language: language, value: value,
@@ -223,7 +223,7 @@ struct AssistantMessageView: View {
                                })
         case .list(let items):
             let markerWidth = max(18, items.map {
-                ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15)]).width)
+                ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width)
             }.max() ?? 18)
             VStack(alignment: .leading, spacing: 5) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
@@ -239,7 +239,7 @@ struct AssistantMessageView: View {
                         }
                         inline(item.text).frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .font(.system(size: 15)).lineSpacing(4)
+                    .font(.system(size: 14)).lineSpacing(3)
                     .padding(.leading, CGFloat(item.depth) * 14)
                 }
             }

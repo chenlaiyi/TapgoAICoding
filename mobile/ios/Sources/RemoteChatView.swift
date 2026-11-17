@@ -2131,7 +2131,7 @@ struct RemoteChatView: View {
                 GeometryReader { viewport in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
-                            LazyVStack(alignment: .leading, spacing: 14) {
+                            LazyVStack(alignment: .leading, spacing: 12) {
                                 if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
                                 if chat.hasOlderHistory {
                                     Button {
@@ -3474,7 +3474,7 @@ private struct TurnProcessView: View {
                         ProgressView().controlSize(.mini)
                     }
                     Text(title(now: context.date))
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -3548,8 +3548,8 @@ private struct ProcessDisclosureView: View {
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .font(.subheadline)
-                .frame(minHeight: 44)
+                .font(.footnote)
+                .frame(minHeight: 40)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
