@@ -2163,15 +2163,18 @@ struct RemoteChatView: View {
                                 MobileReadingPosition.clear(computerID: computer.id, sessionID: sessionId)
                                 withAnimation { reader.scrollTo(bottomAnchor, anchor: .bottom) }
                             } label: {
-                                Label("回到最新", systemImage: "arrow.down")
-                                    .font(.subheadline)
-                                    .padding(.horizontal, 14)
-                                    .frame(minHeight: 44)
-                                    .background(.regularMaterial, in: Capsule())
-                                    .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Circle())
                             }
+                            .buttonStyle(.plain)
+                            .mobileGlass(in: Circle(), interactive: true)
+                            .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+                            .accessibilityLabel("回到最新")
                             .accessibilityIdentifier("chatJumpToLatest")
-                            .padding(12)
+                            .padding(16)
                         }
                     }
                 }
