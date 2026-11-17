@@ -2837,20 +2837,17 @@ struct RemoteChatView: View {
 
     /// Keeps the model and balance visible when the composer collapses to one row.
     private var compactModelBadge: some View {
-        VStack(alignment: .trailing, spacing: 1) {
-            Text(selectedModelName)
-                .font(.caption2.weight(.medium))
-            Text("余额 \(chat.balance ?? "暂不可用")")
-                .font(.caption2)
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
-        .foregroundStyle(.secondary)
-        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("模型 \(selectedModelName)，余额 \(chat.balance ?? "暂不可用")")
-        .accessibilityIdentifier("compactModelBadge")
+        Text("余额 \(chat.balance ?? "暂不可用")")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(2)
+            .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("模型 \(selectedModelName)，余额 \(chat.balance ?? "暂不可用")")
+            .accessibilityIdentifier("compactModelBadge")
     }
 
     private var selectedModelName: String {
