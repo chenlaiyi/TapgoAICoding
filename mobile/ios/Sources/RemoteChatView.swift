@@ -3376,13 +3376,13 @@ struct RemoteChatView: View {
                         loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
                         loadFile: { try await chat.loadWorkspaceFile(path: $0) },
                         fillWidth: true)
-                        .frame(width: 160, height: 44)
-                    if !chat.subagents.isEmpty { subagentChip.frame(width: 160, height: 44) }
+                        .frame(width: 160, height: 32)
+                    if !chat.subagents.isEmpty { subagentChip.frame(width: 160, height: 32) }
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             } else if !chat.subagents.isEmpty {
                 subagentChip
-                    .frame(width: 160, height: 44)
+                    .frame(width: 160, height: 32)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }

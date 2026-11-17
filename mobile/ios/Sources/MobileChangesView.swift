@@ -56,7 +56,7 @@ struct MobileChangesView: View {
                     }
                     .font(.caption)
                     .padding(.horizontal, 12)
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 32)
                     .frame(maxWidth: fillWidth ? .infinity : nil)
                     .mobileGlass(in: Capsule(), interactive: true)
                 }
