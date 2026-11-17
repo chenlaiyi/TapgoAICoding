@@ -2837,7 +2837,7 @@ struct RemoteChatView: View {
 
     /// Keeps the model and balance visible when the composer collapses to one row.
     private var compactModelBadge: some View {
-        Text("余额 \(chat.balance ?? "暂不可用")")
+        Text(chat.balance ?? "暂不可用")
             .font(.caption2)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -2862,7 +2862,7 @@ struct RemoteChatView: View {
 
     @ViewBuilder private var balanceBadge: some View {
         if chat.selectedModel != nil {
-            Text("余额 \(chat.balance ?? "暂不可用")")
+            Text(chat.balance ?? "暂不可用")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
