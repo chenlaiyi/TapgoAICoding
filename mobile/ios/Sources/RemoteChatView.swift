@@ -188,7 +188,15 @@ private final class RemoteChat: ObservableObject {
     private var streamNeedsResync = false
     var displayLines: [ChatLine] {
         var visible = lines
-        guard liveActive else { return visible }
+        if !liveActive {
+            if running, !visible.contains(where: { $0.role == "process" && $0.live }) {
+                var line = ChatLine(id: -2, role: "process", text: "", reasoning: "")
+                line.turn = visible.last(where: { $0.role == "turn" })?.turn
+                line.live = true
+                visible.append(line)
+            }
+            return visible
+        }
         var liveProcessIndex: Int?
         if let turn = assistantStream.turn, let step = assistantStream.step,
            let index = visible.lastIndex(where: { $0.role == "process" && $0.turn == turn && $0.step == step }) {
@@ -216,6 +224,12 @@ private final class RemoteChat: ObservableObject {
                                                                 after: assistantStream.startedAfterSequence)
             let index = MobileTranscriptOrder.liveTextIndex(processIndex: liveProcessIndex, fallback: fallback)
             visible.insert(line, at: min(index, visible.count))
+        }
+        if running, !visible.contains(where: { $0.role == "process" && $0.live }) {
+            var line = ChatLine(id: -2, role: "process", text: "", reasoning: "")
+            line.turn = visible.last(where: { $0.role == "turn" })?.turn
+            line.live = true
+            visible.append(line)
         }
         return visible
     }
