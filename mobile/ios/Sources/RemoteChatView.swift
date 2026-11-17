@@ -2136,10 +2136,10 @@ struct RemoteChatView: View {
                     })
                     .onChange(of: chat.lines) { _ in
                         restoreReadingPositionIfNeeded(reader: reader)
-                        if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                        scrollToNewest(reader: reader)
                     }
                     .onChange(of: chat.liveText) { _ in
-                        if followingLatest { reader.scrollTo(bottomAnchor, anchor: .bottom) }
+                        scrollToNewest(reader: reader)
                     }
                     .onChange(of: chat.loading) { loading in
                         guard !loading else { return }
@@ -3025,6 +3025,17 @@ struct RemoteChatView: View {
             open: { reference in
                 viewerTarget = MobileImageViewerTarget(id: reference.attachmentID, reference: reference)
             })
+    }
+
+    /// Keeps the growing live reply in view instead of scrolling past it to the tool row below.
+    /// - Parameter reader: transcript scroll proxy.
+    private func scrollToNewest(reader: ScrollViewProxy) {
+        guard followingLatest else { return }
+        if let live = chat.displayLines.last(where: { $0.role == "assistant" && $0.live }) {
+            reader.scrollTo(live.presentationID, anchor: .bottom)
+        } else {
+            reader.scrollTo(bottomAnchor, anchor: .bottom)
+        }
     }
 
     private func chatRow(_ line: ChatLine) -> some View {
