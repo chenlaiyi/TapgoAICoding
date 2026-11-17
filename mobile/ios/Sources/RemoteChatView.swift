@@ -3352,12 +3352,16 @@ struct RemoteChatView: View {
                         deliverables: replyTurn(line)?.deliverables ?? [],
                         loadSummary: { try await chat.changesSummary($0, computer: computer) },
                         loadDiff: { try await chat.fileDiff($0, index: $1, computer: computer) },
-                        loadFile: { try await chat.loadWorkspaceFile(path: $0) })
-                    if !chat.subagents.isEmpty { subagentChip }
+                        loadFile: { try await chat.loadWorkspaceFile(path: $0) },
+                        fillWidth: true)
+                        .frame(maxWidth: .infinity)
+                    if !chat.subagents.isEmpty { subagentChip.frame(maxWidth: .infinity) }
                 }
+                .frame(maxWidth: 360)
                 .frame(maxWidth: .infinity, alignment: .center)
             } else if !chat.subagents.isEmpty {
                 subagentChip
+                    .frame(width: 176)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
@@ -3369,7 +3373,8 @@ struct RemoteChatView: View {
             Label("\(chat.subagents.count) 个智能体", systemImage: "person.2")
                 .font(.caption)
                 .padding(.horizontal, 12)
-                .frame(minHeight: 36)
+                .frame(minHeight: 44)
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
         .mobileGlass(in: Capsule(), interactive: true)

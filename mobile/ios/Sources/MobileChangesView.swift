@@ -28,6 +28,8 @@ struct MobileChangesView: View {
     @State private var revision = 0
     @State private var previewRequest: MobileFilePreviewRequest?
     @State private var category: MobileChangesCategory = .all
+    /// Whether the collapsed chip stretches to the width its container offers.
+    var fillWidth = false
     @State private var search = ""
 
     /// Files surviving the category and path filter, keeping their diff indices.
@@ -52,7 +54,10 @@ struct MobileChangesView: View {
                         if summary.deleted > 0 { Text("−\(summary.deleted)").foregroundStyle(.red) }
                         Image(systemName: "chevron.right").font(.system(size: 9))
                     }
-                    .font(.caption).padding(.horizontal, 12).frame(minHeight: 44)
+                    .font(.caption)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .frame(maxWidth: fillWidth ? .infinity : nil)
                     .mobileGlass(in: Capsule(), interactive: true)
                 }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
