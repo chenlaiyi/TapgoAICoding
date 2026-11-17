@@ -105,6 +105,12 @@ struct MobileWelcomeMessage: View {
 
 /// Matches the system launch storyboard with a fixed brand palette in both appearances.
 private struct MobileLaunchView: View {
+    private var appVersionText: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let artworkSize = min(geometry.size.width - 64, 300)
@@ -132,6 +138,10 @@ private struct MobileLaunchView: View {
                     .tracking(2)
                     .foregroundStyle(Color(red: 92 / 255, green: 112 / 255, blue: 136 / 255))
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 82)
+                Text(verbatim: "iOS \(UIDevice.current.systemVersion) · \(appVersionText)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Color(red: 122 / 255, green: 140 / 255, blue: 160 / 255))
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - 46)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("launchBrand")
