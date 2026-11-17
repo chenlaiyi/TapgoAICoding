@@ -1946,6 +1946,8 @@ struct RemoteChatView: View {
         self.onNewConversation = onNewConversation
     }
     @StateObject private var chat = RemoteChat()
+    @StateObject private var voice = MobileVoiceInput()
+    @State private var voiceBaseDraft = ""
     @State private var draft = ""
     @State private var recommendationDraft = MobileRecommendationDraft()
     @State private var showingWorkspace = false
@@ -2162,6 +2164,9 @@ struct RemoteChatView: View {
                 if let statusError = chat.composerStatusError {
                     Text(statusError).font(.caption).foregroundStyle(.orange)
                 }
+                if let voiceError = voice.error {
+                    Text(voiceError).font(.caption).foregroundStyle(.orange)
+                }
                 if chat.planActive && additions.mode != .plan {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
@@ -2268,10 +2273,19 @@ struct RemoteChatView: View {
         .onChange(of: chat.running) { _ in updateLiveActivity() }
         .onChange(of: chat.liveActivityDetail) { _ in updateLiveActivity() }
         .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
+        .onChange(of: voice.transcript) { value in
+            guard voice.recording || !value.isEmpty else { return }
+            draft = voiceBaseDraft.isEmpty ? value : voiceBaseDraft + "\n" + value
+        }
+        .onChange(of: voice.error) { message in
+            guard let message else { return }
+            chat.error = message
+        }
         .onChange(of: chat.running) { running in
             if !running { applyRecommendation() }
         }
         .onDisappear {
+            voice.cancel()
             saveDraftNow()
             MobileReadingPosition.save(followingLatest ? nil : topVisibleID,
                                        computerID: computer.id, sessionID: sessionId)
@@ -2618,6 +2632,7 @@ struct RemoteChatView: View {
                 .accessibilityLabel("展开输入框")
                 .accessibilityIdentifier("expandChatComposer")
                 compactModelBadge
+                voiceButton
                 primaryButton
             }
             .padding(.horizontal, 8).padding(.vertical, 3)
@@ -2633,6 +2648,7 @@ struct RemoteChatView: View {
                         balanceBadge.layoutPriority(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    voiceButton
                     primaryButton
                 }
             }
@@ -2787,6 +2803,77 @@ struct RemoteChatView: View {
             .disabled(chat.sending || additions.importing)
     }
 
+    /// Toggles dictation, keeping any typed text ahead of the transcript.
+    private func toggleVoice() {
+        if voice.recording {
+            voice.stop()
+            return
+        }
+        voiceBaseDraft = draft
+        composerFocused = false
+        Task { await voice.start() }
+    }
+
+    private var voiceButton: some View {
+        Button(action: toggleVoice) {
+            Image(systemName: voice.recording ? "stop.fill" : "mic.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(voice.recording ? Color.red : Color.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .disabled(chat.sending)
+        .accessibilityLabel(voice.recording ? "停止语音输入" : "语音输入")
+    }
+
+    private var recordingBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !voice.transcript.isEmpty {
+                Text(voice.transcript)
+                    .font(.subheadline)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack(spacing: 8) {
+                Button {
+                    voice.cancel()
+                    draft = voiceBaseDraft
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("取消语音输入")
+                TimelineView(.animation(minimumInterval: 0.12)) { context in
+                    let tick = Int(context.date.timeIntervalSince1970 * 8)
+                    HStack(spacing: 3) {
+                        ForEach(0..<24, id: \.self) { index in
+                            Capsule()
+                                .fill(Color.secondary.opacity(0.5))
+                                .frame(width: 2, height: CGFloat(4 + (tick + index * 3) % 12))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                Button {
+                    voice.stop()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.red, in: Circle())
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("停止语音输入")
+                primaryButton
+            }
+            .frame(minHeight: 44)
+        }
+        .padding(.horizontal, 13).padding(.vertical, 9)
+        .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
     private var primaryButton: some View {
         let stopping = chat.running && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !additions.hasAttachments
@@ -2798,6 +2885,13 @@ struct RemoteChatView: View {
             if stopping {
                 Task { await chat.cancel(computer: computer, sessionId: sessionId) }
                 return
+            }
+            if voice.recording {
+                voice.stop()
+                let transcript = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !transcript.isEmpty {
+                    draft = voiceBaseDraft.isEmpty ? transcript : voiceBaseDraft + "\n" + transcript
+                }
             }
             let submittedDraft = draft
             let submittedAttachments = additions.attachments
