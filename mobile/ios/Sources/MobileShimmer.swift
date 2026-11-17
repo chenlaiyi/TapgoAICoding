@@ -12,15 +12,14 @@ private struct ShimmerModifier: ViewModifier {
                     GeometryReader { geometry in
                         let width = max(40, geometry.size.width)
                         let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.6) / 1.6
-                        LinearGradient(colors: [.clear, Color.white.opacity(0.9), .clear],
+                        LinearGradient(colors: [.clear, Color.accentColor.opacity(0.95), .clear],
                                        startPoint: .leading, endPoint: .trailing)
-                            .frame(width: width * 0.45)
-                            .offset(x: -width * 0.45 + (width * 1.45) * phase)
+                            .frame(width: width * 0.5)
+                            .offset(x: -width * 0.5 + (width * 1.5) * phase)
                             .mask(content)
                     }
                 }
                 .allowsHitTesting(false)
-                .blendMode(.plusLighter)
             }
         } else {
             content

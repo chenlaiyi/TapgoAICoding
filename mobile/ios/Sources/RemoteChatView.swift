@@ -3153,7 +3153,7 @@ struct RemoteChatView: View {
                                                              hasReasoning: !(line.reasoning ?? "").isEmpty,
                                                              running: line.live),
                     symbol: MobileProcessLabel.symbol(activities: line.activities),
-                    running: line.live,
+                    running: line.live || line.activities.contains(where: { !$0.finished }),
                     reasoning: line.reasoning ?? "",
                     activities: line.activities,
                     toolOutputs: chat.toolOutputs,
@@ -3330,7 +3330,8 @@ private struct ActivityGroupView: View {
 
     var body: some View {
         ProcessDisclosureView(summary: title, symbol: MobileProcessLabel.symbol(activities: activities),
-                              running: false, reasoning: "", activities: activities,
+                              running: activities.contains(where: { !$0.finished }),
+                              reasoning: "", activities: activities,
                               toolOutputs: toolOutputs, onInspect: onInspect)
     }
 }
