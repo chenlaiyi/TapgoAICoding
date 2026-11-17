@@ -49,6 +49,9 @@ private struct RemotePermission: Identifiable {
 private final class RemoteChat: ObservableObject {
     private let connectionLog = Logger(subsystem: "com.devtools.terminalSimple", category: "remote-chat")
     @Published var lines: [ChatLine] = []
+    @Published private(set) var hasOlderHistory = false
+    @Published private(set) var loadingOlderHistory = false
+    private var oldestSequence: Int?
     @Published var nextPrompts = MobileNextPrompts()
     @Published var toolOutputs: [String: MobileToolOutput] = [:]
     @Published var toolOutputUnavailable = false
@@ -626,6 +629,10 @@ private final class RemoteChat: ObservableObject {
                         }
                     }
                     lines = projected
+                    oldestSequence = records.compactMap {
+                        ($0["event"] as? [String: Any])?["seq"] as? Int
+                    }.min()
+                    hasOlderHistory = value["hasMore"] as? Bool == true
                     try await openToolOutputs(socket: socket, generation: current)
                     guard current == generation, self.socket === socket else { return }
                     pendingAssistantEvents = [:]
@@ -782,6 +789,44 @@ private final class RemoteChat: ObservableObject {
         guard connected, !reconnecting, running, let lastFrameAt else { return nil }
         let seconds = Int(now.timeIntervalSince(lastFrameAt))
         return seconds >= 90 ? seconds : nil
+    }
+
+    /// Loads one older page before the current transcript, keeping the newest lines untouched.
+    /// - Parameters:
+    ///   - computer: pairing used for the authenticated request.
+    ///   - sessionId: conversation whose earlier events are requested.
+    func loadOlderHistory(computer: SavedComputer, sessionId: String) async {
+        guard hasOlderHistory, !loadingOlderHistory, let before = oldestSequence, before > 0 else { return }
+        loadingOlderHistory = true
+        defer { loadingOlderHistory = false }
+        do {
+            let value = try await call("session/events", arguments: ["request": [
+                "address": ["kind": "session", "sessionId": sessionId],
+                "beforeSeq": before,
+                "maxMessages": 80,
+                "turnWindow": ["minMessages": 30, "minTurns": 2],
+            ]], computer: computer)
+            guard let page = value as? [String: Any],
+                  let records = page["records"] as? [[String: Any]] else { return }
+            var older: [ChatLine] = []
+            for record in records {
+                guard let event = record["event"] as? [String: Any] else { continue }
+                Self.consume(event, into: &older, owner: sessionId)
+            }
+            let existing = Set(lines.map(\.id))
+            older.removeAll { existing.contains($0.id) }
+            guard !older.isEmpty else {
+                hasOlderHistory = false
+                return
+            }
+            lines = older + lines
+            oldestSequence = records.compactMap {
+                ($0["event"] as? [String: Any])?["seq"] as? Int
+            }.min() ?? before
+            hasOlderHistory = page["hasMore"] as? Bool == true
+        } catch {
+            error = "加载更早消息失败：\(error.localizedDescription)"
+        }
     }
 
     /// Reads the queue once when the state stream is unavailable on this Host.
@@ -2060,6 +2105,28 @@ struct RemoteChatView: View {
                         VStack(alignment: .leading, spacing: 14) {
                             LazyVStack(alignment: .leading, spacing: 14) {
                                 if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
+                                if chat.hasOlderHistory {
+                                    Button {
+                                        let anchor = topVisibleID
+                                        Task {
+                                            await chat.loadOlderHistory(computer: computer, sessionId: sessionId)
+                                            if let anchor { reader.scrollTo(anchor, anchor: .top) }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            if chat.loadingOlderHistory {
+                                                ProgressView().controlSize(.mini)
+                                            }
+                                            Text(chat.loadingOlderHistory ? "正在加载更早消息…" : "加载更早消息")
+                                                .font(.caption)
+                                        }
+                                        .frame(maxWidth: .infinity, minHeight: 44)
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(chat.loadingOlderHistory)
+                                    .accessibilityIdentifier("loadOlderHistory")
+                                }
                                 ForEach(chat.displayLines, id: \.presentationID) { line in
                                     chatRow(line)
                                         .id(line.presentationID)
