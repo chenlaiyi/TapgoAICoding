@@ -35,15 +35,16 @@ struct MobileRecordingBar: View {
             }
             .frame(width: 44, height: 44)
             .accessibilityLabel("取消语音输入")
-            HStack(spacing: 3) {
-                ForEach(voice.samples.indices, id: \.self) { index in
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.45))
-                        .frame(width: 2, height: 3 + voice.samples[index] * 28)
+            TimelineView(.animation(minimumInterval: 0.1)) { _ in
+                HStack(spacing: 3) {
+                    ForEach(0..<voice.samples.count, id: \.self) { index in
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.45))
+                            .frame(width: 2, height: 3 + voice.samples[index] * 28)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .animation(.linear(duration: 0.05), value: voice.samples)
             Button(action: onStop) {
                 Image(systemName: "stop.fill")
                     .font(.system(size: 13, weight: .bold))

@@ -5,10 +5,10 @@ import Speech
 @MainActor
 final class MobileVoiceInput: ObservableObject {
     @Published private(set) var recording = false
-    @Published private(set) var transcript = ""
+    private(set) var transcript = ""
     @Published private(set) var error: String?
-    /// Latest microphone levels, oldest first; the recording bar renders this moving window.
-    @Published private(set) var samples: [CGFloat] = Array(repeating: 0, count: 32)
+    /// Latest microphone levels, oldest first; only the recording bar reads this window.
+    private(set) var samples: [CGFloat] = Array(repeating: 0, count: 32)
 
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
@@ -82,6 +82,9 @@ final class MobileVoiceInput: ObservableObject {
     /// - Returns: the best transcript available when recognition settles.
     func stop() async -> String {
         guard recording || task != nil else { return transcript }
+        // Return the composer to its normal controls while the final transcript settles.
+        recording = false
+        samples = Array(repeating: 0, count: 32)
         request?.endAudio()
         let text = await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
             finalContinuation = continuation
