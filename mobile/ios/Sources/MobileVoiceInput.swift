@@ -5,6 +5,7 @@ import Speech
 @MainActor
 final class MobileVoiceInput: ObservableObject {
     @Published private(set) var recording = false
+    @Published private(set) var starting = false
     private(set) var transcript = ""
     @Published private(set) var error: String?
     /// Latest microphone levels, oldest first; only the recording bar reads this window.
@@ -15,20 +16,26 @@ final class MobileVoiceInput: ObservableObject {
     private var task: SFSpeechRecognitionTask?
     private var finalContinuation: CheckedContinuation<String, Never>?
     private var buffersSinceLevel = 0
+    private var cancelled = false
 
     /// Starts dictation after asking for microphone and speech-recognition access.
     func start() async {
-        guard !recording else { return }
+        guard !recording, !starting else { return }
+        starting = true
+        cancelled = false
         error = nil
+        defer { starting = false }
         guard await authorized() else {
             error = "需要允许麦克风与语音识别权限才能语音输入"
             return
         }
+        guard !cancelled else { return }
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")),
               recognizer.isAvailable else {
             error = "当前设备暂时无法使用语音识别"
             return
         }
+        guard !cancelled else { return }
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -103,8 +110,10 @@ final class MobileVoiceInput: ObservableObject {
         continuation.resume(returning: transcript)
     }
 
-    /// Ends recording and discards the transcript.
+    /// Ends recording or a pending start and discards the transcript.
     func cancel() {
+        cancelled = true
+        starting = false
         finish(keep: false)
     }
 

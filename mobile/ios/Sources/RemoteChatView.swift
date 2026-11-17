@@ -2256,7 +2256,11 @@ struct RemoteChatView: View {
                     }
                     queueStrip
                     MobileComposerAttachmentStrip(additions: additions)
-                    composerCard
+                    if voice.recording || voice.starting {
+                        recordingBar
+                    } else {
+                        composerCard
+                    }
                 }
             }
             .padding(.horizontal, 15).padding(.bottom, 10)
@@ -2833,6 +2837,10 @@ struct RemoteChatView: View {
 
     /// Toggles dictation, keeping any typed text ahead of the transcript.
     private func toggleVoice() {
+        if voice.starting {
+            voice.cancel()
+            return
+        }
         if voice.recording {
             Task { draft = mergedVoiceDraft(await voice.stop()) }
             return

@@ -1486,7 +1486,7 @@ private struct RemoteNewConversationView: View {
         .foregroundStyle(.primary)
         .background(Color(uiColor: .systemBackground))
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if voice.recording {
+            if voice.recording || voice.starting {
                 recordingComposer
             } else {
                 composer
@@ -1669,6 +1669,10 @@ private struct RemoteNewConversationView: View {
 
     /// Toggles dictation on the new-conversation page.
     private func toggleVoice() {
+        if voice.starting {
+            voice.cancel()
+            return
+        }
         if voice.recording {
             Task { draft = mergedVoiceDraft(await voice.stop()) }
             return

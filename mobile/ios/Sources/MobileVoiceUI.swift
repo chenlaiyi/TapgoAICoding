@@ -35,15 +35,25 @@ struct MobileRecordingBar: View {
             }
             .frame(width: 44, height: 44)
             .accessibilityLabel("取消语音输入")
-            TimelineView(.animation(minimumInterval: 0.1)) { _ in
-                HStack(spacing: 3) {
-                    ForEach(0..<voice.samples.count, id: \.self) { index in
-                        Capsule()
-                            .fill(Color.secondary.opacity(0.45))
-                            .frame(width: 2, height: 3 + voice.samples[index] * 28)
-                    }
+            if voice.starting {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.mini)
+                    Text("正在启动麦克风…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
+            } else {
+                TimelineView(.animation(minimumInterval: 0.1)) { _ in
+                    HStack(spacing: 3) {
+                        ForEach(0..<voice.samples.count, id: \.self) { index in
+                            Capsule()
+                                .fill(Color.secondary.opacity(0.45))
+                                .frame(width: 2, height: 3 + voice.samples[index] * 28)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
             Button(action: onStop) {
                 Image(systemName: "stop.fill")
@@ -53,6 +63,7 @@ struct MobileRecordingBar: View {
                     .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
             }
             .frame(width: 44, height: 44)
+            .disabled(voice.starting)
             .accessibilityLabel("停止语音输入")
             Button(action: onSend) {
                 Image(systemName: "arrow.up")
@@ -62,6 +73,7 @@ struct MobileRecordingBar: View {
                     .background(Color.blue, in: Circle())
                     .frame(width: 44, height: 44)
             }
+            .disabled(voice.starting)
             .accessibilityLabel("发送")
         }
         .padding(.horizontal, 13).padding(.vertical, 9)
