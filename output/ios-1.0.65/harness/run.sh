@@ -16,7 +16,7 @@ swiftc -I "$HERE" "$HERE/XCTest.o" \
   Sources/MobileChatAttachment.swift \
   Sources/MobileChatActivity.swift \
   Sources/MobileQueueState.swift Sources/MobileComposerSubmission.swift Sources/MobileComposerState.swift \
-  Sources/MobileVoicePunctuation.swift Sources/MobileDuration.swift Sources/MobileNotificationText.swift \
+  Sources/MobileVoicePunctuation.swift Sources/MobileDuration.swift Sources/MobileNotificationText.swift Sources/MobileSubagentCatalog.swift \
   Sources/MobileNextPrompts.swift \
   UnitTests/MobileModelCatalogTests.swift UnitTests/MobileModelPreferenceTests.swift \
   UnitTests/MobileSilenceLabelTests.swift UnitTests/MobileImageThumbnailTests.swift \
@@ -25,7 +25,7 @@ swiftc -I "$HERE" "$HERE/XCTest.o" \
   UnitTests/MobileAttachmentFormatTests.swift UnitTests/MobileChatAttachmentTests.swift \
   UnitTests/MobileChatActivityTests.swift UnitTests/MobileDraftStoreTests.swift \
   UnitTests/MobileReadingPositionTests.swift UnitTests/MobileMultipartTests.swift UnitTests/MobileTranscriptOrderTests.swift UnitTests/MobileChangesFilterTests.swift UnitTests/MobileStreamPreviewTests.swift UnitTests/MobileCodePreviewTests.swift UnitTests/MobileExpansionStoreTests.swift UnitTests/MobileCodeExpansionStoreTests.swift UnitTests/MobileFileBrowserTests.swift \
-  UnitTests/MobileProcessLabelTests.swift UnitTests/MobileProjectCollapseStoreTests.swift UnitTests/MobileDeliverablesTests.swift UnitTests/MobileVoicePunctuationTests.swift UnitTests/MobileDurationTests.swift UnitTests/MobileNotificationTextTests.swift \
+  UnitTests/MobileProcessLabelTests.swift UnitTests/MobileProjectCollapseStoreTests.swift UnitTests/MobileDeliverablesTests.swift UnitTests/MobileVoicePunctuationTests.swift UnitTests/MobileDurationTests.swift UnitTests/MobileNotificationTextTests.swift UnitTests/MobileSubagentCatalogTests.swift \
   UnitTests/MobileComposerStateTests.swift UnitTests/MobileNextPromptsTests.swift \
   UnitTests/MobileQueueStateTests.swift UnitTests/MobilePendingSubmissionTests.swift \
   "$HERE/main.swift" -o "$HERE/run"

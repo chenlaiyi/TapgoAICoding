@@ -174,6 +174,14 @@ let cases: [(String, () -> (XCTestCase, () throws -> Void))] = [
         let t = MobileDeliverablesTests()
         return (t, { t.testMergesDeliverablesWithLinksAndSkipsNonFiles() })
     }),
+    ("subagent/catalog", {
+        let t = MobileSubagentCatalogTests()
+        return (t, { t.testParsesProjectionRowsAndLiveCatalogEvents() })
+    }),
+    ("subagent/running", {
+        let t = MobileSubagentCatalogTests()
+        return (t, { t.testDelegationRunningMatchesTheDescription() })
+    }),
     ("notification/preview", {
         let t = MobileNotificationTextTests()
         return (t, { t.testPreviewCollapsesWhitespaceAndTruncates() })

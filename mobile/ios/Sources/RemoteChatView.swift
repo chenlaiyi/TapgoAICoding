@@ -49,6 +49,7 @@ private struct RemotePermission: Identifiable {
 private final class RemoteChat: ObservableObject {
     private let connectionLog = Logger(subsystem: "com.devtools.terminalSimple", category: "remote-chat")
     @Published var lines: [ChatLine] = []
+    @Published private(set) var subagents: [MobileSubagentEntry] = []
     @Published private(set) var hasOlderHistory = false
     @Published private(set) var loadingOlderHistory = false
     private var oldestSequence: Int?
@@ -653,6 +654,7 @@ private final class RemoteChat: ObservableObject {
                     if let values = (value["projections"] as? [String: Any])?["values"] as? [String: Any] {
                         nextPrompts.restore(values["nextPrompts"] as? [String: Any], running: running)
                         if let baseline = value["projections"] as? [String: Any] { composerState.restore(baseline) }
+                        subagents = MobileSubagentCatalog.parse(values["subagentCatalog"])
                         if let selection = values["modelSelection"] as? [String: Any],
                            let next = selection["next"] as? [String: Any],
                            let provider = next["provider"] as? String,
@@ -693,6 +695,10 @@ private final class RemoteChat: ObservableObject {
                     if assistantStream.matches(event), let seq = event["seq"] as? Int {
                         pendingAssistantEvents[seq] = event
                         continue
+                    }
+                    if event["type"] as? String == "subagent/catalog",
+                       let data = event["data"] as? [String: Any] {
+                        subagents = MobileSubagentCatalog.upsert(subagents, data: data)
                     }
                     consumeFeedback(event)
                     if let seq = event["seq"] as? Int,
@@ -2046,6 +2052,7 @@ struct RemoteChatView: View {
     @State private var recommendationDraft = MobileRecommendationDraft()
     @State private var showingWorkspace = false
     @State private var showingSettings = false
+    @State private var showingSubagents = false
     @State private var showingModels = false
     @State private var modelPickerDetent: PresentationDetent = .large
     @State private var viewerTarget: MobileImageViewerTarget?
@@ -2529,6 +2536,10 @@ struct RemoteChatView: View {
                 loadDirectory: { try await chat.loadWorkspaceDirectory(path: $0, computer: computer) },
                 loadFile: { try await chat.loadWorkspaceFile(path: $0) })
         }
+        .sheet(isPresented: $showingSubagents) {
+            MobileSubagentSheet(entries: chat.subagents,
+                                activities: chat.lines.flatMap(\.activities))
+        }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 Form {
@@ -2792,6 +2803,49 @@ struct RemoteChatView: View {
             }
             .padding(.horizontal, 13).padding(.vertical, 9)
             .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+    }
+
+    /// All tool activities currently projected in this conversation.
+    private var allActivities: [MobileChatActivity] {
+        chat.lines.flatMap(\.activities)
+    }
+
+    /// Compact card above the composer while any listed child agent still runs.
+    @ViewBuilder
+    private var subagentStrip: some View {
+        let running = chat.subagents.filter { MobileSubagentCatalog.isRunning($0, activities: allActivities) }
+        if !running.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("进行中").font(.caption).foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Button { showingSubagents = true } label: {
+                        Text("\(chat.subagents.count) 个智能体").font(.caption)
+                            .frame(minHeight: 32)
+                    }
+                    .buttonStyle(.plain)
+                }
+                ForEach(running.prefix(3)) { entry in
+                    Button { showingSubagents = true } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "hourglass")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text(entry.displayName).font(.subheadline)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text("正在刷新状态").font(.caption).foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right").font(.caption2)
+                        }
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .mobileGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.horizontal, 14)
         }
     }
 
@@ -3287,6 +3341,18 @@ struct RemoteChatView: View {
                         if let id = await chat.forkReply(at: cut, computer: computer) { forkTarget = MobileForkTarget(id: id) }
                     }
                 }, retryFeedback: { Task { await chat.loadFeedback(computer: computer) } })
+            if !chat.subagents.isEmpty {
+                Button { showingSubagents = true } label: {
+                    Label("\(chat.subagents.count) 个智能体", systemImage: "person.2")
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 36)
+                        .background(Color(uiColor: .secondarySystemBackground), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("subagentChip")
+            }
             if !delivered.isEmpty {
                 MobileDeliverablesView(files: delivered,
                                        loadFile: { try await chat.loadWorkspaceFile(path: $0) })
