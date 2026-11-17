@@ -261,6 +261,8 @@ private final class RemoteChat: ObservableObject {
     private var pendingLiveActivity: (token: String, activityId: String, project: String)?
     @Published private var attachmentImages: [String: UIImage] = [:]
     @Published private var failedAttachments: Set<String> = []
+    @Published private var attachmentErrors: [String: String] = [:]
+    private var attachmentRetries: [String: Int] = [:]
     private var loadingAttachments: Set<String> = []
     private var attachmentOrder: [String] = []
     /// Transcript thumbnails kept in memory; older ones are dropped first.
@@ -882,6 +884,15 @@ private final class RemoteChat: ObservableObject {
     /// - Parameter reference: image block reference from the transcript.
     func retryAttachment(_ reference: MobileImageRef) {
         failedAttachments.remove(reference.attachmentID)
+        attachmentErrors.removeValue(forKey: reference.attachmentID)
+        attachmentRetries.removeValue(forKey: reference.attachmentID)
+    }
+
+    /// The last thumbnail error for one image, when a retry is offered.
+    /// - Parameter reference: image block reference from the transcript.
+    /// - Returns: a short failure reason for the tile.
+    func attachmentError(_ reference: MobileImageRef) -> String? {
+        attachmentErrors[reference.attachmentID]
     }
 
     /// Reads one durable image through the Host and keeps only a small transcript thumbnail.
@@ -896,9 +907,27 @@ private final class RemoteChat: ObservableObject {
             guard let thumbnail = MobileImageThumbnail.make(from: data) else { throw ChatFailure.unavailable }
             attachmentImages[id] = UIImage(cgImage: thumbnail)
             failedAttachments.remove(id)
+            attachmentErrors.removeValue(forKey: id)
+            attachmentRetries.removeValue(forKey: id)
             rememberAttachment(id)
+        } catch is CancellationError {
+            // Scrolling cancels the tile's task; it is not a failed fetch.
+        } catch let error as URLError where error.code == .cancelled {
+            // The URL session reports task cancellation as a cancelled URL error.
         } catch {
+            let attempts = attachmentRetries[id, default: 0]
+            if attempts < 2 {
+                attachmentRetries[id] = attempts + 1
+                Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(1200))
+                    guard let self, self.failedAttachments.contains(id) else { return }
+                    self.failedAttachments.remove(id)
+                    await self.loadAttachmentImage(reference)
+                }
+                return
+            }
             failedAttachments.insert(id)
+            attachmentErrors[id] = error.localizedDescription
         }
     }
 
@@ -3016,6 +3045,7 @@ struct RemoteChatView: View {
             failed: { chat.attachmentFailed($0) },
             load: { await chat.loadAttachmentImage($0) },
             retry: { chat.retryAttachment($0) },
+            error: { chat.attachmentError($0) },
             open: { reference in
                 viewerTarget = MobileImageViewerTarget(id: reference.attachmentID, reference: reference)
             })

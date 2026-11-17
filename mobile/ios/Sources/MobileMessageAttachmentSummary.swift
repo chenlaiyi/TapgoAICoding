@@ -11,6 +11,8 @@ struct MobileAttachmentPreviewSource {
     var load: (MobileImageRef) async -> Void = { _ in }
     /// Clears a failed fetch so the tile can try again.
     var retry: (MobileImageRef) -> Void = { _ in }
+    /// Last failure reason for the tile, when known.
+    var error: (MobileImageRef) -> String? = { _ in nil }
     /// Opens one image in the full-screen viewer.
     var open: (MobileImageRef) -> Void = { _ in }
 }
@@ -48,6 +50,9 @@ struct MobileMessageAttachmentSummary: View {
                         .font(.caption).lineLimit(1)
                     Text(MobileAttachmentFormat.byteText(image.bytes))
                         .font(.caption2).foregroundStyle(.secondary)
+                    if let failure = preview.error(image) {
+                        Text(failure).font(.caption2).foregroundStyle(.orange).lineLimit(2)
+                    }
                 }
                 .frame(maxWidth: 150, alignment: .leading)
             }
