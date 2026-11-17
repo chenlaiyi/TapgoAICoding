@@ -2302,10 +2302,6 @@ struct RemoteChatView: View {
         .onChange(of: chat.running) { _ in updateLiveActivity() }
         .onChange(of: chat.liveActivityDetail) { _ in updateLiveActivity() }
         .onChange(of: chat.nextPrompts) { _ in applyRecommendation() }
-        .onChange(of: voice.transcript) { value in
-            guard voice.recording || !value.isEmpty else { return }
-            draft = voiceBaseDraft.isEmpty ? value : voiceBaseDraft + "\n" + value
-        }
         .onChange(of: voice.error) { message in
             guard let message else { return }
             chat.error = message
@@ -2835,7 +2831,7 @@ struct RemoteChatView: View {
     /// Toggles dictation, keeping any typed text ahead of the transcript.
     private func toggleVoice() {
         if voice.recording {
-            voice.stop()
+            Task { draft = mergedVoiceDraft(await voice.stop()) }
             return
         }
         voiceBaseDraft = draft
@@ -2845,7 +2841,7 @@ struct RemoteChatView: View {
 
     private var voiceButton: some View {
         MobileVoiceButton(voice: voice, action: toggleVoice)
-            .disabled(chat.sending)
+            .disabled(chat.sending || voice.recording)
     }
 
     private var recordingBar: some View {
@@ -2855,8 +2851,22 @@ struct RemoteChatView: View {
                 voice.cancel()
                 draft = voiceBaseDraft
             },
-            onStop: { voice.stop() },
-            onSend: { primaryButtonSend() })
+            onStop: {
+                Task { draft = mergedVoiceDraft(await voice.stop()) }
+            },
+            onSend: {
+                Task {
+                    draft = mergedVoiceDraft(await voice.stop())
+                    primaryButtonSend()
+                }
+            })
+    }
+
+    /// Keeps typed text ahead of the final dictation transcript.
+    private func mergedVoiceDraft(_ transcript: String) -> String {
+        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return voiceBaseDraft }
+        return voiceBaseDraft.isEmpty ? trimmed : voiceBaseDraft + "\n" + trimmed
     }
 
     private var primaryButton: some View {
@@ -2901,13 +2911,6 @@ struct RemoteChatView: View {
 
     /// Sends the current draft, syncing any in-progress dictation first.
     private func primaryButtonSend() {
-        if voice.recording {
-            voice.stop()
-            let transcript = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcript.isEmpty {
-                draft = voiceBaseDraft.isEmpty ? transcript : voiceBaseDraft + "\n" + transcript
-            }
-        }
         let submittedDraft = draft
         let submittedAttachments = additions.attachments
         let submittedMode = additions.mode

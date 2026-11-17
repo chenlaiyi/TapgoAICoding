@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 /// Microphone control before Send, with the same idle and recording states in both composers.
@@ -34,13 +35,15 @@ struct MobileRecordingBar: View {
             }
             .frame(width: 44, height: 44)
             .accessibilityLabel("取消语音输入")
-            TimelineView(.animation(minimumInterval: 0.12)) { context in
-                let tick = Int(context.date.timeIntervalSince1970 * 8)
+            TimelineView(.animation(minimumInterval: 0.1)) { context in
+                let tick = Int(context.date.timeIntervalSince1970 * 10)
                 HStack(spacing: 3) {
                     ForEach(0..<28, id: \.self) { index in
+                        let pattern = 0.35 + 0.65 * abs(sin(Double(index) * 0.55 + Double(tick) * 0.25))
+                        let height = 3 + voice.level * 26 * pattern
                         Capsule()
                             .fill(Color.secondary.opacity(0.45))
-                            .frame(width: 2, height: CGFloat(4 + (tick + index * 3) % 14))
+                            .frame(width: 2, height: max(3, height))
                     }
                 }
                 .frame(maxWidth: .infinity)

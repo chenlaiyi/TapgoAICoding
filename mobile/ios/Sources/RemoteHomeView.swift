@@ -1535,10 +1535,6 @@ private struct RemoteNewConversationView: View {
         }
         .onChange(of: draft) { _ in scheduleDraftSave() }
         .onChange(of: additions.mode) { _ in scheduleDraftSave() }
-        .onChange(of: voice.transcript) { value in
-            guard voice.recording || !value.isEmpty else { return }
-            draft = voiceBaseDraft.isEmpty ? value : voiceBaseDraft + "\n" + value
-        }
         .onChange(of: scenePhase) { phase in
             if phase != .active { saveDraftNow() }
         }
@@ -1674,12 +1670,19 @@ private struct RemoteNewConversationView: View {
     /// Toggles dictation on the new-conversation page.
     private func toggleVoice() {
         if voice.recording {
-            voice.stop()
+            Task { draft = mergedVoiceDraft(await voice.stop()) }
             return
         }
         voiceBaseDraft = draft
         inputFocused = false
         Task { await voice.start() }
+    }
+
+    /// Keeps typed text ahead of the final dictation transcript.
+    private func mergedVoiceDraft(_ transcript: String) -> String {
+        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return voiceBaseDraft }
+        return voiceBaseDraft.isEmpty ? trimmed : voiceBaseDraft + "\n" + trimmed
     }
 
     private var recordingComposer: some View {
@@ -1689,14 +1692,14 @@ private struct RemoteNewConversationView: View {
                 voice.cancel()
                 draft = voiceBaseDraft
             },
-            onStop: { voice.stop() },
+            onStop: {
+                Task { draft = mergedVoiceDraft(await voice.stop()) }
+            },
             onSend: {
-                voice.stop()
-                let transcript = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !transcript.isEmpty {
-                    draft = voiceBaseDraft.isEmpty ? transcript : voiceBaseDraft + "\n" + transcript
+                Task {
+                    draft = mergedVoiceDraft(await voice.stop())
+                    startDraft()
                 }
-                startDraft()
             })
             .padding(.horizontal, 14).padding(.bottom, 9)
     }
@@ -1797,7 +1800,7 @@ private struct RemoteNewConversationView: View {
             .accessibilityLabel("访问权限")
             composerMetadata.frame(maxWidth: .infinity, alignment: .leading)
             MobileVoiceButton(voice: voice, action: toggleVoice)
-                .disabled(submitting)
+                .disabled(submitting || voice.recording)
             Button { startDraft() } label: {
                 ZStack {
                     Circle().fill(.blue).frame(width: 34, height: 34)
