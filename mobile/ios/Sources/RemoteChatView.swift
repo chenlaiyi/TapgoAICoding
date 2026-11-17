@@ -3181,11 +3181,10 @@ struct RemoteChatView: View {
 
     /// Drops a restored draft that is exactly the last sent user message.
     private func reconcileDraftWithHistory() {
-        guard !draft.isEmpty,
-              let lastUser = chat.lines.last(where: { $0.role == "user" })?.text else { return }
+        guard !draft.isEmpty else { return }
         let current = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let previous = lastUser.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard current == previous else { return }
+        let recent = chat.lines.filter { $0.role == "user" }.suffix(10).compactMap(\.text)
+        guard recent.contains(where: { $0.trimmingCharacters(in: .whitespacesAndNewlines) == current }) else { return }
         draft = ""
         MobileDraftStore.clear(key: draftKey)
     }
