@@ -3166,7 +3166,8 @@ struct RemoteChatView: View {
     /// Places the best actionable suggestion in an empty composer once per turn.
     private func applyRecommendation() {
         guard !chat.running else { return }
-        draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft)
+        let lastUser = chat.lines.last(where: { $0.role == "user" })?.text
+        draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft, lastUserText: lastUser)
     }
 
     private func inspectProcess() {

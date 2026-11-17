@@ -38,6 +38,20 @@ final class MobileNextPromptsTests: XCTestCase {
         XCTAssertFalse(MobileNextPrompts.isQuestion("运行测试"))
     }
 
+    func testEchoedUserMessageIsNotPrefilled() {
+        XCTAssertTrue(MobileNextPrompts.isEcho("先修顶部第一行", of: "先修顶部第一行：加顶部渐隐"))
+        XCTAssertTrue(MobileNextPrompts.isEcho("先修顶部第一行：加顶部渐隐", of: "先修顶部第一行 加顶部渐隐"))
+        XCTAssertFalse(MobileNextPrompts.isEcho("运行测试", of: "先修顶部第一行：加顶部渐隐"))
+        var prompts = MobileNextPrompts()
+        prompts.restore(["turn": 1, "status": "ready",
+                         "prompts": ["先修顶部第一行：加顶部渐隐", "运行测试并修复失败"]], running: false)
+        var composer = MobileRecommendationDraft()
+        XCTAssertEqual(composer.receiving(prompts, draft: "", lastUserText: "先修顶部第一行：加顶部渐隐"),
+                       "运行测试并修复失败")
+        prompts.restore(["turn": 2, "status": "ready", "prompts": ["先修顶部第一行：加顶部渐隐"]], running: false)
+        XCTAssertEqual(composer.receiving(prompts, draft: "", lastUserText: "先修顶部第一行：加顶部渐隐"), "")
+    }
+
     func testPrefillOnceAndSwitchWithoutDuplicatingRecommendations() {
         var prompts = MobileNextPrompts()
         prompts.restore(["turn": 3, "status": "ready", "prompts": ["继续", "运行测试"]], running: false)
