@@ -2056,6 +2056,7 @@ struct RemoteChatView: View {
     @State private var showingFiles = false
     @State private var draggingTranscript = false
     @State private var scrollRequestCount = 0
+    @State private var lastAutoScrollAt = Date.distantPast
     private let bottomAnchor = "chat-bottom"
 
     var body: some View {
@@ -3098,6 +3099,9 @@ struct RemoteChatView: View {
     /// - Parameter reader: transcript scroll proxy.
     private func scrollToNewest(reader: ScrollViewProxy) {
         guard followingLatest else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastAutoScrollAt) > 0.12 else { return }
+        lastAutoScrollAt = now
         if let live = chat.displayLines.last(where: { $0.role == "assistant" && $0.live }) {
             reader.scrollTo(live.presentationID, anchor: .bottom)
         } else {
@@ -3114,6 +3118,7 @@ struct RemoteChatView: View {
                                                              hasReasoning: !(line.reasoning ?? "").isEmpty,
                                                              running: line.live),
                     symbol: MobileProcessLabel.symbol(activities: line.activities),
+                    running: line.live,
                     reasoning: line.reasoning ?? "",
                     activities: line.activities,
                     toolOutputs: chat.toolOutputs,
@@ -3290,7 +3295,8 @@ private struct ActivityGroupView: View {
 
     var body: some View {
         ProcessDisclosureView(summary: title, symbol: MobileProcessLabel.symbol(activities: activities),
-                              reasoning: "", activities: activities, toolOutputs: toolOutputs, onInspect: onInspect)
+                              running: false, reasoning: "", activities: activities,
+                              toolOutputs: toolOutputs, onInspect: onInspect)
     }
 }
 
@@ -3329,49 +3335,30 @@ private struct TurnProcessView: View {
         return activity.liveLine
     }
 
-    private func activityAge(now: Date) -> String? {
-        guard endedAt == nil, let lastActivityAt, lastActivityAt > 0 else { return nil }
-        let seconds = max(0, Int(now.timeIntervalSince1970 - lastActivityAt / 1000))
-        if seconds < 5 { return "最后活动刚刚" }
-        if seconds < 60 { return "最后活动 \(seconds) 秒前" }
-        return "最后活动 \(seconds / 60) 分 \(seconds % 60) 秒前"
-    }
-
     private func title(now: Date) -> String {
-        let outcome = mobileTurnStatus(endReason)
         guard let startedAt, startedAt > 0 else {
-            return endedAt == nil ? "正在处理" : outcome ?? "已完成工作"
+            return endedAt == nil ? "运行中" : "已结束"
         }
         let end = endedAt ?? now.timeIntervalSince1970 * 1000
-        let seconds = max(0, Int((end - startedAt) / 1000))
-        let duration = seconds < 60 ? "\(seconds) 秒" : "\(seconds / 60) 分 \(seconds % 60) 秒"
-        if endedAt == nil && awaitingDecision { return "等待你的确认 · 已运行 \(duration)" }
-        return endedAt == nil ? "已运行 \(duration)" : outcome.map { "\($0) · 用时 \(duration)" } ?? "用时 \(duration)"
+        let duration = MobileDuration.text(max(0, Int((end - startedAt) / 1000)))
+        return endedAt == nil ? "运行 \(duration)" : "用时 \(duration)"
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title(now: context.date))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.primary)
-                    if let age = activityAge(now: context.date) {
-                        Text(age).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            if let liveLine {
-                Text(liveLine)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .accessibilityIdentifier("turnLiveActivity")
+                Text(title(now: context.date))
+                    .font(.system(size: 14, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("turnElapsed")
             }
             if showsDisclosure {
                 Divider()
                 ProcessDisclosureView(summary: processSummary,
                     symbol: MobileProcessLabel.symbol(activities: activities),
+                    running: endedAt == nil,
                     reasoning: [reasoning, liveReasoning.isEmpty ? nil : liveReasoning]
                         .compactMap { $0 }.joined(separator: "\n\n"),
                     activities: [], toolOutputs: toolOutputs, onInspect: onInspect,
@@ -3390,6 +3377,7 @@ private struct ProcessDisclosureView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let summary: String
     let symbol: String
+    let running: Bool
     let reasoning: String
     let activities: [MobileChatActivity]
     let toolOutputs: [String: MobileToolOutput]
@@ -3399,12 +3387,13 @@ private struct ProcessDisclosureView: View {
     @State private var reasoningExpanded = false
     @State private var expanded: Bool
 
-    init(summary: String, symbol: String = "list.bullet.clipboard", reasoning: String,
+    init(summary: String, symbol: String = "list.bullet.clipboard", running: Bool = false, reasoning: String,
          activities: [MobileChatActivity],
          toolOutputs: [String: MobileToolOutput], onInspect: @escaping () -> Void,
          initialExpanded: Bool = false, onExpandedChange: ((Bool) -> Void)? = nil) {
         self.summary = summary
         self.symbol = symbol
+        self.running = running
         self.reasoning = reasoning
         self.activities = activities
         self.toolOutputs = toolOutputs
@@ -3426,6 +3415,8 @@ private struct ProcessDisclosureView: View {
                     Label(summary, systemImage: symbol)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .monospacedDigit()
+                        .mobileShimmering(running)
                     Spacer(minLength: 8)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 13, weight: .semibold))

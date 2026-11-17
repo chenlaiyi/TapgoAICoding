@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write mobile/ios/README.md
 /tapgo-ios:
-  en: e503cd954881e891
-  zh: 08ad95c07bfe65f5
+  en: 5b28409c42410a2e
+  zh: f401097f4887ea06
