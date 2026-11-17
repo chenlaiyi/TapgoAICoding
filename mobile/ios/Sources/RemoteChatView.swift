@@ -2844,63 +2844,19 @@ struct RemoteChatView: View {
     }
 
     private var voiceButton: some View {
-        Button(action: toggleVoice) {
-            Image(systemName: voice.recording ? "stop.fill" : "mic.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(voice.recording ? Color.red : Color.secondary)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .disabled(chat.sending)
-        .accessibilityLabel(voice.recording ? "停止语音输入" : "语音输入")
+        MobileVoiceButton(voice: voice, action: toggleVoice)
+            .disabled(chat.sending)
     }
 
     private var recordingBar: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !voice.transcript.isEmpty {
-                Text(voice.transcript)
-                    .font(.subheadline)
-                    .lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            HStack(spacing: 8) {
-                Button {
-                    voice.cancel()
-                    draft = voiceBaseDraft
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("取消语音输入")
-                TimelineView(.animation(minimumInterval: 0.12)) { context in
-                    let tick = Int(context.date.timeIntervalSince1970 * 8)
-                    HStack(spacing: 3) {
-                        ForEach(0..<24, id: \.self) { index in
-                            Capsule()
-                                .fill(Color.secondary.opacity(0.5))
-                                .frame(width: 2, height: CGFloat(4 + (tick + index * 3) % 12))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                Button {
-                    voice.stop()
-                } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(Color.red, in: Circle())
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("停止语音输入")
-                primaryButton
-            }
-            .frame(minHeight: 44)
-        }
-        .padding(.horizontal, 13).padding(.vertical, 9)
-        .mobileGlass(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        MobileRecordingBar(
+            voice: voice,
+            onCancel: {
+                voice.cancel()
+                draft = voiceBaseDraft
+            },
+            onStop: { voice.stop() },
+            onSend: { primaryButtonSend() })
     }
 
     private var primaryButton: some View {
@@ -2915,31 +2871,7 @@ struct RemoteChatView: View {
                 Task { await chat.cancel(computer: computer, sessionId: sessionId) }
                 return
             }
-            if voice.recording {
-                voice.stop()
-                let transcript = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !transcript.isEmpty {
-                    draft = voiceBaseDraft.isEmpty ? transcript : voiceBaseDraft + "\n" + transcript
-                }
-            }
-            let submittedDraft = draft
-            let submittedAttachments = additions.attachments
-            let submittedMode = additions.mode
-            let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-            scrollRequestCount += 1
-            Task {
-                let steer = chat.queueRunning && followUpDelivery == MobilePromptDelivery.steer.rawValue
-                if await chat.send(text, attachments: submittedAttachments, mode: submittedMode,
-                                   steer: steer, computer: computer, sessionId: sessionId) {
-                    if draft == submittedDraft {
-                        draft = ""
-                        MobileDraftStore.clear(key: draftKey)
-                    }
-                    let delivered = Set(submittedAttachments.map(\.id))
-                    additions.attachments.removeAll { delivered.contains($0.id) }
-                    if additions.mode == submittedMode { additions.mode = .message }
-                }
-            }
+            primaryButtonSend()
         } label: {
             Group {
                 if busy {
@@ -2963,6 +2895,36 @@ struct RemoteChatView: View {
                     Task { await chat.cancel(computer: computer, sessionId: sessionId) }
                 }
                 .disabled(busy || !chat.connected)
+            }
+        }
+    }
+
+    /// Sends the current draft, syncing any in-progress dictation first.
+    private func primaryButtonSend() {
+        if voice.recording {
+            voice.stop()
+            let transcript = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !transcript.isEmpty {
+                draft = voiceBaseDraft.isEmpty ? transcript : voiceBaseDraft + "\n" + transcript
+            }
+        }
+        let submittedDraft = draft
+        let submittedAttachments = additions.attachments
+        let submittedMode = additions.mode
+        let text = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty || !submittedAttachments.isEmpty else { return }
+        scrollRequestCount += 1
+        Task {
+            let steer = chat.queueRunning && followUpDelivery == MobilePromptDelivery.steer.rawValue
+            if await chat.send(text, attachments: submittedAttachments, mode: submittedMode,
+                               steer: steer, computer: computer, sessionId: sessionId) {
+                if draft == submittedDraft {
+                    draft = ""
+                    MobileDraftStore.clear(key: draftKey)
+                }
+                let delivered = Set(submittedAttachments.map(\.id))
+                additions.attachments.removeAll { delivered.contains($0.id) }
+                if additions.mode == submittedMode { additions.mode = .message }
             }
         }
     }

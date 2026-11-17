@@ -1419,6 +1419,8 @@ private struct RemoteNewConversationView: View {
     @State private var createdSession: RemoteSession?
     @State private var showingCreatedSession = false
     @State private var pendingNewConversation = false
+    @StateObject private var voice = MobileVoiceInput()
+    @State private var voiceBaseDraft = ""
     @State private var submitting = false
 
     /// Loads the session list, switching to the fallback route when the preferred route is unreachable.
@@ -1483,7 +1485,13 @@ private struct RemoteNewConversationView: View {
         }
         .foregroundStyle(.primary)
         .background(Color(uiColor: .systemBackground))
-        .safeAreaInset(edge: .bottom, spacing: 0) { composer }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if voice.recording {
+                recordingComposer
+            } else {
+                composer
+            }
+        }
         .overlay {
             if showingProjectMenu {
                 GeometryReader { geometry in
@@ -1527,10 +1535,17 @@ private struct RemoteNewConversationView: View {
         }
         .onChange(of: draft) { _ in scheduleDraftSave() }
         .onChange(of: additions.mode) { _ in scheduleDraftSave() }
+        .onChange(of: voice.transcript) { value in
+            guard voice.recording || !value.isEmpty else { return }
+            draft = voiceBaseDraft.isEmpty ? value : voiceBaseDraft + "\n" + value
+        }
         .onChange(of: scenePhase) { phase in
             if phase != .active { saveDraftNow() }
         }
-        .onDisappear { saveDraftNow() }
+        .onDisappear {
+            voice.cancel()
+            saveDraftNow()
+        }
         .onChange(of: showingCreatedSession) { visible in
             guard !visible, pendingNewConversation else { return }
             pendingNewConversation = false
@@ -1656,6 +1671,36 @@ private struct RemoteNewConversationView: View {
         .contentShape(Rectangle())
     }
 
+    /// Toggles dictation on the new-conversation page.
+    private func toggleVoice() {
+        if voice.recording {
+            voice.stop()
+            return
+        }
+        voiceBaseDraft = draft
+        inputFocused = false
+        Task { await voice.start() }
+    }
+
+    private var recordingComposer: some View {
+        MobileRecordingBar(
+            voice: voice,
+            onCancel: {
+                voice.cancel()
+                draft = voiceBaseDraft
+            },
+            onStop: { voice.stop() },
+            onSend: {
+                voice.stop()
+                let transcript = voice.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !transcript.isEmpty {
+                    draft = voiceBaseDraft.isEmpty ? transcript : voiceBaseDraft + "\n" + transcript
+                }
+                startDraft()
+            })
+            .padding(.horizontal, 14).padding(.bottom, 9)
+    }
+
     private var composer: some View {
         VStack(alignment: .leading, spacing: 14) {
             MobileComposerAttachmentStrip(additions: additions)
@@ -1664,6 +1709,8 @@ private struct RemoteNewConversationView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("newConversationProgress")
+            } else if let voiceError = voice.error {
+                Text(voiceError).font(.footnote).foregroundStyle(.orange)
             } else if let error = sessions.startError {
                 HStack(alignment: .center, spacing: 8) {
                     Text(error).font(.footnote).foregroundStyle(.red)
@@ -1749,6 +1796,8 @@ private struct RemoteNewConversationView: View {
             .disabled(submitting)
             .accessibilityLabel("访问权限")
             composerMetadata.frame(maxWidth: .infinity, alignment: .leading)
+            MobileVoiceButton(voice: voice, action: toggleVoice)
+                .disabled(submitting)
             Button { startDraft() } label: {
                 ZStack {
                     Circle().fill(.blue).frame(width: 34, height: 34)
