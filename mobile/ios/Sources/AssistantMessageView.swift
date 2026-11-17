@@ -214,8 +214,10 @@ struct AssistantMessageView: View {
                 .foregroundStyle(Color.primary.opacity(0.9))
         case .heading(let level, let value):
             inline(value)
-                .font(.system(size: level == 1 ? 18 : level == 2 ? 16 : 14, weight: .semibold))
-                .lineSpacing(3)
+                .font(.system(size: level == 1 ? 17 : level == 2 ? 15.5 : 14, weight: .semibold))
+                .foregroundStyle(.primary)
+                .lineSpacing(2)
+                .padding(.top, index == 0 ? 0 : 8)
         case .code(let language, let value):
             AssistantCodeBlock(language: language, value: value,
                                initialExpanded: expandedCodeBlocks(index),
@@ -226,7 +228,7 @@ struct AssistantMessageView: View {
             let markerWidth = max(18, items.map {
                 ceil(($0.marker as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 13.5)]).width)
             }.max() ?? 18)
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         if let checked = item.checked {
@@ -247,7 +249,7 @@ struct AssistantMessageView: View {
         case .quote(let value):
             HStack(spacing: 10) {
                 RoundedRectangle(cornerRadius: 2).fill(Color.secondary.opacity(0.45)).frame(width: 3)
-                inline(value).font(.system(size: 15)).foregroundStyle(.secondary).lineSpacing(4)
+                inline(value).font(.system(size: 13.5)).foregroundStyle(.secondary).lineSpacing(2)
             }
             .fixedSize(horizontal: false, vertical: true)
         case .rule:
