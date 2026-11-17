@@ -657,6 +657,7 @@ struct RemoteHomeView: View {
     @StateObject private var sessions = RemoteSessions()
     @State private var showingComputers = false
     @State private var showingSettings = false
+    @AppStorage(MobileNotifications.enabledKey) private var notificationsEnabled = false
     @State private var showingSearch = false
     @State private var search = ""
     @State private var selectedSession: RemoteSession?
@@ -1276,6 +1277,24 @@ struct RemoteHomeView: View {
                         .padding(16).frame(height: 58)
                         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
                     }
+
+                    Toggle(isOn: $notificationsEnabled) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("完成与审批通知").font(.system(size: 16, weight: .medium))
+                            Text("回合完成、等待批准或出错时提醒")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .onChange(of: notificationsEnabled) { enabled in
+                        guard enabled else { return }
+                        Task {
+                            if !(await MobileNotifications.shared.requestAuthorization()) {
+                                notificationsEnabled = false
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("账号余额 \(sessions.funds.account ?? "暂不可用")")

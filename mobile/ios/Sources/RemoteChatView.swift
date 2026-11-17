@@ -722,6 +722,7 @@ private final class RemoteChat: ObservableObject {
                         assistantStream.retire()
                         publishStream(immediate: true)
                         cancelling = false
+                        notifyTurnEnd(event)
                         Task { await self.refreshBalances(computer: computer) }
                     }
                 }
@@ -2360,6 +2361,24 @@ struct RemoteChatView: View {
                               thumbnail: chat.attachmentImage(target.reference),
                               loader: { await chat.attachmentData(target.reference) })
         }
+        .onChange(of: interactions.approvals.count) { _ in
+            guard let latest = interactions.approvals.last else { return }
+            Task {
+                await MobileNotifications.shared.post(
+                    title: "等待你的批准",
+                    body: MobileNotificationText.approval(sessionTitle: chatTitle, toolName: latest.prompt.toolName),
+                    sessionId: sessionId ?? "")
+            }
+        }
+        .onChange(of: interactions.questions.count) { _ in
+            guard interactions.questions.last != nil else { return }
+            Task {
+                await MobileNotifications.shared.post(
+                    title: "等待你的回答",
+                    body: "\(chatTitle) · 智能体提出了一个问题",
+                    sessionId: sessionId ?? "")
+            }
+        }
         .onChange(of: scenePhase) { phase in
             if phase != .active { saveDraftNow() }
             if phase == .active { Task { await chat.loadSettings(computer: computer) } }
@@ -3039,6 +3058,25 @@ struct RemoteChatView: View {
         draftSaveTask?.cancel()
         draftSaveTask = nil
         MobileDraftStore.save(MobileDraft(text: draft, mode: additions.mode), key: draftKey)
+    }
+
+    /// Posts a completion or failure alert when the app is not in front.
+    /// - Parameter event: the committed `turn/end` event.
+    private func notifyTurnEnd(_ event: [String: Any]) {
+        guard let data = event["data"] as? [String: Any],
+              let sessionId, let kind = (data["reason"] as? [String: Any])?["kind"] as? String else { return }
+        let sessionTitle = self.sessionTitle ?? "点点够"
+        let reply = lines.last(where: { $0.role == "assistant" })?.text ?? ""
+        Task {
+            guard kind == "completed" || kind == "error" || kind == "aborted" else { return }
+            let isFailure = kind != "completed"
+            await MobileNotifications.shared.post(
+                title: isFailure ? "运行出错" : "回合完成",
+                body: isFailure
+                    ? MobileNotificationText.failed(sessionTitle: sessionTitle, reason: kind)
+                    : MobileNotificationText.completed(sessionTitle: sessionTitle, reply: reply),
+                sessionId: sessionId)
+        }
     }
 
     /// Mirrors the running turn into the Dynamic Island and the Lock Screen.

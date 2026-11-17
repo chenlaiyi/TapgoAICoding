@@ -174,6 +174,18 @@ let cases: [(String, () -> (XCTestCase, () throws -> Void))] = [
         let t = MobileDeliverablesTests()
         return (t, { t.testMergesDeliverablesWithLinksAndSkipsNonFiles() })
     }),
+    ("notification/preview", {
+        let t = MobileNotificationTextTests()
+        return (t, { t.testPreviewCollapsesWhitespaceAndTruncates() })
+    }),
+    ("notification/completed", {
+        let t = MobileNotificationTextTests()
+        return (t, { t.testCompletedUsesReplyOrFallback() })
+    }),
+    ("notification/context", {
+        let t = MobileNotificationTextTests()
+        return (t, { t.testFailedAndApprovalHaveContext() })
+    }),
     ("duration/text", {
         let t = MobileDurationTests()
         return (t, { t.testFormatsSecondsMinutesAndHours() })
