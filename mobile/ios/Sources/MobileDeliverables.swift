@@ -28,12 +28,30 @@ enum MobileDeliverables {
     /// - Parameter paths: presented file paths.
     /// - Returns: distinct, trimmed entries.
     static func list(_ paths: [String]) -> [MobileDeliverable] {
-        var seen = Set<String>()
-        return paths.compactMap { path in
+        var unique: [MobileDeliverable] = []
+        for path in paths {
             let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { return nil }
-            return MobileDeliverable(path: trimmed)
+            guard !trimmed.isEmpty else { continue }
+            guard !unique.contains(where: { sameFile($0.path, trimmed) }) else { continue }
+            unique.append(MobileDeliverable(path: trimmed))
         }
+        return unique
+    }
+
+    /// Whether two spellings name the same delivered file.
+    /// - Parameters:
+    ///   - left: one path, absolute or relative.
+    ///   - right: the other path.
+    /// - Returns: true for the same absolute path, a path suffix match, or a bare name matching the same file.
+    static func sameFile(_ left: String, _ right: String) -> Bool {
+        if left == right { return true }
+        if left.hasSuffix("/" + right) || right.hasSuffix("/" + left) { return true }
+        let leftName = (left as NSString).lastPathComponent
+        guard leftName == (right as NSString).lastPathComponent else { return false }
+        let leftDirectory = (left as NSString).deletingLastPathComponent
+        let rightDirectory = (right as NSString).deletingLastPathComponent
+        // A bare file name and a longer path with that name describe the same deliverable.
+        return leftDirectory.isEmpty || rightDirectory.isEmpty
     }
 
     /// Local file targets in Markdown links.

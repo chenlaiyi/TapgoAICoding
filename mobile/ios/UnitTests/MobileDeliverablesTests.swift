@@ -10,6 +10,16 @@ final class MobileDeliverablesTests: XCTestCase {
         XCTAssertEqual(files[0].subtitle, "out")
     }
 
+    func testDeduplicatesAbsoluteDeliverableAgainstRelativeLink() {
+        let files = MobileDeliverables.merged(deliverables: ["/tmp/out/wechat-317/experience-8.jpg",
+                                                            "/tmp/out/wechat/run.md"],
+                                              text: "[png](experience-8.jpg) [md](run.md)")
+        XCTAssertEqual(files.map(\.name), ["experience-8.jpg", "run.md"])
+        XCTAssertEqual(files.count, 2)
+        XCTAssertTrue(MobileDeliverables.sameFile("/a/wechat/run.md", "run.md"))
+        XCTAssertFalse(MobileDeliverables.sameFile("/a/wechat/run.md", "/b/other/run.md"))
+    }
+
     func testExtractsLocalMarkdownFileLinks() {
         let text = "见 [二维码](file:///tmp/out/experience-8.jpg) 和 [记录](./docs/run.md)，以及 [网页](https://x.test/a.md)。"
         XCTAssertEqual(MobileDeliverables.linkedFiles(in: text),
