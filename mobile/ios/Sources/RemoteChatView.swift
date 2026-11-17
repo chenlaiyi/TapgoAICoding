@@ -3206,7 +3206,9 @@ struct RemoteChatView: View {
                     summary: MobileProcessLabel.countedTitle(activities: line.activities,
                                                              hasReasoning: !(line.reasoning ?? "").isEmpty,
                                                              running: line.live),
-                    symbol: MobileProcessLabel.symbol(activities: line.activities),
+                    symbol: line.live && line.activities.isEmpty
+                        ? "sparkle"
+                        : MobileProcessLabel.symbol(activities: line.activities),
                     running: line.live || line.activities.contains(where: { !$0.finished }),
                     reasoning: line.reasoning ?? "",
                     activities: line.activities,
@@ -3467,12 +3469,17 @@ private struct TurnProcessView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(title(now: context.date))
-                    .font(.system(size: 14, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .accessibilityIdentifier("turnElapsed")
+                HStack(spacing: 6) {
+                    if endedAt == nil {
+                        ProgressView().controlSize(.mini)
+                    }
+                    Text(title(now: context.date))
+                        .font(.system(size: 14, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .accessibilityIdentifier("turnElapsed")
+                }
             }
             if showsDisclosure {
                 Divider()

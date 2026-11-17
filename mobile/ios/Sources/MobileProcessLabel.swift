@@ -106,6 +106,7 @@ enum MobileProcessLabel {
             let detail = category == "computer" ? "" : runningActivity.detail.trimmingCharacters(in: .whitespacesAndNewlines)
             parts.append(detail.isEmpty ? label : "\(label) · \(detail)")
         }
+        if running { parts.append("正在分析请求") }
         guard !parts.isEmpty else { return hasReasoning ? "已完成分析" : "已完成分析" }
         return parts.joined(separator: " · ")
     }
