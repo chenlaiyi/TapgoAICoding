@@ -2204,6 +2204,7 @@ struct RemoteChatView: View {
                                     }
                                 }
                         }
+                        .frame(maxWidth: .infinity, minHeight: max(0, viewport.size.height - 32), alignment: .bottom)
                         .padding(.horizontal, 16).padding(.vertical, 16)
                     }
                     .mask(
