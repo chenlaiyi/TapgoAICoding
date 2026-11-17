@@ -3183,7 +3183,7 @@ struct RemoteChatView: View {
     private func reconcileDraftWithHistory() {
         guard !draft.isEmpty else { return }
         let current = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let recent = chat.lines.filter { $0.role == "user" }.suffix(10).compactMap(\.text)
+        let recent = chat.lines.filter { $0.role == "user" }.compactMap(\.text)
         guard recent.contains(where: { $0.trimmingCharacters(in: .whitespacesAndNewlines) == current }) else { return }
         draft = ""
         MobileDraftStore.clear(key: draftKey)
