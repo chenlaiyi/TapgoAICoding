@@ -35,19 +35,15 @@ struct MobileRecordingBar: View {
             }
             .frame(width: 44, height: 44)
             .accessibilityLabel("取消语音输入")
-            TimelineView(.animation(minimumInterval: 0.1)) { context in
-                let tick = Int(context.date.timeIntervalSince1970 * 10)
-                HStack(spacing: 3) {
-                    ForEach(0..<28, id: \.self) { index in
-                        let pattern = 0.35 + 0.65 * abs(sin(Double(index) * 0.55 + Double(tick) * 0.25))
-                        let height = 3 + voice.level * 26 * pattern
-                        Capsule()
-                            .fill(Color.secondary.opacity(0.45))
-                            .frame(width: 2, height: max(3, height))
-                    }
+            HStack(spacing: 3) {
+                ForEach(voice.samples.indices, id: \.self) { index in
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.45))
+                        .frame(width: 2, height: 3 + voice.samples[index] * 28)
                 }
-                .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity)
+            .animation(.linear(duration: 0.05), value: voice.samples)
             Button(action: onStop) {
                 Image(systemName: "stop.fill")
                     .font(.system(size: 13, weight: .bold))

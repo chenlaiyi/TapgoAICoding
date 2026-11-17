@@ -7,7 +7,8 @@ final class MobileVoiceInput: ObservableObject {
     @Published private(set) var recording = false
     @Published private(set) var transcript = ""
     @Published private(set) var error: String?
-    @Published private(set) var level: CGFloat = 0
+    /// Latest microphone levels, oldest first; the recording bar renders this moving window.
+    @Published private(set) var samples: [CGFloat] = Array(repeating: 0, count: 32)
 
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
@@ -37,18 +38,24 @@ final class MobileVoiceInput: ObservableObject {
             self.request = request
             transcript = ""
             let input = engine.inputNode
+            let format = input.inputFormat(forBus: 0)
+            guard format.sampleRate > 0, format.channelCount > 0 else {
+                throw NSError(domain: "MobileVoiceInput", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "麦克风输入不可用"])
+            }
             input.removeTap(onBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { [weak self] buffer, _ in
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
                 request.append(buffer)
                 guard let self else { return }
                 self.buffersSinceLevel += 1
-                guard self.buffersSinceLevel % 4 == 0 else { return }
+                guard self.buffersSinceLevel % 2 == 0 else { return }
                 let level = Self.level(of: buffer)
-                Task { @MainActor in self.level = level }
+                Task { @MainActor in self.pushLevel(level) }
             }
             engine.prepare()
             try engine.start()
             recording = true
+            samples = Array(repeating: 0, count: 32)
             task = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 Task { @MainActor in
                     guard let self else { return }
@@ -101,7 +108,7 @@ final class MobileVoiceInput: ObservableObject {
     private func finish(keep: Bool) {
         guard recording || task != nil else { return }
         recording = false
-        level = 0
+        samples = Array(repeating: 0, count: 32)
         request?.endAudio()
         task?.cancel()
         task = nil
@@ -112,20 +119,40 @@ final class MobileVoiceInput: ObservableObject {
         if !keep { transcript = "" }
     }
 
-    /// Peak amplitude of one tap buffer, normalized for the waveform bars.
+    /// Level of one tap buffer, normalized between silence and loud speech.
     /// - Parameter buffer: captured microphone buffer.
     /// - Returns: a value between 0 and 1.
     private static func level(of buffer: AVAudioPCMBuffer) -> CGFloat {
-        guard let channels = buffer.floatChannelData else { return 0 }
         let frames = Int(buffer.frameLength)
         guard frames > 0 else { return 0 }
         var sum: Float = 0
-        for index in 0..<frames {
-            let sample = channels[0][index]
-            sum += sample * sample
+        if let channels = buffer.floatChannelData {
+            for index in 0..<frames {
+                let sample = channels[0][index]
+                sum += sample * sample
+            }
+        } else if let channels = buffer.int16ChannelData {
+            for index in 0..<frames {
+                let sample = Float(channels[0][index]) / 32_768
+                sum += sample * sample
+            }
+        } else {
+            return 0
         }
         let rms = sqrt(sum / Float(frames))
-        return CGFloat(min(1, max(0, rms * 14)))
+        // -50 dBFS is silence, -10 dBFS is loud speech.
+        let decibels = 20 * log10(max(rms, 1e-7))
+        return CGFloat(min(1, max(0, (decibels + 50) / 40)))
+    }
+
+    /// Appends one smoothed level to the scrolling waveform.
+    /// - Parameter level: normalized level from the current buffer.
+    private func pushLevel(_ level: CGFloat) {
+        guard recording else { return }
+        let previous = samples.last ?? 0
+        let smoothed = previous * 0.35 + level * 0.65
+        samples.removeFirst()
+        samples.append(smoothed)
     }
 
     private func authorized() async -> Bool {
