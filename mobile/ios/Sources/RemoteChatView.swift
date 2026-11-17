@@ -2204,6 +2204,12 @@ struct RemoteChatView: View {
                         }
                         .padding(.horizontal, 16).padding(.vertical, 16)
                     }
+                    .mask(
+                        LinearGradient(stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black, location: 0.035),
+                            .init(color: .black, location: 1),
+                        ], startPoint: .top, endPoint: .bottom))
                     .coordinateSpace(name: "chatTranscript")
                     .accessibilityIdentifier("chatTranscript")
                     .scrollDismissesKeyboard(.interactively)
