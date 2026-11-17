@@ -3112,6 +3112,10 @@ struct RemoteChatView: View {
                 if draft == submittedDraft {
                     draft = ""
                     MobileDraftStore.clear(key: draftKey)
+                } else if draft.hasPrefix(submittedDraft) {
+                    draft = String(draft.dropFirst(submittedDraft.count))
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    MobileDraftStore.save(MobileDraft(text: draft, mode: additions.mode), key: draftKey)
                 }
                 let delivered = Set(submittedAttachments.map(\.id))
                 additions.attachments.removeAll { delivered.contains($0.id) }
@@ -3167,6 +3171,10 @@ struct RemoteChatView: View {
     private func applyRecommendation() {
         guard !chat.running else { return }
         let lastUser = chat.lines.last(where: { $0.role == "user" })?.text
+        if let lastUser, MobileNextPrompts.isEcho(draft, of: lastUser), !draft.isEmpty {
+            draft = ""
+            MobileDraftStore.clear(key: draftKey)
+        }
         draft = recommendationDraft.receiving(chat.nextPrompts, draft: draft, lastUserText: lastUser)
     }
 
