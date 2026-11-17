@@ -42,6 +42,7 @@ final class MobileVoiceInput: ObservableObject {
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
+            request.taskHint = .dictation
             self.request = request
             transcript = ""
             let input = engine.inputNode
@@ -67,7 +68,10 @@ final class MobileVoiceInput: ObservableObject {
                 Task { @MainActor in
                     guard let self else { return }
                     if let result {
-                        self.transcript = result.bestTranscription.formattedString
+                        let transcription = result.bestTranscription
+                        self.transcript = MobileVoicePunctuation.punctuated(
+                            transcription.segments.map { ($0.substring, $0.timestamp, $0.duration) },
+                            fallback: transcription.formattedString)
                         if result.isFinal {
                             self.finish(keep: true)
                             self.deliverFinal()
