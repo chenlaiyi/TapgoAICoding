@@ -3051,6 +3051,7 @@ struct RemoteChatView: View {
     private func replyFooter(_ line: ChatLine) -> some View {
         let cut = replyTurn(line)?.endSequence ?? line.mergedEventIds.max() ?? line.id
         let issueID = chat.feedbackIssueMessageID ?? chat.lines.last(where: { $0.role == "assistant" })?.messageID
+        let delivered = MobileDeliverables.merged(deliverables: replyTurn(line)?.deliverables ?? [], text: line.text)
         return VStack(alignment: .leading, spacing: 8) {
             MobileReplyActionsView(text: line.text, timestamp: line.timestamp,
                 rating: line.messageID.flatMap { chat.feedbackItems[$0]?.rating },
@@ -3067,6 +3068,11 @@ struct RemoteChatView: View {
                         if let id = await chat.forkReply(at: cut, computer: computer) { forkTarget = MobileForkTarget(id: id) }
                     }
                 }, retryFeedback: { Task { await chat.loadFeedback(computer: computer) } })
+            if !delivered.isEmpty {
+                MobileDeliverablesView(files: delivered,
+                                       loadFile: { try await chat.loadWorkspaceFile(path: $0) })
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let sequence = replyTurn(line)?.changesSequence {
                 MobileChangesView(sequence: sequence,
                     deliverables: replyTurn(line)?.deliverables ?? [],
