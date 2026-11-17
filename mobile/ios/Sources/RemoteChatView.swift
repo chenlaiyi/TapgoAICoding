@@ -3451,7 +3451,7 @@ struct RemoteChatView: View {
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .padding(.horizontal, 12)
-            .frame(minHeight: 44)
+            .frame(minHeight: 32)
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
