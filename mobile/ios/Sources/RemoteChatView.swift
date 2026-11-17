@@ -3613,7 +3613,6 @@ private struct ProcessDisclosureView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .monospacedDigit()
-                        .mobileShimmering(running)
                     Spacer(minLength: 8)
                     Image(systemName: expanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
@@ -3622,6 +3621,7 @@ private struct ProcessDisclosureView: View {
                 .imageScale(.small)
                 .frame(minHeight: 32)
                 .contentShape(Rectangle())
+                .mobileShimmering(running)
             }
             .buttonStyle(.plain)
             .accessibilityValue(expanded ? "已展开" : "已收起")
