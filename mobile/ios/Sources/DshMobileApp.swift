@@ -138,7 +138,7 @@ private struct MobileLaunchView: View {
                     .tracking(2)
                     .foregroundStyle(Color(red: 92 / 255, green: 112 / 255, blue: 136 / 255))
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 82)
-                Text(verbatim: "iOS \(UIDevice.current.systemVersion) · \(appVersionText)")
+                Text(verbatim: appVersionText)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(Color(red: 122 / 255, green: 140 / 255, blue: 160 / 255))
                     .lineLimit(1)
