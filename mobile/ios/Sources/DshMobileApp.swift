@@ -141,6 +141,11 @@ private struct MobileLaunchView: View {
                 Text(verbatim: "iOS \(UIDevice.current.systemVersion) · \(appVersionText)")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(Color(red: 122 / 255, green: 140 / 255, blue: 160 / 255))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .allowsTightening(true)
+                    .truncationMode(.tail)
+                    .frame(width: max(120, geometry.size.width - 48))
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 46)
             }
             .accessibilityElement(children: .combine)
