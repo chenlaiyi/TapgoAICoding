@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-next-prompts",
   "description": "Draft-only next prompt recommendations below completed replies",
-  "version": "0.2.2-rc.2",
+  "version": "0.2.2-rc.5",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-host-live-activity",
   "description": "APNs delivery for iOS Live Activities: per-activity push-token registration and turn progress pushes",
-  "version": "0.2.2-rc.2",
+  "version": "0.2.2-rc.5",
   "publishConfig": {
     "access": "public"
   },

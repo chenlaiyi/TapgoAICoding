@@ -1,8 +1,15 @@
+import type { NetworkInterfaceInfo, networkInterfaces } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { lanAddress, resolveLanAccess } from '../src/lan-access.ts'
 
-function interfaces(entries: readonly { address: string; family: string; internal: boolean }[]): ReturnType<typeof import('node:os').networkInterfaces> {
-  return { en0: entries.map(entry => ({ ...entry, netmask: '255.255.255.0', mac: '00:00:00:00:00:00', cidr: null })) }
+type LinkEntry = { readonly address: string; readonly family: 'IPv4' | 'IPv6'; readonly internal: boolean }
+
+function interfaces(entries: readonly LinkEntry[]): ReturnType<typeof networkInterfaces> {
+  return {
+    en0: entries.map((entry): NetworkInterfaceInfo => entry.family === 'IPv6'
+      ? { address: entry.address, family: 'IPv6', internal: entry.internal, netmask: 'ffff:ffff:ffff:ffff::', mac: '00:00:00:00:00:00', cidr: null, scopeid: 0 }
+      : { address: entry.address, family: 'IPv4', internal: entry.internal, netmask: '255.255.255.0', mac: '00:00:00:00:00:00', cidr: null }),
+  }
 }
 
 describe('LAN access', () => {
