@@ -222,7 +222,7 @@ private final class RemoteChat: ObservableObject {
             // growing text; the committed message settles below the row (DSH's final order).
             let fallback = MobileTranscriptOrder.insertionIndex(ids: visible.map(\.id),
                                                                 after: assistantStream.startedAfterSequence)
-            let index = MobileTranscriptOrder.liveTextIndex(processIndex: liveProcessIndex, fallback: fallback)
+            let index = liveProcessIndex.map { $0 + 1 } ?? fallback
             visible.insert(line, at: min(index, visible.count))
         }
         if running, !visible.contains(where: { $0.role == "process" && $0.live }) {
@@ -2204,7 +2204,6 @@ struct RemoteChatView: View {
                                     }
                                 }
                         }
-                        .frame(maxWidth: .infinity, minHeight: max(0, viewport.size.height - 32), alignment: .bottom)
                         .padding(.horizontal, 16).padding(.vertical, 16)
                     }
                     .mask(
@@ -3250,13 +3249,9 @@ struct RemoteChatView: View {
     private func scrollToNewest(reader: ScrollViewProxy) {
         guard followingLatest else { return }
         let now = Date()
-        guard now.timeIntervalSince(lastAutoScrollAt) > 0.12 else { return }
+        guard now.timeIntervalSince(lastAutoScrollAt) > 0.2 else { return }
         lastAutoScrollAt = now
-        if let live = chat.displayLines.last(where: { $0.role == "assistant" && $0.live }) {
-            reader.scrollTo(live.presentationID, anchor: .bottom)
-        } else {
-            reader.scrollTo(bottomAnchor, anchor: .bottom)
-        }
+        reader.scrollTo(bottomAnchor, anchor: .bottom)
     }
 
     private func chatRow(_ line: ChatLine) -> some View {
