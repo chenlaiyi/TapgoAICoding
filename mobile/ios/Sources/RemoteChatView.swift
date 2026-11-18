@@ -3265,7 +3265,9 @@ struct RemoteChatView: View {
                     symbol: line.live && line.activities.isEmpty
                         ? "sparkle"
                         : MobileProcessLabel.symbol(activities: line.activities),
-                    running: line.live || line.activities.contains(where: { !$0.finished }),
+                    running: line.live
+                        || line.activities.contains(where: { !$0.finished })
+                        || (chat.running && chat.displayLines.last(where: { $0.role == "process" })?.presentationID == line.presentationID),
                     reasoning: line.reasoning ?? "",
                     activities: line.activities,
                     toolOutputs: chat.toolOutputs,
