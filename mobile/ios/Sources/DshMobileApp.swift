@@ -47,7 +47,7 @@ struct DshMobileApp: App {
             .task {
                 // A Live Activity outlives its process; clear one left by the previous launch.
                 if #available(iOS 16.1, *) { MobileLiveActivity.end() }
-                try? await Task.sleep(for: .milliseconds(1100))
+                try? await Task.sleep(for: .seconds(3))
                 withAnimation(.easeOut(duration: 0.2)) { showingLaunch = false }
             }
             .task(id: connection.activeComputer?.url) {
