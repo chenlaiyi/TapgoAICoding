@@ -47,7 +47,7 @@ struct DshMobileApp: App {
             .task {
                 // A Live Activity outlives its process; clear one left by the previous launch.
                 if #available(iOS 16.1, *) { MobileLiveActivity.end() }
-                try? await Task.sleep(for: .milliseconds(1100))
+                try? await Task.sleep(for: .seconds(3))
                 withAnimation(.easeOut(duration: 0.2)) { showingLaunch = false }
             }
             .task(id: connection.activeComputer?.url) {
@@ -138,9 +138,14 @@ private struct MobileLaunchView: View {
                     .tracking(2)
                     .foregroundStyle(Color(red: 92 / 255, green: 112 / 255, blue: 136 / 255))
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 82)
-                Text(verbatim: "iOS \(UIDevice.current.systemVersion) · \(appVersionText)")
+                Text(verbatim: appVersionText)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(Color(red: 122 / 255, green: 140 / 255, blue: 160 / 255))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .allowsTightening(true)
+                    .truncationMode(.tail)
+                    .frame(width: max(120, geometry.size.width - 48))
                     .position(x: geometry.size.width / 2, y: geometry.size.height - 46)
             }
             .accessibilityElement(children: .combine)
