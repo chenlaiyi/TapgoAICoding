@@ -2077,7 +2077,7 @@ struct RemoteChatView: View {
     @State private var showingSettings = false
     @State private var showingSubagents = false
     @State private var showingModels = false
-    @State private var modelPickerDetent: PresentationDetent = .large
+    @State private var modelPickerDetent: PresentationDetent = .height(360)
     @State private var viewerTarget: MobileImageViewerTarget?
     @State private var editingQueueItem: MobileQueuedItem?
     @State private var removingQueueItem: MobileQueuedItem?
@@ -2698,9 +2698,11 @@ struct RemoteChatView: View {
                     }
                 }
                 .navigationTitle("选择模型")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button("完成") { showingModels = false } }
             }
-            .presentationDetents([.medium, .large], selection: $modelPickerDetent)
+            .presentationDetents([.height(360), .large], selection: $modelPickerDetent)
+            .presentationDragIndicator(.visible)
             .confirmationDialog("选择思考深度", isPresented: effortDialog, titleVisibility: .visible) {
                 effortOptions()
                 Button("取消", role: .cancel) { effortTarget = nil }
@@ -2721,7 +2723,7 @@ struct RemoteChatView: View {
                     .foregroundStyle(.primary)
                 Text(model.model).font(.caption).foregroundStyle(.secondary)
                 if let detail = model.detail, !detail.isEmpty {
-                    Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                    Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 8)
@@ -2916,7 +2918,7 @@ struct RemoteChatView: View {
     private var modelBadge: some View {
         Button {
             composerFocused = false
-            modelPickerDetent = .medium
+            modelPickerDetent = .height(360)
             showingModels = true
         } label: {
             HStack(spacing: 4) {
