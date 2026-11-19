@@ -99,6 +99,17 @@ if ! /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices:0' "$WORK/profile.pli
   echo "warning: profile has no provisioned devices; OTA install will fail on a normal device" >&2
 fi
 PROFILE_EXPIRY="$(/usr/libexec/PlistBuddy -c 'Print :ExpirationDate' "$WORK/profile.plist" 2>/dev/null || true)"
+PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$WORK/profile.plist" 2>/dev/null || true)"
+GET_TASK_ALLOW="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$WORK/profile.plist" 2>/dev/null || true)"
+PROFILE_KIND="ad-hoc"
+if /usr/libexec/PlistBuddy -c 'Print :ProvisionsAllDevices' "$WORK/profile.plist" >/dev/null 2>&1; then
+  PROFILE_KIND="enterprise"
+elif [ "$GET_TASK_ALLOW" = "true" ]; then
+  PROFILE_KIND="development"
+fi
+if [ "$PROFILE_KIND" = "development" ]; then
+  echo "warning: IPA uses a development profile; iOS may reject OTA installation. Export ad-hoc before publishing." >&2
+fi
 
 mkdir -p "$OUT"
 DEST="Tapgo-${VERSION}-${BUILD}.ipa"
@@ -144,7 +155,7 @@ cat > "$OUT/index.html" <<HTML
 <h1>${APP_TITLE} ${VERSION}</h1>
 <p>构建 ${BUILD}</p>
 <a class="btn" href="itms-services://?action=download-manifest&amp;url=${ENCODED_MANIFEST_URL}">安装到 iPhone</a>
-<small>必须用 Safari 打开；安装前请确认设备已加入描述文件。<br>描述文件类型：ad-hoc · 到期：${PROFILE_EXPIRY}</small>
+<small>必须用 Safari 打开；安装前请确认设备已加入描述文件。<br>描述文件类型：${PROFILE_KIND} · 到期：${PROFILE_EXPIRY}</small>
 </body>
 </html>
 HTML
@@ -155,7 +166,8 @@ echo "==> published ${VERSION} (${BUILD}) to $OUT"
 echo "page:     $BASE_URL/"
 echo "manifest: $MANIFEST_URL"
 echo "ipa:      $IPA_URL"
-echo "devices:  $(/usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$WORK/profile.plist" 2>/dev/null | grep -c '^    ' || true) (ad-hoc profile)"
+echo "profile:  ${PROFILE_KIND} (${PROFILE_NAME})"
+echo "devices:  $(/usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$WORK/profile.plist" 2>/dev/null | grep -c '^    ' || true) provisioned"
 echo "expires:  ${PROFILE_EXPIRY:-unknown}"
 
 if [[ "$BASE_URL" == https://* ]]; then
