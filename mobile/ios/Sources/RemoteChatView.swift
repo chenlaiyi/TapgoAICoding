@@ -174,6 +174,13 @@ private final class RemoteChat: ObservableObject {
     @Published var funds = MobileBalanceSnapshot()
     private var balanceRevision = UUID()
     var balance: String? { funds.available(provider: selectedModel?.split(separator: "/").first.map(String.init)) }
+
+    /// Balance shown beside one provider's model section.
+    /// - Parameter provider: model provider id.
+    /// - Returns: the formatted available balance, when the Host provided it.
+    func balance(for provider: String) -> String? {
+        funds.available(provider: provider)
+    }
     var balanceDetails: [String] { funds.accountDetails }
     @Published var tokenUsage: String?
     @Published var contextBudget: String?
@@ -2666,7 +2673,7 @@ struct RemoteChatView: View {
                     if let error = chat.modelSelectionError { Text(error).foregroundStyle(.orange) }
                     if chat.running { Text("选择将用于后续请求，当前请求继续使用原模型").font(.caption).foregroundStyle(.secondary) }
                     ForEach(Array(Set(chat.models.map(\.provider))).sorted(), id: \.self) { provider in
-                        Section(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)") {
+                        Section {
                             ForEach(chat.models.filter { $0.provider == provider }) { model in
                                 Button {
                                     chooseModel(model, dismissPicker: true)
@@ -2675,6 +2682,17 @@ struct RemoteChatView: View {
                                 .accessibilityLabel(mobileModelDisplayName(model.name, modelID: model.model, provider: model.provider))
                                 .accessibilityValue(chat.selectingModelID == model.id ? "正在切换" : chat.selectedModel == model.id ? "当前模型" : "")
                                 .accessibilityHint("\(model.provider)/\(model.model)")
+                            }
+                        } header: {
+                            HStack {
+                                Text(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)")
+                                Spacer(minLength: 8)
+                                if let balance = chat.balance(for: provider) {
+                                    Text(balance)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .textCase(nil)
+                                }
                             }
                         }
                     }
@@ -2898,7 +2916,7 @@ struct RemoteChatView: View {
     private var modelBadge: some View {
         Button {
             composerFocused = false
-            modelPickerDetent = .large
+            modelPickerDetent = .medium
             showingModels = true
         } label: {
             HStack(spacing: 4) {
