@@ -2156,6 +2156,24 @@ struct RemoteChatView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             LazyVStack(alignment: .leading, spacing: 10) {
                                 if chat.loading { ProgressView().frame(maxWidth: .infinity).padding(.top, 60) }
+                                if chat.lines.isEmpty && !chat.loading {
+                                    VStack(spacing: 10) {
+                                        Image(systemName: "bubble.left.and.exclamationmark.bubble.right")
+                                            .font(.system(size: 28))
+                                            .foregroundStyle(.tertiary)
+                                        Text(chat.error ?? "会话记录没有加载出来")
+                                            .font(.callout)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.center)
+                                        Button("重新加载") {
+                                            Task { await chat.retry(computer: computer, sessionId: sessionId) }
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .accessibilityIdentifier("reloadEmptyTranscript")
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 260)
+                                    .padding(.horizontal, 24)
+                                }
                                 if chat.hasOlderHistory {
                                     Button {
                                         let anchor = topVisibleID
@@ -2221,6 +2239,7 @@ struct RemoteChatView: View {
                         ], startPoint: .top, endPoint: .bottom))
                     .coordinateSpace(name: "chatTranscript")
                     .accessibilityIdentifier("chatTranscript")
+                    .refreshable { await chat.retry(computer: computer, sessionId: sessionId) }
                     .scrollDismissesKeyboard(.interactively)
                     .onPreferenceChange(TranscriptRowOffsets.self) { offsets in
                         guard !offsets.isEmpty else { return }
@@ -2563,7 +2582,10 @@ struct RemoteChatView: View {
             }
             Button("取消", role: .cancel) { removingQueueItem = nil }
         }
-        .sheet(isPresented: $showingModels) { modelPicker }
+        .sheet(isPresented: $showingModels) {
+            modelPicker
+                .task { await chat.refreshBalances(computer: computer) }
+        }
         .sheet(isPresented: $showingFiles) {
             MobileFileBrowserView(
                 loadDirectory: { try await chat.loadWorkspaceDirectory(path: $0, computer: computer) },
@@ -2687,12 +2709,12 @@ struct RemoteChatView: View {
                             HStack {
                                 Text(provider == "deepseek-account" ? "账号模型" : "API 模型 · \(provider)")
                                 Spacer(minLength: 8)
-                                if let balance = chat.balance(for: provider) {
-                                    Text(balance)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .textCase(nil)
-                                }
+                                Text(chat.balance(for: provider)
+                                     ?? (chat.funds.account == nil && chat.funds.providers.isEmpty
+                                         ? "余额加载中…" : "余额暂不可用"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .textCase(nil)
                             }
                         }
                     }
