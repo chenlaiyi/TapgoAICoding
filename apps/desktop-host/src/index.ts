@@ -21,10 +21,30 @@ import { resolveLanAccess } from './lan-access.ts'
 import { startLanProxy, type LanProxy } from './lan-proxy.ts'
 import { relayDeviceId, remoteRelayOrigin, resolveRemoteRelay, startRemoteRelay } from './remote-relay.ts'
 import { installOperationDiagnostics } from './operation-diagnostics.ts'
+import { DesktopAuthenticationEnd, receiveDesktopSecret } from './authentication.ts'
+import * as DesktopAuthentication from '@deepseek-ai/dsh-host-authentication-desktop'
+import type { MobilePairingControl } from '@deepseek-ai/dsh-host-authentication-token'
 
 async function main(): Promise<void> {
   const runId = randomUUID() as PluginOperationRunId
-  if (process.connected) process.send?.({ type: 'starting', runId }, (error) => { if (error !== null) console.error(error) })
+  const authentication = receiveDesktopSecret(process)
+  if (process.connected) process.send?.({ type: 'starting', runId }, (error) => {
+    if (error !== null) authentication.dispose()
+  })
+  const send = (message: object): Promise<void> => new Promise((resolve, reject) => {
+    if (!process.connected || process.send === undefined) { resolve(); return }
+    process.send(message, (error) => { if (error === null) resolve(); else reject(error) })
+  })
+  let secret: string
+  try {
+    secret = await authentication.secret
+    authentication.signal.throwIfAborted()
+  } catch (error) {
+    if (!(error instanceof DesktopAuthenticationEnd)) throw error
+    if (error.kind === 'shutdown') await send({ type: 'shutdown-complete' })
+    if (process.connected) process.disconnect()
+    return
+  }
   const runtimeDir = process.argv[2] as string
   const projectDir = process.argv[3] as string
   // Set before the launch-environment snapshot and profile evaluation; empty means the payload sits beside the runtime directory.
@@ -70,10 +90,6 @@ async function main(): Promise<void> {
     updateTasks?: ReturnType<typeof installDesktopUpdateTaskControl>
     quitInspection?: ReturnType<typeof installDesktopQuitInspection>
   } = {}
-  const send = (message: object): Promise<void> => new Promise((resolve, reject) => {
-    if (!process.connected || process.send === undefined) { resolve(); return }
-    process.send(message, (error) => { if (error === null) resolve(); else reject(error) })
-  })
   const stop = (): Promise<void> => stopping ??= (async () => {
     for (const abort of dragReads.values()) abort.abort()
     await Promise.allSettled(dragTasks)
@@ -138,19 +154,24 @@ async function main(): Promise<void> {
       void (async () => {
         try {
           if (stopping !== undefined || (mobile === undefined && lan === undefined)) throw new Error('mobile pairing is unavailable')
+          const pairing = (): MobilePairingControl => {
+            const service = ctx.get('mobilePairing')
+            if (service === undefined) throw new Error('mobile pairing requires the token authentication plugin')
+            return service
+          }
           if (message.action === 'create') {
-            if (!('name' in message) || typeof message.name !== 'string' || ctx.connection.createMobilePairing === undefined) return
+            if (!('name' in message) || typeof message.name !== 'string') return
             const primaryOrigin = lanEntry === undefined ? mobile?.origin : lan?.origin
             if (primaryOrigin === undefined) throw new Error('mobile pairing is unavailable')
-            const created = await ctx.connection.createMobilePairing(primaryOrigin, message.name,
+            const created = await pairing().create(primaryOrigin, message.name,
               fallback === undefined ? undefined : fallback.origin)
             await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'create', ...created })
           } else if (message.action === 'list') {
             await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'list',
-              pairings: ctx.connection.listMobilePairings?.() ?? [] })
+              pairings: pairing().list() })
           } else {
-            if (!('id' in message) || typeof message.id !== 'string' || ctx.connection.revokeMobilePairing === undefined) return
-            await ctx.connection.revokeMobilePairing(message.id)
+            if (!('id' in message) || typeof message.id !== 'string') return
+            await pairing().revoke(message.id)
             await send({ type: 'mobile-pairing', requestId: message.requestId, action: 'revoke' })
           }
         } catch (error) {
@@ -173,8 +194,17 @@ async function main(): Promise<void> {
       }
     })().catch((error: unknown) => { console.error(error) })
   })
+  const onAuthenticationEnd = (): void => { void stop() }
+  authentication.signal.addEventListener('abort', onAuthenticationEnd, { once: true })
+  if (authentication.signal.aborted) onAuthenticationEnd()
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
+  const canPublish = (): boolean => stopping === undefined && process.connected && !authentication.signal.aborted
+  if (!canPublish()) return
+  ctx.effect(() => () => {
+    authentication.signal.removeEventListener('abort', onAuthenticationEnd)
+    authentication.dispose()
+  }, 'desktop-host: authentication channel')
   const port = ctx.webServer.port
   if (port === undefined) throw new Error('desktop Host listener has no bound TCP port')
   if (relay !== undefined && relayId !== undefined) closeRelay = startRemoteRelay(relay, relayId, port)
@@ -193,13 +223,19 @@ async function main(): Promise<void> {
   installPlatformSessionPublisher(ctx, (session) => {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })
-  const url = ctx.connection.authenticatedUrl(`${ctx.webServer.protocol}//127.0.0.1:${String(port)}`)
-  const mobileUrl = primary === undefined ? undefined : ctx.connection.authenticatedUrl(primary.origin)
-  const mobileFallbackUrl = fallback === undefined ? undefined : ctx.connection.authenticatedUrl(fallback.origin)
-  if (process.connected) process.send?.({ type: 'ready', url, mobileUrl, mobileOrigin: primary?.origin,
-    ...(mobileFallbackUrl === undefined ? {} : { mobileFallbackUrl }),
-    ...(fallback === undefined ? {} : { mobileFallbackOrigin: fallback.origin }),
-    injections: ctx.webServer.collectIndexInjections(ctx.connection.browserPeer) }, (error) => { if (error !== null) console.error(error) })
+  await ctx.plugin(DesktopAuthentication, { readSecret: () => secret }).await()
+  if (!canPublish()) return
+  const admission = ctx.connection.authentication.authenticate({
+    headers: { cookie: `dsh-desktop-session=${secret}` },
+  })
+  if ('rejection' in admission) throw new Error('Desktop authentication provider did not accept its startup credential')
+  const url = `${ctx.webServer.protocol}//127.0.0.1:${String(port)}/`
+  const injections = ctx.webServer.collectIndexInjections(admission.peer)
+  if (!canPublish()) return
+  // Phones authenticate only through revocable pairing links, so the ready message carries mobile origins, never owner tokens.
+  process.send?.({ type: 'ready', url, injections,
+    ...(primary === undefined ? {} : { mobileOrigin: primary.origin }),
+    ...(fallback === undefined ? {} : { mobileFallbackOrigin: fallback.origin }) }, (error) => { if (error !== null) console.error(error) })
 }
 
 if (import.meta.main) {

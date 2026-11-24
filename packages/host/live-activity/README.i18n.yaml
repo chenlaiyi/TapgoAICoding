@@ -10,10 +10,10 @@
   zh: de6aa118e5ff84df
 /deepseek-ai-dsh-host-live-activity/summary:
   en: 1e33cfc37ed00c8b
-  zh: 478e9d251202e28c
+  zh: 45253ef4a5ed12c8
 /deepseek-ai-dsh-host-live-activity/table-of-contents:
-  en: 2820c9a805d92a8e
-  zh: f942c0fe4d7a20be
+  en: 4d5ec89f7a524c33
+  zh: 7ad8ed77da00c8e9
 /deepseek-ai-dsh-host-live-activity/use-this-package:
   en: 5c944165e3ab382f
   zh: 25c72fc4179f0804
@@ -22,7 +22,7 @@
   zh: 45d9d86ade603a92
 /deepseek-ai-dsh-host-live-activity/use-this-package/delivery-policy:
   en: 2422278e97923e56
-  zh: be24c98beadcab1c
+  zh: 446b7044865f352c
 /deepseek-ai-dsh-host-live-activity/understand-the-implementation:
   en: 42b15ac6321706aa
   zh: e791e8efc34ec4f1
@@ -34,16 +34,19 @@
   zh: 6630874b069091a7
 /deepseek-ai-dsh-host-live-activity/understand-the-implementation/lifecycle:
   en: 1acfe9f3b272579a
-  zh: b9a7ae1e6b58556e
+  zh: eb4d280926e7d520
 /deepseek-ai-dsh-host-live-activity/further-exploration:
   en: 1e0eea1bc38acb66
-  zh: de4c7a20d3d21686
+  zh: 916c9e0dfc7fd222
 /deepseek-ai-dsh-host-live-activity/model-experience:
   en: 5db6489bcdfe4e29
   zh: 862259a189a03a5c
 /deepseek-ai-dsh-host-live-activity/model-experience/kv-cache-effect:
   en: ca75c51c89c2c9b0
-  zh: 617803c558367430
+  zh: a61f053154723ab3
 /deepseek-ai-dsh-host-live-activity/known-limitations-and-deferred-work:
-  en: bf02d2748bdd0c6f
-  zh: e9797d1b3c66d911
+  en: 9f66471b27d97c20
+  zh: ee3ec7a7de12d46f
+/deepseek-ai-dsh-host-live-activity/known-limitations-and-deferred-work/dev-note:
+  en: 7592bcd98d09fc54
+  zh: a70c9296c4f6530c

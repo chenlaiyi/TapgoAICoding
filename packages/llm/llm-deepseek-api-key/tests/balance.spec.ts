@@ -2,11 +2,13 @@
 import { createServer } from 'node:http'
 import type { IncomingHttpHeaders, ServerResponse } from 'node:http'
 import { Context, Service } from '@deepseek-ai/cordis'
+import DeepSeekAuth from '@deepseek-ai/dsh-deepseek-auth'
 import LlmRuntime, { attributionHeaders } from '@deepseek-ai/dsh-llm'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { afterEach, expect, it, vi } from 'vitest'
 import * as ApiKey from '../src/index.ts'
 import { queryBalance } from '../src/balance.ts'
+import { resolveAdapterOptions } from '../src/config.ts'
 
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => {
@@ -46,13 +48,14 @@ async function runtime(config: ApiKey.Options) {
   const ctx = new Context()
   cleanups.push(() => ctx.fiber.dispose())
   await ctx.plugin(LlmRuntime)
+  await ctx.plugin(DeepSeekAuth)
   await ctx.plugin(ApiKey, config)
   return ctx
 }
 
 it.each(['/anthropic', '/anthropic/v1', '/v1', '', '/gateway/anthropic/v1', '/gateway'])('keeps balance requests on the configured endpoint %s', async (path) => {
   const endpoint = await server()
-  const config = ApiKey.resolveAdapterOptions({ baseURL: `${endpoint.url}${path}` })
+  const config = resolveAdapterOptions({ baseURL: `${endpoint.url}${path}` })
   expect(await queryBalance(config, 'test-only-key')).toEqual([
     { currency: 'CNY', amount: '12.345600' }, { currency: 'USD', amount: '0E-16' },
   ])
@@ -87,6 +90,7 @@ it('uses the credential service instead of an ambient key and follows stored-key
   }
   await ctx.plugin(Credentials)
   await ctx.plugin(LlmRuntime)
+  await ctx.plugin(DeepSeekAuth)
   await ctx.plugin(ApiKey, { baseURL: endpoint.url, apiKeyEnv: 'CUSTOM_BALANCE_KEY' })
   await ctx.llm.getBalance('deepseek-official')
   key = 'rotated-test-key'
@@ -111,36 +115,36 @@ it.each([
   { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: 1 }] },
 ])('rejects malformed balance responses without returning an amount: %j', async (value) => {
   const endpoint = await server(response => response.end(JSON.stringify(value)))
-  await expect(queryBalance(ApiKey.resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key'))
+  await expect(queryBalance(resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key'))
     .rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
 })
 
 it('keeps a successful zero or empty balance distinct from a query failure', async () => {
   const endpoint = await server(response => response.end(JSON.stringify({ is_available: false, balance_infos: [] })))
-  expect(await queryBalance(ApiKey.resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key')).toEqual([])
+  expect(await queryBalance(resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key')).toEqual([])
   const failed = await server(response => response.writeHead(401).end('private error'))
-  await expect(queryBalance(ApiKey.resolveAdapterOptions({ baseURL: failed.url }), 'test-key'))
+  await expect(queryBalance(resolveAdapterOptions({ baseURL: failed.url }), 'test-key'))
     .rejects.toMatchObject({ code: 'BALANCE_UNAVAILABLE', failure: { status: 401 } })
 })
 
 it('refuses redirects before sending the API key to their destination', async () => {
   const destination = await server()
   const endpoint = await server(response => response.writeHead(302, { location: `${destination.url}/user/balance` }).end())
-  await expect(queryBalance(ApiKey.resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key')).rejects.toThrow()
+  await expect(queryBalance(resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key')).rejects.toThrow()
   expect(destination.requests).toHaveLength(0)
 })
 
 it('cancels a pending response and enforces its configured deadline', async () => {
   const endpoint = await server((response) => { response.writeHead(200); response.flushHeaders() })
   const controller = new AbortController()
-  const cancelled = queryBalance(ApiKey.resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key', controller.signal)
+  const cancelled = queryBalance(resolveAdapterOptions({ baseURL: endpoint.url }), 'test-key', controller.signal)
   const assertion = expect(cancelled).rejects.toThrow()
   await endpoint.seen
   controller.abort()
   await assertion
-  await expect(queryBalance(ApiKey.resolveAdapterOptions({ baseURL: endpoint.url, balanceTimeoutMs: 30 }), 'test-key')).rejects.toThrow()
+  await expect(queryBalance(resolveAdapterOptions({ baseURL: endpoint.url, balanceTimeoutMs: 30 }), 'test-key')).rejects.toThrow()
 })
 
 it.each([0, -1, 1.5, 120_001, Infinity, NaN])('rejects invalid balance query deadlines: %s', (balanceTimeoutMs) => {
-  expect(() => ApiKey.resolveAdapterOptions({ balanceTimeoutMs })).toThrow('balanceTimeoutMs')
+  expect(() => resolveAdapterOptions({ balanceTimeoutMs })).toThrow('balanceTimeoutMs')
 })

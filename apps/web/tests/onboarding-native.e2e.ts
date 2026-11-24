@@ -78,8 +78,8 @@ describe.skipIf(MODE === 'record').each([false, true])('web e2e: native credenti
         expect(Math.abs(rowBox.height - 40)).toBeLessThan(1)
         expect(Math.abs(menuBox.width - rowBox.width - 8)).toBeLessThan(1)
         const glyph = (await row.locator('svg').first().boundingBox())!
-        expect(Math.abs(glyph.width - 16)).toBeLessThan(1)
-        expect(Math.abs(glyph.height - 16)).toBeLessThan(1)
+        expect(Math.abs(glyph.width - 14)).toBeLessThan(1)
+        expect(Math.abs(glyph.height - 14)).toBeLessThan(1)
       }
       const menuAria = await captureStableAria(page, '[role="menu"]', scaffold.workspaceCwd)
       await compareOrRefreshGolden(SIGNED_OUT_MENU_EXPECTED, menuAria, MODE)
@@ -90,6 +90,7 @@ describe.skipIf(MODE === 'record').each([false, true])('web e2e: native credenti
       const settings = page.getByRole('dialog', { name: '设置', exact: true })
       await settings.getByRole('button', { name: '模型', exact: true }).click()
       await settings.getByLabel('API 密钥', { exact: true }).waitFor()
+      expect(await settings.getByRole('button', { name: '远程连接', exact: true }).count()).toBe(desktop ? 0 : 1)
       expect(await page.getByRole('dialog', { name: '添加一个 API Key 开始使用' }).count()).toBe(0)
       expect(await welcome.count()).toBe(0)
       expect(await readFile(credentialPath, 'utf8')).toBe(credentials)
@@ -99,6 +100,6 @@ describe.skipIf(MODE === 'record').each([false, true])('web e2e: native credenti
     }
     expect(tripwire.warnings).toEqual([])
     expect(tripwire.pageErrors).toEqual([])
-    await assertFixtureInventory(SNAPSHOT_DIR, ['models.expected.md', 'models-desktop.expected.md', 'signed-out-menu.expected.md'])
+    await assertFixtureInventory(SNAPSHOT_DIR, ['models-desktop.expected.md', 'models.expected.md', 'signed-out-menu.expected.md'])
   })
 })

@@ -18,6 +18,7 @@ The iOS app shows a running turn as a Live Activity. Once the phone leaves the a
 - [Further Exploration](#further-exploration)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
 
 -----
 
@@ -86,3 +87,8 @@ None; this package neither assembles nor sends a provider request.
 - Registrations are process-local. A Host restart loses them until the app registers again (which it does on the next activity update or reconnect).
 - Push updates depend on iOS delivery budgets; a burst can be coalesced or dropped by the system, and Live Activities have a maximum lifetime enforced by iOS.
 - Only one activity is tracked per Session; a second activity for the same Session replaces the previous push target only when its token is registered.
+
+<a id="dev-note"></a>
+### Dev Note
+
+The transport accepts an injected HTTP/2 sender for isolated APNs tests.

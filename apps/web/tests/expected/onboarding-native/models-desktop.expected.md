@@ -1,10 +1,10 @@
 - dialog "设置":
+  - text: 设置
   - navigation:
-    - text: 设置
     - button "账号与余额"
     - button "通用设置"
     - button "模型"
-    - button "内置插件"
+    - button "插件管理"
     - button "Agent 预设"
   - button "打开配置文件"
   - button "关闭"
@@ -12,7 +12,7 @@
   - paragraph: 填入各提供商的 API 密钥即可使用其模型。
   - list:
     - listitem:
-      - text: DeepSeek deepseek-official API 密钥
+      - text: DeepSeek API deepseek-official API 密钥
       - button "认证说明": "?"
       - textbox "API 密钥":
         - /placeholder: 留空使用环境认证（DEEPSEEK_API_KEY）

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "iOS-Liveaktivitäten",
+    "description": "Übermittelt den Fortschritt einer Runde per APNs an iOS-Liveaktivitäten."
+  }
+}

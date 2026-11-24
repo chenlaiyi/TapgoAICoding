@@ -7,7 +7,7 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 摘要
+## 概述
 
 iOS 端把运行中的回合显示为实时活动。离开 App 后只有 ActivityKit 推送才能继续刷新。本包通过两条需要认证的路由接收活动的推送令牌，监听会话的持久事件，并发送内容状态与 App 一致的 APNs 更新（`startedAt` 为 Unix 秒、`detail`、`running`）。回合结束时发送一次 `end` 并删除登记。
 
@@ -18,9 +18,11 @@ iOS 端把运行中的回合显示为实时活动。离开 App 后只有 Activit
 - [延伸阅读](#further-exploration)
 - [模型体验](#model-experience)
 - [已知限制与未完成](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
 
 -----
 
+<a id="use-this-package"></a>
 ## 使用本包
 
 把它挂在服务已配对手机的 Host 组合里。APNs 凭据可通过插件配置（`bundleId`、`teamId`、`keyId`、`keyFile`、`environment`）或启动环境提供：
@@ -44,6 +46,7 @@ App 必须为 App ID 打开 Push Notifications 能力，并带上 `aps-environme
 
 -----
 
+<a id="understand-the-implementation"></a>
 ## 实现说明
 
 <details>
@@ -65,6 +68,7 @@ App 必须为 App ID 打开 Push Notifications 能力，并带上 `aps-environme
 
 -----
 
+<a id="further-exploration"></a>
 ## 延伸阅读
 
 - [iOS 端说明](../../../mobile/ios/README.zh.md) 描述手机渲染什么、何时登记。
@@ -72,6 +76,7 @@ App 必须为 App ID 打开 Push Notifications 能力，并带上 `aps-environme
 
 -----
 
+<a id="model-experience"></a>
 ## 模型体验
 
 无：Host 侧只读取会话事件并发送 APNs 通知，不向模型上下文加入任何内容。
@@ -80,9 +85,15 @@ App 必须为 App ID 打开 Push Notifications 能力，并带上 `aps-environme
 
 无；本包既不组装也不发送模型请求。
 
+<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与未完成
 
 - APNs 凭据由部署方维护；插件只在启动时加载一次密钥，不负责申请、轮换或校验。
 - 登记保存在进程内，Host 重启后丢失，直到 App 下次更新活动或重连时重新登记。
 - 推送受 iOS 投递预算限制，密集更新可能被合并或丢弃；实时活动本身还有系统强制的最长存活时间。
 - 一个会话只跟踪一条活动；同一会话的第二条活动只有在登记其令牌后才会替换旧的推送目标。
+
+<a id="dev-note"></a>
+### 开发备注
+
+传输层可注入 HTTP/2 发送器，用于隔离的 APNs 测试。

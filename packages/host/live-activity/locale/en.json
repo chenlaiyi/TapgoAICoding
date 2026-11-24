@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "iOS Live Activities",
+    "description": "Send turn progress to iOS Live Activities through APNs."
+  }
+}

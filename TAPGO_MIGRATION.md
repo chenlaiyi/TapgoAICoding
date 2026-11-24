@@ -1,8 +1,14 @@
 # 点点够终端 Desktop 升级记录
 
-本项目最初以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现，现已将源码更新至上游预览版 `0.2.2-rc.5`（[发布标签](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.5)）。应用沿用 `com.tapgo.aicoding`，公开版本及安装包以 [GitHub Releases](https://github.com/chenlaiyi/TapgoAICoding/releases) 为准；旧版源码保留在 Git 标签 `v0.5.319`。
+本项目最初以 DeepSeek Harness `0.1.7-rc.2` 源码取代旧版 SwiftUI 与 Codex app-server 实现，现已将源码更新至上游预览版 `0.2.3-alpha.2`（[发布标签](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.3-alpha.2)）。应用沿用 `com.tapgo.aicoding`，公开版本及安装包以 [GitHub Releases](https://github.com/chenlaiyi/TapgoAICoding/releases) 为准；旧版源码保留在 Git 标签 `v0.5.319`。
 
-## 本次上游更新（rc.3 至 rc.5）
+## 上游 0.2.3-alpha.2
+
+- 浏览器连接使用统一的来源检查和认证提供方。桌面端继续支持手机配对、撤销和本地网络接入。
+- DeepSeek API Key 余额查询通过统一凭据服务读取当前配置的密钥，仍使用同一 API 部署读取余额。
+- 从源码构建需要 Node.js `^24.22.3 || >=26.13.1`。
+
+## 上游 0.2.2-rc.5
 
 - DeepSeek 模型的内容安全拒答改用 `CONTENT_REFUSED` 错误码并附带拒答原因，此前会显示为 `MALFORMED_RESPONSE`；模型设置新增 `safetyCheck` 开关。
 - DeepSeek 模型的网页搜索改为 DeepSeek 服务端搜索，不按次收费；其他模型与未指定路由仍使用 DeepSeek Search API，设置页的搜索提供方新增「自动」。

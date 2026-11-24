@@ -13,9 +13,9 @@ import {
 import { applySessionEvent, type SessionEventLike, type SessionWork } from './detail.ts'
 
 /** Route that registers one Live Activity push token. */
-export const LIVE_ACTIVITY_REGISTER_PATH = '/live-activity/register'
+const LIVE_ACTIVITY_REGISTER_PATH = '/live-activity/register'
 /** Route that drops one Live Activity registration. */
-export const LIVE_ACTIVITY_UNREGISTER_PATH = '/live-activity/unregister'
+const LIVE_ACTIVITY_UNREGISTER_PATH = '/live-activity/unregister'
 
 /** What the iOS app sends when its activity obtains a push token. */
 export interface LiveActivityRegisterBody {
@@ -45,7 +45,7 @@ export interface Config {
 }
 
 /** Loader validation for Live Activity push delivery. */
-export const Config: z<Partial<Config>, Config> = z.object({
+const Config: z<Partial<Config>, Config> = z.object({
   bundleId: z.string(),
   teamId: z.string(),
   keyId: z.string(),

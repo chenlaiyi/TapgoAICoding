@@ -15,26 +15,26 @@
   en: 127ea90553cb6af7
   zh: 7b1c5aec8558c684
 /desktop/application-overview:
-  en: 402a40771fb03449
-  zh: ef89dfec0b4aeef2
+  en: 75119489e36f5521
+  zh: 28c049fbc8a70e41
 /desktop/terminal-command:
-  en: 5f2d25a1d8472647
-  zh: 2acb5c5d7d1917e2
+  en: 988bf8bb84cf7c9a
+  zh: 28cefc949c7f52ce
 /desktop/closing-the-window-and-quitting:
   en: 618a4a8248df9edf
   zh: 0a73172fffbc8345
 /desktop/key-technical-decisions:
-  en: a7691fa67dffbb4c
-  zh: f0c57dc1451b3a74
+  en: 0a3de2573c3028cd
+  zh: 23da037a0f65ae5b
 /desktop/key-technical-decisions/bundled-workspace-dependencies:
-  en: d7c9a37e4fb9d5c3
-  zh: b3df743fb354807e
+  en: 6754a54650f69c80
+  zh: 01fd94e617d46042
 /desktop/bundled-command-runtime:
   en: 372297005b57a08b
   zh: 074a635ac17e4362
 /desktop/installation-ownership:
-  en: 575d82acb5d61018
-  zh: b1064786f63863f7
+  en: 3d3b0e92079a4ef7
+  zh: 4ab572bf57f4c55c
 /desktop/installation-ownership/runtime-and-plugin-activation:
   en: 0fb69448047873f3
   zh: e7bcc338a999204e
@@ -42,8 +42,8 @@
   en: 98cf848762482d48
   zh: 74f9100a39ec8c2f
 /desktop/develop:
-  en: c8f1f9440f3ebf02
-  zh: 72f538019880ed24
+  en: 1e42e6bea0915359
+  zh: 3e1b838e95cd6914
 /desktop/develop/startup-onboarding:
   en: c726ce9e01de8146
   zh: f92c521c97809ac5
@@ -51,11 +51,11 @@
   en: 617a89aeb28131b9
   zh: 4d84bd5d86501c86
 /desktop/package:
-  en: ac31ebdd9de54f34
-  zh: 921e534d5c4b3a16
+  en: 7200a35dbed997c3
+  zh: 511d6961530757f1
 /desktop/windows-installer-interface:
-  en: 3a70021830865253
-  zh: 0467be8b505446cb
+  en: 80f8f18b571864b6
+  zh: 45af1d593b7e1b64
 /desktop/updates:
   en: 78e4b916b16e81e6
   zh: 111ffb5c3ebbba4c

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "iOS 实时活动",
+    "description": "通过 APNs 将回合进度推送到 iOS 实时活动。"
+  }
+}

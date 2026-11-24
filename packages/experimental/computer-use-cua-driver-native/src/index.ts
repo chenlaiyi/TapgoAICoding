@@ -5,17 +5,21 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
-import { ComputerUseProviderName } from '@deepseek-ai/dsh-computer-use/brand'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { ComputerUseProviderName } from '@deepseek-ai/dsh-computer-use/types'
 import { createMcpToolDefinition } from '@deepseek-ai/dsh-mcp-client'
 import { z } from 'zod'
 import type { CuaDriver as NativeDriver } from '@trycua/cua-driver'
 import type {} from '@deepseek-ai/dsh-computer-use'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
+import { CuaDriverError } from './error.ts'
 import { NativeWorkerError } from './errors.ts'
 import type { InteractionConfig } from './interaction.ts'
 import { restoringDrag, restoringDragSchema } from './restoring-drag.ts'
 import { nativeBringToFront } from './native-focus.ts'
+
+export { CuaDriverError, type CuaDriverErrorCode } from './error.ts'
 
 /** Optional supervised native process for hosts without an AppKit main loop. */
 export interface Config {
@@ -98,7 +102,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   }, { global: true })
   let ready: Promise<void> = Promise.resolve()
   const dispose = ctx.effect(function* () {
-    yield ctx.computerUse.register(ComputerUseProviderName('cua-driver-native'))
+    yield ctx.computerUse.register(brandString<ComputerUseProviderName>('cua-driver-native'))
     yield async () => {
       lifetime.abort()
       // apply() reports startup failure; teardown still owns its native handle.
@@ -202,14 +206,18 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
           const combined = AbortSignal.any([execution.signal, lifetime.signal])
           combined.throwIfAborted()
           const invoke = async (name: string, values: Record<string, unknown>, signal: AbortSignal): Promise<unknown> => {
-            try {
-              const result = await activeDriver.callTool(name, JSON.stringify(values), { signal })
-              signal.throwIfAborted()
-              return JSON.parse(result.rawJson)
-            } catch (error) {
+            const result = await activeDriver.callTool(name, JSON.stringify(values), { signal }).catch((error: unknown) => {
               signal.throwIfAborted()
               if (worker) throw new NativeWorkerError('call', error)
-              throw error
+              throw new CuaDriverError(error instanceof Error ? error.message : String(error), 'CUA_DRIVER_FAILED', { cause: error })
+            })
+            signal.throwIfAborted()
+            try {
+              const decoded: unknown = JSON.parse(result.rawJson)
+              return decoded
+            } catch (error) {
+              if (worker) throw new NativeWorkerError('call', error)
+              throw new CuaDriverError(`Cua Driver tool "${name}" returned a result that is not JSON`, 'CUA_DRIVER_INVALID_RESULT', { cause: error })
             }
           }
           const run = async (): Promise<unknown> => {
@@ -245,6 +253,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
       name: 'computer-use:cua-driver-native',
       order: inner.systemPrompt.getSectionOrder('TOOL_COMPUTER_USE'),
       text: GUIDANCE,
+      retirement: 'The instructions for computer-use:cua-driver-native no longer apply.',
     })
   }
 }

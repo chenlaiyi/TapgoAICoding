@@ -4,29 +4,24 @@ import type { CredentialProvider, CredentialRecord } from '@deepseek-ai/dsh-cred
 /** Mutable credential-record double for Connection authentication tests. */
 export class RecordCredentials {
   record: CredentialRecord | undefined
-  mobileRecord: CredentialRecord | undefined
   discardWrites = false
   reads = 0
   modifies = 0
 
-  readRecord(key?: unknown): Promise<CredentialRecord | undefined> {
+  readRecord(): Promise<CredentialRecord | undefined> {
     this.reads += 1
-    return Promise.resolve(String(key).endsWith('/mobile-pairings') ? this.mobileRecord : this.record)
+    return Promise.resolve(this.record)
   }
 
   async modifyRecord(
-    key: unknown,
+    _key: unknown,
     mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
   ): Promise<CredentialRecord | undefined> {
     this.modifies += 1
-    const mobile = String(key).endsWith('/mobile-pairings')
-    const next = await mutate(mobile ? this.mobileRecord : this.record)
+    const next = await mutate(this.record)
     if (this.discardWrites) return undefined
-    if (next !== undefined) {
-      if (mobile) this.mobileRecord = next
-      else this.record = next
-    }
-    return mobile ? this.mobileRecord : this.record
+    if (next !== undefined) this.record = next
+    return this.record
   }
 
   deleteRecord(): Promise<void> {
