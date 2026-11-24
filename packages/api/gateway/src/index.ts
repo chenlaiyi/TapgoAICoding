@@ -259,7 +259,7 @@ export class TypertGatewayService extends Service implements TypertGateway {
         (endpoint, payload, signal, peer) => this.dispatchRpc(endpoint, payload, signal, peer),
       )
     })
-    ctx.inject(['connection', 'webServer'], (webCtx) => {
+    ctx.inject(['connection', 'connection.authentication', 'webServer'], (webCtx) => {
       const listen = (): void => {
         const mux = new RemoteStreamMuxServer(
           (endpoint, payload, uplink, peer, control, window) =>
