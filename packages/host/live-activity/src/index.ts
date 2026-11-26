@@ -4,7 +4,7 @@ import { readFileSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type {} from '@deepseek-ai/dsh-host-webserver'
+import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-session'
 import {
   createApnsSender, isPushToken,
@@ -57,15 +57,8 @@ const Config: z<Partial<Config>, Config> = z.object({
 
 interface Registration extends LiveActivityRegisterBody {}
 
-/** Trust surface consumed here; the browser-side connection package owns the full type. */
-interface LiveActivityConnection {
-  requestRejection(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
-}
-
-/** The composition's connection service (typed locally: its package is browser-side). */
-function connectionOf(ctx: Context): LiveActivityConnection {
-  return Reflect.get(ctx, 'connection') as LiveActivityConnection
-}
+/** Peer WebServer passes to an admitted route handler. */
+type RoutePeer = Parameters<WebRoute['handler']>[2]
 
 /** Request bodies here are small JSON objects; anything larger is hostile. */
 const MAX_BODY_BYTES = 16 * 1024
@@ -118,7 +111,7 @@ function resolveCredentials(config: Config): { bundleId: string; teamId: string;
  * current turn state to the activity's push token while the phone is elsewhere.
  */
 export default class LiveActivityPush extends Service {
-  static inject = ['webServer', 'connection']
+  static inject = ['webServer']
   static Config = Config
 
   private readonly sender: ReturnType<typeof createApnsSender> | undefined
@@ -142,12 +135,12 @@ export default class LiveActivityPush extends Service {
     ctx.effect(() => ctx.webServer.register({
       kind: 'exact',
       path: LIVE_ACTIVITY_REGISTER_PATH,
-      handler: (req, res) => { void this.handleRegister(req, res) },
+      handler: (req, res, peer) => { void this.handleRegister(req, res, peer) },
     }))
     ctx.effect(() => ctx.webServer.register({
       kind: 'exact',
       path: LIVE_ACTIVITY_UNREGISTER_PATH,
-      handler: (req, res) => { void this.handleUnregister(req, res) },
+      handler: (req, res, peer) => { void this.handleUnregister(req, res, peer) },
     }))
     ctx.on('session/event', (session, event) => { this.observe(session.id, event as SessionEventLike) })
     ctx.effect(() => () => {
@@ -160,16 +153,16 @@ export default class LiveActivityPush extends Service {
     })
   }
 
-  private rejected(req: IncomingMessage, res: ServerResponse): boolean {
-    const rejection = connectionOf(this.ctx).requestRejection({ headers: req.headers })
-    if (rejection === undefined) return false
-    res.writeHead(rejection)
-    res.end(rejection === 401 ? 'unauthorized' : 'forbidden')
+  /** The routes use WebServer's default required admission, so a missing Peer means the request was not admitted. */
+  private rejected(res: ServerResponse, peer: RoutePeer): boolean {
+    if (peer !== undefined) return false
+    res.writeHead(401)
+    res.end('unauthorized')
     return true
   }
 
-  private async handleRegister(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (req.method !== 'POST' || this.rejected(req, res)) return
+  private async handleRegister(req: IncomingMessage, res: ServerResponse, peer?: RoutePeer): Promise<void> {
+    if (req.method !== 'POST' || this.rejected(res, peer)) return
     const body = await readJson(req)
     const sessionId = boundedString(body?.['sessionId'], 200)
     const activityId = boundedString(body?.['activityId'], 200)
@@ -190,8 +183,8 @@ export default class LiveActivityPush extends Service {
     this.schedule(sessionId, 0)
   }
 
-  private async handleUnregister(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (req.method !== 'POST' || this.rejected(req, res)) return
+  private async handleUnregister(req: IncomingMessage, res: ServerResponse, peer?: RoutePeer): Promise<void> {
+    if (req.method !== 'POST' || this.rejected(res, peer)) return
     const body = await readJson(req)
     const activityId = boundedString(body?.['activityId'], 200)
     if (activityId === undefined) {
