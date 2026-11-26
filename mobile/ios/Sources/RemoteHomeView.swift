@@ -140,6 +140,8 @@ private final class RemoteSessions: ObservableObject {
     private var fundsOrigin: String?
     private var balanceRevision = UUID()
     private var loadToken: UUID?
+    /// When this computer's model catalog and balances were last requested.
+    private var composerRefreshedAt: Date?
     private var consecutiveFailures = 0
     /// Whether the last load failed because the route itself was unreachable.
     private(set) var transportUnreachable = false
@@ -158,6 +160,7 @@ private final class RemoteSessions: ObservableObject {
             fundsOrigin = computer.id
             balanceRevision = UUID()
             loadToken = nil
+            composerRefreshedAt = nil
         }
         if loadToken != nil { return false }
         let token = UUID()
@@ -250,7 +253,11 @@ private final class RemoteSessions: ObservableObject {
                 workspaces = baseline.items
                 pinnedSessionIds = baseline.pinnedSessionIds
             }
-            await loadComposerSettings(session: session, origin: origin, computerID: computer.id)
+            if MobileResumePolicy.shouldRefreshComposer(lastRefreshedAt: composerRefreshedAt, quietly: quietly,
+                                                        hasModels: !models.isEmpty) {
+                composerRefreshedAt = .now
+                await loadComposerSettings(session: session, origin: origin, computerID: computer.id)
+            }
             return true
         } catch {
             transportUnreachable = MobileFailover.isRouteFailure(error)
@@ -654,6 +661,7 @@ struct RemoteHomeView: View {
     @ObservedObject var connection: MobileConnection
     let computer: SavedComputer
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var sessions = RemoteSessions()
     @State private var showingComputers = false
     @State private var showingSettings = false
@@ -958,6 +966,10 @@ struct RemoteHomeView: View {
             }
             .onChange(of: showingNewConversation) { visible in
                 if !visible { Task { await loadSessions() } }
+            }
+            // Returning from the background reads the list now instead of waiting for the next poll.
+            .onChange(of: scenePhase) { phase in
+                if phase == .active { Task { await loadSessions(quietly: true) } }
             }
             // A hidden search must not keep filtering the list after its field closes.
             .onChange(of: showingSearch) { visible in

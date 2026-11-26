@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.0.65"
-    CURRENT_PROJECT_VERSION: "142"
+    CURRENT_PROJECT_VERSION: "144"
     DEVELOPMENT_TEAM: "KF2CE24685"
     CODE_SIGN_STYLE: "Automatic"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
@@ -72,6 +72,11 @@ targets:
       - path: Sources/MobileMultipart.swift
       - path: Sources/MobileTranscriptOrder.swift
       - path: Sources/MobileChangesFilter.swift
+      - path: Sources/MobileReplyMetadata.swift
+      - path: Sources/MobileNotificationText.swift
+      - path: Sources/MobileVoicePunctuation.swift
+      - path: Sources/MobileDuration.swift
+      - path: Sources/MobileSubagentCatalog.swift
       - path: Sources/MobileStreamPreview.swift
       - path: Sources/MobileCodePreview.swift
       - path: Sources/MobileExpansionStore.swift
@@ -89,6 +94,7 @@ targets:
       - path: Sources/MobileModelCatalog.swift
       - path: Sources/MobileConnectionAddress.swift
       - path: Sources/MobileFailover.swift
+      - path: Sources/MobileResumePolicy.swift
       - path: Sources/SavedComputer.swift
       - path: Sources/MobileModelPreference.swift
       - path: Sources/MobileSilenceLabel.swift

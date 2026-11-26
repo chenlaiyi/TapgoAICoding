@@ -1087,6 +1087,15 @@ private final class RemoteChat: ObservableObject {
         await connect(computer: computer, sessionId: sessionId, reconnect: true)
     }
 
+    /// Replaces the socket after the app returns to the foreground, keeping the transcript without a reconnect banner.
+    /// - Parameters:
+    ///   - computer: pairing whose active route is dialed.
+    ///   - sessionId: conversation to follow again.
+    func resume(computer: SavedComputer, sessionId: String) async {
+        retryCount = 0
+        await connect(computer: computer, sessionId: sessionId, reconnect: true)
+    }
+
     private func publishStream(immediate: Bool) {
         if !immediate {
             guard streamPublication == nil else { return }
@@ -2041,6 +2050,8 @@ struct RemoteChatView: View {
     @ObservedObject var connection: MobileConnection
     @EnvironmentObject private var interactions: MobileInteractionCenter
     @State private var computer: SavedComputer
+    /// When the scene last entered the background, so the foreground return can tell whether the socket went stale.
+    @State private var backgroundedAt: Date?
     let sessionId: String
     let title: String
     let project: String
@@ -2456,9 +2467,15 @@ struct RemoteChatView: View {
         }
         .onChange(of: scenePhase) { phase in
             if phase != .active { saveDraftNow() }
+            if phase == .background { backgroundedAt = .now }
             if phase == .active { Task { await chat.loadSettings(computer: computer) } }
-            if phase == .active && !chat.connected && !chat.loading {
-                Task { await chat.retry(computer: computer, sessionId: sessionId) }
+            if phase == .active {
+                // iOS suspends the socket in the background; a connection that still looks open may deliver nothing.
+                let stale = MobileResumePolicy.mustReconnect(backgroundedAt: backgroundedAt)
+                backgroundedAt = nil
+                if !chat.loading && (stale || !chat.connected) {
+                    Task { await chat.resume(computer: computer, sessionId: sessionId) }
+                }
             }
         }
         .onChange(of: connection.computers) { items in
